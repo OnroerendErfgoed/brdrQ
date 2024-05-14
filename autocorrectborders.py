@@ -2,20 +2,18 @@
 
 """
 ***************************************************************************
-*   version: v0.9.3 (proof of concept - working version)
+*   version: v0.9.4 (proof of concept - working version)
 *   author: Karel Dieussaert
 *   history:
 *            -initial version based on pyQGIS
 *            -added exclusion of circles
 *            -more efficient merge/union-logical
-*            -removed resulting group layer (to prevent crashing of QGIS) -
-                    extra research needed
+*            -removed resulting group layer (to prevent crashing of QGIS) - extra research needed
 *            -add logic for openbaar domein (od_strategy)
 *            -intermediate layers added as an advanced parameter
 *            -Native processes as child_algorithms
 *            -Process NonThreaded to fix QGIS from crashing
-*            -Added advanced parameter for processing input-multipolygons as single
-                    polygons
+*            -Added advanced parameter for processing input-multipolygons as single polygons
 *            -rewriting to use AutoReferencer (shapely-python)
 *            -cleanup and added docs to AutoReferencer
 *            -resulting output made available for further QGIS-modelling
@@ -49,7 +47,6 @@ from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsCoordinateReferenceSystem
 from qgis.core import QgsFeature
-from qgis.core import QgsFeatureSink
 from qgis.core import QgsField
 from qgis.core import QgsGeometry
 from qgis.core import QgsProcessing
@@ -86,6 +83,8 @@ except (ModuleNotFoundError, ValueError):
     print(brdr.__version__)
 
 from brdr.auto_referencer import AutoReferencer
+from brdr.enums import OpenbaarDomeinStrategy
+from brdr.enums import GRBType
 
 
 class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -101,23 +100,19 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     INPUT_THEMATIC = "INPUT_THEMATIC"
     INPUT_REFERENCE = "INPUT_REFERENCE"
+
+    # ENUM for choosing the reference
     ENUM_REFERENCE = "ENUM_REFERENCE"
-    ENUM_REFERENCE_OPTIONS = [
-        "LOCAL REFERENCE LAYER (choose LAYER and ID below)",
-        "download GRB - actuele percelen (adp)",
-        "download GRB - actuele gebouwen (gbg)",
-        "download GRB - actuele kunstwerken (knw)",
-    ]
-    SELECTED_REFERENCE = "None"
-    ENUM_OD_STRATEGY = 'ENUM_OD_STRATEGY'
-    ENUM_OD_STRATEGY_OPTIONS = [
-        'EXCLUDE',
-        'AS IS',
-        'SNAP - ONE SIDE',
-        'SNAP - ALL SIDE',
-        'SNAP - BIG AREA'
-    ]
-    SELECTED_OD_STRATEGY = 'SNAP - ONE SIDE'
+    GRB_TYPES = [e.name for e in GRBType]
+    ENUM_REFERENCE_OPTIONS = ["LOCAL REFERENCE LAYER (choose LAYER and ID below)"] + GRB_TYPES
+    SELECTED_REFERENCE = None
+
+    # ENUM for choosing the OD-strategy
+    ENUM_OD_STRATEGY = "ENUM_OD_STRATEGY"
+    OD_STRATEGY_TYPES = [e.name for e in OpenbaarDomeinStrategy]
+    ENUM_OD_STRATEGY_OPTIONS = OD_STRATEGY_TYPES
+    SELECTED_OD_STRATEGY = None
+
     RESULT = "RESULT"
     RESULT_DIFF = "RESULT_DIFF"
     RESULT_DIFF_PLUS = "RESULT_DIFF_PLUS"
@@ -237,7 +232,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         return geom_shapely
 
     def create_temp_layer(
-        self, name, group_layer_name, field_name, style_name, visible
+            self, name, group_layer_name, field_name, style_name, visible
     ):
         """
         Create a temporary QGIS layer in the TOC based on:
@@ -340,24 +335,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         else:
             geom = Polygon()
         return geom
-
-    def layer_to_featuresink(self, parameters, context, layer_name, sink_name):
-        layer = self.get_layer_by_name(layer_name)
-        source = layer.dataProvider()
-        (sink, dest_id) = self.parameterAsSink(
-            parameters,
-            sink_name,
-            context,
-            source.fields(),
-            source.wkbType(),
-            QgsCoordinateReferenceSystem(self.CRS),
-        )
-        if sink is None:
-            raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
-        features = source.getFeatures()
-        for current, feature in enumerate(features):
-            sink.addFeature(feature, QgsFeatureSink.FastInsert)
-        return sink, dest_id
 
     def initAlgorithm(self, config=None):
         """
@@ -677,14 +654,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo("Load reference data")
         if self.SELECTED_REFERENCE == 0:
             auto_referencer.load_reference_data_dict(dict_reference)
-        elif self.SELECTED_REFERENCE == 1:  # adp
-            auto_referencer.load_reference_data_grb_actual()
-        elif self.SELECTED_REFERENCE == 2:  # gbg
-            auto_referencer.load_reference_data_grb_actual(grb_type="gbg")
-        elif self.SELECTED_REFERENCE == 3:  # knw
-            auto_referencer.load_reference_data_grb_actual(grb_type="knw")
+        else:
+            print(self.SELECTED_REFERENCE)
+            auto_referencer.load_reference_data_grb_actual(grb_type=self.SELECTED_REFERENCE.value)
 
-        #
+            #
         feedback.pushInfo("START PROCESSING")
         (
             dict_result,
@@ -840,8 +814,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 "FIELD_LENGTH": 0,
                 "FIELD_PRECISION": 0,
                 "FORMULA": "to_string("
-                + parameters[self.ID_THEME_GLOBAL]
-                + ") + '_'+ to_string(@id)",
+                           + parameters[self.ID_THEME_GLOBAL]
+                           + ") + '_'+ to_string(@id)",
                 "OUTPUT": "TEMPORARY_OUTPUT",
             },
             context=context,
@@ -914,24 +888,26 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
         self.BUFFER_DISTANCE = self.RELEVANT_DISTANCE / 2
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
-        self.SELECTED_OD_STRATEGY = parameters[self.ENUM_OD_STRATEGY]
-        self.OD_STRATEGY = self.SELECTED_OD_STRATEGY - 1
+        self.OD_STRATEGY = OpenbaarDomeinStrategy[self.ENUM_OD_STRATEGY_OPTIONS[parameters[self.ENUM_OD_STRATEGY]]]
         self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
         self.PROCESS_MULTI_AS_SINGLE_POLYGONS = parameters[
             "PROCESS_MULTI_AS_SINGLE_POLYGONS"
         ]
         self.SUFFIX = "_" + str(self.RELEVANT_DISTANCE) + "_OD_" + str(self.OD_STRATEGY)
         self.LAYER_SIGNIFICANT_INTERSECTION = (
-            self.LAYER_SIGNIFICANT_INTERSECTION + self.SUFFIX
+                self.LAYER_SIGNIFICANT_INTERSECTION + self.SUFFIX
         )
         self.LAYER_SIGNIFICANT_DIFFERENCE = (
-            self.LAYER_SIGNIFICANT_DIFFERENCE + self.SUFFIX
+                self.LAYER_SIGNIFICANT_DIFFERENCE + self.SUFFIX
         )
         self.LAYER_RESULT = self.LAYER_RESULT + self.SUFFIX
         self.LAYER_RESULT_DIFF = self.LAYER_RESULT_DIFF + self.SUFFIX
         self.LAYER_RESULT_DIFF_PLUS = self.LAYER_RESULT_DIFF_PLUS + self.SUFFIX
         self.LAYER_RESULT_DIFF_MIN = self.LAYER_RESULT_DIFF_MIN + self.SUFFIX
-        self.SELECTED_REFERENCE = parameters[self.ENUM_REFERENCE]
-        self.LAYER_REFERENCE = self.ENUM_REFERENCE_OPTIONS[
-            parameters[self.ENUM_REFERENCE]
-        ]
+        ref = self.ENUM_REFERENCE_OPTIONS[parameters[self.ENUM_REFERENCE]]
+        print(ref)
+        if ref in self.GRB_TYPES:
+            self.SELECTED_REFERENCE = GRBType[ref]
+        else:
+            self.SELECTED_REFERENCE = 0
+        self.LAYER_REFERENCE = self.SELECTED_REFERENCE
