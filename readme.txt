@@ -1,21 +1,12 @@
-autocorrectborders.py
+AUTOCORRECT BORDERS
 ==============================
-Dit is een QGIS-script dat gebruik maakt van python-code 'AutoReferencer'
+Description
+-----------
+QGIS-processing script that searches for overlap relevance between thematic borders and reference borders, and creates a resulting border based on the overlapping areas that are relevant.
 
-Installatie en documentatie te vinden in 'autocorrectborders_guide.docx'
-
-
-
-
-#TODO: 
-Eenmaal als algoritme als python library beschikbaar is, Hoe kan QGIS script dan hiervan gebruik maken:
-Hierbij enkele links:
-https://training.gismentors.eu/qgis-plugins/python/startup.html
-https://gis.stackexchange.com/questions/419975/pip-install-inside-qgis-fails
-
-SUCCESVOL  third party library (bvb geojson) geinstalleerd via de python QGIS console:
-import subprocess
-subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'geojson'])
+Installation instructions
+--------------------------
+Installation instructions can be found in 'autocorrectborders_guide.docx'
 
 
 
