@@ -2,7 +2,7 @@
 
 """
 ***************************************************************************
-*   version: v0.9.4 (proof of concept - working version)
+*   version: v0.9.5 (proof of concept - working version)
 *   author: Karel Dieussaert
 *   history:
 *            -initial version based on pyQGIS
@@ -14,11 +14,12 @@
 *            -Native processes as child_algorithms
 *            -Process NonThreaded to fix QGIS from crashing
 *            -Added advanced parameter for processing input-multipolygons as single polygons
-*            -rewriting to use AutoReferencer (shapely-python)
-*            -cleanup and added docs to AutoReferencer
+*            -rewriting to use Aligner (shapely-python)
+*            -cleanup and added docs to Aligner
 *            -resulting output made available for further QGIS-modelling
 *            -added enum - parameter to download actual GRB (adp-gbg-knw)
 *            -added enum - parameter for od-strategy
+*            -changes implmented for refactored brdr
 *
 MIT LICENSE:
 Copyright (c) 2023-2024 Flanders Heritage Agency
@@ -82,7 +83,7 @@ except (ModuleNotFoundError, ValueError):
 
     print(brdr.__version__)
 
-from brdr.auto_referencer import AutoReferencer
+from brdr.aligner import Aligner
 from brdr.enums import OpenbaarDomeinStrategy
 from brdr.enums import GRBType
 
@@ -395,7 +396,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.ENUM_OD_STRATEGY,
             'Select OD-STRATEGY:',
             options=self.ENUM_OD_STRATEGY_OPTIONS,
-            defaultValue=2  # Index of the default option (e.g., 'Snap - one side')
+            defaultValue=5  # Index of the default option (e.g., 'SNAP_FULL_AREA_ALL_SIDE')
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
@@ -624,39 +625,39 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             False,
         )
 
-        # AUTOREFERENCER IMPLEMENTATION
-        auto_referencer = AutoReferencer(
+        # Aligner IMPLEMENTATION
+        aligner = Aligner(
             feedback=feedback,
             relevant_distance=self.RELEVANT_DISTANCE,
             threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
         )
 
         # set parameters
-        auto_referencer.feedback = feedback
-        auto_referencer.relevant_distance = self.RELEVANT_DISTANCE
-        auto_referencer.od_strategy = self.OD_STRATEGY
-        auto_referencer.THRESHOLD_CIRCLE_RATIO = self.THRESHOLD_CIRCLE_RATIO
-        auto_referencer.THRESHOLD_EXCLUSION_AREA = self.THRESHOLD_EXCLUSION_AREA
-        auto_referencer.THRESHOLD_EXCLUSION_PERCENTAGE = (
+        aligner.feedback = feedback
+        aligner.relevant_distance = self.RELEVANT_DISTANCE
+        aligner.od_strategy = self.OD_STRATEGY
+        aligner.THRESHOLD_CIRCLE_RATIO = self.THRESHOLD_CIRCLE_RATIO
+        aligner.THRESHOLD_EXCLUSION_AREA = self.THRESHOLD_EXCLUSION_AREA
+        aligner.THRESHOLD_EXCLUSION_PERCENTAGE = (
             self.THRESHOLD_EXCLUSION_PERCENTAGE
         )
-        auto_referencer.CORR_DISTANCE = self.CORR_DISTANCE
-        auto_referencer.MITRE_LIMIT = self.MITRE_LIMIT
-        auto_referencer.QUAD_SEGS = self.QUAD_SEGS
-        auto_referencer.BUFFER_MULTIPLICATION_FACTOR = self.BUFFER_MULTIPLICATION_FACTOR
-        auto_referencer.MAX_REFERENCE_BUFFER = self.MAX_REFERENCE_BUFFER
-        auto_referencer.CRS = self.CRS
-        auto_referencer.DOWNLOAD_LIMIT = self.DOWNLOAD_LIMIT
+        aligner.CORR_DISTANCE = self.CORR_DISTANCE
+        aligner.MITRE_LIMIT = self.MITRE_LIMIT
+        aligner.QUAD_SEGS = self.QUAD_SEGS
+        aligner.BUFFER_MULTIPLICATION_FACTOR = self.BUFFER_MULTIPLICATION_FACTOR
+        aligner.MAX_REFERENCE_BUFFER = self.MAX_REFERENCE_BUFFER
+        aligner.CRS = self.CRS
+        aligner.DOWNLOAD_LIMIT = self.DOWNLOAD_LIMIT
 
         feedback.pushInfo("Load thematic data")
-        auto_referencer.load_thematic_data_dict(dict_thematic)
+        aligner.load_thematic_data_dict(dict_thematic)
 
         feedback.pushInfo("Load reference data")
         if self.SELECTED_REFERENCE == 0:
-            auto_referencer.load_reference_data_dict(dict_reference)
+            aligner.load_reference_data_dict(dict_reference)
         else:
             print(self.SELECTED_REFERENCE)
-            auto_referencer.load_reference_data_grb_actual(grb_type=self.SELECTED_REFERENCE.value)
+            aligner.load_reference_data_grb_actual(grb_type=self.SELECTED_REFERENCE.value)
 
             #
         feedback.pushInfo("START PROCESSING")
@@ -667,7 +668,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             dict_result_diff_min,
             dict_relevant_intersection,
             dict_relevant_diff,
-        ) = auto_referencer.process_dict_thematic(
+        ) = aligner.process_dict_thematic(
             self.RELEVANT_DISTANCE, self.OD_STRATEGY, self.THRESHOLD_OVERLAP_PERCENTAGE
         )
 
@@ -686,7 +687,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # write results to output-layers
         feedback.pushInfo("WRITING RESULTS")
         if self.SELECTED_REFERENCE != 0:
-            dict_reference = auto_referencer.dict_reference
+            dict_reference = aligner.dict_reference
             for id_reference in dict_reference:
                 self.add_geom_to_temp_layer(
                     self.LAYER_REFERENCE,
