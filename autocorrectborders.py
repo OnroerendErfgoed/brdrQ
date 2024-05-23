@@ -2,7 +2,7 @@
 
 """
 ***************************************************************************
-*   version: v0.9.5 (proof of concept - working version)
+*   version: v0.9.5
 *   author: Karel Dieussaert
 *   history:
 *            -initial version based on pyQGIS
