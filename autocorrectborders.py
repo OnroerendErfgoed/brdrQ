@@ -67,6 +67,9 @@ from qgis.core import QgsStyle
 from qgis.core import QgsVectorLayer
 
 
+# helper function to find embedded python 
+# path in windows. Based on 
+# https://github.com/qgis/QGIS/issues/45646
 def find_python():
 
     if sys.platform != "win32":
@@ -80,7 +83,6 @@ def find_python():
     raise Exception("Python executable not found")
 
 python_exe = find_python()
-#subprocess.check_call([python_exe, "-m", "pip", "install", "geojson"])
 
 try:
     from shapely import (
