@@ -2,8 +2,10 @@
 
 """
 ***************************************************************************
+*   name: brdrQ - Autocorrectborders
 *   version: v0.9.5
 *   author: Karel Dieussaert
+*   Docs and Code- repo: https://github.com/OnroerendErfgoed/brdrQ/
 *   history:
 *            -initial version based on pyQGIS
 *            -added exclusion of circles
@@ -19,8 +21,8 @@
 *            -resulting output made available for further QGIS-modelling
 *            -added enum - parameter to download actual GRB (adp-gbg-knw)
 *            -added enum - parameter for od-strategy
-*            -changes implmented for refactored brdr
-*
+*            -changes implemented for refactored brdr
+
 MIT LICENSE:
 Copyright (c) 2023-2024 Flanders Heritage Agency
 
@@ -40,8 +42,11 @@ PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIG
 HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
 CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
 THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-***************************************************************************"""
-
+***************************************************************************
+"""
+import subprocess
+import sys
+import os
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QVariant
@@ -63,10 +68,42 @@ from qgis.core import QgsProcessingParameterNumber
 from qgis.core import QgsProject
 from qgis.core import QgsStyle
 from qgis.core import QgsVectorLayer
-from shapely import Polygon
-from shapely import from_wkt
-from shapely import to_wkt
-from shapely import unary_union
+
+
+# helper function to find embedded python 
+# path in windows. Based on 
+# https://github.com/qgis/QGIS/issues/45646
+def find_python():
+
+    if sys.platform != "win32":
+        return sys.executable
+
+    for path in sys.path:
+        assumed_path = os.path.join(path, "python.exe")
+        if os.path.isfile(assumed_path):
+            return assumed_path
+
+    raise Exception("Python executable not found")
+
+python_exe = find_python()
+
+try:
+    from shapely import (
+        Polygon,
+        from_wkt,
+        to_wkt,
+        unary_union
+    )
+except (ModuleNotFoundError):
+    print("Module shapely not found. Installing from PyPi.")
+    subprocess.check_call([python_exe, 
+                           '-m', 'pip', 'install', 'shapely'])
+    from shapely import (
+        Polygon,
+        from_wkt,
+        to_wkt,
+        unary_union
+    )
 
 try:
     import brdr
@@ -75,12 +112,9 @@ try:
         raise ValueError("Version mismatch")
 
 except (ModuleNotFoundError, ValueError):
-    print("Module package_name not found. Installing from PyPi")
-    from pip._internal import main as pip
-
-    pip(["install", "brdr==0.1.0"])
+    subprocess.check_call([python_exe, 
+                           '-m', 'pip', 'install', 'brdr==0.1.0'])
     import brdr
-
     print(brdr.__version__)
 
 from brdr.aligner import Aligner
@@ -192,7 +226,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr("autocorrectborders - scripts")
+        return self.tr("brdrQ")
 
     def groupId(self):
         """
@@ -202,7 +236,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "autocorrectbordersscripts"
+        return "brdrq"
 
     def shortHelpString(self):
         """
@@ -213,7 +247,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         return self.tr(
             "This script searches for overlap relevance between thematic borders and "
             "reference borders, and creates a resulting border based on the overlapping "
-            "areas that are relevant"
+            "areas that are relevant."
+            "Documentation can be found at: https://github.com/OnroerendErfgoed/brdrQ/ "
         )
 
     def geom_shapely_to_qgis(self, geom_shapely):
@@ -656,9 +691,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         if self.SELECTED_REFERENCE == 0:
             aligner.load_reference_data_dict(dict_reference)
         else:
-            print(self.SELECTED_REFERENCE)
             aligner.load_reference_data_grb_actual(grb_type=self.SELECTED_REFERENCE.value)
-
             #
         feedback.pushInfo("START PROCESSING")
         (
@@ -906,7 +939,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.LAYER_RESULT_DIFF_PLUS = self.LAYER_RESULT_DIFF_PLUS + self.SUFFIX
         self.LAYER_RESULT_DIFF_MIN = self.LAYER_RESULT_DIFF_MIN + self.SUFFIX
         ref = self.ENUM_REFERENCE_OPTIONS[parameters[self.ENUM_REFERENCE]]
-        print(ref)
         if ref in self.GRB_TYPES:
             self.SELECTED_REFERENCE = GRBType[ref]
         else:
