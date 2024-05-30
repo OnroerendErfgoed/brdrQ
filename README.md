@@ -15,7 +15,7 @@ You can install the latest release of `brdrQ` from
 
 ### Pre-requisites
 - QGIS >3.28.5: The script has been developed and tested based on QGIS 3.28.5. In older versions, the script will not work)
-- ??To check?? brdr needs Shapely 2.0.2 or higher. This version of Shapely is available by default from QGIS 3.28.5 onwards. 
+- brdr needs Shapely 2.0.2 or higher. This version of Shapely is available by default from QGIS 3.28.5 onwards on Windows installations. On Linux and Mac this may not be the case. If the modules are not found, the script will attempt to install both brdr and shapely from Pypi. 
 
 ### Installation-steps
 The QGIS script 'autocorrectborders.py can be loaded into the QGIS Processing Toolbar.
