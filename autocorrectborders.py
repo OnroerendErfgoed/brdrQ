@@ -72,15 +72,16 @@ from qgis.core import QgsVectorLayer
 # https://github.com/qgis/QGIS/issues/45646
 def find_python():
 
-    if sys.platform != "win32":
+    if sys.platform not in ["win32", "darwin"]:
         return sys.executable
+    else:
+        for path in sys.path:
+           exe = "python.exe" if sys.platform == "win32" else "python"
+           assumed_path = os.path.join(path, exe)
+           if os.path.isfile(assumed_path):
+              return assumed_path
 
-    for path in sys.path:
-        assumed_path = os.path.join(path, "python.exe")
-        if os.path.isfile(assumed_path):
-            return assumed_path
-
-    raise Exception("Python executable not found")
+        raise Exception("Python executable not found")
 
 python_exe = find_python()
 
