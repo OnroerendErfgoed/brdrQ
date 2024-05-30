@@ -63,10 +63,24 @@ from qgis.core import QgsProcessingParameterNumber
 from qgis.core import QgsProject
 from qgis.core import QgsStyle
 from qgis.core import QgsVectorLayer
-from shapely import Polygon
-from shapely import from_wkt
-from shapely import to_wkt
-from shapely import unary_union
+
+try:
+    from shapely import (
+        Polygon,
+        from_wkt,
+        to_wkt,
+        unary_union
+    )
+except (ModuleNotFoundError):
+    print("Module shapely not found. Installing from PyPi.")
+    from pip._internal import main as pip
+    pip(["install", "shapely"])
+    from shapely import (
+        Polygon,
+        from_wkt,
+        to_wkt,
+        unary_union
+    )
 
 try:
     import brdr
