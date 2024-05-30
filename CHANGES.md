@@ -15,4 +15,4 @@
  - Resulting output made available for further QGIS-modelling
  - added enum - parameter to download actual GRB (adp-gbg-knw)
  - added enum - parameter for od-strategy
- - changes implmented for refactored brdr
+ - changes implemented for refactored brdr

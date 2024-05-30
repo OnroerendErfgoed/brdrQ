@@ -14,6 +14,7 @@ You can install the latest release of `brdrQ` from
 [GitHub](https://github.com/OnroerendErfgoed/brdrQ/).
 
 ### Pre-requisites
+- Script is tested for QGIS on Linux and Windows. Usage of the script on Mac is not tested, and can give errors or unexpected behaviour.
 - QGIS >3.28.5: The script has been developed and tested based on QGIS 3.28.5. In older versions, the script will not work)
 - brdr needs Shapely 2.0.2 or higher. This version of Shapely is available by default from QGIS 3.28.5 onwards on Windows installations. On Linux and Mac this may not be the case. If the modules are not found, the script will attempt to install both brdr and shapely from Pypi. 
 
@@ -25,7 +26,11 @@ Follow the steps below to make the script available in QGIS Processing Toolbar
 2.	Choose: 'Add script to Toolbox...' (see red arrow) and select the script 'autocorrectborders.py'
 <img src="docs/figures/installation-step-2.png" width="100%" />
 <img src="docs/figures/installation-step-2b.png" width="50%" />
-3.	The tool is now available in the Processing Toolbox under 'Scripts - autocorrectborders'
+
+(While adding the script to the toolbox, the necessary python-dependencies will be installed if not yet available on your machine.
+If dependencies need to be installed, a screen like below can pop up. Please wait until installation is finished. The screen will close automatically after installation.)
+<img src="docs/figures/installation-step-2c.png" width="50%" />
+3.	The tool 'Autocorrectborders' is now available in the Processing Toolbox under 'brdrQ'
 <img src="docs/figures/installation-step-3.png" width="100%" />
 4.	Double-click on the 'Autocorrectborders' tool, and the tool opens:
  <img src="docs/figures/installation-step-4.png" width="100%" />
@@ -88,7 +93,16 @@ The various INPUT & OUTPUT parameters are explained in more detail below. Here a
 
 
 ### OUTPUT
-The script generates several output layers in the layer overview. The name includes which 'RELEVANT_DISTANCE (X)' and 'OD-STRATEGY (Y)' is used
+The script generates several output layers in the layer overview: 
+
+* brdrQ_RESULT_X_Y: resulting geometries after alignment
+* brdrQ_DIFF_X_Y: differences (+ and -) between original and resulting geometry
+* brdrQ_DIFF_MIN_X_Y:differences (-) between original and resulting geometry
+* brdrQ_DIFF_PLUS_X_Y:differences (+) between original and resulting geometry
+* (optional) brdrQ_RLVNT_DIFF_X_Y: relevant differences (parts to exclude), used when processing the resulting geometry
+* (optional) brdrQ_RLVNT_ISECT_X_Y: relevant intersection (parts to include), used when processing the resulting geometry
+
+The name includes which 'RELEVANT_DISTANCE (X)' and 'OD-STRATEGY (Y)' is used
  <img src="docs/figures/output.png" width="100%" />
 
 ### TIPS, ASSUMPTIONS & LIMITATIONS
@@ -101,7 +115,7 @@ The script generates several output layers in the layer overview. The name inclu
 
 This allows you to gain insight into the 'deviation' and which RELEVANT_DISTANCE value can best be applied.
 - The RELEVANT_DISTANCE must be chosen according to the 'deviation' of the thematic data compared to the reference layer. If the thematic data contains different geometries that show large differences in 'deviation', it is best to split the thematic data and process it separately with an appropriate RELEVANT_DISTANCE so that the RELEVANT_DISTANCE can be kept as small as possible. 
-- The current version of the script assumes that both the thematic layer and reference layer are in Lambert72 (EPSG:31370)
+- The current version of the script assumes that both the thematic layer and reference layer are in the same CRS: Lambert72 (EPSG:31370) or Lambert 2008 (EPSG:3812).
 - Thematic boundaries consisting of 1 or a few reference polygons are processed by the script in a few seconds. If the thematic boundaries cover a very large area (~1000 and reference polygons), it may take several minutes for the OUTPUT to be calculated. It's best to let QGIS finish this processing before proceeding
 - In practice, we notice that large thematic demarcations are sometimes drawn more roughly (less precisely or inaccurately), so that a high RELEVANT DISTANCE is required to shift them to the reference file. For large areas that are drawn 'roughly', it is best to use a high RELEVANT_DISTANCE (e.g. >10 meters) and:
   - OD-strategy EXCLUDE: if you want to completely exclude all public domain
@@ -114,7 +128,8 @@ The script uses `brdr`, a python-package to align thematic borders to reference 
 
 - For more information about the conceptual method/algorithm consult:
 <https://github.com/OnroerendErfgoed/brdr>.
-- 
+
+
 ## Comments and contributions
 
 - Please report any issues or bugs here:
