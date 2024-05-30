@@ -43,6 +43,7 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ***************************************************************************"""
 import subprocess
 import sys
+import os
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QVariant
@@ -65,6 +66,22 @@ from qgis.core import QgsProject
 from qgis.core import QgsStyle
 from qgis.core import QgsVectorLayer
 
+
+def find_python():
+
+    if sys.platform != "win32":
+        return sys.executable
+
+    for path in sys.path:
+        assumed_path = os.path.join(path, "python.exe")
+        if os.path.isfile(assumed_path):
+            return assumed_path
+
+    raise Exception("Python executable not found")
+
+python_exe = find_python()
+#subprocess.check_call([python_exe, "-m", "pip", "install", "geojson"])
+
 try:
     from shapely import (
         Polygon,
@@ -74,7 +91,7 @@ try:
     )
 except (ModuleNotFoundError):
     print("Module shapely not found. Installing from PyPi.")
-    subprocess.check_call(['sys.executable', 
+    subprocess.check_call([python_exe, 
                            '-m', 'pip', 'install', 'shapely'])
     from shapely import (
         Polygon,
@@ -90,7 +107,7 @@ try:
         raise ValueError("Version mismatch")
 
 except (ModuleNotFoundError, ValueError):
-    subprocess.check_call(['sys.executable', 
+    subprocess.check_call([python_exe, 
                            '-m', 'pip', 'install', 'brdr==0.1.0'])
     import brdr
     print(brdr.__version__)
