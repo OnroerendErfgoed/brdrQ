@@ -26,17 +26,26 @@ You can install the latest release of `brdrQ` from
 The QGIS script 'autocorrectborders.py can be loaded into the QGIS Processing Toolbar.
 Follow the steps below to make the script available in QGIS Processing Toolbar
 1.  Open the Processing Toolbox from the bar at the top, so that Processing Toolbox appears on the right side of the screen
+
 <img src="docs/figures/installation-step-1.png" width="100%" />
+
 2.	Choose: 'Add script to Toolbox...' (see red arrow) and select the script 'autocorrectborders.py'
+
 <img src="docs/figures/installation-step-2.png" width="100%" />
+
 <img src="docs/figures/installation-step-2b.png" width="50%" />
 
 (While adding the script to the toolbox, the necessary python-dependencies will be installed if not yet available on your machine.
 If dependencies need to be installed, a screen like below can pop up. Please wait until installation is finished. The screen will close automatically after installation.)
+
 <img src="docs/figures/installation-step-2c.png" width="50%" />
+
 3.	The tool 'Autocorrectborders' is now available in the Processing Toolbox under 'brdrQ'
+
 <img src="docs/figures/installation-step-3.png" width="100%" />
+
 4.	Double-click on the 'Autocorrectborders' tool, and the tool opens:
+
  <img src="docs/figures/installation-step-4.png" width="100%" />
 
 
