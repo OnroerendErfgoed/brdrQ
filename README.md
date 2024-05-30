@@ -1,5 +1,9 @@
 # `brdrQ`: Autocorrectborders, a QGIS-processing script for aligning thematic borders to reference borders.
+
 <!-- badges: start -->
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11395472.svg)](https://doi.org/10.5281/zenodo.11395472)
+
 <!-- badges: end -->
 
 ## Description
