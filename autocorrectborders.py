@@ -42,6 +42,7 @@ CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFT
 THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ***************************************************************************"""
 import subprocess
+import sys
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QVariant
@@ -73,7 +74,8 @@ try:
     )
 except (ModuleNotFoundError):
     print("Module shapely not found. Installing from PyPi.")
-    subprocess.check_call(['pip', 'install', 'shapely'])
+    subprocess.check_call(['sys.executable', 
+                           '-m', 'pip', 'install', 'shapely'])
     from shapely import (
         Polygon,
         from_wkt,
@@ -88,7 +90,8 @@ try:
         raise ValueError("Version mismatch")
 
 except (ModuleNotFoundError, ValueError):
-    subprocess.check_call(['pip', 'install', 'install', 'brdr==0.1.0'])
+    subprocess.check_call(['sys.executable', 
+                           '-m', 'pip', 'install', 'brdr==0.1.0'])
     import brdr
     print(brdr.__version__)
 
