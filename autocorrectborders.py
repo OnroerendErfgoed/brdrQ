@@ -79,7 +79,7 @@ def find_python():
         return sys.executable
     else:
         for path in sys.path:
-           exe = "python.exe" if sys.platform == "win32" else "python"
+           exe = "python.exe" if sys.platform == "win32" else "python3"
            assumed_path = os.path.join(path, exe)
            if os.path.isfile(assumed_path):
               return assumed_path
