@@ -159,12 +159,12 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     INTERMEDIATE_LAYER_GROUP = "INTERMEDIATE_LAYER_GROUP"
 
-    LAYER_RESULT = "LAYER_RESULT"
-    LAYER_RESULT_DIFF = "LAYER_RESULT_DIFF"
-    LAYER_RESULT_DIFF_PLUS = "LAYER_RESULT_DIFF_PLUS"
-    LAYER_RESULT_DIFF_MIN = "LAYER_RESULT_DIFF_MIN"
-    LAYER_SIGNIFICANT_INTERSECTION = "LAYER_SIGNIFICANT_INTERSECTION"
-    LAYER_SIGNIFICANT_DIFFERENCE = "LAYER_SIGNIFICANT_DIFFERENCE"
+    LAYER_RESULT = "brdrQ_RESULT"
+    LAYER_RESULT_DIFF = "brdrQ_DIFF"
+    LAYER_RESULT_DIFF_PLUS = "brdrQ_DIFF_PLUS"
+    LAYER_RESULT_DIFF_MIN = "brdrQ_DIFF_MIN"
+    LAYER_RELEVANT_INTERSECTION = "brdrQ_RLVNT_ISECT"
+    LAYER_RELEVANT_DIFFERENCE = "brdrQ_RLVNT_DIFF"
     LAYER_REFERENCE = "LAYER_REFERENCE"
 
     SUFFIX = ""
@@ -212,14 +212,14 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "autocorrectBorders"
+        return "brdrqautocorrectBorders"
 
     def displayName(self):
         """
         Returns the translated algorithm name, which should be used for any
         user-visible display of the algorithm name.
         """
-        return self.tr("Autocorrectborders")
+        return self.tr("brdrQ - Autocorrectborders")
 
     def group(self):
         """
@@ -618,14 +618,14 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             )
         if self.SHOW_INTERMEDIATE_LAYERS:
             self.create_temp_layer(
-                self.LAYER_SIGNIFICANT_INTERSECTION,
+                self.LAYER_RELEVANT_INTERSECTION,
                 self.INTERMEDIATE_LAYER_GROUP,
                 self.ID_THEME_GLOBAL,
                 "simple green fill",
                 False,
             )
             self.create_temp_layer(
-                self.LAYER_SIGNIFICANT_DIFFERENCE,
+                self.LAYER_RELEVANT_DIFFERENCE,
                 self.INTERMEDIATE_LAYER_GROUP,
                 self.ID_THEME_GLOBAL,
                 "simple red fill",
@@ -766,7 +766,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             )
             if self.SHOW_INTERMEDIATE_LAYERS:
                 self.add_geom_to_temp_layer(
-                    self.LAYER_SIGNIFICANT_INTERSECTION,
+                    self.LAYER_RELEVANT_INTERSECTION,
                     self.geom_shapely_to_qgis(
                         self.geom_from_dict(
                             relevant_intersection_merged, id_theme_global
@@ -775,7 +775,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                     id_theme_global,
                 )
                 self.add_geom_to_temp_layer(
-                    self.LAYER_SIGNIFICANT_DIFFERENCE,
+                    self.LAYER_RELEVANT_DIFFERENCE,
                     self.geom_shapely_to_qgis(
                         self.geom_from_dict(relevant_diff_merged, id_theme_global)
                     ),
@@ -927,12 +927,12 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.PROCESS_MULTI_AS_SINGLE_POLYGONS = parameters[
             "PROCESS_MULTI_AS_SINGLE_POLYGONS"
         ]
-        self.SUFFIX = "_" + str(self.RELEVANT_DISTANCE) + "_OD_" + str(self.OD_STRATEGY)
-        self.LAYER_SIGNIFICANT_INTERSECTION = (
-                self.LAYER_SIGNIFICANT_INTERSECTION + self.SUFFIX
+        self.SUFFIX = "_" + str(self.RELEVANT_DISTANCE) + "_OD_" + str(self.OD_STRATEGY.name)
+        self.LAYER_RELEVANT_INTERSECTION = (
+                self.LAYER_RELEVANT_INTERSECTION + self.SUFFIX
         )
-        self.LAYER_SIGNIFICANT_DIFFERENCE = (
-                self.LAYER_SIGNIFICANT_DIFFERENCE + self.SUFFIX
+        self.LAYER_RELEVANT_DIFFERENCE = (
+                self.LAYER_RELEVANT_DIFFERENCE + self.SUFFIX
         )
         self.LAYER_RESULT = self.LAYER_RESULT + self.SUFFIX
         self.LAYER_RESULT_DIFF = self.LAYER_RESULT_DIFF + self.SUFFIX
