@@ -46,6 +46,7 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 import subprocess
 import sys
+import site
 import os
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
@@ -85,6 +86,7 @@ def find_python():
 
     raise Exception("Python executable not found")
 
+sys.path.insert(0, site.getusersitepackages())
 python_exe = find_python()
 
 try:
