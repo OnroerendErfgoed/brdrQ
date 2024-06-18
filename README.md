@@ -19,11 +19,11 @@ You can install the latest release of `brdrQ` from
 
 ### Pre-requisites
 - Script is tested for QGIS on Linux and Windows. Usage of the script on Mac is not tested, and can give errors or unexpected behaviour.
-- QGIS >3.28.5: The script has been developed and tested based on QGIS 3.28.5. In older versions, the script will not work)
-- brdr needs Shapely 2.0.2 or higher. This version of Shapely is available by default from QGIS 3.28.5 onwards on Windows installations. On Linux and Mac this may not be the case. If the modules are not found, the script will attempt to install both brdr and shapely from Pypi. 
+- QGIS >3.28.5: The script has been developed and tested based on QGIS 3.28.5. (In older versions, the script might not work)
+- brdr needs Shapely 2.0.2 or higher. This version of Shapely is available by default from QGIS 3.28.5 onwards on Windows installations. On Linux and Mac this may not be the case. If the modules are not found, the script will attempt to install both 'brdr' and 'shapely' from Pypi. 
 
 ### Installation-steps
-The QGIS script 'autocorrectborders.py can be loaded into the QGIS Processing Toolbar.
+The QGIS script 'autocorrectborders.py' can be loaded into the QGIS Processing Toolbar.
 Follow the steps below to make the script available in QGIS Processing Toolbar
 1.  Open the Processing Toolbox from the bar at the top, so that Processing Toolbox appears on the right side of the screen
 
@@ -40,7 +40,7 @@ If dependencies need to be installed, a screen like below can pop up. Please wai
 
 <img src="docs/figures/installation-step-2c.png" width="50%" />
 
-3. Close your QGIS-project, and Re-open your QGIS-project
+3. Close QGIS, and (re-)open QGIS
 
 4.	The tool 'Autocorrectborders' is now available in the Processing Toolbox under 'brdrQ'
 
