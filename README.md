@@ -40,11 +40,13 @@ If dependencies need to be installed, a screen like below can pop up. Please wai
 
 <img src="docs/figures/installation-step-2c.png" width="50%" />
 
-3.	The tool 'Autocorrectborders' is now available in the Processing Toolbox under 'brdrQ'
+3. Close your QGIS-project, and Re-open your QGIS-project
+
+4.	The tool 'Autocorrectborders' is now available in the Processing Toolbox under 'brdrQ'
 
 <img src="docs/figures/installation-step-3.png" width="100%" />
 
-4.	Double-click on the 'Autocorrectborders' tool, and the tool opens:
+5.	Double-click on the 'Autocorrectborders' tool, and the tool opens:
 
  <img src="docs/figures/installation-step-4.png" width="100%" />
 
