@@ -269,6 +269,22 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         geom_shapely = from_wkt(wkt)
         return geom_shapely
 
+    def add_formula_to_layer(self, layername, aligner):
+        """this function needs a new version of brdr, because of a logging problem
+        """
+        layer = self.get_layer_by_name(layername)
+        pr = layer.dataProvider()  # need to create a data provider
+        pr.addAttributes([QgsField("formula", QVariant.String)])  # define/add field data type
+        layer.updateFields()
+        caps = pr.capabilities()
+        features = layer.getFeatures()
+        for current, feature in enumerate(features):
+            if caps & pr.ChangeAttributeValues:
+                formula = str(aligner.get_formula(self.geom_qgis_to_shapely(feature.geometry())))
+                attrs = {1: formula}
+                layer.dataProvider().changeAttributeValues({feature.id(): attrs})
+        return
+
     def create_temp_layer(
             self, name, group_layer_name, field_name, style_name, visible
     ):
@@ -783,6 +799,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                     ),
                     id_theme_global,
                 )
+        # TODO: when a new version of brdr is released, the following function can be used to add a formula to the result
+        # self.add_formula_to_layer(self.LAYER_RESULT,aligner)
         self.RESULT = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
         self.RESULT_DIFF = QgsProject.instance().mapLayersByName(
             self.LAYER_RESULT_DIFF
