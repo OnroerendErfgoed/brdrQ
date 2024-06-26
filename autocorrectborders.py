@@ -23,6 +23,8 @@
 *            -added enum - parameter for od-strategy
 *            -changes implemented for refactored brdr
 *            -uses new version of brdr (0.2.0?)
+*            -refactoring of functions to brdr-functions
+*            -possibility to use predictor-function in brdr
 
 MIT LICENSE:
 Copyright (c) 2023-2024 Flanders Heritage Agency
@@ -605,23 +607,29 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             aligner.load_reference_data_grb_actual(grb_type=self.SELECTED_REFERENCE.value)
             #
         feedback.pushInfo("START PROCESSING")
-        (
-            dict_result,
-            dict_result_diff,
-            dict_result_diff_plus,
-            dict_result_diff_min,
-            dict_relevant_intersection,
-            dict_relevant_diff,
-        ) = aligner.process_dict_thematic(
-            self.RELEVANT_DISTANCE, self.OD_STRATEGY, self.THRESHOLD_OVERLAP_PERCENTAGE
-        )
+        if self.RELEVANT_DISTANCE >= 0:
+            (
+                dict_result,
+                dict_result_diff,
+                dict_result_diff_plus,
+                dict_result_diff_min,
+                dict_relevant_intersection,
+                dict_relevant_diff,
+            ) = aligner.process_dict_thematic(
+                self.RELEVANT_DISTANCE, self.OD_STRATEGY, self.THRESHOLD_OVERLAP_PERCENTAGE
+            )
+            fcs = aligner.get_results_as_geojson(formula=True)
+        else:
+            dict_predicted, diffs = aligner.predictor(od_strategy=self.OD_STRATEGY,
+                                                      treshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE)
+            fcs = aligner.get_predictions_as_geojson(formula=True)
 
         feedback.pushInfo("END PROCESSING")
 
         # write results to output-layers
         feedback.pushInfo("WRITING RESULTS")
 
-        fcs = aligner.get_results_as_geojson()
+        # fcs = aligner.get_results_as_geojson()
         # MAKE TEMPORARY LAYERS
         if self.SELECTED_REFERENCE != 0:
             self.geojson_to_layer(self.LAYER_REFERENCE, aligner.get_reference_as_geojson(), "gray 1 fill", True)
@@ -634,7 +642,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.geojson_to_layer(self.LAYER_RESULT_DIFF_PLUS, fcs[2], "hashed cgreen /", False)
         self.geojson_to_layer(self.LAYER_RESULT_DIFF_MIN, fcs[3], "hashed cred /", False)
 
-        self.add_formula_to_layer(self.LAYER_RESULT, aligner)
+        # self.add_formula_to_layer(self.LAYER_RESULT,aligner)
         self.RESULT = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
         self.RESULT_DIFF = QgsProject.instance().mapLayersByName(
             self.LAYER_RESULT_DIFF
