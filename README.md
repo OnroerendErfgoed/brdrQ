@@ -151,3 +151,9 @@ The script uses `brdr`, a python-package to align thematic borders to reference 
 <https://github.com/OnroerendErfgoed/brdrQ/issues>.
 
 
+## Acknowledgement
+
+This software was created by [Athumi](https://athumi.be/en/), the Flemish data utility company, and [Flanders Heritage Agency](https://www.onroerenderfgoed.be/flanders-heritage-agency).
+
+![https://athumi.be/en/](docs/figures/athumi_logo-250x84.png)
+![https://www.onroerenderfgoed.be/flanders-heritage-agency](docs/figures/Vlaanderen_is_erfgoed-250x97.png)
