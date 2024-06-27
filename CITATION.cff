@@ -33,6 +33,8 @@ references:
     type: report
     date-release: 2024-06-24
     title: 'Grenzen verleggen. Automatische correcties van geografische afbakeningen op verschuivende onderlagen'
+    collection-title: 'Onderzoeksrapporten agentschap Onroerend Erfgoed'
+    number: 332
     authors:
       - given-names: Karel
 	family-names: Dieussaert
