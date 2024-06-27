@@ -50,6 +50,7 @@ references:
         affiliation: Agentschap Onroerend Erfgoed
         orcid: 'https://orcid.org/0000-0002-8153-2978'
     notes: Publication in Dutch documenting how the brdr algorithm and QGIS plugin operate
+    pages: 52
 
 keywords:
   - GIS
