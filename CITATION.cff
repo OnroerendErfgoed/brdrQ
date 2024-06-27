@@ -37,10 +37,10 @@ references:
     number: 332
     authors:
       - given-names: Karel
-	family-names: Dieussaert
+        family-names: Dieussaert
       - given-name: Monique
-	family-names: Vanvinckenroye
-	affiliation: Agentschap Onroerend Erfgoed
+        family-names: Vanvinckenroye
+        affiliation: Agentschap Onroerend Erfgoed
       - given-names: Maarten
         family-names: Vermeyen
         email: maarten.vermeyen@vlaanderen.be
