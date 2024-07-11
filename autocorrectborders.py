@@ -116,12 +116,12 @@ except (ModuleNotFoundError):
 try:
     import brdr
 
-    if brdr.__version__ != "0.1.0":
+    if brdr.__version__ != "0.1.1":
         raise ValueError("Version mismatch")
 
 except (ModuleNotFoundError, ValueError):
     subprocess.check_call([python_exe,
-                           '-m', 'pip', 'install', 'brdr==0.1.0'])
+                           '-m', 'pip', 'install', 'brdr==0.1.1'])
     import brdr
 
     print(brdr.__version__)
@@ -220,14 +220,14 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "brdrqautocorrectBorders"
+        return "brdrqautocorrectborders"
 
     def displayName(self):
         """
         Returns the translated algorithm name, which should be used for any
         user-visible display of the algorithm name.
         """
-        return self.tr("brdrQ - Autocorrectborders")
+        return self.tr("brdrQ - AutoCorrectBorders")
 
     def group(self):
         """
