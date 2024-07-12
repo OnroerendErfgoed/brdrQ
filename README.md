@@ -6,6 +6,11 @@
 
 <!-- badges: end -->
 
+Quick links:
+
+- [Installation](#installation)
+- [Issues, questions, comments and contributions](#comments-and-contributions)
+
 ## Description
 
 `brdrQ` is a QGIS-processing script that searches for overlap relevance between thematic borders and reference borders, and creates a resulting border based on the overlapping areas that are relevant.
@@ -147,9 +152,21 @@ The script uses `brdr`, a python-package to align thematic borders to reference 
 
 ## Comments and contributions
 
-- Please report any issues or bugs here:
-<https://github.com/OnroerendErfgoed/brdrQ/issues>.
+We would love to hear from you and your experiences with
+`brdrQ` or its sister project [`brdr`](https://github.com/OnroerendErfgoed/brdr/). The [discussions forum](https://github.com/OnroerendErfgoed/brdr/discussions/) is the place to be when:
 
+   - You have any questions on using `brdrQ` or `brdr` or their 
+     applicability to your use cases
+   - Want to share your experiences with the library
+   - Have any  suggestions for improvements or feature requests
+
+If you have discovered a bug in the `brdrQ` library you can report it here:
+
+  <https://github.com/OnroerendErfgoed/brdrQ/issues>
+
+We try to keep the list of issues as clean as possible. If 
+you're unsure whether something is a bug, or whether the bug is in `brdrQ`
+or `brdr`, we encourage you to go through the [discussions forum](https://github.com/OnroerendErfgoed/brdr/discussions) first.
 
 ## Acknowledgement
 
