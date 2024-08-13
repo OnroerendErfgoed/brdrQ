@@ -51,7 +51,6 @@ from qgis.core import QgsProcessingOutputVectorLayer
 from qgis.core import QgsProcessingParameterDateTime
 
 
-
 # helper function to find embedded python
 # path in windows. Based on
 # https://github.com/qgis/QGIS/issues/45646
@@ -102,7 +101,7 @@ except (ModuleNotFoundError, ValueError):
     print(brdr.__version__)
 
 from brdr.aligner import Aligner
-from brdr.utils import merge_geometries_by_theme_id, geom_from_dict, geojson_tuple_from_series, multipolygons_to_singles
+from brdr.utils import geom_from_dict, multipolygons_to_singles
 from brdr.enums import OpenbaarDomeinStrategy
 from brdr.enums import GRBType
 
@@ -120,7 +119,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     START_DATE = "START_DATE"
     END_DATE = "END_DATE"
-
 
     def flags(self):
         return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
@@ -213,7 +211,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
-
     def processAlgorithm(self, parameters, context, feedback):
         """
         Here is where the processing itself takes place.
@@ -222,7 +219,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback_steps = 6
         feedback = QgsProcessingMultiStepFeedback(feedback_steps, feedback)
         feedback.pushInfo("START")
-        
+
         datetime_start = self.parameterAsDateTime(
             parameters,
             self.START_DATE,

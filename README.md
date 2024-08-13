@@ -137,12 +137,27 @@ This allows you to gain insight into the 'deviation' and which RELEVANT_DISTANCE
   - OD-strategy AS_IS: if you want to include all the covered public domain AS IS in the result
   - OD strategy SNAP_FULL_AREA_x: if you want to keep the public domain within the demarcation, but move the edges to the reference polygons
 
+
+
 ## Motivation & citation
 
 The script uses `brdr`, a python-package to align thematic borders to reference borders.
 
 - For more information about the conceptual method/algorithm consult:
 <https://github.com/OnroerendErfgoed/brdr>.
+
+
+## Development
+
+A released python-package of  is automatically installed when installing the brdrQ-script.
+
+A non-released (development-) version of `brdr` can be installed as QGIS-Python-site-package by:
+
+f.e. 'C:\Program Files\QGIS 3.38.1>python -m pip install C:\x\x\x\x\brdr'
+
+the brdr-package is installed in a user-directory: 
+
+f.e. 'C:\Users\x\AppData\Roaming\Python\Python312\site-packages'
 
 
 ## Comments and contributions

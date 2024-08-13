@@ -127,7 +127,7 @@ except (ModuleNotFoundError, ValueError):
     print(brdr.__version__)
 
 from brdr.aligner import Aligner
-from brdr.utils import merge_geometries_by_theme_id, geom_from_dict, geojson_tuple_from_series, multipolygons_to_singles
+from brdr.utils import geom_from_dict, multipolygons_to_singles
 from brdr.enums import OpenbaarDomeinStrategy
 from brdr.enums import GRBType
 
