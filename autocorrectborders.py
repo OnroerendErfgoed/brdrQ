@@ -55,10 +55,8 @@ import json
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QVariant
-from qgis.PyQt.QtCore import QTextCodec
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsCoordinateReferenceSystem
-from qgis.core import QgsFeature
 from qgis.core import QgsField
 from qgis.core import QgsGeometry
 from qgis.core import QgsProcessing
@@ -74,7 +72,6 @@ from qgis.core import QgsProcessingParameterNumber
 from qgis.core import QgsProject
 from qgis.core import QgsStyle
 from qgis.core import QgsVectorLayer
-from qgis.core import QgsJsonUtils
 
 
 # helper function to find embedded python
@@ -127,7 +124,7 @@ except (ModuleNotFoundError, ValueError):
     print(brdr.__version__)
 
 from brdr.aligner import Aligner
-from brdr.utils import geom_from_dict, multipolygons_to_singles
+from brdr.utils import multipolygons_to_singles
 from brdr.enums import OpenbaarDomeinStrategy
 from brdr.enums import GRBType
 

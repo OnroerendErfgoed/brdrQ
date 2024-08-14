@@ -108,9 +108,8 @@ from brdr.enums import GRBType
 
 class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     """
-    This script searches for overlap relevance between thematic borders and reference
-    borders, and creates a resulting border based on the overlapping areas that are
-    relevant.
+    Script to auto-update geometries that are aligned to an old GRB-referencelayer to a newer GRB-referencelayer.
+    Documentation can be found at: https://github.com/OnroerendErfgoed/brdrQ/
     """
 
     # Constants used to refer to parameters and outputs. They will be
