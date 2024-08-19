@@ -101,7 +101,7 @@ except (ModuleNotFoundError, ValueError):
     print(brdr.__version__)
 
 from brdr.aligner import Aligner
-from brdr.utils import geom_from_dict, multipolygons_to_singles
+from brdr.utils import multipolygons_to_singles
 from brdr.enums import OpenbaarDomeinStrategy
 from brdr.enums import GRBType
 
@@ -151,7 +151,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     def group(self):
         """
-        Returns the name of the group this algorithm belongs to. This string
+        Returns the name of the group this algorithm belongs to. This stringgeom
         should be localised.
         """
         return self.tr("brdrQ")
