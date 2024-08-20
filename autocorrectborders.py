@@ -316,7 +316,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             symbol = None
         else:
             symbol = QgsStyle.defaultStyle().symbol(style_name)
-        if symbol is not None:
+        if vl.renderer() is not None and symbol is not None:
             vl.renderer().setSymbol(symbol)
         # adding layer to TOC
         qinst.addMapLayer(
@@ -605,14 +605,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             #
         feedback.pushInfo("START PROCESSING")
         if self.RELEVANT_DISTANCE >= 0:
-            (
-                dict_result,
-                dict_result_diff,
-                dict_result_diff_plus,
-                dict_result_diff_min,
-                dict_relevant_intersection,
-                dict_relevant_diff,
-            ) = aligner.process_dict_thematic(
+            process_result = aligner.process_dict_thematic(
                 self.RELEVANT_DISTANCE, self.OD_STRATEGY, self.THRESHOLD_OVERLAP_PERCENTAGE
             )
             fcs = aligner.get_results_as_geojson(formula=True)
@@ -631,13 +624,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         if self.SELECTED_REFERENCE != 0:
             self.geojson_to_layer(self.LAYER_REFERENCE, aligner.get_reference_as_geojson(), "gray 1 fill", True)
         if self.SHOW_INTERMEDIATE_LAYERS:
-            self.geojson_to_layer(self.LAYER_RELEVANT_INTERSECTION, fcs[4], "simple green fill", False)
-            self.geojson_to_layer(self.LAYER_RELEVANT_DIFFERENCE, fcs[5], "simple red fill", False)
+            self.geojson_to_layer(self.LAYER_RELEVANT_INTERSECTION, fcs["result_relevant_intersection"], "simple green fill", False)
+            self.geojson_to_layer(self.LAYER_RELEVANT_DIFFERENCE, fcs["result_relevant_diff"], "simple red fill", False)
 
-        self.geojson_to_layer(self.LAYER_RESULT, fcs[0], "outline xpattern", True)
-        self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs[1], "hashed black X", False)
-        self.geojson_to_layer(self.LAYER_RESULT_DIFF_PLUS, fcs[2], "hashed cgreen /", False)
-        self.geojson_to_layer(self.LAYER_RESULT_DIFF_MIN, fcs[3], "hashed cred /", False)
+        self.geojson_to_layer(self.LAYER_RESULT, fcs["result"], "outline xpattern", True)
+        self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"], "hashed black X", False)
+        self.geojson_to_layer(self.LAYER_RESULT_DIFF_PLUS, fcs["result_diff_plus"], "hashed cgreen /", False)
+        self.geojson_to_layer(self.LAYER_RESULT_DIFF_MIN, fcs["result_diff_min"], "hashed cred /", False)
 
         # self.add_formula_to_layer(self.LAYER_RESULT,aligner)
         self.RESULT = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
