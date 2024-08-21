@@ -75,7 +75,7 @@ from qgis.core import QgsProject
 from qgis.core import QgsStyle
 from qgis.core import QgsVectorLayer
 from qgis.core import QgsSimpleFillSymbolLayer, QgsMarkerLineSymbolLayer, QgsSimpleLineSymbolLayer, QgsFillSymbol, \
-    QgsSingleSymbolRenderer
+    QgsSingleSymbolRenderer, QgsLayerTreeLayer, QgsMapLayer, QgsLayerTreeNode, QgsLayerTreeGroup
 
 
 # helper function to find embedded python
@@ -169,7 +169,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     OUTPUT_RESULT_DIFF_PLUS = "OUTPUT_RESULT_DIFF_PLUS"
     OUTPUT_RESULT_DIFF_MIN = "OUTPUT_RESULT_DIFF_MIN"
 
-    INTERMEDIATE_LAYER_GROUP = "INTERMEDIATE_LAYER_GROUP"
+    GROUP_LAYER = "BRDRQ"
 
     LAYER_RESULT = "brdrQ_RESULT"
     LAYER_RESULT_DIFF = "brdrQ_DIFF"
@@ -285,6 +285,79 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         layers = QgsProject.instance().mapLayersByName(layer_name)
         return layers[0]
 
+    def move_to_group(self, thing, group, pos=0, expanded=False):
+        """Move a layer tree node into a layer tree group.
+        docs:https://docs.qgis.org/3.34/en/docs/pyqgis_developer_cookbook/cheat_sheet.html
+
+        Parameter
+        ---------
+
+        thing : group name (str), layer id (str), qgis.core.QgsMapLayer, qgis.core.QgsLayerTreeNode
+
+          Thing to move.  Can be a tree node (i.e. a layer or a group) or
+          a map layer, the object or the string name/id.
+
+        group : group name (str) or qgis.core.QgsLayerTreeGroup
+
+          Group to move the thing to. If group does not already exist, it
+          will be created.
+
+        pos : int
+
+          Position to insert into group. Default is 0.
+
+        extended : bool
+
+          Collapse or expand the thing moved. Default is False.
+
+        Returns
+        -------
+
+        Tuple containing the moved thing and the group moved to.
+
+        Note
+        ----
+
+        Moving destroys the original thing and creates a copy. It is the
+        copy which is returned.
+
+        """
+
+        qinst = QgsProject.instance()
+        tree = qinst.layerTreeRoot()
+
+        # thing
+        if isinstance(thing, str):
+            try:  # group name
+                node_object = tree.findGroup(thing)
+            except:  # layer id
+                node_object = tree.findLayer(thing)
+        elif isinstance(thing, QgsMapLayer):
+            node_object = tree.findLayer(thing)
+        elif isinstance(thing, QgsLayerTreeNode):
+            node_object = thing  # tree layer or group
+
+        # group
+        if isinstance(group, QgsLayerTreeGroup):
+            group_name = group.name()
+        else:  # group is str
+            group_name = group
+
+        group_object = tree.findGroup(group_name)
+
+        if not group_object:
+            group_object = tree.insertGroup(0, group_name)
+
+        # do the move
+        node_object_clone = node_object.clone()
+        node_object_clone.setExpanded(expanded)
+        group_object.insertChildNode(pos, node_object_clone)
+
+        parent = node_object.parent()
+        parent.removeChildNode(node_object)
+
+        return (node_object_clone, group_object)
+
     def get_renderer(self, fill_symbol):
         """
         Get a QGIS renderer to add symbology to a QGIS-layer
@@ -307,6 +380,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         qinst = QgsProject.instance()
         lyrs = qinst.mapLayersByName(name)
         root = qinst.layerTreeRoot()
+
         if len(lyrs) != 0:
             for lyr in lyrs:
                 root.removeLayer(lyr)
@@ -328,11 +402,15 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         qinst.addMapLayer(
             vl, False
         )  # False so that it doesn't get inserted at default position
+
         root.insertLayer(0, vl)
+
         node = root.findLayer(vl.id())
         if node:
             new_state = Qt.Checked if visible else Qt.Unchecked
             node.setItemVisibilityChecked(new_state)
+
+        self.move_to_group(vl, self.GROUP_LAYER)
         vl.triggerRepaint()
         iface.layerTreeView().refreshLayerSymbology(vl.id())
         return vl
@@ -572,8 +650,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         # MAKE TEMPORARY LAYERS
         if self.SELECTED_REFERENCE != 0:
-            self.geojson_to_layer(self.LAYER_REFERENCE, aligner.get_reference_as_geojson(),
-                                  self.get_renderer("gray 1 fill"), True)
+            self.geojson_to_layer(self.LAYER_REFERENCE, aligner.get_reference_as_geojson(), self.get_renderer(
+                QgsFillSymbol([QgsSimpleLineSymbolLayer.create(
+                    {'line_style': 'dash', 'color': QColor(60, 60, 60), 'line_width': '0.2'})])), True)
 
         if self.SHOW_INTERMEDIATE_LAYERS:
             self.geojson_to_layer(self.LAYER_RELEVANT_INTERSECTION, fcs["result_relevant_intersection"],
@@ -791,6 +870,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.LAYER_RESULT_DIFF = self.LAYER_RESULT_DIFF + self.SUFFIX
         self.LAYER_RESULT_DIFF_PLUS = self.LAYER_RESULT_DIFF_PLUS + self.SUFFIX
         self.LAYER_RESULT_DIFF_MIN = self.LAYER_RESULT_DIFF_MIN + self.SUFFIX
+        self.GROUP_LAYER = self.GROUP_LAYER + self.SUFFIX
         ref = self.ENUM_REFERENCE_OPTIONS[parameters[self.ENUM_REFERENCE]]
         if ref in self.GRB_TYPES:
             self.SELECTED_REFERENCE = GRBType[ref]
