@@ -53,9 +53,11 @@ import site
 import os
 import json
 from qgis import processing
+from qgis.utils import iface
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QColor
 from qgis.core import QgsCoordinateReferenceSystem
 from qgis.core import QgsField
 from qgis.core import QgsGeometry
@@ -72,6 +74,8 @@ from qgis.core import QgsProcessingParameterNumber
 from qgis.core import QgsProject
 from qgis.core import QgsStyle
 from qgis.core import QgsVectorLayer
+from qgis.core import QgsSimpleFillSymbolLayer, QgsMarkerLineSymbolLayer, QgsSimpleLineSymbolLayer, QgsFillSymbol, \
+    QgsSingleSymbolRenderer
 
 
 # helper function to find embedded python
@@ -188,6 +192,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     THRESHOLD_CIRCLE_RATIO = 0.98
     CORR_DISTANCE = 0.01
     SHOW_INTERMEDIATE_LAYERS = False
+    FORMULA = True
     PROCESS_MULTI_AS_SINGLE_POLYGONS = True
     MITRE_LIMIT = 10
     CRS = "EPSG:31370"
@@ -272,22 +277,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         geom_shapely = from_wkt(wkt)
         return geom_shapely
 
-    def add_formula_to_layer(self, layername, aligner):
-        """this function needs a new version of brdr, because of a logging problem
-        """
-        layer = self.get_layer_by_name(layername)
-        pr = layer.dataProvider()  # need to create a data provider
-        pr.addAttributes([QgsField("formula", QVariant.String)])  # define/add field data type
-        layer.updateFields()
-        caps = pr.capabilities()
-        features = layer.getFeatures()
-        for current, feature in enumerate(features):
-            if caps & pr.ChangeAttributeValues:
-                formula = str(aligner.get_formula(self.geom_qgis_to_shapely(feature.geometry())))
-                attrs = {1: formula}
-                layer.dataProvider().changeAttributeValues({feature.id(): attrs})
-        return
-
     def get_layer_by_name(self, layer_name):
         """
         Get the layer-object based on the layername
@@ -295,7 +284,41 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         layers = QgsProject.instance().mapLayersByName(layer_name)
         return layers[0]
 
-    def geojson_to_layer(self, name, geojson, style_name, visible):
+    def get_renderer(self, fill_symbol):
+        # to get all properties of symbol:
+        # print(layer.renderer().symbol().symbolLayers()[0].properties())
+        # see: https://opensourceoptions.com/loading-and-symbolizing-vector-layers
+        if isinstance(fill_symbol, str):
+            fill_symbol = QgsStyle.defaultStyle().symbol(fill_symbol)
+
+        if fill_symbol is None:
+            fill_symbol = QgsFillSymbol([QgsSimpleLineSymbolLayer.create()])
+
+            # red = QColor(255,0,0)
+            # green = QColor(0,255,0)
+            # yellow = QColor(255,255,0)
+            # whiteish = QColor(247,247,247)
+
+            # fill = QgsSimpleFillSymbolLayer()
+            # fill.setColor(whiteish)
+
+            # marker_r = QgsMarkerLineSymbolLayer(interval=9)
+            # marker_r.setColor(red)
+            # marker_r.setOffsetAlongLine(4.5)
+
+            # symbollayer = QgsSimpleLineSymbolLayer.create({'align_dash_pattern': '0', 'capstyle': 'square', 'customdash': '1.5;3', 'customdash_map_unit_scale': '3x:0,0,0,0,0,0', 'customdash_unit': 'MM', 'dash_pattern_offset': '0', 'dash_pattern_offset_map_unit_scale': '3x:0,0,0,0,0,0', 'dash_pattern_offset_unit': 'MM', 'draw_inside_polygon': '0', 'joinstyle': 'miter', 'line_color': '255,255,0,255', 'line_style': 'solid', 'line_width': '1', 'line_width_unit': 'MM', 'offset': '0', 'offset_map_unit_scale': '3x:0,0,0,0,0,0', 'offset_unit': 'MM', 'ring_filter': '0', 'trim_distance_end': '0', 'trim_distance_end_map_unit_scale': '3x:0,0,0,0,0,0', 'trim_distance_end_unit': 'MM', 'trim_distance_start': '0', 'trim_distance_start_map_unit_scale': '3x:0,0,0,0,0,0', 'trim_distance_start_unit': 'MM', 'tweak_dash_pattern_on_corners': '0', 'use_custom_dash': '1', 'width_map_unit_scale': '3x:0,0,0,0,0,0'})
+            # marker_g = QgsMarkerLineSymbolLayer(interval=9)
+            # marker_g.setColor(green)
+
+            # marker_y = QgsMarkerLineSymbolLayer(interval=9)
+            # marker_y.setColor(yellow)
+
+        if isinstance(fill_symbol, QgsFillSymbol):
+            return QgsSingleSymbolRenderer(fill_symbol)
+
+        return None
+
+    def geojson_to_layer(self, name, geojson, renderer, visible):
         qinst = QgsProject.instance()
         lyrs = qinst.mapLayersByName(name)
         root = qinst.layerTreeRoot()
@@ -311,13 +334,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         pr = vl.dataProvider()
         vl.updateFields()
         # styling
-        vl.setOpacity(0.5)
-        if style_name is None or style_name == "":
-            symbol = None
-        else:
-            symbol = QgsStyle.defaultStyle().symbol(style_name)
-        if vl.renderer() is not None and symbol is not None:
-            vl.renderer().setSymbol(symbol)
+        # vl.setOpacity(0.5)
+
+        if renderer is not None:
+            vl.setRenderer(renderer)
+
         # adding layer to TOC
         qinst.addMapLayer(
             vl, False
@@ -328,6 +349,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             new_state = Qt.Checked if visible else Qt.Unchecked
             node.setItemVisibilityChecked(new_state)
         vl.triggerRepaint()
+        iface.layerTreeView().refreshLayerSymbology(vl.id())
         return vl
 
     def initAlgorithm(self, config=None):
@@ -437,6 +459,12 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "PROCESS_MULTI_AS_SINGLE_POLYGONS",
             "PROCESS_MULTI_AS_SINGLE_POLYGONS",
             defaultValue=True,
+        )
+        # parameter.setFlags(parameter.flags() |
+        # QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter)
+        parameter = QgsProcessingParameterBoolean(
+            "ADD_FORMULA", "ADD_FORMULA", defaultValue=False
         )
         # parameter.setFlags(parameter.flags() |
         # QgsProcessingParameterDefinition.FlagAdvanced)
@@ -608,31 +636,36 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             process_result = aligner.process_dict_thematic(
                 self.RELEVANT_DISTANCE, self.OD_STRATEGY, self.THRESHOLD_OVERLAP_PERCENTAGE
             )
-            fcs = aligner.get_results_as_geojson(formula=True)
+            fcs = aligner.get_results_as_geojson(formula=self.FORMULA)
         else:
             dict_predicted, diffs = aligner.predictor(od_strategy=self.OD_STRATEGY,
                                                       treshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE)
-            fcs = aligner.get_predictions_as_geojson(formula=True)
+            fcs = aligner.get_predictions_as_geojson(formula=self.FORMULA)
 
         feedback.pushInfo("END PROCESSING")
 
         # write results to output-layers
         feedback.pushInfo("WRITING RESULTS")
 
-        # fcs = aligner.get_results_as_geojson()
         # MAKE TEMPORARY LAYERS
         if self.SELECTED_REFERENCE != 0:
             self.geojson_to_layer(self.LAYER_REFERENCE, aligner.get_reference_as_geojson(), "gray 1 fill", True)
+
         if self.SHOW_INTERMEDIATE_LAYERS:
-            self.geojson_to_layer(self.LAYER_RELEVANT_INTERSECTION, fcs["result_relevant_intersection"], "simple green fill", False)
-            self.geojson_to_layer(self.LAYER_RELEVANT_DIFFERENCE, fcs["result_relevant_diff"], "simple red fill", False)
+            self.geojson_to_layer(self.LAYER_RELEVANT_INTERSECTION, fcs["result_relevant_intersection"],
+                                  self.get_renderer("simple green fill"), False)
+            self.geojson_to_layer(self.LAYER_RELEVANT_DIFFERENCE, fcs["result_relevant_diff"],
+                                  self.get_renderer("simple red fill"), False)
 
-        self.geojson_to_layer(self.LAYER_RESULT, fcs["result"], "outline xpattern", True)
-        self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"], "hashed black X", False)
-        self.geojson_to_layer(self.LAYER_RESULT_DIFF_PLUS, fcs["result_diff_plus"], "hashed cgreen /", False)
-        self.geojson_to_layer(self.LAYER_RESULT_DIFF_MIN, fcs["result_diff_min"], "hashed cred /", False)
+        self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"], self.get_renderer("hashed black X"), False)
+        self.geojson_to_layer(self.LAYER_RESULT_DIFF_PLUS, fcs["result_diff_plus"],
+                              self.get_renderer("hashed cgreen /"), False)
+        self.geojson_to_layer(self.LAYER_RESULT_DIFF_MIN, fcs["result_diff_min"], self.get_renderer("hashed cred /"),
+                              False)
+        self.geojson_to_layer(self.LAYER_RESULT, fcs["result"], self.get_renderer(QgsFillSymbol(
+            [QgsSimpleLineSymbolLayer.create({'line_style': 'dash', 'color': QColor(0, 255, 0), 'line_width': '1'})])),
+                              True)
 
-        # self.add_formula_to_layer(self.LAYER_RESULT,aligner)
         self.RESULT = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
         self.RESULT_DIFF = QgsProject.instance().mapLayersByName(
             self.LAYER_RESULT_DIFF
@@ -765,7 +798,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.BUFFER_DISTANCE = self.RELEVANT_DISTANCE / 2
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
         self.OD_STRATEGY = OpenbaarDomeinStrategy[self.ENUM_OD_STRATEGY_OPTIONS[parameters[self.ENUM_OD_STRATEGY]]]
-        self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
+        self.FORMULA = parameters["ADD_FORMULA"]
         self.PROCESS_MULTI_AS_SINGLE_POLYGONS = parameters[
             "PROCESS_MULTI_AS_SINGLE_POLYGONS"
         ]
