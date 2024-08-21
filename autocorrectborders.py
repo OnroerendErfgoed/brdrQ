@@ -128,6 +128,7 @@ except (ModuleNotFoundError, ValueError):
     print(brdr.__version__)
 
 from brdr.aligner import Aligner
+from brdr.loader import DictLoader, GRBActualLoader
 from brdr.utils import multipolygons_to_singles
 from brdr.enums import OpenbaarDomeinStrategy
 from brdr.enums import GRBType
@@ -285,40 +286,24 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         return layers[0]
 
     def get_renderer(self, fill_symbol):
+        """
+        Get a QGIS renderer to add symbology to a QGIS-layer
+        """
         # to get all properties of symbol:
         # print(layer.renderer().symbol().symbolLayers()[0].properties())
         # see: https://opensourceoptions.com/loading-and-symbolizing-vector-layers
         if isinstance(fill_symbol, str):
             fill_symbol = QgsStyle.defaultStyle().symbol(fill_symbol)
-
         if fill_symbol is None:
             fill_symbol = QgsFillSymbol([QgsSimpleLineSymbolLayer.create()])
-
-            # red = QColor(255,0,0)
-            # green = QColor(0,255,0)
-            # yellow = QColor(255,255,0)
-            # whiteish = QColor(247,247,247)
-
-            # fill = QgsSimpleFillSymbolLayer()
-            # fill.setColor(whiteish)
-
-            # marker_r = QgsMarkerLineSymbolLayer(interval=9)
-            # marker_r.setColor(red)
-            # marker_r.setOffsetAlongLine(4.5)
-
-            # symbollayer = QgsSimpleLineSymbolLayer.create({'align_dash_pattern': '0', 'capstyle': 'square', 'customdash': '1.5;3', 'customdash_map_unit_scale': '3x:0,0,0,0,0,0', 'customdash_unit': 'MM', 'dash_pattern_offset': '0', 'dash_pattern_offset_map_unit_scale': '3x:0,0,0,0,0,0', 'dash_pattern_offset_unit': 'MM', 'draw_inside_polygon': '0', 'joinstyle': 'miter', 'line_color': '255,255,0,255', 'line_style': 'solid', 'line_width': '1', 'line_width_unit': 'MM', 'offset': '0', 'offset_map_unit_scale': '3x:0,0,0,0,0,0', 'offset_unit': 'MM', 'ring_filter': '0', 'trim_distance_end': '0', 'trim_distance_end_map_unit_scale': '3x:0,0,0,0,0,0', 'trim_distance_end_unit': 'MM', 'trim_distance_start': '0', 'trim_distance_start_map_unit_scale': '3x:0,0,0,0,0,0', 'trim_distance_start_unit': 'MM', 'tweak_dash_pattern_on_corners': '0', 'use_custom_dash': '1', 'width_map_unit_scale': '3x:0,0,0,0,0,0'})
-            # marker_g = QgsMarkerLineSymbolLayer(interval=9)
-            # marker_g.setColor(green)
-
-            # marker_y = QgsMarkerLineSymbolLayer(interval=9)
-            # marker_y.setColor(yellow)
-
         if isinstance(fill_symbol, QgsFillSymbol):
             return QgsSingleSymbolRenderer(fill_symbol)
-
         return None
 
     def geojson_to_layer(self, name, geojson, renderer, visible):
+        """
+        Add a geojson to a QGIS-layer to add it to the TOC
+        """
         qinst = QgsProject.instance()
         lyrs = qinst.mapLayersByName(name)
         root = qinst.layerTreeRoot()
@@ -388,7 +373,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.tr("REFERENCE LAYER"),
             [QgsProcessing.TypeVectorAnyGeometry],
             # defaultValue=None
-            defaultValue="referencelayer"
+            defaultValue=None
             , optional=True
         )
         parameter.setFlags(parameter.flags())
@@ -488,6 +473,12 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         self.prepare_parameters(parameters)
 
+        if self.SELECTED_REFERENCE == 0 and (
+                parameters[self.INPUT_REFERENCE] is None or str(parameters[self.ID_REFERENCE]) == 'NULL'):
+            raise QgsProcessingException(
+                "Please choose a REFERENCELAYER from the table of contents, and the associated unique REFERENCE ID"
+            )
+
         thematic, thematic_buffered = self._thematic_preparation(
             context, feedback, outputs, parameters
         )
@@ -511,77 +502,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         # REFERENCE PREPARATION
         if self.SELECTED_REFERENCE == 0:
-            outputs[self.INPUT_REFERENCE + "_extract"] = processing.run(
-                "native:extractbylocation",
-                {
-                    "INPUT": parameters[self.INPUT_REFERENCE],
-                    "PREDICATE": [0],
-                    "INTERSECT": thematic_buffered,
-                    "OUTPUT": "TEMPORARY_OUTPUT",
-                },
-                context=context,
-                feedback=feedback,
-                is_child_algorithm=True,
+            reference = self._reference_preparation(
+                thematic_buffered, context, feedback, outputs, parameters
             )
-            reference = context.getMapLayer(
-                outputs[self.INPUT_REFERENCE + "_extract"]["OUTPUT"]
-            )
-            if reference.sourceCrs().authid() != self.CRS:
-                raise QgsProcessingException(
-                    "Thematic layer and ReferenceLayer are in a different CRS. "
-                    "Please provide them in the same CRS (EPSG:31370 or EPSG:3812)"
-                )
-            outputs[self.INPUT_REFERENCE + "_id"] = processing.run(
-                "native:fieldcalculator",
-                {
-                    "INPUT": reference,
-                    "FIELD_NAME": self.ID_REFERENCE,
-                    "FIELD_TYPE": 2,
-                    "FIELD_LENGTH": 0,
-                    "FIELD_PRECISION": 0,
-                    "FORMULA": "to_string(" + parameters[self.ID_REFERENCE] + ")",
-                    "OUTPUT": "TEMPORARY_OUTPUT",
-                },
-                context=context,
-                feedback=feedback,
-                is_child_algorithm=True,
-            )
-            reference = context.getMapLayer(
-                outputs[self.INPUT_REFERENCE + "_id"]["OUTPUT"]
-            )
-            outputs[self.INPUT_REFERENCE + "_fixed"] = processing.run(
-                "native:fixgeometries",
-                {
-                    "INPUT": reference,
-                    "METHOD": 1,
-                    "OUTPUT": QgsProcessing.TEMPORARY_OUTPUT,
-                },
-                context=context,
-                feedback=feedback,
-                is_child_algorithm=True,
-            )
-            reference = context.getMapLayer(
-                outputs[self.INPUT_REFERENCE + "_fixed"]["OUTPUT"]
-            )
-            outputs[self.INPUT_REFERENCE + "_dropMZ"] = processing.run(
-                "native:dropmzvalues",
-                {
-                    "INPUT": reference,
-                    "DROP_M_VALUES": True,
-                    "DROP_Z_VALUES": True,
-                    "OUTPUT": "TEMPORARY_OUTPUT",
-                },
-                context=context,
-                feedback=feedback,
-                is_child_algorithm=True,
-            )
-            reference = context.getMapLayer(
-                outputs[self.INPUT_REFERENCE + "_dropMZ"]["OUTPUT"]
-            )
-            if reference is None:
-                raise QgsProcessingException(
-                    self.invalidSourceError(parameters, self.INPUT_REFERENCE)
-                )
 
             # Load reference into a shapely_dict:
             dict_reference = {}
@@ -593,10 +516,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 dict_reference[id_reference] = self.geom_qgis_to_shapely(
                     feature.geometry()
                 )
-            feedback.pushInfo("2) BEREKENING - Reference layer fixed")
-            feedback.setCurrentStep(2)
-            if feedback.isCanceled():
-                return {}
+        feedback.pushInfo("2) BEREKENING - Reference layer fixed")
+        feedback.setCurrentStep(2)
+        if feedback.isCanceled():
+            return {}
 
         # Aligner IMPLEMENTATION
         aligner = Aligner(
@@ -623,14 +546,14 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         aligner.DOWNLOAD_LIMIT = self.DOWNLOAD_LIMIT
 
         feedback.pushInfo("Load thematic data")
-        aligner.load_thematic_data_dict(dict_thematic)
+        aligner.load_thematic_data(DictLoader(dict_thematic))
 
         feedback.pushInfo("Load reference data")
         if self.SELECTED_REFERENCE == 0:
-            aligner.load_reference_data_dict(dict_reference)
+            aligner.load_reference_data(DictLoader(dict_reference))
         else:
-            aligner.load_reference_data_grb_actual(grb_type=self.SELECTED_REFERENCE.value)
-            #
+            aligner.load_reference_data(
+                GRBActualLoader(grb_type=self.SELECTED_REFERENCE.value, partition=1000, aligner=aligner))
         feedback.pushInfo("START PROCESSING")
         if self.RELEVANT_DISTANCE >= 0:
             process_result = aligner.process_dict_thematic(
@@ -638,8 +561,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             )
             fcs = aligner.get_results_as_geojson(formula=self.FORMULA)
         else:
-            dict_predicted, diffs = aligner.predictor(od_strategy=self.OD_STRATEGY,
-                                                      treshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE)
+            dict_series, dict_predicted, diffs = aligner.predictor(od_strategy=self.OD_STRATEGY,
+                                                                   threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE)
             fcs = aligner.get_predictions_as_geojson(formula=self.FORMULA)
 
         feedback.pushInfo("END PROCESSING")
@@ -649,7 +572,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         # MAKE TEMPORARY LAYERS
         if self.SELECTED_REFERENCE != 0:
-            self.geojson_to_layer(self.LAYER_REFERENCE, aligner.get_reference_as_geojson(), "gray 1 fill", True)
+            self.geojson_to_layer(self.LAYER_REFERENCE, aligner.get_reference_as_geojson(),
+                                  self.get_renderer("gray 1 fill"), True)
 
         if self.SHOW_INTERMEDIATE_LAYERS:
             self.geojson_to_layer(self.LAYER_RELEVANT_INTERSECTION, fcs["result_relevant_intersection"],
@@ -714,26 +638,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             thematic.sourceCrs().authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer
 
-        # outputs[self.INPUT_THEMATIC + "_single_id"] = processing.run(
-        #     "native:fieldcalculator",
-        #     {
-        #         "INPUT": thematic,
-        #         "FIELD_NAME": self.ID_THEME,
-        #         "FIELD_TYPE": 2,
-        #         "FIELD_LENGTH": 0,
-        #         "FIELD_PRECISION": 0,
-        #         "FORMULA": "to_string("
-        #                    + parameters[self.ID_THEME_GLOBAL]
-        #                    + ")",  # + '_'+ to_string(@id)
-        #         "OUTPUT": "TEMPORARY_OUTPUT",
-        #     },
-        #     context=context,
-        #     feedback=feedback,
-        #     is_child_algorithm=True,
-        # )
-        # thematic = context.getMapLayer(
-        #     outputs[self.INPUT_THEMATIC + "_single_id"]["OUTPUT"]
-        # )
         outputs[self.INPUT_THEMATIC + "_fixed"] = processing.run(
             "native:fixgeometries",
             {"INPUT": thematic, "METHOD": 1, "OUTPUT": QgsProcessing.TEMPORARY_OUTPUT},
@@ -791,6 +695,80 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             outputs[self.INPUT_THEMATIC + "_buffered"]["OUTPUT"]
         )
         return thematic, thematic_buffered
+
+    def _reference_preparation(self, thematic_buffered, context, feedback, outputs, parameters):
+        outputs[self.INPUT_REFERENCE + "_extract"] = processing.run(
+            "native:extractbylocation",
+            {
+                "INPUT": parameters[self.INPUT_REFERENCE],
+                "PREDICATE": [0],
+                "INTERSECT": thematic_buffered,
+                "OUTPUT": "TEMPORARY_OUTPUT",
+            },
+            context=context,
+            feedback=feedback,
+            is_child_algorithm=True,
+        )
+        reference = context.getMapLayer(
+            outputs[self.INPUT_REFERENCE + "_extract"]["OUTPUT"]
+        )
+        if reference.sourceCrs().authid() != self.CRS:
+            raise QgsProcessingException(
+                "Thematic layer and ReferenceLayer are in a different CRS. "
+                "Please provide them in the same CRS (EPSG:31370 or EPSG:3812)"
+            )
+        outputs[self.INPUT_REFERENCE + "_id"] = processing.run(
+            "native:fieldcalculator",
+            {
+                "INPUT": reference,
+                "FIELD_NAME": self.ID_REFERENCE,
+                "FIELD_TYPE": 2,
+                "FIELD_LENGTH": 0,
+                "FIELD_PRECISION": 0,
+                "FORMULA": "to_string(" + parameters[self.ID_REFERENCE] + ")",
+                "OUTPUT": "TEMPORARY_OUTPUT",
+            },
+            context=context,
+            feedback=feedback,
+            is_child_algorithm=True,
+        )
+        reference = context.getMapLayer(
+            outputs[self.INPUT_REFERENCE + "_id"]["OUTPUT"]
+        )
+        outputs[self.INPUT_REFERENCE + "_fixed"] = processing.run(
+            "native:fixgeometries",
+            {
+                "INPUT": reference,
+                "METHOD": 1,
+                "OUTPUT": QgsProcessing.TEMPORARY_OUTPUT,
+            },
+            context=context,
+            feedback=feedback,
+            is_child_algorithm=True,
+        )
+        reference = context.getMapLayer(
+            outputs[self.INPUT_REFERENCE + "_fixed"]["OUTPUT"]
+        )
+        outputs[self.INPUT_REFERENCE + "_dropMZ"] = processing.run(
+            "native:dropmzvalues",
+            {
+                "INPUT": reference,
+                "DROP_M_VALUES": True,
+                "DROP_Z_VALUES": True,
+                "OUTPUT": "TEMPORARY_OUTPUT",
+            },
+            context=context,
+            feedback=feedback,
+            is_child_algorithm=True,
+        )
+        reference = context.getMapLayer(
+            outputs[self.INPUT_REFERENCE + "_dropMZ"]["OUTPUT"]
+        )
+        if reference is None:
+            raise QgsProcessingException(
+                self.invalidSourceError(parameters, self.INPUT_REFERENCE)
+            )
+        return reference
 
     def prepare_parameters(self, parameters):
         # PARAMETER PREPARATION
