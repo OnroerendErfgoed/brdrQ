@@ -40,6 +40,10 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QVariant, QDateTime
 from qgis.PyQt.QtCore import QTextCodec
 from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QColor
+
+from qgis.utils import iface
+from qgis.core import QgsProject
 from qgis.core import QgsCoordinateReferenceSystem
 from qgis.core import QgsFeature
 from qgis.core import QgsField
@@ -48,9 +52,14 @@ from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
 from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingMultiStepFeedback
-from qgis.core import QgsProcessingOutputVectorLayer
+from qgis.core import QgsProcessingOutputVectorLayer, QgsFillSymbol
 from qgis.core import QgsProcessingParameterDateTime, QgsProcessingParameterFeatureSource, QgsProcessingParameterField, \
     QgsProcessingParameterBoolean
+from qgis.core import QgsProject
+from qgis.core import QgsStyle
+from qgis.core import QgsVectorLayer
+from qgis.core import QgsSimpleFillSymbolLayer, QgsMarkerLineSymbolLayer, QgsSimpleLineSymbolLayer, QgsFillSymbol, \
+    QgsSingleSymbolRenderer, QgsLayerTreeLayer, QgsMapLayer, QgsLayerTreeNode, QgsLayerTreeGroup
 
 
 # helper function to find embedded python
@@ -131,6 +140,13 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     RELEVANT_DISTANCE = 1
     PROCESS_MULTI_AS_SINGLE_POLYGONS = True
     FORMULA_FIELD = "FORMULA_FIELD"
+    RESULT = "RESULT"
+    OUTPUT_RESULT = "OUTPUT_RESULT"
+    LAYER_RESULT = "brdrQ_RESULT"
+
+    FORMULA = True
+
+    GROUP_LAYER = "BRDRQ_UPDATES"
 
     def flags(self):
         return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
@@ -197,6 +213,143 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         wkt = geom_qgis.asWkt()
         geom_shapely = from_wkt(wkt)
         return geom_shapely
+
+    def get_layer_by_name(self, layer_name):
+        """
+        Get the layer-object based on the layername
+        """
+        layers = QgsProject.instance().mapLayersByName(layer_name)
+        return layers[0]
+
+    def move_to_group(self, thing, group, pos=0, expanded=False):
+        """Move a layer tree node into a layer tree group.
+        docs:https://docs.qgis.org/3.34/en/docs/pyqgis_developer_cookbook/cheat_sheet.html
+
+        Parameter
+        ---------
+
+        thing : group name (str), layer id (str), qgis.core.QgsMapLayer, qgis.core.QgsLayerTreeNode
+
+          Thing to move.  Can be a tree node (i.e. a layer or a group) or
+          a map layer, the object or the string name/id.
+
+        group : group name (str) or qgis.core.QgsLayerTreeGroup
+
+          Group to move the thing to. If group does not already exist, it
+          will be created.
+
+        pos : int
+
+          Position to insert into group. Default is 0.
+
+        extended : bool
+
+          Collapse or expand the thing moved. Default is False.
+
+        Returns
+        -------
+
+        Tuple containing the moved thing and the group moved to.
+
+        Note
+        ----
+
+        Moving destroys the original thing and creates a copy. It is the
+        copy which is returned.
+
+        """
+
+        qinst = QgsProject.instance()
+        tree = qinst.layerTreeRoot()
+
+        # thing
+        if isinstance(thing, str):
+            try:  # group name
+                node_object = tree.findGroup(thing)
+            except:  # layer id
+                node_object = tree.findLayer(thing)
+        elif isinstance(thing, QgsMapLayer):
+            node_object = tree.findLayer(thing)
+        elif isinstance(thing, QgsLayerTreeNode):
+            node_object = thing  # tree layer or group
+
+        # group
+        if isinstance(group, QgsLayerTreeGroup):
+            group_name = group.name()
+        else:  # group is str
+            group_name = group
+
+        group_object = tree.findGroup(group_name)
+
+        if not group_object:
+            group_object = tree.insertGroup(0, group_name)
+
+        # do the move
+        node_object_clone = node_object.clone()
+        node_object_clone.setExpanded(expanded)
+        group_object.insertChildNode(pos, node_object_clone)
+
+        parent = node_object.parent()
+        parent.removeChildNode(node_object)
+
+        return (node_object_clone, group_object)
+
+    def get_renderer(self, fill_symbol):
+        """
+        Get a QGIS renderer to add symbology to a QGIS-layer
+        """
+        # to get all properties of symbol:
+        # print(layer.renderer().symbol().symbolLayers()[0].properties())
+        # see: https://opensourceoptions.com/loading-and-symbolizing-vector-layers
+        if isinstance(fill_symbol, str):
+            fill_symbol = QgsStyle.defaultStyle().symbol(fill_symbol)
+        if fill_symbol is None:
+            fill_symbol = QgsFillSymbol([QgsSimpleLineSymbolLayer.create()])
+        if isinstance(fill_symbol, QgsFillSymbol):
+            return QgsSingleSymbolRenderer(fill_symbol)
+        return None
+
+    def geojson_to_layer(self, name, geojson, renderer, visible):
+        """
+        Add a geojson to a QGIS-layer to add it to the TOC
+        """
+        qinst = QgsProject.instance()
+        lyrs = qinst.mapLayersByName(name)
+        root = qinst.layerTreeRoot()
+
+        if len(lyrs) != 0:
+            for lyr in lyrs:
+                root.removeLayer(lyr)
+                qinst.removeMapLayer(lyr.id())
+        fcString = json.dumps(geojson)
+
+        vl = QgsVectorLayer(fcString, name, "ogr")
+        print(vl)
+        vl.setCrs(QgsCoordinateReferenceSystem(self.CRS))
+        pr = vl.dataProvider()
+        vl.updateFields()
+        # styling
+        # vl.setOpacity(0.5)
+
+        if renderer is not None:
+            vl.setRenderer(renderer)
+
+        # adding layer to TOC
+        qinst.addMapLayer(
+            vl, False
+        )  # False so that it doesn't get inserted at default position
+
+        root.insertLayer(0, vl)
+
+        node = root.findLayer(vl.id())
+        if node:
+            new_state = Qt.Checked if visible else Qt.Unchecked
+            node.setItemVisibilityChecked(new_state)
+
+        self.move_to_group(vl, self.GROUP_LAYER)
+        vl.triggerRepaint()
+        iface.layerTreeView().refreshLayerSymbology(vl.id())
+        return vl
 
     def check_business_equality(self, base_formula, actual_formula):
         """
@@ -290,6 +443,14 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # parameter.setFlags(parameter.flags())
         # self.addParameter(parameter)
 
+        self.addOutput(
+            QgsProcessingOutputVectorLayer(
+                self.OUTPUT_RESULT,
+                self.LAYER_RESULT,
+                QgsProcessing.TypeVectorAnyGeometry,
+            )
+        )
+
     def processAlgorithm(self, parameters, context, feedback):
         """
         Here is where the processing itself takes place.
@@ -317,7 +478,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 return {}
             id_theme = feature.attribute(self.ID_THEME)
             dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature.geometry())
-            dict_thematic_formula[id_theme] = feature.attribute(self.FORMULA_FIELD)
+            dict_thematic_formula[id_theme] = json.loads(feature.attribute(self.FORMULA_FIELD))
         if self.PROCESS_MULTI_AS_SINGLE_POLYGONS:
             dict_thematic = multipolygons_to_singles(dict_thematic)
         feedback.pushInfo("1) BEREKENING - Thematic layer fixed")
@@ -387,6 +548,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 if self.check_business_equality(
                         base_formula, actual_formula
                 ):  # Logic to be determined by business
+                    feedback.pushInfo("BUSINESS_EQUALITY")
                     if i == 0:
                         counter_equality = counter_equality + 1
                         feedback.pushInfo(
@@ -417,10 +579,27 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             + "//Excluded: "
             + str(counter_excluded)
         )
+        actual_aligner.predictor()
+        fcs = actual_aligner.get_predictions_as_geojson(formula=self.FORMULA)
+
+        # Add RESULT TO TOC
+        self.geojson_to_layer(self.LAYER_RESULT, fcs["result"], self.get_renderer(QgsFillSymbol(
+            [QgsSimpleLineSymbolLayer.create({'line_style': 'dash', 'color': QColor(0, 255, 0), 'line_width': '1'})])),
+                              True)
+
+        self.RESULT = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
+
+        QgsProject.instance().reloadAllLayers()
+
+        feedback.pushInfo("Resulterende geometrie berekend")
+        feedback.setCurrentStep(6)
+        if feedback.isCanceled():
+            return {}
 
         feedback.pushInfo("END PROCESSING")
         feedback.pushInfo("EINDE: RESULTAAT BEREKEND")
         return {
+            self.OUTPUT_RESULT: self.RESULT
         }
 
     def _thematic_preparation(self, context, feedback, outputs, parameters):
