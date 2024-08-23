@@ -35,10 +35,9 @@ import site
 import os
 import json
 
-
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtCore import QVariant, QDateTime
 from qgis.PyQt.QtCore import QTextCodec
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsCoordinateReferenceSystem
@@ -50,7 +49,8 @@ from qgis.core import QgsProcessingAlgorithm
 from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingMultiStepFeedback
 from qgis.core import QgsProcessingOutputVectorLayer
-from qgis.core import QgsProcessingParameterDateTime,QgsProcessingParameterFeatureSource,QgsProcessingParameterField
+from qgis.core import QgsProcessingParameterDateTime, QgsProcessingParameterFeatureSource, QgsProcessingParameterField, \
+    QgsProcessingParameterBoolean
 
 
 # helper function to find embedded python
@@ -103,10 +103,11 @@ except (ModuleNotFoundError, ValueError):
     print(brdr.__version__)
 
 from brdr.aligner import Aligner
+from brdr.loader import DictLoader, GRBActualLoader
 from brdr.utils import multipolygons_to_singles
 from brdr.enums import OpenbaarDomeinStrategy
 from brdr.enums import GRBType
-from brdr.grb import get_geoms_affected_by_grb_change
+from brdr.grb import get_geoms_affected_by_grb_change, get_last_version_date
 
 
 class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -128,6 +129,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     QUAD_SEGS = 5
     BUFFER_MULTIPLICATION_FACTOR = 1.01
     RELEVANT_DISTANCE = 1
+    PROCESS_MULTI_AS_SINGLE_POLYGONS = True
+    FORMULA_FIELD = "FORMULA_FIELD"
 
     def flags(self):
         return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
@@ -187,6 +190,37 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "Documentation can be found at: https://github.com/OnroerendErfgoed/brdrQ/ "
         )
 
+    def geom_qgis_to_shapely(self, geom_qgis):
+        """
+        Method to convert a QGIS-geometry to a Shapely-geometry
+        """
+        wkt = geom_qgis.asWkt()
+        geom_shapely = from_wkt(wkt)
+        return geom_shapely
+
+    def check_business_equality(self, base_formula, actual_formula):
+        """
+        function that checks if 2 formulas are equal (determined by business-logic)
+        """
+        try:
+            # TODO: research and implementation of following ideas
+            # ideas:
+            # * If result_diff smaller than 0.x --> automatic update
+            # * big polygons: If 'outer ring' has same formula (do net check inner side) --> automatic update
+            # ** outer ring can be calculated: 1) nageative buffer 2) original - buffered
+            if base_formula.keys() != actual_formula.keys():
+                return False
+            for key in base_formula.keys():
+                if base_formula[key]["full"] != actual_formula[key]["full"]:
+                    return False
+                # if abs(base_formula[key]['area'] - actual_formula[key]['area'])>1: #area changed by 1 m²
+                #     return False
+                # if abs(base_formula[key]['area'] - actual_formula[key]['area'])/base_formula[key]['area'] > 0.01: #area changed by 1%
+                #     return False
+            return True
+        except:
+            return False
+
     def initAlgorithm(self, config=None):
         """
         Here we define the inputs and output of the algorithm, along
@@ -202,6 +236,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
+
         parameter = QgsProcessingParameterField(
             self.ID_THEME,
             "Choose thematic ID",
@@ -209,7 +244,16 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.INPUT_THEMATIC,
         )
         parameter.setFlags(parameter.flags())
+        self.addParameter(parameter)
 
+        parameter = QgsProcessingParameterField(
+            self.FORMULA_FIELD,
+            "Formula field",
+            "formula",
+            self.INPUT_THEMATIC,
+        )
+        parameter.setFlags(parameter.flags())
+        self.addParameter(parameter)
         # INPUT  standard parameters
         # make your own widget is also possible!
         # https://gis.stackexchange.com/questions/432849/changing-appearence-of-datetime-input-in-qgis-processing-tool-to-international-d
@@ -218,24 +262,33 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # START DATETIME
         parameter = QgsProcessingParameterDateTime(
             self.START_DATE,
-            'StartDate:',
+            'Alignment-Date (date of version of reference layer where the thematic is aligned on):',
             type=QgsProcessingParameterDateTime.Date
-            # ,
-            # defaultValue = QDateTime.currentDateTime().addDays(-31)
+            ,
+            defaultValue=QDateTime.currentDateTime().addDays(2 * -365)
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
-        # END DATETIME
-        parameter = QgsProcessingParameterDateTime(
-            self.END_DATE,
-            'EndDate:',
-            type=QgsProcessingParameterDateTime.Date
-            # ,
-            # defaultValue = QDateTime.currentDateTime().addDays(-31)
+        parameter = QgsProcessingParameterBoolean(
+            "PROCESS_MULTI_AS_SINGLE_POLYGONS",
+            "PROCESS_MULTI_AS_SINGLE_POLYGONS",
+            defaultValue=True,
         )
-        parameter.setFlags(parameter.flags())
+        # parameter.setFlags(parameter.flags() |
+        # QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(parameter)
+
+        ## END DATETIME
+        # parameter = QgsProcessingParameterDateTime(
+        #    self.END_DATE,
+        #    'EndDate:',
+        #    type=QgsProcessingParameterDateTime.Date
+        #    # ,
+        #    # defaultValue = QDateTime.currentDateTime().addDays(-31)
+        # )
+        # parameter.setFlags(parameter.flags())
+        # self.addParameter(parameter)
 
     def processAlgorithm(self, parameters, context, feedback):
         """
@@ -247,7 +300,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo("START")
         outputs = {}
 
-        #self.prepare_parameters(parameters)
+        self.prepare_parameters(parameters)
 
         thematic, thematic_buffered = self._thematic_preparation(
             context, feedback, outputs, parameters
@@ -257,12 +310,14 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         # Load thematic into a shapely_dict:
         dict_thematic = {}
+        dict_thematic_formula = {}
         features = thematic.getFeatures()
         for current, feature in enumerate(features):
             if feedback.isCanceled():
                 return {}
             id_theme = feature.attribute(self.ID_THEME)
             dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature.geometry())
+            dict_thematic_formula[id_theme] = feature.attribute(self.FORMULA_FIELD)
         if self.PROCESS_MULTI_AS_SINGLE_POLYGONS:
             dict_thematic = multipolygons_to_singles(dict_thematic)
         feedback.pushInfo("1) BEREKENING - Thematic layer fixed")
@@ -275,12 +330,14 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.START_DATE,
             context
         )
+        datetime_start = datetime_start.toPyDateTime()
 
-        datetime_end = self.parameterAsDateTime(
-            parameters,
-            self.START_DATE,
-            context
-        )
+        # datetime_end = self.parameterAsDateTime(
+        #    parameters,
+        #    self.END_DATE,
+        #    context
+        # )
+        datetime_end = now = QDateTime.currentDateTime().toPyDateTime()
         print(datetime_start)
         dict_affected = get_geoms_affected_by_grb_change(
             dict_thematic,
@@ -289,14 +346,83 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             date_end=datetime_end,
             one_by_one=False,
         )
+        feedback.pushInfo("Number of possible affected OE-thematic during timespan: " + str(len(dict_affected)))
         for key in dict_affected.keys():
             print(key)
-            print (dict_affected[key])
+            print(dict_affected[key])
         feedback.pushInfo(str(datetime_start))
+        feedback.pushInfo(str(self.FORMULA_FIELD))
+
+        # Initiate a Aligner to reference thematic features to the actual borders
+        actual_aligner = Aligner()
+        loader = DictLoader(dict_affected)
+        actual_aligner.load_thematic_data(loader)
+        loader = GRBActualLoader(grb_type=GRBType.ADP, partition=0, aligner=actual_aligner)
+        actual_aligner.load_reference_data(loader)
+
+        # LOOP AND PROCESS ALL POSSIBLE AFFECTED FEATURES
+        # =================================================
+        counter_equality = 0
+        counter_equality_by_alignment = 0
+        counter_difference = 0
+        counter_excluded = 0
+
+        for key in dict_affected:
+            geometry_base_original = dict_affected[key]
+
+            last_version_date = get_last_version_date(geometry_base_original)
+            feedback.pushInfo("key:" + key + "-->last_version_date: " + str(last_version_date))
+            feedback.pushInfo("Original formula: " + key)
+            base_formula = dict_thematic_formula[key]  # todo, check if still works with multipolygons to singles
+            feedback.pushInfo(str(base_formula))
+
+            for i in [0, 0.5, 1]:
+                actual_process_result = actual_aligner.process_geometry(
+                    geometry_base_original, i
+                )
+                feedback.pushInfo("New formula: " + key + " with relevant distance(m) : " + str(i))
+                actual_formula = actual_aligner.get_formula(actual_process_result["result"])
+                feedback.pushInfo(str(actual_formula))
+                diff = True
+                if self.check_business_equality(
+                        base_formula, actual_formula
+                ):  # Logic to be determined by business
+                    if i == 0:
+                        counter_equality = counter_equality + 1
+                        feedback.pushInfo(
+                            "equality detected for: " + key + " at distance(m): " + str(i)
+                        )
+                    else:
+                        counter_equality_by_alignment = counter_equality_by_alignment + 1
+                        feedback.pushInfo(
+                            "equality_by_alignment detected for: "
+                            + key
+                            + " at distance(m): "
+                            + str(i)
+                        )
+                    diff = False
+                    break
+            if diff:
+                counter_difference = counter_difference + 1
+                feedback.pushInfo("Difference detected for: " + key)
+        feedback.pushInfo(
+            "Features: "
+            + str(len(dict_affected))
+            + "//Equality: "
+            + str(counter_equality)
+            + "//Equality by alignment: "
+            + str(counter_equality_by_alignment)
+            + "//Difference: "
+            + str(counter_difference)
+            + "//Excluded: "
+            + str(counter_excluded)
+        )
+
         feedback.pushInfo("END PROCESSING")
         feedback.pushInfo("EINDE: RESULTAAT BEREKEND")
         return {
         }
+
     def _thematic_preparation(self, context, feedback, outputs, parameters):
         # THEMATIC PREPARATION
         outputs[self.INPUT_THEMATIC + "_id"] = processing.run(
@@ -319,26 +445,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             thematic.sourceCrs().authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer
 
-        # outputs[self.INPUT_THEMATIC + "_single_id"] = processing.run(
-        #     "native:fieldcalculator",
-        #     {
-        #         "INPUT": thematic,
-        #         "FIELD_NAME": self.ID_THEME,
-        #         "FIELD_TYPE": 2,
-        #         "FIELD_LENGTH": 0,
-        #         "FIELD_PRECISION": 0,
-        #         "FORMULA": "to_string("
-        #                    + parameters[self.ID_THEME_GLOBAL]
-        #                    + ")",  # + '_'+ to_string(@id)
-        #         "OUTPUT": "TEMPORARY_OUTPUT",
-        #     },
-        #     context=context,
-        #     feedback=feedback,
-        #     is_child_algorithm=True,
-        # )
-        # thematic = context.getMapLayer(
-        #     outputs[self.INPUT_THEMATIC + "_single_id"]["OUTPUT"]
-        # )
         outputs[self.INPUT_THEMATIC + "_fixed"] = processing.run(
             "native:fixgeometries",
             {"INPUT": thematic, "METHOD": 1, "OUTPUT": QgsProcessing.TEMPORARY_OUTPUT},
@@ -399,15 +505,13 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     def prepare_parameters(self, parameters):
         # PARAMETER PREPARATION
-        pass
         # self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
         # self.BUFFER_DISTANCE = self.RELEVANT_DISTANCE / 2
         # self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
         # self.OD_STRATEGY = OpenbaarDomeinStrategy[self.ENUM_OD_STRATEGY_OPTIONS[parameters[self.ENUM_OD_STRATEGY]]]
         # self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
-        # self.PROCESS_MULTI_AS_SINGLE_POLYGONS = parameters[
-        #     "PROCESS_MULTI_AS_SINGLE_POLYGONS"
-        # ]
+        self.PROCESS_MULTI_AS_SINGLE_POLYGONS = parameters["PROCESS_MULTI_AS_SINGLE_POLYGONS"]
+        self.FORMULA_FIELD = parameters["FORMULA_FIELD"]
         # self.SUFFIX = "_" + str(self.RELEVANT_DISTANCE) + "_OD_" + str(self.OD_STRATEGY.name)
         # self.LAYER_RELEVANT_INTERSECTION = (
         #         self.LAYER_RELEVANT_INTERSECTION + self.SUFFIX
