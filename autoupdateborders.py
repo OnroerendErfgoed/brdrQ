@@ -113,10 +113,10 @@ except (ModuleNotFoundError, ValueError):
 
 from brdr.aligner import Aligner
 from brdr.loader import DictLoader, GRBActualLoader
-from brdr.utils import multipolygons_to_singles
+from brdr.utils import multipolygons_to_singles, get_series_geojson_dict
 from brdr.enums import OpenbaarDomeinStrategy
 from brdr.enums import GRBType
-from brdr.grb import get_geoms_affected_by_grb_change, get_last_version_date
+from brdr.grb import get_geoms_affected_by_grb_change, get_last_version_date, evaluate
 
 
 class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -143,6 +143,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     RESULT = "RESULT"
     OUTPUT_RESULT = "OUTPUT_RESULT"
     LAYER_RESULT = "brdrQ_RESULT"
+    LAYER_RESULT_DIFF = "brdrQ_RESULT_DIFF"
 
     FORMULA = True
 
@@ -521,71 +522,24 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         loader = GRBActualLoader(grb_type=GRBType.ADP, partition=0, aligner=actual_aligner)
         actual_aligner.load_reference_data(loader)
 
-        # LOOP AND PROCESS ALL POSSIBLE AFFECTED FEATURES
-        # =================================================
-        counter_equality = 0
-        counter_equality_by_alignment = 0
-        counter_difference = 0
-        counter_excluded = 0
-
-        for key in dict_affected:
-            geometry_base_original = dict_affected[key]
-
-            last_version_date = get_last_version_date(geometry_base_original)
-            feedback.pushInfo("key:" + key + "-->last_version_date: " + str(last_version_date))
-            feedback.pushInfo("Original formula: " + key)
-            base_formula = dict_thematic_formula[key]  # todo, check if still works with multipolygons to singles
-            feedback.pushInfo(str(base_formula))
-
-            for i in [0, 0.5, 1]:
-                actual_process_result = actual_aligner.process_geometry(
-                    geometry_base_original, i
-                )
-                feedback.pushInfo("New formula: " + key + " with relevant distance(m) : " + str(i))
-                actual_formula = actual_aligner.get_formula(actual_process_result["result"])
-                feedback.pushInfo(str(actual_formula))
-                diff = True
-                if self.check_business_equality(
-                        base_formula, actual_formula
-                ):  # Logic to be determined by business
-                    feedback.pushInfo("BUSINESS_EQUALITY")
-                    if i == 0:
-                        counter_equality = counter_equality + 1
-                        feedback.pushInfo(
-                            "equality detected for: " + key + " at distance(m): " + str(i)
-                        )
-                    else:
-                        counter_equality_by_alignment = counter_equality_by_alignment + 1
-                        feedback.pushInfo(
-                            "equality_by_alignment detected for: "
-                            + key
-                            + " at distance(m): "
-                            + str(i)
-                        )
-                    diff = False
-                    break
-            if diff:
-                counter_difference = counter_difference + 1
-                feedback.pushInfo("Difference detected for: " + key)
-        feedback.pushInfo(
-            "Features: "
-            + str(len(dict_affected))
-            + "//Equality: "
-            + str(counter_equality)
-            + "//Equality by alignment: "
-            + str(counter_equality_by_alignment)
-            + "//Difference: "
-            + str(counter_difference)
-            + "//Excluded: "
-            + str(counter_excluded)
+        dict_evaluated, prop_dictionary = evaluate(actual_aligner, dict_thematic_formula)
+        fcs = get_series_geojson_dict(
+            dict_evaluated,
+            crs=actual_aligner.CRS,
+            id_field=actual_aligner.name_thematic_id,
+            series_prop_dict=prop_dictionary,
         )
-        actual_aligner.predictor()
-        fcs = actual_aligner.get_predictions_as_geojson(formula=self.FORMULA)
+
+        # fcs = actual_aligner.get_predictions_as_geojson(formula=self.FORMULA)
 
         # Add RESULT TO TOC
         self.geojson_to_layer(self.LAYER_RESULT, fcs["result"], self.get_renderer(QgsFillSymbol(
             [QgsSimpleLineSymbolLayer.create({'line_style': 'dash', 'color': QColor(0, 255, 0), 'line_width': '1'})])),
                               True)
+        self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"], self.get_renderer(QgsFillSymbol(
+            [QgsSimpleLineSymbolLayer.create(
+                {'line_style': 'dash', 'color': QColor(255, 255, 0), 'line_width': '0.5'})])),
+                              False)
 
         self.RESULT = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
 
