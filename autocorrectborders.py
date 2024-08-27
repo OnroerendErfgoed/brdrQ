@@ -52,6 +52,7 @@ import sys
 import site
 import os
 import json
+import datetime
 from qgis import processing
 from qgis.utils import iface
 from qgis.PyQt.QtCore import QCoreApplication
@@ -128,7 +129,7 @@ except (ModuleNotFoundError, ValueError):
     print(brdr.__version__)
 
 from brdr.aligner import Aligner
-from brdr.loader import DictLoader, GRBActualLoader
+from brdr.loader import DictLoader, GRBActualLoader, GRBFiscalParcelLoader
 from brdr.utils import multipolygons_to_singles
 from brdr.enums import OpenbaarDomeinStrategy
 from brdr.enums import GRBType
@@ -151,7 +152,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     # ENUM for choosing the reference
     ENUM_REFERENCE = "ENUM_REFERENCE"
     GRB_TYPES = [e.name for e in GRBType]
-    ENUM_REFERENCE_OPTIONS = ["LOCAL REFERENCE LAYER (choose LAYER and ID below)"] + GRB_TYPES
+    ADPF_VERSIONS = ["Adpf" + str(x) for x in [datetime.datetime.today().year - i for i in range(6)]]
+    ENUM_REFERENCE_OPTIONS = ["LOCAL REFERENCE LAYER (choose LAYER and ID below)"] + GRB_TYPES + ADPF_VERSIONS
     SELECTED_REFERENCE = None
 
     # ENUM for choosing the OD-strategy
@@ -629,9 +631,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo("Load reference data")
         if self.SELECTED_REFERENCE == 0:
             aligner.load_reference_data(DictLoader(dict_reference))
+        elif self.SELECTED_REFERENCE in self.ADPF_VERSIONS:
+            year = self.SELECTED_REFERENCE.removeprefix("Adpf")
+            aligner.load_reference_data(GRBFiscalParcelLoader(year=year, aligner=aligner))
         else:
             aligner.load_reference_data(
                 GRBActualLoader(grb_type=self.SELECTED_REFERENCE.value, partition=1000, aligner=aligner))
+
         feedback.pushInfo("START PROCESSING")
         if self.RELEVANT_DISTANCE >= 0:
             process_result = aligner.process_dict_thematic(
@@ -874,6 +880,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         ref = self.ENUM_REFERENCE_OPTIONS[parameters[self.ENUM_REFERENCE]]
         if ref in self.GRB_TYPES:
             self.SELECTED_REFERENCE = GRBType[ref]
+        elif ref in self.ADPF_VERSIONS:
+            self.SELECTED_REFERENCE = ref
         else:
             self.SELECTED_REFERENCE = 0
         self.LAYER_REFERENCE = self.SELECTED_REFERENCE

@@ -54,7 +54,7 @@ from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingMultiStepFeedback
 from qgis.core import QgsProcessingOutputVectorLayer, QgsFillSymbol
 from qgis.core import QgsProcessingParameterDateTime, QgsProcessingParameterFeatureSource, QgsProcessingParameterField, \
-    QgsProcessingParameterBoolean
+    QgsProcessingParameterBoolean, QgsProcessingParameterNumber
 from qgis.core import QgsProject
 from qgis.core import QgsStyle
 from qgis.core import QgsVectorLayer
@@ -121,7 +121,7 @@ from brdr.grb import get_geoms_affected_by_grb_change, get_last_version_date, ev
 
 class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     """
-    Script to auto-update geometries that are aligned to an old GRB-referencelayer to a newer GRB-referencelayer.
+    Script to auto-update geometries that are aligned to an old GRB-referencelayer the actual GRB-referencelayer.
     Documentation can be found at: https://github.com/OnroerendErfgoed/brdrQ/
     """
 
@@ -144,6 +144,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     OUTPUT_RESULT = "OUTPUT_RESULT"
     LAYER_RESULT = "brdrQ_RESULT"
     LAYER_RESULT_DIFF = "brdrQ_RESULT_DIFF"
+    START_DATE = "2022-01-01 00:00:00"
+    DATE_FORMAT = "yyyy-MM-dd hh:mm:ss"
 
     FORMULA = True
 
@@ -352,29 +354,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         iface.layerTreeView().refreshLayerSymbology(vl.id())
         return vl
 
-    def check_business_equality(self, base_formula, actual_formula):
-        """
-        function that checks if 2 formulas are equal (determined by business-logic)
-        """
-        try:
-            # TODO: research and implementation of following ideas
-            # ideas:
-            # * If result_diff smaller than 0.x --> automatic update
-            # * big polygons: If 'outer ring' has same formula (do net check inner side) --> automatic update
-            # ** outer ring can be calculated: 1) nageative buffer 2) original - buffered
-            if base_formula.keys() != actual_formula.keys():
-                return False
-            for key in base_formula.keys():
-                if base_formula[key]["full"] != actual_formula[key]["full"]:
-                    return False
-                # if abs(base_formula[key]['area'] - actual_formula[key]['area'])>1: #area changed by 1 m²
-                #     return False
-                # if abs(base_formula[key]['area'] - actual_formula[key]['area'])/base_formula[key]['area'] > 0.01: #area changed by 1%
-                #     return False
-            return True
-        except:
-            return False
-
     def initAlgorithm(self, config=None):
         """
         Here we define the inputs and output of the algorithm, along
@@ -402,12 +381,23 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterField(
             self.FORMULA_FIELD,
-            "Formula field",
-            "formula",
+            "Formula field (if empty, formula will be calculated based on following alignment-date)",
+            "",
             self.INPUT_THEMATIC,
+            optional=True
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterNumber(
+            "RELEVANT_DISTANCE_FOR_FORMULA",
+            "RELEVANT_DISTANCE_FOR_FORMULA (meter) - If no formula-field is stated, a formula-field will be calculated with this relevant distance",
+            type=QgsProcessingParameterNumber.Double,
+            optional=True
+        )
+        parameter.setFlags(parameter.flags())
+        self.addParameter(parameter)
+
         # INPUT  standard parameters
         # make your own widget is also possible!
         # https://gis.stackexchange.com/questions/432849/changing-appearence-of-datetime-input-in-qgis-processing-tool-to-international-d
@@ -416,10 +406,20 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # START DATETIME
         parameter = QgsProcessingParameterDateTime(
             self.START_DATE,
-            'Alignment-Date (date of version of reference layer where the thematic is aligned on):',
+            'Alignment-Date (date of version of reference layer where the thematic layer is aligned on):',
             type=QgsProcessingParameterDateTime.Date
             ,
-            defaultValue=QDateTime.currentDateTime().addDays(2 * -365)
+            # defaultValue = QDateTime.currentDateTime().addDays(2*-365)
+            defaultValue=QDateTime.fromString(self.START_DATE, self.DATE_FORMAT)
+        )
+        parameter.setFlags(parameter.flags())
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterNumber(
+            "MAX_RELEVANT_DISTANCE",
+            "MAX-RELEVANT_DISTANCE (meter) - Max distance to try to align on the actual GRB",
+            type=QgsProcessingParameterNumber.Double,
+            defaultValue=2,
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
@@ -429,20 +429,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "PROCESS_MULTI_AS_SINGLE_POLYGONS",
             defaultValue=True,
         )
-        # parameter.setFlags(parameter.flags() |
+        parameter.setFlags(parameter.flags())
+        # |
         # QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(parameter)
-
-        ## END DATETIME
-        # parameter = QgsProcessingParameterDateTime(
-        #    self.END_DATE,
-        #    'EndDate:',
-        #    type=QgsProcessingParameterDateTime.Date
-        #    # ,
-        #    # defaultValue = QDateTime.currentDateTime().addDays(-31)
-        # )
-        # parameter.setFlags(parameter.flags())
-        # self.addParameter(parameter)
 
         self.addOutput(
             QgsProcessingOutputVectorLayer(
@@ -479,7 +469,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 return {}
             id_theme = feature.attribute(self.ID_THEME)
             dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature.geometry())
-            dict_thematic_formula[id_theme] = json.loads(feature.attribute(self.FORMULA_FIELD))
+            try:
+                dict_thematic_formula[id_theme] = json.loads(feature.attribute(self.FORMULA_FIELD))
+            except:
+                raise Exception("Formula -attribute-field (json) can not be loaded")
         if self.PROCESS_MULTI_AS_SINGLE_POLYGONS:
             dict_thematic = multipolygons_to_singles(dict_thematic)
         feedback.pushInfo("1) BEREKENING - Thematic layer fixed")
@@ -645,6 +638,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
         self.PROCESS_MULTI_AS_SINGLE_POLYGONS = parameters["PROCESS_MULTI_AS_SINGLE_POLYGONS"]
         self.FORMULA_FIELD = parameters["FORMULA_FIELD"]
+        print(parameters["FORMULA_FIELD"])
         # self.SUFFIX = "_" + str(self.RELEVANT_DISTANCE) + "_OD_" + str(self.OD_STRATEGY.name)
         # self.LAYER_RELEVANT_INTERSECTION = (
         #         self.LAYER_RELEVANT_INTERSECTION + self.SUFFIX
