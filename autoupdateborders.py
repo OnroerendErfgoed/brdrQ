@@ -34,6 +34,7 @@ import sys
 import site
 import os
 import json
+import numpy as np
 
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
@@ -112,11 +113,11 @@ except (ModuleNotFoundError, ValueError):
     print(brdr.__version__)
 
 from brdr.aligner import Aligner
-from brdr.loader import DictLoader, GRBActualLoader
-from brdr.utils import multipolygons_to_singles, get_series_geojson_dict
+from brdr.loader import DictLoader
+from brdr.utils import multipolygons_to_singles, get_series_geojson_dict, merge_dict_series
 from brdr.enums import OpenbaarDomeinStrategy
 from brdr.enums import GRBType
-from brdr.grb import get_geoms_affected_by_grb_change, get_last_version_date, evaluate
+from brdr.grb import get_geoms_affected_by_grb_change, get_last_version_date, evaluate, GRBActualLoader
 
 
 class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -327,7 +328,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         fcString = json.dumps(geojson)
 
         vl = QgsVectorLayer(fcString, name, "ogr")
-        print(vl)
         vl.setCrs(QgsCoordinateReferenceSystem(self.CRS))
         pr = vl.dataProvider()
         vl.updateFields()
@@ -487,35 +487,40 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         datetime_start = datetime_start.toPyDateTime()
 
-        # datetime_end = self.parameterAsDateTime(
-        #    parameters,
-        #    self.END_DATE,
-        #    context
-        # )
         datetime_end = now = QDateTime.currentDateTime().toPyDateTime()
-        print(datetime_start)
+        thematic_dict_result = dict(dict_thematic)
+        # for key in base_process_result:
+        #    thematic_dict_result[key] = base_process_result[key]["result"]
+        #    thematic_dict_formula[key] = base_aligner.get_formula(thematic_dict_result[key])
+        base_aligner_result = Aligner()
+        base_aligner_result.load_thematic_data(DictLoader(thematic_dict_result))
+
         dict_affected = get_geoms_affected_by_grb_change(
-            dict_thematic,
+            base_aligner_result,
             grb_type=GRBType.ADP,
             date_start=datetime_start,
             date_end=datetime_end,
             one_by_one=False,
         )
         feedback.pushInfo("Number of possible affected OE-thematic during timespan: " + str(len(dict_affected)))
-        for key in dict_affected.keys():
-            print(key)
-            print(dict_affected[key])
         feedback.pushInfo(str(datetime_start))
         feedback.pushInfo(str(self.FORMULA_FIELD))
+        if self.PROCESS_MULTI_AS_SINGLE_POLYGONS:
+            dict_affected = multipolygons_to_singles(dict_affected)
 
         # Initiate a Aligner to reference thematic features to the actual borders
         actual_aligner = Aligner()
         loader = DictLoader(dict_affected)
         actual_aligner.load_thematic_data(loader)
-        loader = GRBActualLoader(grb_type=GRBType.ADP, partition=0, aligner=actual_aligner)
+        loader = GRBActualLoader(grb_type=GRBType.ADP, partition=1000, aligner=actual_aligner)
         actual_aligner.load_reference_data(loader)
 
-        dict_evaluated, prop_dictionary = evaluate(actual_aligner, dict_thematic_formula)
+        series = np.arange(0, 200, 10, dtype=int) / 100
+        dict_series, dict_predicted, diffs_dict = actual_aligner.predictor(series,
+                                                                           merged=self.PROCESS_MULTI_AS_SINGLE_POLYGONS)
+        dict_evaluated, prop_dictionary = evaluate(actual_aligner, dict_series, dict_predicted, dict_thematic_formula,
+                                                   threshold_area=5, threshold_percentage=1)
+
         fcs = get_series_geojson_dict(
             dict_evaluated,
             crs=actual_aligner.CRS,
@@ -638,7 +643,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
         self.PROCESS_MULTI_AS_SINGLE_POLYGONS = parameters["PROCESS_MULTI_AS_SINGLE_POLYGONS"]
         self.FORMULA_FIELD = parameters["FORMULA_FIELD"]
-        print(parameters["FORMULA_FIELD"])
         # self.SUFFIX = "_" + str(self.RELEVANT_DISTANCE) + "_OD_" + str(self.OD_STRATEGY.name)
         # self.LAYER_RELEVANT_INTERSECTION = (
         #         self.LAYER_RELEVANT_INTERSECTION + self.SUFFIX

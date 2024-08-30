@@ -129,10 +129,11 @@ except (ModuleNotFoundError, ValueError):
     print(brdr.__version__)
 
 from brdr.aligner import Aligner
-from brdr.loader import DictLoader, GRBActualLoader, GRBFiscalParcelLoader
+from brdr.loader import DictLoader
 from brdr.utils import multipolygons_to_singles
 from brdr.enums import OpenbaarDomeinStrategy
 from brdr.enums import GRBType
+from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader
 
 
 class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -633,10 +634,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             aligner.load_reference_data(DictLoader(dict_reference))
         elif self.SELECTED_REFERENCE in self.ADPF_VERSIONS:
             year = self.SELECTED_REFERENCE.removeprefix("Adpf")
-            aligner.load_reference_data(GRBFiscalParcelLoader(year=year, aligner=aligner))
+            aligner.load_reference_data(GRBFiscalParcelLoader(year=year, aligner=aligner, partition=1000))
         else:
             aligner.load_reference_data(
-                GRBActualLoader(grb_type=self.SELECTED_REFERENCE.value, partition=1000, aligner=aligner))
+                GRBActualLoader(grb_type=GRBType(self.SELECTED_REFERENCE.value), partition=1000, aligner=aligner))
 
         feedback.pushInfo("START PROCESSING")
         if self.RELEVANT_DISTANCE >= 0:
