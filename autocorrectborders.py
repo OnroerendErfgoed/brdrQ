@@ -118,7 +118,7 @@ except (ModuleNotFoundError):
 try:
     import brdr
 
-    if brdr.__version__ != "0.1.1":
+    if brdr.__version__ != "0.2.0":
         raise ValueError("Version mismatch")
 
 except (ModuleNotFoundError, ValueError):

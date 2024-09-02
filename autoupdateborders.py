@@ -102,7 +102,7 @@ except (ModuleNotFoundError):
 try:
     import brdr
 
-    if brdr.__version__ != "0.1.1":
+    if brdr.__version__ != "0.2.0":
         raise ValueError("Version mismatch")
 
 except (ModuleNotFoundError, ValueError):
@@ -495,7 +495,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         base_aligner_result = Aligner()
         base_aligner_result.load_thematic_data(DictLoader(thematic_dict_result))
 
-        dict_affected = get_geoms_affected_by_grb_change(
+        # TODO:
+        dict_affected, dict_unchanged = get_geoms_affected_by_grb_change(
             base_aligner_result,
             grb_type=GRBType.ADP,
             date_start=datetime_start,
@@ -516,10 +517,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         actual_aligner.load_reference_data(loader)
 
         series = np.arange(0, 200, 10, dtype=int) / 100
-        dict_series, dict_predicted, diffs_dict = actual_aligner.predictor(series,
-                                                                           merged=self.PROCESS_MULTI_AS_SINGLE_POLYGONS)
+        dict_series, dict_predicted, diffs_dict = actual_aligner.predictor(series)
         dict_evaluated, prop_dictionary = evaluate(actual_aligner, dict_series, dict_predicted, dict_thematic_formula,
-                                                   threshold_area=5, threshold_percentage=1)
+                                                   threshold_area=5, threshold_percentage=1,
+                                                   dict_unchanged=dict_unchanged)
 
         fcs = get_series_geojson_dict(
             dict_evaluated,
@@ -534,9 +535,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.geojson_to_layer(self.LAYER_RESULT, fcs["result"], self.get_renderer(QgsFillSymbol(
             [QgsSimpleLineSymbolLayer.create({'line_style': 'dash', 'color': QColor(0, 255, 0), 'line_width': '1'})])),
                               True)
-        self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"], self.get_renderer(QgsFillSymbol(
-            [QgsSimpleLineSymbolLayer.create(
-                {'line_style': 'dash', 'color': QColor(255, 255, 0), 'line_width': '0.5'})])),
+        self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"], self.get_renderer("hashed black X"),
                               False)
 
         self.RESULT = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
