@@ -364,15 +364,15 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         """
         Get a QGIS renderer to add symbology to a QGIS-layer
         """
-        # to get all properties of symbol:
-        # print(layer.renderer().symbol().symbolLayers()[0].properties())
-        # see: https://opensourceoptions.com/loading-and-symbolizing-vector-layers
+        #to get all properties of symbol:
+        #print(layer.renderer().symbol().symbolLayers()[0].properties())
+        #see: https://opensourceoptions.com/loading-and-symbolizing-vector-layers
         if isinstance(fill_symbol, str):
             fill_symbol = QgsStyle.defaultStyle().symbol(fill_symbol)
         if fill_symbol is None:
             fill_symbol = QgsFillSymbol([QgsSimpleLineSymbolLayer.create()])
         if isinstance(fill_symbol, QgsFillSymbol):
-            return QgsSingleSymbolRenderer(fill_symbol)
+            return QgsSingleSymbolRenderer(fill_symbol.clone()).clone()
         return None
 
     def geojson_to_layer(self, name, geojson, renderer, visible):
