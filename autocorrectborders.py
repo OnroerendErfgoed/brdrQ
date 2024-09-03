@@ -47,20 +47,18 @@ CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFT
 THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ***************************************************************************
 """
+import datetime
+import json
+import os
+import site
 import subprocess
 import sys
-import site
-import os
-import json
-import datetime
+
 from qgis import processing
-from qgis.utils import iface
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.core import QgsCoordinateReferenceSystem
-from qgis.core import QgsField
 from qgis.core import QgsGeometry
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
@@ -68,16 +66,17 @@ from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingMultiStepFeedback
 from qgis.core import QgsProcessingOutputVectorLayer
 from qgis.core import QgsProcessingParameterBoolean
+from qgis.core import QgsProcessingParameterDefinition
 from qgis.core import QgsProcessingParameterEnum
 from qgis.core import QgsProcessingParameterFeatureSource
 from qgis.core import QgsProcessingParameterField
 from qgis.core import QgsProcessingParameterNumber
-from qgis.core import QgsProcessingParameterDefinition
 from qgis.core import QgsProject
+from qgis.core import QgsSimpleLineSymbolLayer, QgsFillSymbol, \
+    QgsSingleSymbolRenderer, QgsMapLayer, QgsLayerTreeNode, QgsLayerTreeGroup
 from qgis.core import QgsStyle
 from qgis.core import QgsVectorLayer
-from qgis.core import QgsSimpleFillSymbolLayer, QgsMarkerLineSymbolLayer, QgsSimpleLineSymbolLayer, QgsFillSymbol, \
-    QgsSingleSymbolRenderer, QgsLayerTreeLayer, QgsMapLayer, QgsLayerTreeNode, QgsLayerTreeGroup
+from qgis.utils import iface
 
 
 # helper function to find embedded python
@@ -194,7 +193,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     BUFFER_DISTANCE = 0
     THRESHOLD_CIRCLE_RATIO = 0.98
     CORR_DISTANCE = 0.01
-    SHOW_INTERMEDIATE_LAYERS = False
+    SHOW_INTERMEDIATE_LAYERS = True
     FORMULA = True
     MITRE_LIMIT = 10
     CRS = "EPSG:31370"
@@ -364,9 +363,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         """
         Get a QGIS renderer to add symbology to a QGIS-layer
         """
-        #to get all properties of symbol:
-        #print(layer.renderer().symbol().symbolLayers()[0].properties())
-        #see: https://opensourceoptions.com/loading-and-symbolizing-vector-layers
+        # to get all properties of symbol:
+        # print(layer.renderer().symbol().symbolLayers()[0].properties())
+        # see: https://opensourceoptions.com/loading-and-symbolizing-vector-layers
         if isinstance(fill_symbol, str):
             fill_symbol = QgsStyle.defaultStyle().symbol(fill_symbol)
         if fill_symbol is None:
@@ -535,7 +534,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                            QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(parameter)
         parameter = QgsProcessingParameterBoolean(
-            "SHOW_INTERMEDIATE_LAYERS", "SHOW_INTERMEDIATE_LAYERS", defaultValue=False
+            "SHOW_INTERMEDIATE_LAYERS", "SHOW_INTERMEDIATE_LAYERS", defaultValue=True
         )
         parameter.setFlags(parameter.flags() |
                            QgsProcessingParameterDefinition.FlagAdvanced)
@@ -867,6 +866,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
         self.OD_STRATEGY = OpenbaarDomeinStrategy[self.ENUM_OD_STRATEGY_OPTIONS[parameters[self.ENUM_OD_STRATEGY]]]
         self.FORMULA = parameters["ADD_FORMULA"]
+        self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
         self.SUFFIX = "_" + str(self.RELEVANT_DISTANCE) + "_OD_" + str(self.OD_STRATEGY.name)
         self.LAYER_RELEVANT_INTERSECTION = (
                 self.LAYER_RELEVANT_INTERSECTION + self.SUFFIX

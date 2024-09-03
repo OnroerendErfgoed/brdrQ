@@ -29,38 +29,32 @@ CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFT
 THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ***************************************************************************
 """
+import json
+import os
+import site
 import subprocess
 import sys
-import site
-import os
-import json
-import numpy as np
 
+import numpy as np
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtCore import QVariant, QDateTime
-from qgis.PyQt.QtCore import QTextCodec
+from qgis.PyQt.QtCore import QDateTime
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
-
-from qgis.utils import iface
-from qgis.core import QgsProject
 from qgis.core import QgsCoordinateReferenceSystem
-from qgis.core import QgsFeature
-from qgis.core import QgsField
-from qgis.core import QgsGeometry
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
 from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingMultiStepFeedback
-from qgis.core import QgsProcessingOutputVectorLayer, QgsFillSymbol
-from qgis.core import QgsProcessingParameterDateTime, QgsProcessingParameterFeatureSource, QgsProcessingParameterField, \
-    QgsProcessingParameterBoolean, QgsProcessingParameterNumber
+from qgis.core import QgsProcessingOutputVectorLayer
+from qgis.core import QgsProcessingParameterFeatureSource, QgsProcessingParameterField, \
+    QgsProcessingParameterNumber
 from qgis.core import QgsProject
+from qgis.core import QgsSimpleLineSymbolLayer, QgsFillSymbol, \
+    QgsSingleSymbolRenderer, QgsMapLayer, QgsLayerTreeNode, QgsLayerTreeGroup
 from qgis.core import QgsStyle
 from qgis.core import QgsVectorLayer
-from qgis.core import QgsSimpleFillSymbolLayer, QgsMarkerLineSymbolLayer, QgsSimpleLineSymbolLayer, QgsFillSymbol, \
-    QgsSingleSymbolRenderer, QgsLayerTreeLayer, QgsMapLayer, QgsLayerTreeNode, QgsLayerTreeGroup
+from qgis.utils import iface
 
 
 # helper function to find embedded python
@@ -114,8 +108,7 @@ except (ModuleNotFoundError, ValueError):
 
 from brdr.aligner import Aligner
 from brdr.loader import DictLoader
-from brdr.utils import get_series_geojson_dict, merge_dict_series
-from brdr.enums import OpenbaarDomeinStrategy
+from brdr.utils import get_series_geojson_dict
 from brdr.enums import GRBType
 from brdr.grb import get_geoms_affected_by_grb_change, evaluate, GRBActualLoader
 
@@ -302,9 +295,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         """
         Get a QGIS renderer to add symbology to a QGIS-layer
         """
-        #to get all properties of symbol:
-        #print(layer.renderer().symbol().symbolLayers()[0].properties())
-        #see: https://opensourceoptions.com/loading-and-symbolizing-vector-layers
+        # to get all properties of symbol:
+        # print(layer.renderer().symbol().symbolLayers()[0].properties())
+        # see: https://opensourceoptions.com/loading-and-symbolizing-vector-layers
         if isinstance(fill_symbol, str):
             fill_symbol = QgsStyle.defaultStyle().symbol(fill_symbol)
         if fill_symbol is None:
@@ -666,4 +659,3 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # else:
         #     self.SELECTED_REFERENCE = 0
         # self.LAYER_REFERENCE = self.SELECTED_REFERENCE
-
