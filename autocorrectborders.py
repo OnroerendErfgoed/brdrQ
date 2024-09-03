@@ -72,6 +72,7 @@ from qgis.core import QgsProcessingParameterEnum
 from qgis.core import QgsProcessingParameterFeatureSource
 from qgis.core import QgsProcessingParameterField
 from qgis.core import QgsProcessingParameterNumber
+from qgis.core import QgsProcessingParameterDefinition
 from qgis.core import QgsProject
 from qgis.core import QgsStyle
 from qgis.core import QgsVectorLayer
@@ -123,14 +124,13 @@ try:
 
 except (ModuleNotFoundError, ValueError):
     subprocess.check_call([python_exe,
-                           '-m', 'pip', 'install', 'brdr==0.1.1'])
+                           '-m', 'pip', 'install', 'brdr==0.2.0'])
     import brdr
 
     print(brdr.__version__)
 
 from brdr.aligner import Aligner
 from brdr.loader import DictLoader
-from brdr.utils import multipolygons_to_singles
 from brdr.enums import OpenbaarDomeinStrategy
 from brdr.enums import GRBType
 from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader
@@ -183,7 +183,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     LAYER_REFERENCE = "LAYER_REFERENCE"
 
     SUFFIX = ""
-    # theme_ID (can be a multipolygon)
     ID_THEME = "id_theme"
     ID_REFERENCE = "id_ref"
     OVERLAY_FIELDS_PREFIX = ""
@@ -197,13 +196,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     CORR_DISTANCE = 0.01
     SHOW_INTERMEDIATE_LAYERS = False
     FORMULA = True
-    PROCESS_MULTI_AS_SINGLE_POLYGONS = True
     MITRE_LIMIT = 10
     CRS = "EPSG:31370"
     QUAD_SEGS = 5
     BUFFER_MULTIPLICATION_FACTOR = 1.01
     DOWNLOAD_LIMIT = 10000
     MAX_REFERENCE_BUFFER = 10
+    MAX_AREA_FOR_DOWNLOADING_REFERENCE = 1000000
 
     def flags(self):
         return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
@@ -441,6 +440,16 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterNumber(
+            "RELEVANT_DISTANCE",
+            "RELEVANT_DISTANCE (meter)",
+            type=QgsProcessingParameterNumber.Double,
+            defaultValue=2,
+        )
+        parameter.setFlags(parameter.flags())
+        self.addParameter(parameter)
+
         parameter = QgsProcessingParameterEnum(
             self.ENUM_REFERENCE,
             "Select Reference Layer:",
@@ -465,22 +474,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "ref_identifier",
             self.INPUT_REFERENCE,
             optional=True
-        )
-        parameter.setFlags(parameter.flags())
-        self.addParameter(parameter)
-        parameter = QgsProcessingParameterNumber(
-            "RELEVANT_DISTANCE",
-            "RELEVANT_DISTANCE (meter)",
-            type=QgsProcessingParameterNumber.Double,
-            defaultValue=2,
-        )
-        parameter.setFlags(parameter.flags())
-        self.addParameter(parameter)
-        parameter = QgsProcessingParameterEnum(
-            self.ENUM_OD_STRATEGY,
-            'Select OD-STRATEGY:',
-            options=self.ENUM_OD_STRATEGY_OPTIONS,
-            defaultValue=5  # Index of the default option (e.g., 'SNAP_FULL_AREA_ALL_SIDE')
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
@@ -514,32 +507,38 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             )
         )
         # advanced parameters
+
+        parameter = QgsProcessingParameterEnum(
+            self.ENUM_OD_STRATEGY,
+            'Select OD-STRATEGY:',
+            options=self.ENUM_OD_STRATEGY_OPTIONS,
+            defaultValue=5  # Index of the default option (e.g., 'SNAP_FULL_AREA_ALL_SIDE')
+        )
+        parameter.setFlags(parameter.flags() |
+                           QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter)
+
         parameter = QgsProcessingParameterNumber(
             "THRESHOLD_OVERLAP_PERCENTAGE",
             "THRESHOLD_OVERLAP_PERCENTAGE (%)",
             type=QgsProcessingParameterNumber.Double,
             defaultValue=50,
         )
+        parameter.setFlags(parameter.flags() |
+                           QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(parameter)
+
         parameter = QgsProcessingParameterBoolean(
-            "PROCESS_MULTI_AS_SINGLE_POLYGONS",
-            "PROCESS_MULTI_AS_SINGLE_POLYGONS",
-            defaultValue=True,
+            "ADD_FORMULA", "ADD_FORMULA", defaultValue=True
         )
-        # parameter.setFlags(parameter.flags() |
-        # QgsProcessingParameterDefinition.FlagAdvanced)
-        self.addParameter(parameter)
-        parameter = QgsProcessingParameterBoolean(
-            "ADD_FORMULA", "ADD_FORMULA", defaultValue=False
-        )
-        # parameter.setFlags(parameter.flags() |
-        # QgsProcessingParameterDefinition.FlagAdvanced)
+        parameter.setFlags(parameter.flags() |
+                           QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(parameter)
         parameter = QgsProcessingParameterBoolean(
             "SHOW_INTERMEDIATE_LAYERS", "SHOW_INTERMEDIATE_LAYERS", defaultValue=False
         )
-        # parameter.setFlags(parameter.flags() |
-        # QgsProcessingParameterDefinition.FlagAdvanced)
+        parameter.setFlags(parameter.flags() |
+                           QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(parameter)
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -569,13 +568,18 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # Load thematic into a shapely_dict:
         dict_thematic = {}
         features = thematic.getFeatures()
+        area = 0
         for current, feature in enumerate(features):
+            feature_geom = feature.geometry()
+            area = area + feature_geom.area()
             if feedback.isCanceled():
                 return {}
             id_theme = feature.attribute(self.ID_THEME)
-            dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature.geometry())
-        if self.PROCESS_MULTI_AS_SINGLE_POLYGONS:
-            dict_thematic = multipolygons_to_singles(dict_thematic)
+            dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature_geom)
+        if self.SELECTED_REFERENCE != 0 and area > self.MAX_AREA_FOR_DOWNLOADING_REFERENCE:
+            raise QgsProcessingException(
+                "Please make use of a local REFERENCELAYER from the table of contents, instead of a on-the-fly download (for performance reasons)"
+            )
         feedback.pushInfo("1) BEREKENING - Thematic layer fixed")
         feedback.setCurrentStep(1)
         if feedback.isCanceled():
@@ -863,9 +867,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
         self.OD_STRATEGY = OpenbaarDomeinStrategy[self.ENUM_OD_STRATEGY_OPTIONS[parameters[self.ENUM_OD_STRATEGY]]]
         self.FORMULA = parameters["ADD_FORMULA"]
-        self.PROCESS_MULTI_AS_SINGLE_POLYGONS = parameters[
-            "PROCESS_MULTI_AS_SINGLE_POLYGONS"
-        ]
         self.SUFFIX = "_" + str(self.RELEVANT_DISTANCE) + "_OD_" + str(self.OD_STRATEGY.name)
         self.LAYER_RELEVANT_INTERSECTION = (
                 self.LAYER_RELEVANT_INTERSECTION + self.SUFFIX

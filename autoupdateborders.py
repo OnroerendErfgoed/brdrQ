@@ -107,17 +107,17 @@ try:
 
 except (ModuleNotFoundError, ValueError):
     subprocess.check_call([python_exe,
-                           '-m', 'pip', 'install', 'brdr==0.1.1'])
+                           '-m', 'pip', 'install', 'brdr==0.2.0'])
     import brdr
 
     print(brdr.__version__)
 
 from brdr.aligner import Aligner
 from brdr.loader import DictLoader
-from brdr.utils import multipolygons_to_singles, get_series_geojson_dict, merge_dict_series
+from brdr.utils import get_series_geojson_dict, merge_dict_series
 from brdr.enums import OpenbaarDomeinStrategy
 from brdr.enums import GRBType
-from brdr.grb import get_geoms_affected_by_grb_change, get_last_version_date, evaluate, GRBActualLoader
+from brdr.grb import get_geoms_affected_by_grb_change, evaluate, GRBActualLoader
 
 
 class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -139,7 +139,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     QUAD_SEGS = 5
     BUFFER_MULTIPLICATION_FACTOR = 1.01
     RELEVANT_DISTANCE = 1
-    PROCESS_MULTI_AS_SINGLE_POLYGONS = True
     FORMULA_FIELD = "FORMULA_FIELD"
     RESULT = "RESULT"
     OUTPUT_RESULT = "OUTPUT_RESULT"
@@ -147,6 +146,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     LAYER_RESULT_DIFF = "brdrQ_RESULT_DIFF"
     START_DATE = "2022-01-01 00:00:00"
     DATE_FORMAT = "yyyy-MM-dd hh:mm:ss"
+    FIELD_LAST_VERSION_DATE = "versiondate"
 
     FORMULA = True
 
@@ -381,10 +381,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterField(
             self.FORMULA_FIELD,
-            "Formula field (if empty, formula will be calculated based on following alignment-date)",
-            "",
+            "Formula field",  # (if empty, formula will be calculated based on following alignment-date)
+            "formula",
             self.INPUT_THEMATIC,
-            optional=True
+            # optional=True
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
@@ -396,42 +396,32 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             optional=True
         )
         parameter.setFlags(parameter.flags())
-        self.addParameter(parameter)
+        # self.addParameter(parameter)
 
-        # INPUT  standard parameters
+        ## INPUT  standard parameters
         # make your own widget is also possible!
         # https://gis.stackexchange.com/questions/432849/changing-appearence-of-datetime-input-in-qgis-processing-tool-to-international-d
         # https://www.faunalia.eu/en/blog/2019-07-02-custom-processing-widget
 
         # START DATETIME
-        parameter = QgsProcessingParameterDateTime(
-            self.START_DATE,
-            'Alignment-Date (date of version of reference layer where the thematic layer is aligned on):',
-            type=QgsProcessingParameterDateTime.Date
-            ,
-            # defaultValue = QDateTime.currentDateTime().addDays(2*-365)
-            defaultValue=QDateTime.fromString(self.START_DATE, self.DATE_FORMAT)
-        )
-        parameter.setFlags(parameter.flags())
-        self.addParameter(parameter)
+        # parameter = QgsProcessingParameterDateTime(
+        #    self.START_DATE,
+        #    'VersionDate (date of version of reference layer where the thematic layer is aligned on):',
+        #    type=QgsProcessingParameterDateTime.Date
+        #    ,
+        #    #defaultValue = QDateTime.currentDateTime().addDays(2*-365)
+        #    defaultValue = QDateTime.fromString(self.START_DATE,self.DATE_FORMAT)
+        # )
+        # parameter.setFlags(parameter.flags())
+        # self.addParameter(parameter)
 
         parameter = QgsProcessingParameterNumber(
             "MAX_RELEVANT_DISTANCE",
             "MAX-RELEVANT_DISTANCE (meter) - Max distance to try to align on the actual GRB",
             type=QgsProcessingParameterNumber.Double,
-            defaultValue=2,
+            defaultValue=3,
         )
         parameter.setFlags(parameter.flags())
-        self.addParameter(parameter)
-
-        parameter = QgsProcessingParameterBoolean(
-            "PROCESS_MULTI_AS_SINGLE_POLYGONS",
-            "PROCESS_MULTI_AS_SINGLE_POLYGONS",
-            defaultValue=True,
-        )
-        parameter.setFlags(parameter.flags())
-        # |
-        # QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(parameter)
 
         self.addOutput(
@@ -464,6 +454,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         dict_thematic = {}
         dict_thematic_formula = {}
         features = thematic.getFeatures()
+        # last_version_date = QDateTime.fromString("2018-01-01 00:00:00",self.DATE_FORMAT)
+        last_version_date = QDateTime.currentDateTime()
+
         for current, feature in enumerate(features):
             if feedback.isCanceled():
                 return {}
@@ -473,21 +466,35 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 dict_thematic_formula[id_theme] = json.loads(feature.attribute(self.FORMULA_FIELD))
             except:
                 raise Exception("Formula -attribute-field (json) can not be loaded")
-        if self.PROCESS_MULTI_AS_SINGLE_POLYGONS:
-            dict_thematic = multipolygons_to_singles(dict_thematic)
+            try:
+                # feedback.pushInfo(dict_thematic_formula[id_theme][self.FIELD_LAST_VERSION_DATE])
+                if self.FIELD_LAST_VERSION_DATE in dict_thematic_formula[id_theme] and dict_thematic_formula[id_theme][
+                    self.FIELD_LAST_VERSION_DATE] is not None and dict_thematic_formula[id_theme][
+                    self.FIELD_LAST_VERSION_DATE] != "":
+                    str_lvd = dict_thematic_formula[id_theme][self.FIELD_LAST_VERSION_DATE]
+                    lvd = QDateTime.fromString(str_lvd + " 00:00:00", self.DATE_FORMAT)
+                    # feedback.pushInfo(str_lvd)
+                    # feedback.pushInfo(str(lvd))
+
+                    if lvd < last_version_date:
+                        last_version_date = lvd
+            except:
+                raise Exception("Problem with last version-date")
+
         feedback.pushInfo("1) BEREKENING - Thematic layer fixed")
         feedback.setCurrentStep(1)
         if feedback.isCanceled():
             return {}
 
-        datetime_start = self.parameterAsDateTime(
-            parameters,
-            self.START_DATE,
-            context
-        )
-        datetime_start = datetime_start.toPyDateTime()
+        # datetime_start = self.parameterAsDateTime(
+        #    parameters,
+        #    self.START_DATE,
+        #    context
+        # )
+        # datetime_start=datetime_start.toPyDateTime()
+        datetime_start = last_version_date.toPyDateTime()
 
-        datetime_end = now = QDateTime.currentDateTime().toPyDateTime()
+        datetime_end = QDateTime.currentDateTime().toPyDateTime()
         thematic_dict_result = dict(dict_thematic)
         # for key in base_process_result:
         #    thematic_dict_result[key] = base_process_result[key]["result"]
@@ -504,10 +511,11 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             one_by_one=False,
         )
         feedback.pushInfo("Number of possible affected OE-thematic during timespan: " + str(len(dict_affected)))
+        if len(dict_affected) == 0:
+            feedback.pushInfo("No change detected in referencelayer during timespan. Script is finished")
+            return {}
         feedback.pushInfo(str(datetime_start))
         feedback.pushInfo(str(self.FORMULA_FIELD))
-        if self.PROCESS_MULTI_AS_SINGLE_POLYGONS:
-            dict_affected = multipolygons_to_singles(dict_affected)
 
         # Initiate a Aligner to reference thematic features to the actual borders
         actual_aligner = Aligner()
@@ -640,7 +648,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
         # self.OD_STRATEGY = OpenbaarDomeinStrategy[self.ENUM_OD_STRATEGY_OPTIONS[parameters[self.ENUM_OD_STRATEGY]]]
         # self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
-        self.PROCESS_MULTI_AS_SINGLE_POLYGONS = parameters["PROCESS_MULTI_AS_SINGLE_POLYGONS"]
         self.FORMULA_FIELD = parameters["FORMULA_FIELD"]
         # self.SUFFIX = "_" + str(self.RELEVANT_DISTANCE) + "_OD_" + str(self.OD_STRATEGY.name)
         # self.LAYER_RELEVANT_INTERSECTION = (
