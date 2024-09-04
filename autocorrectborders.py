@@ -413,7 +413,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # styling
         # vl.setOpacity(0.5)
 
-        if symbol is not None:
+        if symbol is not None and vl.renderer() is not None:
             vl.renderer().setSymbol(symbol)
 
         # adding layer to TOC
