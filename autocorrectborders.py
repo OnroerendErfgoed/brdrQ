@@ -59,7 +59,6 @@ from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QDateTime
 from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtGui import QColor
 from qgis.core import QgsCoordinateReferenceSystem
 from qgis.core import QgsGeometry
 from qgis.core import QgsProcessing
@@ -176,6 +175,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     OUTPUT_RESULT_DIFF_MIN = "OUTPUT_RESULT_DIFF_MIN"
 
     GROUP_LAYER = "BRDRQ"
+    GROUP_LAYER_ACTUAL = "BRDRQ_ACTUAL"
 
     LAYER_RESULT = "brdrQ_RESULT"
     LAYER_RESULT_DIFF = "brdrQ_DIFF"
@@ -391,7 +391,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             return QgsSingleSymbolRenderer(fill_symbol.clone()).clone()
         return None
 
-    def geojson_to_layer(self, name, geojson, renderer, visible):
+    def geojson_to_layer(self, name, geojson, symbol, visible, group):
         """
         Add a geojson to a QGIS-layer to add it to the TOC
         """
@@ -413,8 +413,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # styling
         # vl.setOpacity(0.5)
 
-        if renderer is not None:
-            vl.setRenderer(renderer)
+        if symbol is not None:
+            vl.renderer().setSymbol(symbol)
 
         # adding layer to TOC
         qinst.addMapLayer(
@@ -428,7 +428,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             new_state = Qt.Checked if visible else Qt.Unchecked
             node.setItemVisibilityChecked(new_state)
 
-        self.move_to_group(vl, self.GROUP_LAYER)
+        self.move_to_group(vl, group)
         vl.triggerRepaint()
         iface.layerTreeView().refreshLayerSymbology(vl.id())
         return vl
@@ -678,6 +678,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         feedback.pushInfo("Load thematic data")
         aligner.load_thematic_data(DictLoader(dict_thematic))
+        aligner.name_thematic_id = self.ID_THEME_FIELDNAME
 
         feedback.pushInfo("Load reference data")
         if self.SELECTED_REFERENCE == 0:
@@ -720,24 +721,34 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         # MAKE TEMPORARY LAYERS
         if self.SELECTED_REFERENCE != 0:
-            self.geojson_to_layer(self.LAYER_REFERENCE, aligner.get_reference_as_geojson(), self.get_renderer(
-                QgsFillSymbol([QgsSimpleLineSymbolLayer.create(
-                    {'line_style': 'dash', 'color': QColor(60, 60, 60), 'line_width': '0.2'})])), True)
+            self.geojson_to_layer(self.LAYER_REFERENCE, aligner.get_reference_as_geojson(),
+                                  # self.get_renderer(
+                                  # QgsFillSymbol([QgsSimpleLineSymbolLayer.create({'line_style': 'dash', 'color': QColor(60, 60, 60), 'line_width': '0.2'}).clone()])),
+                                  QgsStyle.defaultStyle().symbol("simple  white"),
+                                  True, self.GROUP_LAYER)
 
         if self.SHOW_INTERMEDIATE_LAYERS:
             self.geojson_to_layer(self.LAYER_RELEVANT_INTERSECTION, fcs["result_relevant_intersection"],
-                                  self.get_renderer("simple green fill"), False)
+                                  QgsStyle.defaultStyle().symbol("simple green fill"),
+                                  False, self.GROUP_LAYER)
             self.geojson_to_layer(self.LAYER_RELEVANT_DIFFERENCE, fcs["result_relevant_diff"],
-                                  self.get_renderer("simple red fill"), False)
+                                  QgsStyle.defaultStyle().symbol("simple red fill"),
+                                  False, self.GROUP_LAYER)
 
-        self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"], self.get_renderer("hashed black X"), False)
+        self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"],
+                              QgsStyle.defaultStyle().symbol("hashed black X"),
+                              False, self.GROUP_LAYER)
         self.geojson_to_layer(self.LAYER_RESULT_DIFF_PLUS, fcs["result_diff_plus"],
-                              self.get_renderer("hashed cgreen /"), False)
-        self.geojson_to_layer(self.LAYER_RESULT_DIFF_MIN, fcs["result_diff_min"], self.get_renderer("hashed cred /"),
-                              False)
-        self.geojson_to_layer(self.LAYER_RESULT, fcs["result"], self.get_renderer(QgsFillSymbol(
-            [QgsSimpleLineSymbolLayer.create({'line_style': 'dash', 'color': QColor(0, 255, 0), 'line_width': '1'})])),
-                              True)
+                              QgsStyle.defaultStyle().symbol("hashed cgreen /"),
+                              False, self.GROUP_LAYER)
+        self.geojson_to_layer(self.LAYER_RESULT_DIFF_MIN, fcs["result_diff_min"],
+                              QgsStyle.defaultStyle().symbol("hashed cred /"),
+                              False, self.GROUP_LAYER)
+        self.geojson_to_layer(self.LAYER_RESULT, fcs["result"],
+                              # self.get_renderer(QgsFillSymbol(
+                              # [QgsSimpleLineSymbolLayer.create({'line_style': 'dash', 'color': QColor(0, 255, 0), 'line_width': '1'}).clone()])),
+                              QgsStyle.defaultStyle().symbol("outline green"),
+                              True, self.GROUP_LAYER)
 
         self.RESULT = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
         self.RESULT_DIFF = QgsProject.instance().mapLayersByName(
@@ -942,6 +953,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.LAYER_RESULT_DIFF_PLUS = self.LAYER_RESULT_DIFF_PLUS + self.SUFFIX
         self.LAYER_RESULT_DIFF_MIN = self.LAYER_RESULT_DIFF_MIN + self.SUFFIX
         self.GROUP_LAYER = self.GROUP_LAYER + self.SUFFIX
+        self.GROUP_LAYER_ACTUAL = self.GROUP_LAYER_ACTUAL + self.SUFFIX
         ref = self.ENUM_REFERENCE_OPTIONS[parameters[self.ENUM_REFERENCE]]
         if ref in self.GRB_TYPES:
             self.SELECTED_REFERENCE = GRBType[ref]
@@ -963,10 +975,17 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         for feature in featurecollection["features"]:
             if feedback.isCanceled():
                 return {}
-            feedback.pushInfo(str(self.ID_THEME))
-            feedback.pushInfo(str(self.ID_THEME_FIELDNAME))
+            feedback.pushInfo("ID_THEME: " + str(self.ID_THEME))
+            feedback.pushInfo("ID_THEME_FIELDNAME: " + str(self.ID_THEME_FIELDNAME))
+            feedback.pushInfo("properties: " + str(feature["properties"]))
+            feature["properties"]
             id_theme = feature["properties"][self.ID_THEME_FIELDNAME]
-            dict_thematic[id_theme] = shape(feature["geometry"])
+            try:
+                geom = shape(feature["geometry"])
+            except:
+                geom = Polygon()
+
+            dict_thematic[id_theme] = geom
             try:
                 dict_thematic_formula[id_theme] = json.loads(feature["properties"][self.FORMULA_FIELD])
             except:
@@ -995,6 +1014,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         base_aligner_result = Aligner()
         base_aligner_result.load_thematic_data(DictLoader(thematic_dict_result))
+        base_aligner_result.name_thematic_id = self.ID_THEME_FIELDNAME
 
         dict_affected, dict_unchanged = get_geoms_affected_by_grb_change(
             base_aligner_result,
@@ -1030,14 +1050,15 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             series_prop_dict=prop_dictionary,
         )
 
-        # fcs = actual_aligner.get_predictions_as_geojson(formula=self.FORMULA)
-
         # Add RESULT TO TOC
-        self.geojson_to_layer(self.LAYER_RESULT_ACTUAL, fcs["result"], self.get_renderer(QgsFillSymbol(
-            [QgsSimpleLineSymbolLayer.create({'line_style': 'dash', 'color': QColor(0, 255, 0), 'line_width': '1'})])),
-                              True)
-        self.geojson_to_layer(self.LAYER_RESULT_ACTUAL_DIFF, fcs["result_diff"], self.get_renderer("hashed black X"),
-                              False)
+        self.geojson_to_layer(self.LAYER_RESULT_ACTUAL, fcs["result"],
+                              # self.get_renderer(QgsFillSymbol(
+                              # [QgsSimpleLineSymbolLayer.create({'line_style': 'dash', 'color': QColor(0, 255, 0), 'line_width': '1'}).clone()])),
+                              QgsStyle.defaultStyle().symbol("outline green"),
+                              True, self.GROUP_LAYER_ACTUAL)
+        self.geojson_to_layer(self.LAYER_RESULT_ACTUAL_DIFF, fcs["result_diff"],
+                              QgsStyle.defaultStyle().symbol("hashed black X"),
+                              False, self.GROUP_LAYER_ACTUAL)
         feedback.pushInfo("Resulterende geometrie berekend")
         if feedback.isCanceled():
             return {}
