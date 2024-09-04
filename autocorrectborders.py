@@ -57,6 +57,7 @@ import sys
 import numpy as np
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtCore import QDateTime
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.core import QgsCoordinateReferenceSystem
@@ -105,6 +106,7 @@ try:
         to_wkt,
         unary_union
     )
+    from shapely.geometry import shape
 except (ModuleNotFoundError):
     print("Module shapely not found. Installing from PyPi.")
     subprocess.check_call([python_exe,
@@ -115,6 +117,7 @@ except (ModuleNotFoundError):
         to_wkt,
         unary_union
     )
+    from shapely.geometry import shape
 
 try:
     import brdr
@@ -131,9 +134,9 @@ except (ModuleNotFoundError, ValueError):
 
 from brdr.aligner import Aligner
 from brdr.loader import DictLoader
-from brdr.enums import OpenbaarDomeinStrategy
-from brdr.enums import GRBType
-from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader
+from brdr.enums import OpenbaarDomeinStrategy, GRBType
+from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader, get_geoms_affected_by_grb_change, evaluate
+from brdr.utils import get_series_geojson_dict
 
 
 class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -185,6 +188,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     SUFFIX = ""
     ID_THEME = "id_theme"
     ID_REFERENCE = "id_ref"
+    ID_THEME_FIELDNAME = ""  # field that holds the fieldname of the unique theme id
+    # TODO research inconsistency for ID_THEME and ID_THEME_FIELDNAME
     OVERLAY_FIELDS_PREFIX = ""
     OD_STRATEGY = 0
     THRESHOLD_OVERLAP_PERCENTAGE = 50
@@ -196,6 +201,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     CORR_DISTANCE = 0.01
     SHOW_INTERMEDIATE_LAYERS = True
     FORMULA = True
+    FORMULA_FIELD = "formula"
     MITRE_LIMIT = 10
     CRS = "EPSG:31370"
     QUAD_SEGS = 5
@@ -204,6 +210,15 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     MAX_REFERENCE_BUFFER = 10
     MAX_AREA_FOR_DOWNLOADING_REFERENCE = 1000000
     PREDICTIONS = False
+    UPDATE_TO_ACTUAL = False
+    # TODO: add parameter in UI for MAX_REFERENCE_FOR_ACTUALISATION
+    MAX_DISTANCE_FOR_ACTUALISATION = 3
+
+    LAYER_RESULT_ACTUAL = "brdrQ_RESULT_ACTUAL"
+    LAYER_RESULT_ACTUAL_DIFF = "brdrQ_RESULT_ACTUAL_DIFF"
+    START_DATE = "2022-01-01 00:00:00"
+    DATE_FORMAT = "yyyy-MM-dd hh:mm:ss"
+    FIELD_LAST_VERSION_DATE = "versiondate"
 
     def flags(self):
         return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
@@ -459,13 +474,14 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
+
         parameter = QgsProcessingParameterFeatureSource(
             self.INPUT_REFERENCE,
             self.tr("REFERENCE LAYER"),
             [QgsProcessing.TypeVectorAnyGeometry],
             # defaultValue=None
-            defaultValue=None
-            , optional=True
+            defaultValue=None,
+            optional=True
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
@@ -537,6 +553,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
+            "SHOW_INTERMEDIATE_LAYERS", "SHOW_INTERMEDIATE_LAYERS", defaultValue=True
+        )
+        parameter.setFlags(parameter.flags() |
+                           QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterBoolean(
             "PREDICTIONS", "GET_ALL_PREDICTIONS_FOR_RELEVANT_DISTANCE", defaultValue=False
         )
         parameter.setFlags(parameter.flags() |
@@ -544,7 +567,18 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
-            "SHOW_INTERMEDIATE_LAYERS", "SHOW_INTERMEDIATE_LAYERS", defaultValue=True
+            "UPDATE_TO_ACTUAL", "UPDATE_TO_ACTUAL_GRB_ADP_VERSION (adp-parcels only)", defaultValue=False
+        )
+        parameter.setFlags(parameter.flags() |
+                           QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterNumber(
+            "MAX_DISTANCE_FOR_ACTUALISATION",
+            "MAX_DISTANCE_FOR_ACTUALISATION (meter)",
+            type=QgsProcessingParameterNumber.Double,
+            defaultValue=2,
+            optional=True
         )
         parameter.setFlags(parameter.flags() |
                            QgsProcessingParameterDefinition.FlagAdvanced)
@@ -584,6 +618,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             if feedback.isCanceled():
                 return {}
             id_theme = feature.attribute(self.ID_THEME)
+            feedback.pushInfo(str(self.ID_THEME))
+            feedback.pushInfo(str(id_theme))
+
             dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature_geom)
         if self.SELECTED_REFERENCE != 0 and area > self.MAX_AREA_FOR_DOWNLOADING_REFERENCE:
             raise QgsProcessingException(
@@ -674,6 +711,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             fcs = aligner.get_predictions_as_geojson(formula=self.FORMULA)
 
         feedback.pushInfo("END PROCESSING")
+
+        if self.UPDATE_TO_ACTUAL:
+            self.update_to_actual_version(fcs["result"], feedback)
 
         # write results to output-layers
         feedback.pushInfo("WRITING RESULTS")
@@ -882,12 +922,16 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     def prepare_parameters(self, parameters):
         # PARAMETER PREPARATION
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
+        self.ID_THEME_FIELDNAME = str(parameters[self.ID_THEME])
+        # self.ID_REFERENCE = parameters["ID_REFERENCE"]
         self.BUFFER_DISTANCE = self.RELEVANT_DISTANCE / 2
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
         self.OD_STRATEGY = OpenbaarDomeinStrategy[self.ENUM_OD_STRATEGY_OPTIONS[parameters[self.ENUM_OD_STRATEGY]]]
         self.FORMULA = parameters["ADD_FORMULA"]
         self.PREDICTIONS = parameters["PREDICTIONS"]
         self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
+        self.UPDATE_TO_ACTUAL = parameters["UPDATE_TO_ACTUAL"]
+        self.MAX_DISTANCE_FOR_ACTUALISATION = parameters["MAX_DISTANCE_FOR_ACTUALISATION"]
         self.SUFFIX = "_" + str(self.RELEVANT_DISTANCE)  # + "_OD_" + str(self.OD_STRATEGY.name)
         if self.PREDICTIONS:
             self.SUFFIX = self.SUFFIX + "_PREDICTIONS"
@@ -906,3 +950,96 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         else:
             self.SELECTED_REFERENCE = 0
         self.LAYER_REFERENCE = self.SELECTED_REFERENCE
+
+    def update_to_actual_version(self, featurecollection, feedback):
+
+        feedback.pushInfo("START ACTUALISATION")
+
+        # Load featurecollection into a shapely_dict:
+        dict_thematic = {}
+        dict_thematic_formula = {}
+
+        last_version_date = QDateTime.currentDateTime()
+        for feature in featurecollection["features"]:
+            if feedback.isCanceled():
+                return {}
+            feedback.pushInfo(str(self.ID_THEME))
+            feedback.pushInfo(str(self.ID_THEME_FIELDNAME))
+            id_theme = feature["properties"][self.ID_THEME_FIELDNAME]
+            dict_thematic[id_theme] = shape(feature["geometry"])
+            try:
+                dict_thematic_formula[id_theme] = json.loads(feature["properties"][self.FORMULA_FIELD])
+            except:
+                raise Exception("Formula -attribute-field (json) can not be loaded")
+            try:
+                feedback.pushInfo(str(dict_thematic_formula[id_theme]))
+                if self.FIELD_LAST_VERSION_DATE in dict_thematic_formula[id_theme] and dict_thematic_formula[id_theme][
+                    self.FIELD_LAST_VERSION_DATE] is not None and dict_thematic_formula[id_theme][
+                    self.FIELD_LAST_VERSION_DATE] != "":
+                    str_lvd = dict_thematic_formula[id_theme][self.FIELD_LAST_VERSION_DATE]
+                    lvd = QDateTime.fromString(str_lvd + " 00:00:00", self.DATE_FORMAT)
+                    if lvd < last_version_date:
+                        last_version_date = lvd
+            except:
+                raise Exception("Problem with last version-date")
+
+        feedback.pushInfo("1) BEREKENING - Thematic layer fixed")
+        feedback.setCurrentStep(1)
+        if feedback.isCanceled():
+            return {}
+
+        datetime_start = last_version_date.toPyDateTime()
+
+        datetime_end = QDateTime.currentDateTime().toPyDateTime()
+        thematic_dict_result = dict(dict_thematic)
+
+        base_aligner_result = Aligner()
+        base_aligner_result.load_thematic_data(DictLoader(thematic_dict_result))
+
+        dict_affected, dict_unchanged = get_geoms_affected_by_grb_change(
+            base_aligner_result,
+            grb_type=GRBType.ADP,
+            date_start=datetime_start,
+            date_end=datetime_end,
+            one_by_one=False,
+        )
+        feedback.pushInfo("Number of possible affected OE-thematic during timespan: " + str(len(dict_affected)))
+        if len(dict_affected) == 0:
+            feedback.pushInfo("No change detected in referencelayer during timespan. Script is finished")
+            return {}
+        feedback.pushInfo(str(datetime_start))
+        feedback.pushInfo(str(self.FORMULA_FIELD))
+
+        # Initiate a Aligner to reference thematic features to the actual borders
+        actual_aligner = Aligner()
+        loader = DictLoader(dict_affected)
+        actual_aligner.load_thematic_data(loader)
+        loader = GRBActualLoader(grb_type=GRBType.ADP, partition=1000, aligner=actual_aligner)
+        actual_aligner.load_reference_data(loader)
+
+        series = np.arange(0, self.MAX_DISTANCE_FOR_ACTUALISATION * 100, 10, dtype=int) / 100
+        dict_series, dict_predicted, diffs_dict = actual_aligner.predictor(series)
+        dict_evaluated, prop_dictionary = evaluate(actual_aligner, dict_series, dict_predicted, dict_thematic_formula,
+                                                   threshold_area=5, threshold_percentage=1,
+                                                   dict_unchanged=dict_unchanged)
+
+        fcs = get_series_geojson_dict(
+            dict_evaluated,
+            crs=actual_aligner.CRS,
+            id_field=actual_aligner.name_thematic_id,
+            series_prop_dict=prop_dictionary,
+        )
+
+        # fcs = actual_aligner.get_predictions_as_geojson(formula=self.FORMULA)
+
+        # Add RESULT TO TOC
+        self.geojson_to_layer(self.LAYER_RESULT_ACTUAL, fcs["result"], self.get_renderer(QgsFillSymbol(
+            [QgsSimpleLineSymbolLayer.create({'line_style': 'dash', 'color': QColor(0, 255, 0), 'line_width': '1'})])),
+                              True)
+        self.geojson_to_layer(self.LAYER_RESULT_ACTUAL_DIFF, fcs["result_diff"], self.get_renderer("hashed black X"),
+                              False)
+        feedback.pushInfo("Resulterende geometrie berekend")
+        if feedback.isCanceled():
+            return {}
+
+        feedback.pushInfo("END ACTUALISATION")
