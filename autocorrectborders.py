@@ -54,6 +54,7 @@ import site
 import subprocess
 import sys
 
+import numpy as np
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import Qt
@@ -202,6 +203,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     DOWNLOAD_LIMIT = 10000
     MAX_REFERENCE_BUFFER = 10
     MAX_AREA_FOR_DOWNLOADING_REFERENCE = 1000000
+    PREDICTIONS = False
 
     def flags(self):
         return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
@@ -533,6 +535,14 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter.setFlags(parameter.flags() |
                            QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterBoolean(
+            "PREDICTIONS", "GET_ALL_PREDICTIONS_FOR_RELEVANT_DISTANCE", defaultValue=False
+        )
+        parameter.setFlags(parameter.flags() |
+                           QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter)
+
         parameter = QgsProcessingParameterBoolean(
             "SHOW_INTERMEDIATE_LAYERS", "SHOW_INTERMEDIATE_LAYERS", defaultValue=True
         )
@@ -643,13 +653,23 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 GRBActualLoader(grb_type=GRBType(self.SELECTED_REFERENCE.value), partition=1000, aligner=aligner))
 
         feedback.pushInfo("START PROCESSING")
-        if self.RELEVANT_DISTANCE >= 0:
+        feedback.pushInfo(
+            "calculation for relevant distance (m): " + str(self.RELEVANT_DISTANCE) + " - Predictions: " + str(
+                self.PREDICTIONS))
+        if self.RELEVANT_DISTANCE < 0:
+            raise QgsProcessingException(
+                "Please provide a RELEVANT DISTANCE >=0"
+            )
+        elif self.RELEVANT_DISTANCE >= 0 and not self.PREDICTIONS:
             process_result = aligner.process_dict_thematic(
                 self.RELEVANT_DISTANCE, self.OD_STRATEGY, self.THRESHOLD_OVERLAP_PERCENTAGE
             )
             fcs = aligner.get_results_as_geojson(formula=self.FORMULA)
         else:
             dict_series, dict_predicted, diffs = aligner.predictor(od_strategy=self.OD_STRATEGY,
+                                                                   relevant_distances=np.arange(0,
+                                                                                                self.RELEVANT_DISTANCE * 100,
+                                                                                                10, dtype=int) / 100,
                                                                    threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE)
             fcs = aligner.get_predictions_as_geojson(formula=self.FORMULA)
 
@@ -866,14 +886,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
         self.OD_STRATEGY = OpenbaarDomeinStrategy[self.ENUM_OD_STRATEGY_OPTIONS[parameters[self.ENUM_OD_STRATEGY]]]
         self.FORMULA = parameters["ADD_FORMULA"]
+        self.PREDICTIONS = parameters["PREDICTIONS"]
         self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
-        self.SUFFIX = "_" + str(self.RELEVANT_DISTANCE) + "_OD_" + str(self.OD_STRATEGY.name)
-        self.LAYER_RELEVANT_INTERSECTION = (
-                self.LAYER_RELEVANT_INTERSECTION + self.SUFFIX
-        )
-        self.LAYER_RELEVANT_DIFFERENCE = (
-                self.LAYER_RELEVANT_DIFFERENCE + self.SUFFIX
-        )
+        self.SUFFIX = "_" + str(self.RELEVANT_DISTANCE)  # + "_OD_" + str(self.OD_STRATEGY.name)
+        if self.PREDICTIONS:
+            self.SUFFIX = self.SUFFIX + "_PREDICTIONS"
+        self.LAYER_RELEVANT_INTERSECTION = self.LAYER_RELEVANT_INTERSECTION + self.SUFFIX
+        self.LAYER_RELEVANT_DIFFERENCE = self.LAYER_RELEVANT_DIFFERENCE + self.SUFFIX
         self.LAYER_RESULT = self.LAYER_RESULT + self.SUFFIX
         self.LAYER_RESULT_DIFF = self.LAYER_RESULT_DIFF + self.SUFFIX
         self.LAYER_RESULT_DIFF_PLUS = self.LAYER_RESULT_DIFF_PLUS + self.SUFFIX
