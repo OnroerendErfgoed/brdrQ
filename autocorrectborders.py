@@ -731,7 +731,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # MAKE TEMPORARY LAYERS
         if self.SELECTED_REFERENCE != 0:
             self.geojson_to_layer(self.LAYER_REFERENCE, aligner.get_reference_as_geojson(),
-                                  QgsStyle.defaultStyle().symbol("simple  white"),
+                                  QgsStyle.defaultStyle().symbol("outline black"),
                                   True, self.GROUP_LAYER)
 
         if self.SHOW_INTERMEDIATE_LAYERS:
@@ -1015,8 +1015,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         datetime_end = QDateTime.currentDateTime().toPyDateTime()
         thematic_dict_result = dict(dict_thematic)
-
-        base_aligner_result = Aligner()
+        if self.SHOW_LOG_INFO:
+            log_info = feedback
+        else:
+            log_info = None
+        base_aligner_result = Aligner(feedback=log_info)
         base_aligner_result.load_thematic_data(DictLoader(thematic_dict_result))
         base_aligner_result.name_thematic_id = self.ID_THEME_FIELDNAME
 
@@ -1035,7 +1038,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # feedback.pushInfo(str(self.FORMULA_FIELD))
 
         # Initiate a Aligner to reference thematic features to the actual borders
-        actual_aligner = Aligner()
+        if self.SHOW_LOG_INFO:
+            log_info = feedback
+        else:
+            log_info = None
+        actual_aligner = Aligner(feedback=log_info)
         loader = DictLoader(dict_affected)
         actual_aligner.load_thematic_data(loader)
         loader = GRBActualLoader(grb_type=GRBType.ADP, partition=1000, aligner=actual_aligner)
