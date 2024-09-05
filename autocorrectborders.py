@@ -660,14 +660,16 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             return {}
 
         # Aligner IMPLEMENTATION
-        aligner = Aligner(
-            relevant_distance=self.RELEVANT_DISTANCE,
-            threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
-        )
+        if self.SHOW_LOG_INFO:
+            log_info = feedback
+        else:
+            log_info = None
+        aligner = Aligner(feedback=log_info,
+                          relevant_distance=self.RELEVANT_DISTANCE,
+                          threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
+                          )
 
         # set parameters
-        if self.SHOW_LOG_INFO:
-            aligner.feedback = feedback
         aligner.relevant_distance = self.RELEVANT_DISTANCE
         aligner.od_strategy = self.OD_STRATEGY
         aligner.THRESHOLD_CIRCLE_RATIO = self.THRESHOLD_CIRCLE_RATIO
