@@ -219,7 +219,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     LAYER_RESULT_ACTUAL_DIFF = "brdrQ_RESULT_ACTUAL_DIFF"
     START_DATE = "2022-01-01 00:00:00"
     DATE_FORMAT = "yyyy-MM-dd hh:mm:ss"
-    FIELD_LAST_VERSION_DATE = "versiondate"
+    # FIELD_LAST_VERSION_DATE = "versiondate"
+    FIELD_LAST_VERSION_DATE = "last_version_date"
 
     def flags(self):
         return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
@@ -981,19 +982,20 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         for feature in featurecollection["features"]:
             if feedback.isCanceled():
                 return {}
-            # feedback.pushInfo("ID_THEME: " + str(self.ID_THEME))
-            # feedback.pushInfo("ID_THEME_FIELDNAME: " + str(self.ID_THEME_FIELDNAME))
-            # feedback.pushInfo("properties: " + str(feature["properties"]))
-            feature["properties"]
+
             id_theme = feature["properties"][self.ID_THEME_FIELDNAME]
+            # feedback.pushInfo ("idtheme" + id_theme)
             try:
                 geom = shape(feature["geometry"])
             except:
                 geom = Polygon()
 
+            # feedback.pushInfo ("geomwkt" + geom.wkt)
             dict_thematic[id_theme] = geom
             try:
                 dict_thematic_formula[id_theme] = json.loads(feature["properties"][self.FORMULA_FIELD])
+                # feedback.pushInfo ("formula" +str(dict_thematic_formula[id_theme]))
+
             except:
                 raise Exception("Formula -attribute-field (json) can not be loaded")
             try:
@@ -1043,10 +1045,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         else:
             log_info = None
         actual_aligner = Aligner(feedback=log_info)
-        loader = DictLoader(dict_affected)
-        actual_aligner.load_thematic_data(loader)
-        loader = GRBActualLoader(grb_type=GRBType.ADP, partition=1000, aligner=actual_aligner)
-        actual_aligner.load_reference_data(loader)
+        actual_aligner.load_thematic_data(DictLoader(dict_affected))
+        actual_aligner.load_reference_data(
+            GRBActualLoader(grb_type=GRBType.ADP, partition=1000, aligner=actual_aligner))
 
         series = np.arange(0, self.MAX_DISTANCE_FOR_ACTUALISATION * 100, 10, dtype=int) / 100
         dict_series, dict_predicted, diffs_dict = actual_aligner.predictor(series)
