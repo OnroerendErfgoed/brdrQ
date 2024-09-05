@@ -40,7 +40,6 @@ from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QDateTime
 from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtGui import QColor
 from qgis.core import QgsCoordinateReferenceSystem
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
@@ -140,6 +139,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     START_DATE = "2022-01-01 00:00:00"
     DATE_FORMAT = "yyyy-MM-dd hh:mm:ss"
     FIELD_LAST_VERSION_DATE = "versiondate"
+    SHOW_LOG_INFO = False
 
     FORMULA = True
 
@@ -306,7 +306,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             return QgsSingleSymbolRenderer(fill_symbol.clone()).clone()
         return None
 
-    def geojson_to_layer(self, name, geojson, renderer, visible):
+    def geojson_to_layer(self, name, geojson, symbol, visible, group):
         """
         Add a geojson to a QGIS-layer to add it to the TOC
         """
@@ -321,14 +321,15 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         fcString = json.dumps(geojson)
 
         vl = QgsVectorLayer(fcString, name, "ogr")
+        print(vl)
         vl.setCrs(QgsCoordinateReferenceSystem(self.CRS))
         pr = vl.dataProvider()
         vl.updateFields()
         # styling
         # vl.setOpacity(0.5)
 
-        if renderer is not None:
-            vl.setRenderer(renderer)
+        if symbol is not None and vl.renderer() is not None:
+            vl.renderer().setSymbol(symbol)
 
         # adding layer to TOC
         qinst.addMapLayer(
@@ -342,7 +343,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             new_state = Qt.Checked if visible else Qt.Unchecked
             node.setItemVisibilityChecked(new_state)
 
-        self.move_to_group(vl, self.GROUP_LAYER)
+        self.move_to_group(vl, group)
         vl.triggerRepaint()
         iface.layerTreeView().refreshLayerSymbology(vl.id())
         return vl
@@ -479,19 +480,11 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         if feedback.isCanceled():
             return {}
 
-        # datetime_start = self.parameterAsDateTime(
-        #    parameters,
-        #    self.START_DATE,
-        #    context
-        # )
-        # datetime_start=datetime_start.toPyDateTime()
         datetime_start = last_version_date.toPyDateTime()
 
         datetime_end = QDateTime.currentDateTime().toPyDateTime()
         thematic_dict_result = dict(dict_thematic)
-        # for key in base_process_result:
-        #    thematic_dict_result[key] = base_process_result[key]["result"]
-        #    thematic_dict_formula[key] = base_aligner.get_formula(thematic_dict_result[key])
+
         base_aligner_result = Aligner()
         base_aligner_result.load_thematic_data(DictLoader(thematic_dict_result))
 
@@ -533,11 +526,12 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # fcs = actual_aligner.get_predictions_as_geojson(formula=self.FORMULA)
 
         # Add RESULT TO TOC
-        self.geojson_to_layer(self.LAYER_RESULT, fcs["result"], self.get_renderer(QgsFillSymbol(
-            [QgsSimpleLineSymbolLayer.create({'line_style': 'dash', 'color': QColor(0, 255, 0), 'line_width': '1'})])),
-                              True)
-        self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"], self.get_renderer("hashed black X"),
-                              False)
+        self.geojson_to_layer(self.LAYER_RESULT, fcs["result"],
+                              QgsStyle.defaultStyle().symbol("outline blue"),
+                              True, self.GROUP_LAYER)
+        self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"],
+                              QgsStyle.defaultStyle().symbol("hashed black cblue /"),
+                              False, self.GROUP_LAYER)
 
         self.RESULT = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
 
@@ -635,27 +629,4 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         return thematic, thematic_buffered
 
     def prepare_parameters(self, parameters):
-        # PARAMETER PREPARATION
-        # self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
-        # self.BUFFER_DISTANCE = self.RELEVANT_DISTANCE / 2
-        # self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
-        # self.OD_STRATEGY = OpenbaarDomeinStrategy[self.ENUM_OD_STRATEGY_OPTIONS[parameters[self.ENUM_OD_STRATEGY]]]
-        # self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
         self.FORMULA_FIELD = parameters["FORMULA_FIELD"]
-        # self.SUFFIX = "_" + str(self.RELEVANT_DISTANCE) + "_OD_" + str(self.OD_STRATEGY.name)
-        # self.LAYER_RELEVANT_INTERSECTION = (
-        #         self.LAYER_RELEVANT_INTERSECTION + self.SUFFIX
-        # )
-        # self.LAYER_RELEVANT_DIFFERENCE = (
-        #         self.LAYER_RELEVANT_DIFFERENCE + self.SUFFIX
-        # )
-        # self.LAYER_RESULT = self.LAYER_RESULT + self.SUFFIX
-        # self.LAYER_RESULT_DIFF = self.LAYER_RESULT_DIFF + self.SUFFIX
-        # self.LAYER_RESULT_DIFF_PLUS = self.LAYER_RESULT_DIFF_PLUS + self.SUFFIX
-        # self.LAYER_RESULT_DIFF_MIN = self.LAYER_RESULT_DIFF_MIN + self.SUFFIX
-        # ref = self.ENUM_REFERENCE_OPTIONS[parameters[self.ENUM_REFERENCE]]
-        # if ref in self.GRB_TYPES:
-        #     self.SELECTED_REFERENCE = GRBType[ref]
-        # else:
-        #     self.SELECTED_REFERENCE = 0
-        # self.LAYER_REFERENCE = self.SELECTED_REFERENCE
