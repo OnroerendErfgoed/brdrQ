@@ -211,6 +211,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     MAX_AREA_FOR_DOWNLOADING_REFERENCE = 1000000
     PREDICTIONS = False
     UPDATE_TO_ACTUAL = False
+    SHOW_LOG_INFO = False
     # TODO: add parameter in UI for MAX_REFERENCE_FOR_ACTUALISATION
     MAX_DISTANCE_FOR_ACTUALISATION = 3
 
@@ -413,7 +414,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # styling
         # vl.setOpacity(0.5)
 
-        if symbol is not None:
+        if symbol is not None and vl.renderer() is not None:
             vl.renderer().setSymbol(symbol)
 
         # adding layer to TOC
@@ -479,7 +480,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.INPUT_REFERENCE,
             self.tr("REFERENCE LAYER"),
             [QgsProcessing.TypeVectorAnyGeometry],
-            # defaultValue=None
             defaultValue=None,
             optional=True
         )
@@ -584,6 +584,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                            QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(parameter)
 
+        parameter = QgsProcessingParameterBoolean(
+            "SHOW_LOG_INFO", "SHOW_LOG_INFO (brdr-log)", defaultValue=False
+        )
+        parameter.setFlags(parameter.flags() |
+                           QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter)
+
     def processAlgorithm(self, parameters, context, feedback):
         """
         Here is where the processing itself takes place.
@@ -618,8 +625,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             if feedback.isCanceled():
                 return {}
             id_theme = feature.attribute(self.ID_THEME)
-            feedback.pushInfo(str(self.ID_THEME))
-            feedback.pushInfo(str(id_theme))
+            # feedback.pushInfo(str(self.ID_THEME))
+            # feedback.pushInfo(str(id_theme))
 
             dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature_geom)
         if self.SELECTED_REFERENCE != 0 and area > self.MAX_AREA_FOR_DOWNLOADING_REFERENCE:
@@ -654,13 +661,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         # Aligner IMPLEMENTATION
         aligner = Aligner(
-            feedback=feedback,
             relevant_distance=self.RELEVANT_DISTANCE,
             threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
         )
 
         # set parameters
-        aligner.feedback = feedback
+        if self.SHOW_LOG_INFO:
+            aligner.feedback = feedback
         aligner.relevant_distance = self.RELEVANT_DISTANCE
         aligner.od_strategy = self.OD_STRATEGY
         aligner.THRESHOLD_CIRCLE_RATIO = self.THRESHOLD_CIRCLE_RATIO
@@ -722,8 +729,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # MAKE TEMPORARY LAYERS
         if self.SELECTED_REFERENCE != 0:
             self.geojson_to_layer(self.LAYER_REFERENCE, aligner.get_reference_as_geojson(),
-                                  # self.get_renderer(
-                                  # QgsFillSymbol([QgsSimpleLineSymbolLayer.create({'line_style': 'dash', 'color': QColor(60, 60, 60), 'line_width': '0.2'}).clone()])),
                                   QgsStyle.defaultStyle().symbol("simple  white"),
                                   True, self.GROUP_LAYER)
 
@@ -745,8 +750,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                               QgsStyle.defaultStyle().symbol("hashed cred /"),
                               False, self.GROUP_LAYER)
         self.geojson_to_layer(self.LAYER_RESULT, fcs["result"],
-                              # self.get_renderer(QgsFillSymbol(
-                              # [QgsSimpleLineSymbolLayer.create({'line_style': 'dash', 'color': QColor(0, 255, 0), 'line_width': '1'}).clone()])),
                               QgsStyle.defaultStyle().symbol("outline green"),
                               True, self.GROUP_LAYER)
 
@@ -942,6 +945,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.PREDICTIONS = parameters["PREDICTIONS"]
         self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
         self.UPDATE_TO_ACTUAL = parameters["UPDATE_TO_ACTUAL"]
+        self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
         self.MAX_DISTANCE_FOR_ACTUALISATION = parameters["MAX_DISTANCE_FOR_ACTUALISATION"]
         self.SUFFIX = "_" + str(self.RELEVANT_DISTANCE)  # + "_OD_" + str(self.OD_STRATEGY.name)
         if self.PREDICTIONS:
@@ -975,9 +979,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         for feature in featurecollection["features"]:
             if feedback.isCanceled():
                 return {}
-            feedback.pushInfo("ID_THEME: " + str(self.ID_THEME))
-            feedback.pushInfo("ID_THEME_FIELDNAME: " + str(self.ID_THEME_FIELDNAME))
-            feedback.pushInfo("properties: " + str(feature["properties"]))
+            # feedback.pushInfo("ID_THEME: " + str(self.ID_THEME))
+            # feedback.pushInfo("ID_THEME_FIELDNAME: " + str(self.ID_THEME_FIELDNAME))
+            # feedback.pushInfo("properties: " + str(feature["properties"]))
             feature["properties"]
             id_theme = feature["properties"][self.ID_THEME_FIELDNAME]
             try:
@@ -991,7 +995,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             except:
                 raise Exception("Formula -attribute-field (json) can not be loaded")
             try:
-                feedback.pushInfo(str(dict_thematic_formula[id_theme]))
+                # feedback.pushInfo(str(dict_thematic_formula[id_theme]))
                 if self.FIELD_LAST_VERSION_DATE in dict_thematic_formula[id_theme] and dict_thematic_formula[id_theme][
                     self.FIELD_LAST_VERSION_DATE] is not None and dict_thematic_formula[id_theme][
                     self.FIELD_LAST_VERSION_DATE] != "":
@@ -1002,8 +1006,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             except:
                 raise Exception("Problem with last version-date")
 
-        feedback.pushInfo("1) BEREKENING - Thematic layer fixed")
-        feedback.setCurrentStep(1)
         if feedback.isCanceled():
             return {}
 
@@ -1027,8 +1029,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         if len(dict_affected) == 0:
             feedback.pushInfo("No change detected in referencelayer during timespan. Script is finished")
             return {}
-        feedback.pushInfo(str(datetime_start))
-        feedback.pushInfo(str(self.FORMULA_FIELD))
+        # feedback.pushInfo(str(datetime_start))
+        # feedback.pushInfo(str(self.FORMULA_FIELD))
 
         # Initiate a Aligner to reference thematic features to the actual borders
         actual_aligner = Aligner()
@@ -1052,12 +1054,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         # Add RESULT TO TOC
         self.geojson_to_layer(self.LAYER_RESULT_ACTUAL, fcs["result"],
-                              # self.get_renderer(QgsFillSymbol(
-                              # [QgsSimpleLineSymbolLayer.create({'line_style': 'dash', 'color': QColor(0, 255, 0), 'line_width': '1'}).clone()])),
-                              QgsStyle.defaultStyle().symbol("outline green"),
+                              QgsStyle.defaultStyle().symbol("outline blue"),
                               True, self.GROUP_LAYER_ACTUAL)
         self.geojson_to_layer(self.LAYER_RESULT_ACTUAL_DIFF, fcs["result_diff"],
-                              QgsStyle.defaultStyle().symbol("hashed black X"),
+                              QgsStyle.defaultStyle().symbol("hashed clbue /"),
                               False, self.GROUP_LAYER_ACTUAL)
         feedback.pushInfo("Resulterende geometrie berekend")
         if feedback.isCanceled():
