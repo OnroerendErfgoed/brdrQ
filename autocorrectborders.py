@@ -1043,10 +1043,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         else:
             log_info = None
         actual_aligner = Aligner(feedback=log_info)
-        loader = DictLoader(dict_affected)
-        actual_aligner.load_thematic_data(loader)
-        loader = GRBActualLoader(grb_type=GRBType.ADP, partition=1000, aligner=actual_aligner)
-        actual_aligner.load_reference_data(loader)
+        actual_aligner.load_thematic_data(DictLoader(dict_affected))
+        actual_aligner.load_reference_data(
+            GRBActualLoader(grb_type=GRBType.ADP, partition=1000, aligner=actual_aligner))
 
         series = np.arange(0, self.MAX_DISTANCE_FOR_ACTUALISATION * 100, 10, dtype=int) / 100
         dict_series, dict_predicted, diffs_dict = actual_aligner.predictor(series)
