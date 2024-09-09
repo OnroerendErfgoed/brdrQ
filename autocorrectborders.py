@@ -174,18 +174,22 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     OUTPUT_RESULT_DIFF_PLUS = "OUTPUT_RESULT_DIFF_PLUS"
     OUTPUT_RESULT_DIFF_MIN = "OUTPUT_RESULT_DIFF_MIN"
 
-    GROUP_LAYER = "BRDRQ"
-    GROUP_LAYER_ACTUAL = "BRDRQ_ACTUAL"
-
-    LAYER_RESULT = "brdrQ_RESULT"
-    LAYER_RESULT_DIFF = "brdrQ_DIFF"
-    LAYER_RESULT_DIFF_PLUS = "brdrQ_DIFF_PLUS"
-    LAYER_RESULT_DIFF_MIN = "brdrQ_DIFF_MIN"
-    LAYER_RELEVANT_INTERSECTION = "brdrQ_RLVNT_ISECT"
-    LAYER_RELEVANT_DIFFERENCE = "brdrQ_RLVNT_DIFF"
-    LAYER_REFERENCE = "LAYER_REFERENCE"
-
+    # Layers
+    PREFIX = "brdrQ"
     SUFFIX = ""
+    GROUP_LAYER = PREFIX
+    GROUP_LAYER_ACTUAL = PREFIX + "_ACTUAL"
+    LAYER_RESULT = "RESULT"
+    LAYER_RESULT_DIFF = "DIFF"
+    LAYER_RESULT_DIFF_PLUS = "DIFF_PLUS"
+    LAYER_RESULT_DIFF_MIN = "DIFF_MIN"
+    LAYER_RELEVANT_INTERSECTION = "RLVNT_ISECT"
+    LAYER_RELEVANT_DIFFERENCE = "RLVNT_DIFF"
+    LAYER_REFERENCE = "LAYER_REFERENCE"
+    LAYER_RESULT_ACTUAL = "RESULT_ACTUAL"
+    LAYER_RESULT_ACTUAL_DIFF = "RESULT_ACTUAL_DIFF"
+    PREFIX_LOCAL_LAYER = "LOCREF"
+
     ID_THEME = "id_theme"
     ID_REFERENCE = "id_ref"
     ID_THEME_FIELDNAME = ""  # field that holds the fieldname of the unique theme id
@@ -214,9 +218,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     SHOW_LOG_INFO = False
     # TODO: add parameter in UI for MAX_REFERENCE_FOR_ACTUALISATION
     MAX_DISTANCE_FOR_ACTUALISATION = 3
-
-    LAYER_RESULT_ACTUAL = "brdrQ_RESULT_ACTUAL"
-    LAYER_RESULT_ACTUAL_DIFF = "brdrQ_RESULT_ACTUAL_DIFF"
     START_DATE = "2022-01-01 00:00:00"
     DATE_FORMAT = "yyyy-MM-dd hh:mm:ss"
     FIELD_LAST_VERSION_DATE = "versiondate"
@@ -407,7 +408,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         fcString = json.dumps(geojson)
 
         vl = QgsVectorLayer(fcString, name, "ogr")
-        print(vl)
         vl.setCrs(QgsCoordinateReferenceSystem(self.CRS))
         pr = vl.dataProvider()
         vl.updateFields()
@@ -691,7 +691,12 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         feedback.pushInfo("Load reference data")
         if self.SELECTED_REFERENCE == 0:
+            reference_loader = DictLoader(dict_reference)
+            # reference_loader.data_dict_source["source"] = "local_"
+            # reference_loader.data_dict_source["version_date"] = "unknown"
             aligner.load_reference_data(DictLoader(dict_reference))
+            aligner.dict_reference_source["source"] = self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE
+            aligner.dict_reference_source["version_date"] = "unknown"
         elif self.SELECTED_REFERENCE in self.ADPF_VERSIONS:
             year = self.SELECTED_REFERENCE.removeprefix("Adpf")
             aligner.load_reference_data(GRBFiscalParcelLoader(year=year, aligner=aligner, partition=1000))
@@ -736,10 +741,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         if self.SHOW_INTERMEDIATE_LAYERS:
             self.geojson_to_layer(self.LAYER_RELEVANT_INTERSECTION, fcs["result_relevant_intersection"],
-                                  QgsStyle.defaultStyle().symbol("simple green fill"),
+                                  QgsStyle.defaultStyle().symbol("gradient green fill"),
                                   False, self.GROUP_LAYER)
             self.geojson_to_layer(self.LAYER_RELEVANT_DIFFERENCE, fcs["result_relevant_diff"],
-                                  QgsStyle.defaultStyle().symbol("simple red fill"),
+                                  QgsStyle.defaultStyle().symbol("gradient red fill"),
                                   False, self.GROUP_LAYER)
 
         self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"],
@@ -949,7 +954,24 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.UPDATE_TO_ACTUAL = parameters["UPDATE_TO_ACTUAL"]
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
         self.MAX_DISTANCE_FOR_ACTUALISATION = parameters["MAX_DISTANCE_FOR_ACTUALISATION"]
-        self.SUFFIX = "_" + str(self.RELEVANT_DISTANCE)  # + "_OD_" + str(self.OD_STRATEGY.name)
+
+        ref = self.ENUM_REFERENCE_OPTIONS[parameters[self.ENUM_REFERENCE]]
+
+        if ref in self.GRB_TYPES:
+            self.SELECTED_REFERENCE = GRBType[ref]
+            self.LAYER_REFERENCE = GRBType[ref]
+            ref_suffix = str(ref)
+        elif ref in self.ADPF_VERSIONS:
+            self.SELECTED_REFERENCE = ref
+            self.LAYER_REFERENCE = ref
+            ref_suffix = str(ref)
+        else:
+            self.SELECTED_REFERENCE = 0
+            self.LAYER_REFERENCE = QgsProject.instance().layerTreeRoot().findLayer(
+                parameters[self.INPUT_REFERENCE]).name()
+            ref_suffix = self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE
+
+        self.SUFFIX = "_DIST_" + str(self.RELEVANT_DISTANCE) + "_" + ref_suffix  # + "_OD_" + str(self.OD_STRATEGY.name)
         if self.PREDICTIONS:
             self.SUFFIX = self.SUFFIX + "_PREDICTIONS"
         self.LAYER_RELEVANT_INTERSECTION = self.LAYER_RELEVANT_INTERSECTION + self.SUFFIX
@@ -960,14 +982,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.LAYER_RESULT_DIFF_MIN = self.LAYER_RESULT_DIFF_MIN + self.SUFFIX
         self.GROUP_LAYER = self.GROUP_LAYER + self.SUFFIX
         self.GROUP_LAYER_ACTUAL = self.GROUP_LAYER_ACTUAL + self.SUFFIX
-        ref = self.ENUM_REFERENCE_OPTIONS[parameters[self.ENUM_REFERENCE]]
-        if ref in self.GRB_TYPES:
-            self.SELECTED_REFERENCE = GRBType[ref]
-        elif ref in self.ADPF_VERSIONS:
-            self.SELECTED_REFERENCE = ref
-        else:
-            self.SELECTED_REFERENCE = 0
-        self.LAYER_REFERENCE = self.SELECTED_REFERENCE
 
     def update_to_actual_version(self, featurecollection, feedback):
 
