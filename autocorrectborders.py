@@ -103,7 +103,8 @@ try:
         Polygon,
         from_wkt,
         to_wkt,
-        unary_union
+        unary_union,
+        make_valid
     )
     from shapely.geometry import shape
 except (ModuleNotFoundError):
@@ -114,7 +115,8 @@ except (ModuleNotFoundError):
         Polygon,
         from_wkt,
         to_wkt,
-        unary_union
+        unary_union,
+        make_valid
     )
     from shapely.geometry import shape
 
@@ -212,7 +214,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     BUFFER_MULTIPLICATION_FACTOR = 1.01
     DOWNLOAD_LIMIT = 10000
     MAX_REFERENCE_BUFFER = 10
-    MAX_AREA_FOR_DOWNLOADING_REFERENCE = 1000000
+    MAX_AREA_FOR_DOWNLOADING_REFERENCE = 2500000
     PREDICTIONS = False
     UPDATE_TO_ACTUAL = False
     SHOW_LOG_INFO = False
@@ -287,7 +289,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         """
         Method to convert a Shapely-geometry to a QGIS geometry
         """
-        wkt = to_wkt(geom_shapely, rounding_precision=-1, output_dimension=2)
+        wkt = to_wkt(make_valid(geom_shapely), rounding_precision=-1, output_dimension=2)
         geom_qgis = QgsGeometry.fromWkt(wkt)
         return geom_qgis
 
@@ -297,7 +299,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         """
         wkt = geom_qgis.asWkt()
         geom_shapely = from_wkt(wkt)
-        return geom_shapely
+        return make_valid(geom_shapely)
 
     def get_layer_by_name(self, layer_name):
         """
@@ -619,10 +621,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # Load thematic into a shapely_dict:
         dict_thematic = {}
         features = thematic.getFeatures()
-        area = 0
         for current, feature in enumerate(features):
             feature_geom = feature.geometry()
-            area = area + feature_geom.area()
             if feedback.isCanceled():
                 return {}
             id_theme = feature.attribute(self.ID_THEME)
@@ -630,9 +630,15 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             # feedback.pushInfo(str(id_theme))
 
             dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature_geom)
+
+        area = make_valid(unary_union(list(dict_thematic.values()))).area
+        feedback.pushInfo("Area of thematic zone: " + str(area))
         if self.SELECTED_REFERENCE != 0 and area > self.MAX_AREA_FOR_DOWNLOADING_REFERENCE:
             raise QgsProcessingException(
-                "Please make use of a local REFERENCELAYER from the table of contents, instead of a on-the-fly download (for performance reasons)"
+                "Unioned area of thematic geometries bigger than threshold (" + str(
+                    self.MAX_AREA_FOR_DOWNLOADING_REFERENCE) + " m²) to use the on-the-fly downloads: " + str(
+                    area) + "(m²) " +
+                "Please make use of a local REFERENCELAYER (for performance reasons)"
             )
         feedback.pushInfo("1) BEREKENING - Thematic layer fixed")
         feedback.setCurrentStep(1)
