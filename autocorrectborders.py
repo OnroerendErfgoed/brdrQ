@@ -886,7 +886,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         if reference.sourceCrs().authid() != self.CRS:
             raise QgsProcessingException(
                 "Thematic layer and ReferenceLayer are in a different CRS. "
-                "Please provide them in the same CRS (EPSG:31370 or EPSG:3812)"
+                "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"
             )
         outputs[self.INPUT_REFERENCE + "_id"] = processing.run(
             "native:fieldcalculator",
