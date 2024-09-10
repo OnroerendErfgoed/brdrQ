@@ -403,11 +403,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         if geojson is None or "features" not in geojson or geojson["features"] is None:
             return geojson
         for f in geojson["features"]:
-            print(str(f))
-            print(f["geometry"])
-            print(str(f["geometry"]))
-            print(f["geometry"] is None)
-            print(f["geometry"] == 'null')
             if f["geometry"] is None:
                 continue
             if f["geometry"]["type"] == "Polygon":
