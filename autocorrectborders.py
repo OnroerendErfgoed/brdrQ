@@ -123,12 +123,12 @@ except (ModuleNotFoundError):
 try:
     import brdr
 
-    if brdr.__version__ != "0.2.0":
+    if brdr.__version__ != "0.2.1":
         raise ValueError("Version mismatch")
 
 except (ModuleNotFoundError, ValueError):
     subprocess.check_call([python_exe,
-                           '-m', 'pip', 'install', 'brdr==0.2.0'])
+                           '-m', 'pip', 'install', 'brdr==0.2.1'])
     import brdr
 
     print(brdr.__version__)
@@ -222,7 +222,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     MAX_DISTANCE_FOR_ACTUALISATION = 3
     START_DATE = "2022-01-01 00:00:00"
     DATE_FORMAT = "yyyy-MM-dd hh:mm:ss"
-    FIELD_LAST_VERSION_DATE = "versiondate"
+    # FIELD_LAST_VERSION_DATE = "versiondate"
+    FIELD_LAST_VERSION_DATE = "last_version_date"
 
     def flags(self):
         return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
@@ -1016,19 +1017,20 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         for feature in featurecollection["features"]:
             if feedback.isCanceled():
                 return {}
-            # feedback.pushInfo("ID_THEME: " + str(self.ID_THEME))
-            # feedback.pushInfo("ID_THEME_FIELDNAME: " + str(self.ID_THEME_FIELDNAME))
-            # feedback.pushInfo("properties: " + str(feature["properties"]))
-            feature["properties"]
+
             id_theme = feature["properties"][self.ID_THEME_FIELDNAME]
+            # feedback.pushInfo ("idtheme" + id_theme)
             try:
                 geom = shape(feature["geometry"])
             except:
                 geom = Polygon()
 
+            # feedback.pushInfo ("geomwkt" + geom.wkt)
             dict_thematic[id_theme] = geom
             try:
                 dict_thematic_formula[id_theme] = json.loads(feature["properties"][self.FORMULA_FIELD])
+                # feedback.pushInfo ("formula" +str(dict_thematic_formula[id_theme]))
+
             except:
                 raise Exception("Formula -attribute-field (json) can not be loaded")
             try:
