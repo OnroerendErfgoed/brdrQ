@@ -95,12 +95,12 @@ except (ModuleNotFoundError):
 try:
     import brdr
 
-    if brdr.__version__ != "0.2.0":
+    if brdr.__version__ != "0.2.1":
         raise ValueError("Version mismatch")
 
 except (ModuleNotFoundError, ValueError):
     subprocess.check_call([python_exe,
-                           '-m', 'pip', 'install', 'brdr==0.2.0'])
+                           '-m', 'pip', 'install', 'brdr==0.2.1'])
     import brdr
 
     print(brdr.__version__)
