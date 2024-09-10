@@ -138,7 +138,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     LAYER_RESULT_DIFF = "brdrQ_RESULT_DIFF"
     START_DATE = "2022-01-01 00:00:00"
     DATE_FORMAT = "yyyy-MM-dd hh:mm:ss"
-    FIELD_LAST_VERSION_DATE = "versiondate"
+    FIELD_LAST_VERSION_DATE = "last_version_date"
     SHOW_LOG_INFO = False
 
     FORMULA = True
