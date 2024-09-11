@@ -136,6 +136,7 @@ except (ModuleNotFoundError, ValueError):
 from brdr.aligner import Aligner
 from brdr.loader import DictLoader
 from brdr.enums import OpenbaarDomeinStrategy, GRBType
+from brdr.geometry_utils import geojson_polygon_to_multipolygon
 from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader, get_geoms_affected_by_grb_change, evaluate
 from brdr.utils import get_series_geojson_dict
 
@@ -396,21 +397,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             return QgsSingleSymbolRenderer(fill_symbol.clone()).clone()
         return None
 
-    def geojson_polygon_to_multipolygon(self, geojson):
-        """
-        Transforms a geojson: Checks if there are Polygon-features and transforms them into MultiPolygons, so all objects are of type 'MultiPolygon' (or null-geometry).
-        It is important that geometry-type is consitent (f.e. in QGIS) to show and style the geojson-layer
-        """
-        if geojson is None or "features" not in geojson or geojson["features"] is None:
-            return geojson
-        for f in geojson["features"]:
-            if f["geometry"] is None:
-                continue
-            if f["geometry"]["type"] == "Polygon":
-                f["geometry"] = {"type": "MultiPolygon",
-                                 "coordinates": [f["geometry"]["coordinates"]]}
-        return geojson
-
     def geojson_to_layer(self, name, geojson, symbol, visible, group):
         """
         Add a geojson to a QGIS-layer to add it to the TOC
@@ -423,7 +409,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             for lyr in lyrs:
                 root.removeLayer(lyr)
                 qinst.removeMapLayer(lyr.id())
-        fcString = json.dumps(self.geojson_polygon_to_multipolygon(geojson))
+        fcString = json.dumps(geojson_polygon_to_multipolygon(geojson))
 
         vl = QgsVectorLayer(fcString, name, "ogr")
         vl.setCrs(QgsCoordinateReferenceSystem(self.CRS))

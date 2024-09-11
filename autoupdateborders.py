@@ -109,6 +109,7 @@ except (ModuleNotFoundError, ValueError):
 from brdr.aligner import Aligner
 from brdr.loader import DictLoader
 from brdr.utils import get_series_geojson_dict
+from brdr.geometry_utils import geojson_polygon_to_multipolygon
 from brdr.enums import GRBType
 from brdr.grb import get_geoms_affected_by_grb_change, evaluate, GRBActualLoader
 
@@ -319,7 +320,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             for lyr in lyrs:
                 root.removeLayer(lyr)
                 qinst.removeMapLayer(lyr.id())
-        fcString = json.dumps(geojson)
+        fcString = json.dumps(geojson_polygon_to_multipolygon(geojson))
 
         vl = QgsVectorLayer(fcString, name, "ogr")
         print(vl)
