@@ -60,6 +60,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QDateTime
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsCoordinateReferenceSystem
+from qgis.core import QgsFeatureRequest
 from qgis.core import QgsGeometry
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
@@ -796,10 +797,22 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     def _thematic_preparation(self, context, feedback, outputs, parameters):
         # THEMATIC PREPARATION
+        context.setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck)
+        outputs[self.INPUT_THEMATIC + "_fixed"] = processing.run(
+            "native:fixgeometries",
+            {"INPUT": parameters[self.INPUT_THEMATIC], "METHOD": 1, "OUTPUT": QgsProcessing.TEMPORARY_OUTPUT},
+            context=context,
+            feedback=feedback,
+            is_child_algorithm=True,
+        )
+        thematic = context.getMapLayer(
+            outputs[self.INPUT_THEMATIC + "_fixed"]["OUTPUT"]
+        )
+
         outputs[self.INPUT_THEMATIC + "_id"] = processing.run(
             "native:fieldcalculator",
             {
-                "INPUT": parameters[self.INPUT_THEMATIC],
+                "INPUT": thematic,
                 "FIELD_NAME": self.ID_THEME,
                 "FIELD_TYPE": 2,
                 "FIELD_LENGTH": 0,
@@ -816,16 +829,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             thematic.sourceCrs().authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer
 
-        outputs[self.INPUT_THEMATIC + "_fixed"] = processing.run(
-            "native:fixgeometries",
-            {"INPUT": thematic, "METHOD": 1, "OUTPUT": QgsProcessing.TEMPORARY_OUTPUT},
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        thematic = context.getMapLayer(
-            outputs[self.INPUT_THEMATIC + "_fixed"]["OUTPUT"]
-        )
         outputs[self.INPUT_THEMATIC + "_enriched"] = processing.run(
             "qgis:exportaddgeometrycolumns",
             {"INPUT": thematic, "CALC_METHOD": 0, "OUTPUT": "TEMPORARY_OUTPUT"},
@@ -875,6 +878,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         return thematic, thematic_buffered
 
     def _reference_preparation(self, thematic_buffered, context, feedback, outputs, parameters):
+        context.setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck)
         outputs[self.INPUT_REFERENCE + "_extract"] = processing.run(
             "native:extractbylocation",
             {
@@ -895,6 +899,21 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 "Thematic layer and ReferenceLayer are in a different CRS. "
                 "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"
             )
+        outputs[self.INPUT_REFERENCE + "_fixed"] = processing.run(
+            "native:fixgeometries",
+            {
+                "INPUT": reference,
+                "METHOD": 1,
+                "OUTPUT": QgsProcessing.TEMPORARY_OUTPUT,
+            },
+            context=context,
+            feedback=feedback,
+            is_child_algorithm=True,
+        )
+        reference = context.getMapLayer(
+            outputs[self.INPUT_REFERENCE + "_fixed"]["OUTPUT"]
+        )
+
         outputs[self.INPUT_REFERENCE + "_id"] = processing.run(
             "native:fieldcalculator",
             {
@@ -912,20 +931,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         reference = context.getMapLayer(
             outputs[self.INPUT_REFERENCE + "_id"]["OUTPUT"]
-        )
-        outputs[self.INPUT_REFERENCE + "_fixed"] = processing.run(
-            "native:fixgeometries",
-            {
-                "INPUT": reference,
-                "METHOD": 1,
-                "OUTPUT": QgsProcessing.TEMPORARY_OUTPUT,
-            },
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        reference = context.getMapLayer(
-            outputs[self.INPUT_REFERENCE + "_fixed"]["OUTPUT"]
         )
         outputs[self.INPUT_REFERENCE + "_dropMZ"] = processing.run(
             "native:dropmzvalues",

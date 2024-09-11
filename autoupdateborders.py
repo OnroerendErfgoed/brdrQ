@@ -42,6 +42,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QDateTime
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsCoordinateReferenceSystem
+from qgis.core import QgsFeatureRequest
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
 from qgis.core import QgsProcessingException
@@ -552,10 +553,22 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     def _thematic_preparation(self, context, feedback, outputs, parameters):
         # THEMATIC PREPARATION
+        context.setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck)
+        outputs[self.INPUT_THEMATIC + "_fixed"] = processing.run(
+            "native:fixgeometries",
+            {"INPUT": parameters[self.INPUT_THEMATIC], "METHOD": 1, "OUTPUT": QgsProcessing.TEMPORARY_OUTPUT},
+            context=context,
+            feedback=feedback,
+            is_child_algorithm=True,
+        )
+        thematic = context.getMapLayer(
+            outputs[self.INPUT_THEMATIC + "_fixed"]["OUTPUT"]
+        )
+
         outputs[self.INPUT_THEMATIC + "_id"] = processing.run(
             "native:fieldcalculator",
             {
-                "INPUT": parameters[self.INPUT_THEMATIC],
+                "INPUT": thematic,
                 "FIELD_NAME": self.ID_THEME,
                 "FIELD_TYPE": 2,
                 "FIELD_LENGTH": 0,
