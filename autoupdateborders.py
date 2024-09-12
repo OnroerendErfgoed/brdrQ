@@ -81,7 +81,7 @@ try:
         Polygon,
         from_wkt,
         to_wkt,
-        unary_union
+        unary_union, make_valid
     )
 except (ModuleNotFoundError):
     print("Module shapely not found. Installing from PyPi.")
@@ -91,7 +91,7 @@ except (ModuleNotFoundError):
         Polygon,
         from_wkt,
         to_wkt,
-        unary_union
+        unary_union, make_valid
     )
 
 try:
@@ -210,9 +210,11 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         """
         Method to convert a QGIS-geometry to a Shapely-geometry
         """
+        if geom_qgis.isNull() or geom_qgis.isEmpty():
+            return None
         wkt = geom_qgis.asWkt()
         geom_shapely = from_wkt(wkt)
-        return geom_shapely
+        return make_valid(geom_shapely)
 
     def get_layer_by_name(self, layer_name):
         """
@@ -324,7 +326,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         fcString = json.dumps(geojson_polygon_to_multipolygon(geojson))
 
         vl = QgsVectorLayer(fcString, name, "ogr")
-        print(vl)
         vl.setCrs(QgsCoordinateReferenceSystem(self.CRS))
         pr = vl.dataProvider()
         vl.updateFields()
@@ -585,16 +586,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             thematic.sourceCrs().authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer
 
-        outputs[self.INPUT_THEMATIC + "_fixed"] = processing.run(
-            "native:fixgeometries",
-            {"INPUT": thematic, "METHOD": 1, "OUTPUT": QgsProcessing.TEMPORARY_OUTPUT},
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        thematic = context.getMapLayer(
-            outputs[self.INPUT_THEMATIC + "_fixed"]["OUTPUT"]
-        )
         outputs[self.INPUT_THEMATIC + "_enriched"] = processing.run(
             "qgis:exportaddgeometrycolumns",
             {"INPUT": thematic, "CALC_METHOD": 0, "OUTPUT": "TEMPORARY_OUTPUT"},

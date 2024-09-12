@@ -299,6 +299,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         """
         Method to convert a QGIS-geometry to a Shapely-geometry
         """
+        if geom_qgis.isNull() or geom_qgis.isEmpty():
+            return None
         wkt = geom_qgis.asWkt()
         geom_shapely = from_wkt(wkt)
         return make_valid(geom_shapely)
