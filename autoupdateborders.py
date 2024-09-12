@@ -42,6 +42,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QDateTime
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsCoordinateReferenceSystem
+from qgis.core import QgsFeatureRequest
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
 from qgis.core import QgsProcessingException
@@ -80,7 +81,7 @@ try:
         Polygon,
         from_wkt,
         to_wkt,
-        unary_union
+        unary_union, make_valid
     )
 except (ModuleNotFoundError):
     print("Module shapely not found. Installing from PyPi.")
@@ -90,7 +91,7 @@ except (ModuleNotFoundError):
         Polygon,
         from_wkt,
         to_wkt,
-        unary_union
+        unary_union, make_valid
     )
 
 try:
@@ -109,6 +110,7 @@ except (ModuleNotFoundError, ValueError):
 from brdr.aligner import Aligner
 from brdr.loader import DictLoader
 from brdr.utils import get_series_geojson_dict
+from brdr.geometry_utils import geojson_polygon_to_multipolygon
 from brdr.enums import GRBType
 from brdr.grb import get_geoms_affected_by_grb_change, evaluate, GRBActualLoader
 
@@ -208,9 +210,11 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         """
         Method to convert a QGIS-geometry to a Shapely-geometry
         """
+        if geom_qgis.isNull() or geom_qgis.isEmpty():
+            return None
         wkt = geom_qgis.asWkt()
         geom_shapely = from_wkt(wkt)
-        return geom_shapely
+        return make_valid(geom_shapely)
 
     def get_layer_by_name(self, layer_name):
         """
@@ -319,10 +323,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             for lyr in lyrs:
                 root.removeLayer(lyr)
                 qinst.removeMapLayer(lyr.id())
-        fcString = json.dumps(geojson)
+        fcString = json.dumps(geojson_polygon_to_multipolygon(geojson))
 
         vl = QgsVectorLayer(fcString, name, "ogr")
-        print(vl)
         vl.setCrs(QgsCoordinateReferenceSystem(self.CRS))
         pr = vl.dataProvider()
         vl.updateFields()
@@ -551,10 +554,22 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     def _thematic_preparation(self, context, feedback, outputs, parameters):
         # THEMATIC PREPARATION
+        context.setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck)
+        outputs[self.INPUT_THEMATIC + "_fixed"] = processing.run(
+            "native:fixgeometries",
+            {"INPUT": parameters[self.INPUT_THEMATIC], "METHOD": 1, "OUTPUT": QgsProcessing.TEMPORARY_OUTPUT},
+            context=context,
+            feedback=feedback,
+            is_child_algorithm=True,
+        )
+        thematic = context.getMapLayer(
+            outputs[self.INPUT_THEMATIC + "_fixed"]["OUTPUT"]
+        )
+
         outputs[self.INPUT_THEMATIC + "_id"] = processing.run(
             "native:fieldcalculator",
             {
-                "INPUT": parameters[self.INPUT_THEMATIC],
+                "INPUT": thematic,
                 "FIELD_NAME": self.ID_THEME,
                 "FIELD_TYPE": 2,
                 "FIELD_LENGTH": 0,
@@ -571,16 +586,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             thematic.sourceCrs().authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer
 
-        outputs[self.INPUT_THEMATIC + "_fixed"] = processing.run(
-            "native:fixgeometries",
-            {"INPUT": thematic, "METHOD": 1, "OUTPUT": QgsProcessing.TEMPORARY_OUTPUT},
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        thematic = context.getMapLayer(
-            outputs[self.INPUT_THEMATIC + "_fixed"]["OUTPUT"]
-        )
         outputs[self.INPUT_THEMATIC + "_enriched"] = processing.run(
             "qgis:exportaddgeometrycolumns",
             {"INPUT": thematic, "CALC_METHOD": 0, "OUTPUT": "TEMPORARY_OUTPUT"},
