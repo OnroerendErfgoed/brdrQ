@@ -487,7 +487,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.INPUT_REFERENCE,
             self.tr("REFERENCE LAYER"),
             [QgsProcessing.TypeVectorAnyGeometry],
-            defaultValue="reference",
+            # defaultValue="reference",
             optional=True
         )
         parameter.setFlags(parameter.flags())
@@ -609,12 +609,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         outputs = {}
 
         self.prepare_parameters(parameters)
-
-        if self.SELECTED_REFERENCE == 0 and (
-                parameters[self.INPUT_REFERENCE] is None or str(parameters[self.ID_REFERENCE]) == 'NULL'):
-            raise QgsProcessingException(
-                "Please choose a REFERENCELAYER from the table of contents, and the associated unique REFERENCE ID"
-            )
 
         thematic, thematic_buffered = self._thematic_preparation(
             context, feedback, outputs, parameters
@@ -982,6 +976,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             ref_suffix = str(ref)
         else:
             self.SELECTED_REFERENCE = 0
+
+            if parameters[self.INPUT_REFERENCE] is None or str(parameters[self.ID_REFERENCE]) == 'NULL':
+                raise QgsProcessingException(
+                    "Please choose a REFERENCELAYER from the table of contents, and the associated unique REFERENCE ID")
             self.LAYER_REFERENCE = QgsProject.instance().layerTreeRoot().findLayer(
                 parameters[self.INPUT_REFERENCE]).name()
             ref_suffix = self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE
