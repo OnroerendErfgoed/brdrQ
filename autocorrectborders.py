@@ -734,7 +734,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         if self.UPDATE_TO_ACTUAL:
             feedback.pushInfo("START ACTUALISATION")
-            fcs = update_to_actual_grb(fcs["result"], id_theme_fieldname=self.ID_THEME_FIELDNAME, formula_field=self.FORMULA_FIELD, max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION, feedback=feedback)
+            fcs = update_to_actual_grb(fcs["result"], id_theme_fieldname=self.ID_THEME_FIELDNAME, formula_field=self.FORMULA_FIELD, max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION, feedback=log_info)
                     # Add RESULT TO TOC
             self.geojson_to_layer(self.LAYER_RESULT_ACTUAL, fcs["result"],
                                   QgsStyle.defaultStyle().symbol("outline blue"),

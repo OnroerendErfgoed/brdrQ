@@ -111,7 +111,7 @@ from brdr.aligner import Aligner
 from brdr.loader import DictLoader
 from brdr.utils import get_series_geojson_dict
 from brdr.geometry_utils import geojson_polygon_to_multipolygon
-from brdr.enums import GRBType
+from brdr.enums import GRBType,AlignerInputType
 from brdr.constants import FORMULA_FIELD_NAME
 from brdr.grb import update_to_actual_grb
 
@@ -130,6 +130,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     END_DATE = "END_DATE"
     INPUT_THEMATIC = "INPUT_THEMATIC"
     ID_THEME = "id_theme"
+    ID_THEME_FIELDNAME = ""  # field that holds the fieldname of the unique theme id
+    # TODO research inconsistency for ID_THEME and ID_THEME_FIELDNAME
     MITRE_LIMIT = 10
     CRS = "EPSG:31370"
     QUAD_SEGS = 5
@@ -148,6 +150,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     FORMULA = True
 
     GROUP_LAYER = "BRDRQ_UPDATES"
+    # TODO: add parameter in UI for MAX_REFERENCE_FOR_ACTUALISATION
+    MAX_DISTANCE_FOR_ACTUALISATION = 3
 
     def flags(self):
         return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
@@ -461,23 +465,19 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature.geometry())
             try:
                 dict_thematic_formula[id_theme] = {
-                    FORMULA_FIELD_NAME: json.loads(feature.attribute(self.FORMULA_FIELD))}
+                    FORMULA_FIELD_NAME: feature.attribute(self.FORMULA_FIELD)}
             except:
                 raise Exception("Formula -attribute-field (json) can not be loaded")
 
         aligner = Aligner()
         aligner.load_thematic_data(DictLoader(data_dict=dict_thematic, data_dict_properties=dict_thematic_formula))
-        # base_aligner.load_reference_data(GRBFiscalParcelLoader(year=base_year, aligner=base_aligner))
-        base_process_result = aligner.process(relevant_distance=0)
-        fcs = base_aligner.get_results_as_geojson(formula=True)
-        featurecollection_base_result = fcs["result"]
-        print(featurecollection_base_result)
+        fc = aligner.get_input_as_geojson(inputtype=AlignerInputType.THEMATIC)
 
         feedback.pushInfo("START ACTUALISATION")
-        fcs = update_to_actual_grb(fcs["result"], id_theme_fieldname=self.ID_THEME_FIELDNAME,
+        fcs = update_to_actual_grb(fc, id_theme_fieldname=self.ID_THEME_FIELDNAME,
                                    formula_field=self.FORMULA_FIELD,
                                    max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
-                                   feedback=feedback)
+                                   feedback=None)
 
         # Add RESULT TO TOC
         self.geojson_to_layer(self.LAYER_RESULT, fcs["result"],
@@ -590,3 +590,5 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     def prepare_parameters(self, parameters):
         self.FORMULA_FIELD = parameters["FORMULA_FIELD"]
+        self.ID_THEME_FIELDNAME = str(parameters[self.ID_THEME])
+        
