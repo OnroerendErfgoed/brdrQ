@@ -3,7 +3,7 @@
 """
 ***************************************************************************
 *   name: brdrQ - Autocorrectborders
-*   version: v0.9.6
+*   version: v0.9.7beta
 *   author: Karel Dieussaert
 *   Docs and Code- repo: https://github.com/OnroerendErfgoed/brdrQ/
 *   history:
@@ -57,7 +57,6 @@ import sys
 import numpy as np
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtCore import QDateTime
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsCoordinateReferenceSystem
 from qgis.core import QgsFeatureRequest
@@ -124,22 +123,21 @@ except (ModuleNotFoundError):
 try:
     import brdr
 
-    if brdr.__version__ != "0.2.1":
+    if brdr.__version__ != "0.3.0":
         raise ValueError("Version mismatch")
 
 except (ModuleNotFoundError, ValueError):
     subprocess.check_call([python_exe,
-                           '-m', 'pip', 'install', 'brdr==0.2.1'])
+                           '-m', 'pip', 'install', 'brdr==0.3.0'])
     import brdr
 
     print(brdr.__version__)
 
 from brdr.aligner import Aligner
 from brdr.loader import DictLoader
-from brdr.enums import OpenbaarDomeinStrategy, GRBType,AlignerInputType,AlignerResultType
+from brdr.enums import OpenbaarDomeinStrategy, GRBType, AlignerInputType, AlignerResultType
 from brdr.geometry_utils import geojson_polygon_to_multipolygon
-from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader, get_geoms_affected_by_grb_change, update_to_actual_grb
-from brdr.utils import get_series_geojson_dict
+from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader, update_to_actual_grb
 
 
 class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -224,7 +222,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     MAX_DISTANCE_FOR_ACTUALISATION = 3
     START_DATE = "2022-01-01 00:00:00"
     DATE_FORMAT = "yyyy-MM-dd hh:mm:ss"
-    # FIELD_LAST_VERSION_DATE = "versiondate"
     FIELD_LAST_VERSION_DATE = "last_version_date"
 
     def flags(self):
@@ -719,7 +716,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             )
         elif self.RELEVANT_DISTANCE >= 0 and not self.PREDICTIONS:
             process_result = aligner.process(
-                relevant_distance=self.RELEVANT_DISTANCE, od_strategy=self.OD_STRATEGY, threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE
+                relevant_distance=self.RELEVANT_DISTANCE, od_strategy=self.OD_STRATEGY,
+                threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE
             )
             fcs = aligner.get_results_as_geojson(formula=self.FORMULA)
         else:
@@ -728,14 +726,17 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                                                                                                 self.RELEVANT_DISTANCE * 100,
                                                                                                 10, dtype=int) / 100,
                                                                    threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE)
-            fcs = aligner.get_results_as_geojson(resulttype= AlignerResultType.PREDICTIONS, formula=self.FORMULA)
+            fcs = aligner.get_results_as_geojson(resulttype=AlignerResultType.PREDICTIONS, formula=self.FORMULA)
 
         feedback.pushInfo("END PROCESSING")
 
         if self.UPDATE_TO_ACTUAL:
             feedback.pushInfo("START ACTUALISATION")
-            fcs = update_to_actual_grb(fcs["result"], id_theme_fieldname=self.ID_THEME_FIELDNAME, formula_field=self.FORMULA_FIELD, max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION, feedback=log_info)
-                    # Add RESULT TO TOC
+            fcs = update_to_actual_grb(fcs["result"], id_theme_fieldname=self.ID_THEME_FIELDNAME,
+                                       formula_field=self.FORMULA_FIELD,
+                                       max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
+                                       feedback=log_info)
+            # Add RESULT TO TOC
             self.geojson_to_layer(self.LAYER_RESULT_ACTUAL, fcs["result"],
                                   QgsStyle.defaultStyle().symbol("outline blue"),
                                   True, self.GROUP_LAYER_ACTUAL)
@@ -753,7 +754,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         # MAKE TEMPORARY LAYERS
         if self.SELECTED_REFERENCE != 0:
-            self.geojson_to_layer(self.LAYER_REFERENCE, aligner.get_input_as_geojson(inputtype=AlignerInputType.THEMATIC),
+            self.geojson_to_layer(self.LAYER_REFERENCE,
+                                  aligner.get_input_as_geojson(inputtype=AlignerInputType.THEMATIC),
                                   QgsStyle.defaultStyle().symbol("outline black"),
                                   True, self.GROUP_LAYER)
 

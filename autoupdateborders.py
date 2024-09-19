@@ -3,7 +3,7 @@
 """
 ***************************************************************************
 *   name: brdrQ - AutoUpdateBorders
-*   version: v0.9.6
+*   version: v0.9.7beta
 *   author: Karel Dieussaert
 *   Docs and Code- repo: https://github.com/OnroerendErfgoed/brdrQ/
 *   history:
@@ -36,10 +36,8 @@ import site
 import subprocess
 import sys
 
-import numpy as np
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtCore import QDateTime
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsCoordinateReferenceSystem
 from qgis.core import QgsFeatureRequest
@@ -97,21 +95,20 @@ except (ModuleNotFoundError):
 try:
     import brdr
 
-    if brdr.__version__ != "0.2.1":
+    if brdr.__version__ != "0.3.0":
         raise ValueError("Version mismatch")
 
 except (ModuleNotFoundError, ValueError):
     subprocess.check_call([python_exe,
-                           '-m', 'pip', 'install', 'brdr==0.2.1'])
+                           '-m', 'pip', 'install', 'brdr==0.3.0'])
     import brdr
 
     print(brdr.__version__)
 
 from brdr.aligner import Aligner
 from brdr.loader import DictLoader
-from brdr.utils import get_series_geojson_dict
 from brdr.geometry_utils import geojson_polygon_to_multipolygon
-from brdr.enums import GRBType,AlignerInputType
+from brdr.enums import AlignerInputType
 from brdr.constants import FORMULA_FIELD_NAME
 from brdr.grb import update_to_actual_grb
 
@@ -591,4 +588,3 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     def prepare_parameters(self, parameters):
         self.FORMULA_FIELD = parameters["FORMULA_FIELD"]
         self.ID_THEME_FIELDNAME = str(parameters[self.ID_THEME])
-        
