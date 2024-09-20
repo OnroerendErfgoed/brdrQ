@@ -325,6 +325,12 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             for lyr in lyrs:
                 root.removeLayer(lyr)
                 qinst.removeMapLayer(lyr.id())
+
+        # TODO fix for version_date (has to be fixed in brdr 0.3.1)
+        if geojson is not None and "features" in geojson:
+            for feature in geojson["features"]:
+                if "version_date" in feature["properties"]:
+                    feature["properties"]["version_date"] = None
         fcString = json.dumps(geojson_polygon_to_multipolygon(geojson))
 
         vl = QgsVectorLayer(fcString, name, "ogr")

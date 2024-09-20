@@ -409,6 +409,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             for lyr in lyrs:
                 root.removeLayer(lyr)
                 qinst.removeMapLayer(lyr.id())
+        # TODO fix for version_date (has to be fixed in brdr 0.3.1)
+        if geojson is not None and "features" in geojson:
+            for feature in geojson["features"]:
+                if "version_date" in feature["properties"]:
+                    feature["properties"]["version_date"] = None
         fcString = json.dumps(geojson_polygon_to_multipolygon(geojson))
 
         vl = QgsVectorLayer(fcString, name, "ogr")
@@ -755,7 +760,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # MAKE TEMPORARY LAYERS
         if self.SELECTED_REFERENCE != 0:
             self.geojson_to_layer(self.LAYER_REFERENCE,
-                                  aligner.get_input_as_geojson(inputtype=AlignerInputType.THEMATIC),
+                                  aligner.get_input_as_geojson(inputtype=AlignerInputType.REFERENCE),
                                   QgsStyle.defaultStyle().symbol("outline black"),
                                   True, self.GROUP_LAYER)
 
