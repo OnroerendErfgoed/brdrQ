@@ -70,7 +70,7 @@ screen will close automatically after installation.)
 
  <img src="docs/figures/installation-step-4.png" width="100%" />
 
-## Getting started (example)
+## Getting started (Quickstart)
 
 <img src="docs/figures/input.png" width="100%" />
 
@@ -78,8 +78,7 @@ To start the calculation, the following steps are sufficient:
 
 - a theme layer ((MULTI)POLYGON - EPSG:31370 or EPSG:3812) with corresponding unique ID
 - a reference layer ((MULTI)POLYGON - EPSG:31370 or EPSG:3812) with corresponding unique ID
-- a RELEVANT_DISTANCE (relevant distance)
-- A public-domain strategy
+- a RELEVANT_DISTANCE (relevant distance, default 2 meters)
 
 ==>CLICK 'RUN' : The tool processes the data and the output is created and displayed in the TOC of QGIS
 
@@ -102,10 +101,11 @@ limitations when using the script
     - REFERENCE LAYER: Local reference layer from the TOC with the geometries you want to use as a reference (e.g., GRB - administrative
       parcels)
     - REFERENCE ID: Textual or numeric ID of the reference layer used as a reference to the objects. This must be unique.
-  - ADP: (on-the-fly download) -
-  - GBG: (on-the-fly download) - 
-  - KNW: (on-the-fly download) -
-  - Adpf20xx: (on-the-fly download) -
+  - ADP: (on-the-fly download) - Actual administrative parcels from GRB (Grootschalig Referentie Bestand)
+  - GBG: (on-the-fly download) - Actual buildings from GRB
+  - KNW: (on-the-fly download) - Actual artwork from GRB
+  - Adpf20xx: (on-the-fly download) - Fiscal versions of the administrative parcels of GRB
+  - (Note: the on-the-fly downloads are only possible for a subset or small area of thematic objects as this results in downloading this reference-area. When using brdrQ for bigger areas a local reference layer is necessary)
 
 
 ### ADVANCED INPUT PARAMETERS
@@ -141,6 +141,16 @@ limitations when using the script
     - True (Default): 2 additional layers are generated as output that visually represent the significant intersections
       and significant differences
     - False: The 2 additional layers are not added to the output
+- GET_ALL_PREDICTIONS_FOR_RELEVANT_DISTANCES (Default: False): 
+  - When True, the code will use all relevant distances with an interval of 10cm to try to search for 'predictions'. These are results where the output geometry is a stable result that could be the possible wanted result.
+  - The resulting layer will give alle these predicted results together with the relevant distance where this result is found.
+- UPDATE_TO_ACTUAL_GRB_ADP_VERSION (Default: False):
+  - When True, this function will use the brdr_formula and the predictions to search for a actualized version of the geometry based on the actual GRB-parcel borders.
+  - An evaluation is added to the result based on a comparison of the base brdr_formula and the resulting brdr_formula:
+    - When equality is detected this is listed in the evaluation-field
+    - When no_equality is detected, the result has to be checked, and all predictions are listed
+    - MAX_RELEVANT_DISTANCE_FOR_ACTUALISATION: This value is used to define how far an actualisation has to be searched.
+- SHOW_LOG_INFO (default False): When True, the logging of brdr is shown in the feedback-window
 
 ### OUTPUT
 

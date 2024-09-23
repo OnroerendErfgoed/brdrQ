@@ -3,7 +3,7 @@
 """
 ***************************************************************************
 *   name: brdrQ - Autocorrectborders
-*   version: v0.9.7beta
+*   version: v0.9.7
 *   author: Karel Dieussaert
 *   Docs and Code- repo: https://github.com/OnroerendErfgoed/brdrQ/
 *   history:
