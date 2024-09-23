@@ -1,4 +1,14 @@
 
+# v0.9.7
+
+- Upgrade to brdr version 0.3.0
+- Move function "update_to_actual_version" to brdr-code (generic)  [#26]
+- Adding 'fixed geometries' before executing tool on thematic and referencelayer [#41]
+- logging error in the QGIS-python console (print) bug fixed_with new_brdr_version [#28]
+- Make predicted results for multiple relevant distences unique [#42]
+- Add logic that all geojson- (multi-)polygons are  explicit multipolygons
+
+
 # v0.9.5 
 
  - initial version based on pyQGIS
@@ -16,3 +26,4 @@
  - added enum - parameter to download actual GRB (adp-gbg-knw)
  - added enum - parameter for od-strategy
  - changes implemented for refactored brdr
+
