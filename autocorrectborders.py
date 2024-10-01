@@ -73,6 +73,7 @@ from qgis.core import QgsProcessingParameterFeatureSource
 from qgis.core import QgsProcessingParameterField
 from qgis.core import QgsProcessingParameterNumber
 from qgis.core import QgsProject
+from qgis.core import QgsJsonUtils
 from qgis.core import QgsSimpleLineSymbolLayer, QgsFillSymbol, \
     QgsSingleSymbolRenderer, QgsMapLayer, QgsLayerTreeNode, QgsLayerTreeGroup
 from qgis.core import QgsStyle
@@ -625,6 +626,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         dict_thematic = {}
         dict_thematic_properties = {}
         features = thematic.getFeatures()
+        field_names = thematic.fields().names()
         for current, feature in enumerate(features):
             feature_geom = feature.geometry()
             if feedback.isCanceled():
@@ -632,7 +634,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             id_theme = feature.attribute(self.ID_THEME_FIELDNAME)
             dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature_geom)
             if self.ATTRIBUTES:
-                dict_thematic_properties[id_theme] = {"MyAttribute": feature.attribute(self.ID_THEME_FIELDNAME)}
+                dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
+                # feature.attributes()
+                # json.loads(QgsJsonUtils.exportAttributes(feature))
+                # for field_name in field_names:
+                #    dict_thematic_properties[id_theme][field_name]= {"MyAttribute": feature.attribute(self.ID_THEME_FIELDNAME)}
 
         area = make_valid(unary_union(list(dict_thematic.values()))).area
         feedback.pushInfo("Area of thematic zone: " + str(area))
