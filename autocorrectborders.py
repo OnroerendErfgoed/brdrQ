@@ -192,10 +192,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     LAYER_RESULT_ACTUAL_DIFF = "RESULT_ACTUAL_DIFF"
     PREFIX_LOCAL_LAYER = "LOCREF"
 
-    ID_THEME = "id_theme"
-    ID_REFERENCE = "id_ref"
+    COMBOBOX_ID_THEME = ""
+    COMBOBOX_ID_REFERENCE = ""
     ID_THEME_FIELDNAME = ""  # field that holds the fieldname of the unique theme id
-    # TODO research inconsistency for ID_THEME and ID_THEME_FIELDNAME
+    ID_REFERENCE_FIELDNAME = ""  # field that holds the fieldname of the unique reference id
     OVERLAY_FIELDS_PREFIX = ""
     OD_STRATEGY = 0
     THRESHOLD_OVERLAP_PERCENTAGE = 50
@@ -207,7 +207,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     CORR_DISTANCE = 0.01
     SHOW_INTERMEDIATE_LAYERS = True
     FORMULA = True
-    FORMULA_FIELD = "brdr_formula"
+    ATTRIBUTES = True
+    FORMULA_FIELD = "brdr_new_formula"
     MITRE_LIMIT = 10
     CRS = "EPSG:31370"
     QUAD_SEGS = 5
@@ -409,11 +410,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             for lyr in lyrs:
                 root.removeLayer(lyr)
                 qinst.removeMapLayer(lyr.id())
-        # TODO fix for version_date (has to be fixed in brdr 0.3.1)
-        if geojson is not None and "features" in geojson:
-            for feature in geojson["features"]:
-                if "version_date" in feature["properties"]:
-                    feature["properties"]["version_date"] = None
+
         fcString = json.dumps(geojson_polygon_to_multipolygon(geojson))
 
         vl = QgsVectorLayer(fcString, name, "ogr")
@@ -459,7 +456,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
         parameter = QgsProcessingParameterField(
-            self.ID_THEME,
+            self.COMBOBOX_ID_THEME,
             "Choose thematic ID",
             "theme_identifier",
             self.INPUT_THEMATIC,
@@ -495,7 +492,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
         parameter = QgsProcessingParameterField(
-            self.ID_REFERENCE,
+            self.COMBOBOX_ID_REFERENCE,
             "Choose reference ID",
             "CAPAKEY",
             self.INPUT_REFERENCE,
@@ -562,6 +559,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
+            "ADD_ATTRIBUTES", "ADD_ATTRIBUTES", defaultValue=True
+        )
+        parameter.setFlags(parameter.flags() |
+                           QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterBoolean(
             "SHOW_INTERMEDIATE_LAYERS", "SHOW_INTERMEDIATE_LAYERS", defaultValue=True
         )
         parameter.setFlags(parameter.flags() |
@@ -604,7 +608,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         """
         Here is where the processing itself takes place.
         """
-
         feedback_steps = 6
         feedback = QgsProcessingMultiStepFeedback(feedback_steps, feedback)
         feedback.pushInfo("START")
@@ -620,16 +623,16 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         # Load thematic into a shapely_dict:
         dict_thematic = {}
+        dict_thematic_properties = {}
         features = thematic.getFeatures()
         for current, feature in enumerate(features):
             feature_geom = feature.geometry()
             if feedback.isCanceled():
                 return {}
-            id_theme = feature.attribute(self.ID_THEME)
-            # feedback.pushInfo(str(self.ID_THEME))
-            # feedback.pushInfo(str(id_theme))
-
+            id_theme = feature.attribute(self.ID_THEME_FIELDNAME)
             dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature_geom)
+            if self.ATTRIBUTES:
+                dict_thematic_properties[id_theme] = {"MyAttribute": feature.attribute(self.ID_THEME_FIELDNAME)}
 
         area = make_valid(unary_union(list(dict_thematic.values()))).area
         feedback.pushInfo("Area of thematic zone: " + str(area))
@@ -657,7 +660,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             for current, feature in enumerate(features):
                 if feedback.isCanceled():
                     return {}
-                id_reference = feature.attribute(self.ID_REFERENCE)
+                id_reference = feature.attribute(self.ID_REFERENCE_FIELDNAME)
                 dict_reference[id_reference] = self.geom_qgis_to_shapely(
                     feature.geometry()
                 )
@@ -677,6 +680,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                           )
 
         # set parameters
+        aligner.multi_as_single_modus = True
         aligner.relevant_distance = self.RELEVANT_DISTANCE
         aligner.od_strategy = self.OD_STRATEGY
         aligner.THRESHOLD_CIRCLE_RATIO = self.THRESHOLD_CIRCLE_RATIO
@@ -693,14 +697,12 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         aligner.DOWNLOAD_LIMIT = self.DOWNLOAD_LIMIT
 
         feedback.pushInfo("Load thematic data")
-        aligner.load_thematic_data(DictLoader(dict_thematic))
+        aligner.load_thematic_data(DictLoader(dict_thematic, dict_thematic_properties))
         aligner.name_thematic_id = self.ID_THEME_FIELDNAME
 
         feedback.pushInfo("Load reference data")
         if self.SELECTED_REFERENCE == 0:
             reference_loader = DictLoader(dict_reference)
-            # reference_loader.data_dict_source["source"] = "local_"
-            # reference_loader.data_dict_source["version_date"] = "unknown"
             aligner.load_reference_data(DictLoader(dict_reference))
             aligner.dict_reference_source["source"] = self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE
             aligner.dict_reference_source["version_date"] = "unknown"
@@ -724,14 +726,15 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 relevant_distance=self.RELEVANT_DISTANCE, od_strategy=self.OD_STRATEGY,
                 threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE
             )
-            fcs = aligner.get_results_as_geojson(formula=self.FORMULA)
+            fcs = aligner.get_results_as_geojson(formula=self.FORMULA, attributes=self.ATTRIBUTES)
         else:
             dict_series, dict_predicted, diffs = aligner.predictor(od_strategy=self.OD_STRATEGY,
                                                                    relevant_distances=np.arange(0,
                                                                                                 self.RELEVANT_DISTANCE * 100,
                                                                                                 10, dtype=int) / 100,
                                                                    threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE)
-            fcs = aligner.get_results_as_geojson(resulttype=AlignerResultType.PREDICTIONS, formula=self.FORMULA)
+            fcs = aligner.get_results_as_geojson(resulttype=AlignerResultType.PREDICTIONS, formula=self.FORMULA,
+                                                 attributes=self.ATTRIBUTES)
 
         feedback.pushInfo("END PROCESSING")
 
@@ -740,7 +743,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             fcs = update_to_actual_grb(fcs["result"], id_theme_fieldname=self.ID_THEME_FIELDNAME,
                                        formula_field=self.FORMULA_FIELD,
                                        max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
-                                       feedback=log_info)
+                                       feedback=log_info, attributes=self.ATTRIBUTES)
             # Add RESULT TO TOC
             self.geojson_to_layer(self.LAYER_RESULT_ACTUAL, fcs["result"],
                                   QgsStyle.defaultStyle().symbol("outline blue"),
@@ -825,22 +828,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             outputs[self.INPUT_THEMATIC + "_fixed"]["OUTPUT"]
         )
 
-        outputs[self.INPUT_THEMATIC + "_id"] = processing.run(
-            "native:fieldcalculator",
-            {
-                "INPUT": thematic,
-                "FIELD_NAME": self.ID_THEME,
-                "FIELD_TYPE": 2,
-                "FIELD_LENGTH": 0,
-                "FIELD_PRECISION": 0,
-                "FORMULA": "to_string(" + parameters[self.ID_THEME] + ")",
-                "OUTPUT": "TEMPORARY_OUTPUT",
-            },
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        thematic = context.getMapLayer(outputs[self.INPUT_THEMATIC + "_id"]["OUTPUT"])
         self.CRS = (
             thematic.sourceCrs().authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer
@@ -929,25 +916,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         reference = context.getMapLayer(
             outputs[self.INPUT_REFERENCE + "_fixed"]["OUTPUT"]
         )
-
-        outputs[self.INPUT_REFERENCE + "_id"] = processing.run(
-            "native:fieldcalculator",
-            {
-                "INPUT": reference,
-                "FIELD_NAME": self.ID_REFERENCE,
-                "FIELD_TYPE": 2,
-                "FIELD_LENGTH": 0,
-                "FIELD_PRECISION": 0,
-                "FORMULA": "to_string(" + parameters[self.ID_REFERENCE] + ")",
-                "OUTPUT": "TEMPORARY_OUTPUT",
-            },
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        reference = context.getMapLayer(
-            outputs[self.INPUT_REFERENCE + "_id"]["OUTPUT"]
-        )
         outputs[self.INPUT_REFERENCE + "_dropMZ"] = processing.run(
             "native:dropmzvalues",
             {
@@ -972,12 +940,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     def prepare_parameters(self, parameters):
         # PARAMETER PREPARATION
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
-        self.ID_THEME_FIELDNAME = str(parameters[self.ID_THEME])
-        # self.ID_REFERENCE = parameters["ID_REFERENCE"]
+        self.ID_THEME_FIELDNAME = str(parameters[self.COMBOBOX_ID_THEME])
+        self.ID_REFERENCE_FIELDNAME = str(parameters[self.COMBOBOX_ID_REFERENCE])
         self.BUFFER_DISTANCE = self.RELEVANT_DISTANCE / 2
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
         self.OD_STRATEGY = OpenbaarDomeinStrategy[self.ENUM_OD_STRATEGY_OPTIONS[parameters[self.ENUM_OD_STRATEGY]]]
         self.FORMULA = parameters["ADD_FORMULA"]
+        self.ATTRIBUTES = parameters["ADD_ATTRIBUTES"]
         self.PREDICTIONS = parameters["PREDICTIONS"]
         self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
         self.UPDATE_TO_ACTUAL = parameters["UPDATE_TO_ACTUAL"]
@@ -997,7 +966,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         else:
             self.SELECTED_REFERENCE = 0
 
-            if parameters[self.INPUT_REFERENCE] is None or str(parameters[self.ID_REFERENCE]) == 'NULL':
+            if parameters[self.INPUT_REFERENCE] is None or str(parameters[self.COMBOBOX_ID_REFERENCE]) == 'NULL':
                 raise QgsProcessingException(
                     "Please choose a REFERENCELAYER from the table of contents, and the associated unique REFERENCE ID")
             self.LAYER_REFERENCE = QgsProject.instance().layerTreeRoot().findLayer(
