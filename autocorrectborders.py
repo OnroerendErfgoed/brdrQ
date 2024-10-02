@@ -713,7 +713,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         if self.UPDATE_TO_ACTUAL:
             feedback.pushInfo("START ACTUALISATION")
             fcs = update_to_actual_grb(fcs["result"], id_theme_fieldname=self.ID_THEME_FIELDNAME,
-                                       formula_field=NEW_FORMULA_FIELD_NAME,
+                                       base_formula_field=NEW_FORMULA_FIELD_NAME,
                                        max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
                                        feedback=log_info, attributes=self.ATTRIBUTES)
             # Add RESULT TO TOC
