@@ -73,7 +73,6 @@ from qgis.core import QgsProcessingParameterFeatureSource
 from qgis.core import QgsProcessingParameterField
 from qgis.core import QgsProcessingParameterNumber
 from qgis.core import QgsProject
-from qgis.core import QgsJsonUtils
 from qgis.core import QgsSimpleLineSymbolLayer, QgsFillSymbol, \
     QgsSingleSymbolRenderer, QgsMapLayer, QgsLayerTreeNode, QgsLayerTreeGroup
 from qgis.core import QgsStyle
@@ -154,13 +153,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     # THEMATIC PARAMETERS
     INPUT_THEMATIC = "INPUT_THEMATIC"  # reference to the combobox for choosing the thematic input layer
-    LAYER_THEMATIC = "LAYER_THEMATIC"  #Local input thematic layer
+    LAYER_THEMATIC = "LAYER_THEMATIC"  # Local input thematic layer
     COMBOBOX_ID_THEME = ""
     ID_THEME_FIELDNAME = ""  # field that holds the fieldname of the unique theme id
 
     # REFERENCE PARAMETERS
     INPUT_REFERENCE = "INPUT_REFERENCE"  # reference to the combobox for choosing the reference input layer
-    LAYER_REFERENCE = "LAYER_REFERENCE" #Local input reference layer
+    LAYER_REFERENCE = "LAYER_REFERENCE"  # Local input reference layer
     LAYER_REFERENCE_NAME = "LAYER_REFERENCE_NAME"  # Name of the local referencelayer in the TOC
     COMBOBOX_ID_REFERENCE = ""
     ID_REFERENCE_FIELDNAME = ""  # field that holds the fieldname of the unique reference id
@@ -615,6 +614,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback_steps = 6
         feedback = QgsProcessingMultiStepFeedback(feedback_steps, feedback)
         feedback.pushInfo("START")
+        feedback.setCurrentStep(1)
         outputs = {}
 
         self.prepare_parameters(parameters)
@@ -629,7 +629,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         dict_thematic = {}
         dict_thematic_properties = {}
         features = thematic.getFeatures()
-        field_names = thematic.fields().names()
         for current, feature in enumerate(features):
             feature_geom = feature.geometry()
             if feedback.isCanceled():
@@ -650,7 +649,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 "Please make use of a local REFERENCELAYER (for performance reasons)"
             )
         feedback.pushInfo("1) BEREKENING - Thematic layer fixed")
-        feedback.setCurrentStep(1)
+        feedback.setCurrentStep(2)
         if feedback.isCanceled():
             return {}
 
@@ -671,7 +670,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                     feature.geometry()
                 )
         feedback.pushInfo("2) BEREKENING - Reference layer fixed")
-        feedback.setCurrentStep(2)
+        feedback.setCurrentStep(3)
         if feedback.isCanceled():
             return {}
 
@@ -682,10 +681,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             log_info = None
         aligner = Aligner(feedback=log_info,
                           relevant_distance=self.RELEVANT_DISTANCE,
-                            od_strategy=self.OD_STRATEGY,
-                            crs=self.CRS,
-                            multi_as_single_modus=True,
-                            correction_distance=self.CORR_DISTANCE,
+                          od_strategy=self.OD_STRATEGY,
+                          crs=self.CRS,
+                          multi_as_single_modus=True,
+                          correction_distance=self.CORR_DISTANCE,
                           threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
                           )
 
@@ -705,7 +704,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         else:
             aligner.load_reference_data(
                 GRBActualLoader(grb_type=GRBType(self.SELECTED_REFERENCE.value), partition=1000, aligner=aligner))
-
+        feedback.setCurrentStep(4)
         feedback.pushInfo("START PROCESSING")
         feedback.pushInfo(
             "calculation for relevant distance (m): " + str(self.RELEVANT_DISTANCE) + " - Predictions: " + str(
@@ -751,6 +750,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             feedback.pushInfo("END ACTUALISATION")
 
         # write results to output-layers
+        feedback.setCurrentStep(5)
         feedback.pushInfo("WRITING RESULTS")
 
         # MAKE TEMPORARY LAYERS
@@ -791,15 +791,12 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.RESULT_DIFF_MIN = QgsProject.instance().mapLayersByName(
             self.LAYER_RESULT_DIFF_MIN
         )[0]
-
         QgsProject.instance().reloadAllLayers()
-
         feedback.pushInfo("Resulterende geometrie berekend")
-        feedback.setCurrentStep(6)
         if feedback.isCanceled():
             return {}
-
         feedback.pushInfo("EINDE: RESULTAAT BEREKEND")
+        #feedback.setCurrentStep(6)
         return {
             self.OUTPUT_RESULT: self.RESULT,
             self.OUTPUT_RESULT_DIFF: self.RESULT_DIFF,
@@ -926,7 +923,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
         self.LAYER_THEMATIC = QgsProject.instance().layerTreeRoot().findLayer(
             parameters[self.INPUT_THEMATIC]).layer()
-        self.CRS = self.LAYER_THEMATIC.sourceCrs().authid() # set CRS for the calculations, based on the THEMATIC input layer
+        self.CRS = self.LAYER_THEMATIC.sourceCrs().authid()  # set CRS for the calculations, based on the THEMATIC input layer
         self.ID_THEME_FIELDNAME = str(parameters[self.COMBOBOX_ID_THEME])
         self.ID_REFERENCE_FIELDNAME = str(parameters[self.COMBOBOX_ID_REFERENCE])
         self.BUFFER_DISTANCE = self.RELEVANT_DISTANCE / 2
@@ -961,8 +958,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.LAYER_REFERENCE_NAME = self.LAYER_REFERENCE.name()
             ref_suffix = self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE_NAME
 
-
-        if self.SELECTED_REFERENCE ==0 and self.LAYER_REFERENCE.sourceCrs().authid() != self.CRS:
+        if self.SELECTED_REFERENCE == 0 and self.LAYER_REFERENCE.sourceCrs().authid() != self.CRS:
             raise QgsProcessingException(
                 "Thematic layer and ReferenceLayer are in a different CRS. "
                 "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"
