@@ -152,9 +152,18 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
 
-    INPUT_THEMATIC = "INPUT_THEMATIC"
-    INPUT_REFERENCE = "INPUT_REFERENCE"
+    # THEMATIC PARAMETERS
+    INPUT_THEMATIC = "INPUT_THEMATIC"  # reference to the combobox for choosing the thematic input layer
+    LAYER_THEMATIC = "LAYER_THEMATIC"  #Local input thematic layer
+    COMBOBOX_ID_THEME = ""
+    ID_THEME_FIELDNAME = ""  # field that holds the fieldname of the unique theme id
 
+    # REFERENCE PARAMETERS
+    INPUT_REFERENCE = "INPUT_REFERENCE"  # reference to the combobox for choosing the reference input layer
+    LAYER_REFERENCE = "LAYER_REFERENCE" #Local input reference layer
+    LAYER_REFERENCE_NAME = "LAYER_REFERENCE_NAME"  # Name of the local referencelayer in the TOC
+    COMBOBOX_ID_REFERENCE = ""
+    ID_REFERENCE_FIELDNAME = ""  # field that holds the fieldname of the unique reference id
     # ENUM for choosing the reference
     ENUM_REFERENCE = "ENUM_REFERENCE"
     GRB_TYPES = [e.name for e in GRBType]
@@ -168,6 +177,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     ENUM_OD_STRATEGY_OPTIONS = OD_STRATEGY_TYPES
     SELECTED_OD_STRATEGY = None
 
+    # OUTPUT PARAMETERS
     RESULT = "RESULT"
     RESULT_DIFF = "RESULT_DIFF"
     RESULT_DIFF_PLUS = "RESULT_DIFF_PLUS"
@@ -176,7 +186,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     OUTPUT_RESULT_DIFF = "OUTPUT_RESULT_DIFF"
     OUTPUT_RESULT_DIFF_PLUS = "OUTPUT_RESULT_DIFF_PLUS"
     OUTPUT_RESULT_DIFF_MIN = "OUTPUT_RESULT_DIFF_MIN"
-
     # Layers
     PREFIX = "brdrQ"
     SUFFIX = ""
@@ -188,16 +197,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     LAYER_RESULT_DIFF_MIN = "DIFF_MIN"
     LAYER_RELEVANT_INTERSECTION = "RLVNT_ISECT"
     LAYER_RELEVANT_DIFFERENCE = "RLVNT_DIFF"
-    LAYER_REFERENCE = "LAYER_REFERENCE"
+
     LAYER_RESULT_ACTUAL = "RESULT_ACTUAL"
     LAYER_RESULT_ACTUAL_DIFF = "RESULT_ACTUAL_DIFF"
     PREFIX_LOCAL_LAYER = "LOCREF"
 
-    COMBOBOX_ID_THEME = ""
-    COMBOBOX_ID_REFERENCE = ""
-    ID_THEME_FIELDNAME = ""  # field that holds the fieldname of the unique theme id
-    ID_REFERENCE_FIELDNAME = ""  # field that holds the fieldname of the unique reference id
-    OVERLAY_FIELDS_PREFIX = ""
     OD_STRATEGY = 0
     THRESHOLD_OVERLAP_PERCENTAGE = 50
     THRESHOLD_EXCLUSION_AREA = 0
@@ -220,7 +224,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     PREDICTIONS = False
     UPDATE_TO_ACTUAL = False
     SHOW_LOG_INFO = False
-    # TODO: add parameter in UI for MAX_REFERENCE_FOR_ACTUALISATION
     MAX_DISTANCE_FOR_ACTUALISATION = 3
     START_DATE = "2022-01-01 00:00:00"
     DATE_FORMAT = "yyyy-MM-dd hh:mm:ss"
@@ -635,10 +638,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature_geom)
             if self.ATTRIBUTES:
                 dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
-                # feature.attributes()
                 # json.loads(QgsJsonUtils.exportAttributes(feature))
-                # for field_name in field_names:
-                #    dict_thematic_properties[id_theme][field_name]= {"MyAttribute": feature.attribute(self.ID_THEME_FIELDNAME)}
 
         area = make_valid(unary_union(list(dict_thematic.values()))).area
         feedback.pushInfo("Area of thematic zone: " + str(area))
@@ -682,25 +682,12 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             log_info = None
         aligner = Aligner(feedback=log_info,
                           relevant_distance=self.RELEVANT_DISTANCE,
+                            od_strategy=self.OD_STRATEGY,
+                            crs=self.CRS,
+                            multi_as_single_modus=True,
+                            correction_distance=self.CORR_DISTANCE,
                           threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
                           )
-
-        # set parameters
-        aligner.multi_as_single_modus = True
-        aligner.relevant_distance = self.RELEVANT_DISTANCE
-        aligner.od_strategy = self.OD_STRATEGY
-        aligner.THRESHOLD_CIRCLE_RATIO = self.THRESHOLD_CIRCLE_RATIO
-        aligner.THRESHOLD_EXCLUSION_AREA = self.THRESHOLD_EXCLUSION_AREA
-        aligner.THRESHOLD_EXCLUSION_PERCENTAGE = (
-            self.THRESHOLD_EXCLUSION_PERCENTAGE
-        )
-        aligner.CORR_DISTANCE = self.CORR_DISTANCE
-        aligner.MITRE_LIMIT = self.MITRE_LIMIT
-        aligner.QUAD_SEGS = self.QUAD_SEGS
-        aligner.BUFFER_MULTIPLICATION_FACTOR = self.BUFFER_MULTIPLICATION_FACTOR
-        aligner.MAX_REFERENCE_BUFFER = self.MAX_REFERENCE_BUFFER
-        aligner.CRS = self.CRS
-        aligner.DOWNLOAD_LIMIT = self.DOWNLOAD_LIMIT
 
         feedback.pushInfo("Load thematic data")
         aligner.load_thematic_data(DictLoader(dict_thematic, dict_thematic_properties))
@@ -710,7 +697,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         if self.SELECTED_REFERENCE == 0:
             reference_loader = DictLoader(dict_reference)
             aligner.load_reference_data(DictLoader(dict_reference))
-            aligner.dict_reference_source["source"] = self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE
+            aligner.dict_reference_source["source"] = self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE_NAME
             aligner.dict_reference_source["version_date"] = "unknown"
         elif self.SELECTED_REFERENCE in self.ADPF_VERSIONS:
             year = self.SELECTED_REFERENCE.removeprefix("Adpf")
@@ -768,7 +755,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         # MAKE TEMPORARY LAYERS
         if self.SELECTED_REFERENCE != 0:
-            self.geojson_to_layer(self.LAYER_REFERENCE,
+            self.geojson_to_layer(self.LAYER_REFERENCE_NAME,
                                   aligner.get_input_as_geojson(inputtype=AlignerInputType.REFERENCE),
                                   QgsStyle.defaultStyle().symbol("outline black"),
                                   True, self.GROUP_LAYER)
@@ -833,10 +820,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         thematic = context.getMapLayer(
             outputs[self.INPUT_THEMATIC + "_fixed"]["OUTPUT"]
         )
-
-        self.CRS = (
-            thematic.sourceCrs().authid()
-        )  # set CRS for the calculations, based on the THEMATIC input layer
 
         outputs[self.INPUT_THEMATIC + "_enriched"] = processing.run(
             "qgis:exportaddgeometrycolumns",
@@ -903,11 +886,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         reference = context.getMapLayer(
             outputs[self.INPUT_REFERENCE + "_extract"]["OUTPUT"]
         )
-        if reference.sourceCrs().authid() != self.CRS:
-            raise QgsProcessingException(
-                "Thematic layer and ReferenceLayer are in a different CRS. "
-                "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"
-            )
         outputs[self.INPUT_REFERENCE + "_fixed"] = processing.run(
             "native:fixgeometries",
             {
@@ -946,6 +924,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     def prepare_parameters(self, parameters):
         # PARAMETER PREPARATION
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
+        self.LAYER_THEMATIC = QgsProject.instance().layerTreeRoot().findLayer(
+            parameters[self.INPUT_THEMATIC]).layer()
+        self.CRS = self.LAYER_THEMATIC.sourceCrs().authid() # set CRS for the calculations, based on the THEMATIC input layer
         self.ID_THEME_FIELDNAME = str(parameters[self.COMBOBOX_ID_THEME])
         self.ID_REFERENCE_FIELDNAME = str(parameters[self.COMBOBOX_ID_REFERENCE])
         self.BUFFER_DISTANCE = self.RELEVANT_DISTANCE / 2
@@ -963,11 +944,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         if ref in self.GRB_TYPES:
             self.SELECTED_REFERENCE = GRBType[ref]
-            self.LAYER_REFERENCE = GRBType[ref]
+            self.LAYER_REFERENCE_NAME = GRBType[ref]
             ref_suffix = str(ref)
         elif ref in self.ADPF_VERSIONS:
             self.SELECTED_REFERENCE = ref
-            self.LAYER_REFERENCE = ref
+            self.LAYER_REFERENCE_NAME = ref
             ref_suffix = str(ref)
         else:
             self.SELECTED_REFERENCE = 0
@@ -976,9 +957,16 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 raise QgsProcessingException(
                     "Please choose a REFERENCELAYER from the table of contents, and the associated unique REFERENCE ID")
             self.LAYER_REFERENCE = QgsProject.instance().layerTreeRoot().findLayer(
-                parameters[self.INPUT_REFERENCE]).name()
-            ref_suffix = self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE
+                parameters[self.INPUT_REFERENCE]).layer()
+            self.LAYER_REFERENCE_NAME = self.LAYER_REFERENCE.name()
+            ref_suffix = self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE_NAME
 
+
+        if self.SELECTED_REFERENCE ==0 and self.LAYER_REFERENCE.sourceCrs().authid() != self.CRS:
+            raise QgsProcessingException(
+                "Thematic layer and ReferenceLayer are in a different CRS. "
+                "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"
+            )
         self.SUFFIX = "_DIST_" + str(self.RELEVANT_DISTANCE) + "_" + ref_suffix  # + "_OD_" + str(self.OD_STRATEGY.name)
         if self.PREDICTIONS:
             self.SUFFIX = self.SUFFIX + "_PREDICTIONS"
