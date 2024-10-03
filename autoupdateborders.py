@@ -3,11 +3,12 @@
 """
 ***************************************************************************
 *   name: brdrQ - AutoUpdateBorders
-*   version: v0.9.7
+*   version: v0.9.8
 *   author: Karel Dieussaert
 *   Docs and Code- repo: https://github.com/OnroerendErfgoed/brdrQ/
 *   history:
 *            -initial version
+*            -refactoring of functions to brdr-functions for v0.4.0
 
 MIT LICENSE:
 Copyright (c) 2023-2024 Flanders Heritage Agency
@@ -95,12 +96,12 @@ except (ModuleNotFoundError):
 try:
     import brdr
 
-    if brdr.__version__ != "0.3.0":
+    if brdr.__version__ != "0.4.0":
         raise ValueError("Version mismatch")
 
 except (ModuleNotFoundError, ValueError):
     subprocess.check_call([python_exe,
-                           '-m', 'pip', 'install', 'brdr==0.3.0'])
+                           '-m', 'pip', 'install', 'brdr==0.4.0'])
     import brdr
 
     print(brdr.__version__)
@@ -319,11 +320,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 root.removeLayer(lyr)
                 qinst.removeMapLayer(lyr.id())
 
-        # TODO fix for version_date (has to be fixed in brdr 0.3.1)
-        if geojson is not None and "features" in geojson:
-            for feature in geojson["features"]:
-                if "version_date" in feature["properties"]:
-                    feature["properties"]["version_date"] = None
         fcString = json.dumps(geojson_polygon_to_multipolygon(geojson), default=str)
 
         vl = QgsVectorLayer(fcString, name, "ogr")

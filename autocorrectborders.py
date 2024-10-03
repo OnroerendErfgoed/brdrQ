@@ -3,7 +3,7 @@
 """
 ***************************************************************************
 *   name: brdrQ - Autocorrectborders
-*   version: v0.9.7
+*   version: v0.9.8
 *   author: Karel Dieussaert
 *   Docs and Code- repo: https://github.com/OnroerendErfgoed/brdrQ/
 *   history:
@@ -25,6 +25,7 @@
 *            -uses new version of brdr (0.2.0?)
 *            -refactoring of functions to brdr-functions
 *            -possibility to use predictor-function in brdr
+*            -refactoring of functions to brdr-functions for v0.4.0
 
 MIT LICENSE:
 Copyright (c) 2023-2024 Flanders Heritage Agency
@@ -123,12 +124,12 @@ except (ModuleNotFoundError):
 try:
     import brdr
 
-    if brdr.__version__ != "0.3.0":
+    if brdr.__version__ != "0.4.0":
         raise ValueError("Version mismatch")
 
 except (ModuleNotFoundError, ValueError):
     subprocess.check_call([python_exe,
-                           '-m', 'pip', 'install', 'brdr==0.3.0'])
+                           '-m', 'pip', 'install', 'brdr==0.4.0'])
     import brdr
 
     print(brdr.__version__)
@@ -800,16 +801,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             outputs[self.INPUT_THEMATIC + "_fixed"]["OUTPUT"]
         )
 
-        # outputs[self.INPUT_THEMATIC + "_enriched"] = processing.run(
-        #     "qgis:exportaddgeometrycolumns",
-        #     {"INPUT": thematic, "CALC_METHOD": 0, "OUTPUT": "TEMPORARY_OUTPUT"},
-        #     context=context,
-        #     feedback=feedback,
-        #     is_child_algorithm=True,
-        # )
-        # thematic = context.getMapLayer(
-        #     outputs[self.INPUT_THEMATIC + "_enriched"]["OUTPUT"]
-        # )
         outputs[self.INPUT_THEMATIC + "_dropMZ"] = processing.run(
             "native:dropmzvalues",
             {
@@ -865,6 +856,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         reference = context.getMapLayer(
             outputs[self.INPUT_REFERENCE + "_extract"]["OUTPUT"]
         )
+        feedback.pushInfo("Reference extraction finished")
         outputs[self.INPUT_REFERENCE + "_fixed"] = processing.run(
             "native:fixgeometries",
             {
@@ -879,6 +871,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         reference = context.getMapLayer(
             outputs[self.INPUT_REFERENCE + "_fixed"]["OUTPUT"]
         )
+        feedback.pushInfo("Reference repair finished")
         outputs[self.INPUT_REFERENCE + "_dropMZ"] = processing.run(
             "native:dropmzvalues",
             {
@@ -894,6 +887,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         reference = context.getMapLayer(
             outputs[self.INPUT_REFERENCE + "_dropMZ"]["OUTPUT"]
         )
+        feedback.pushInfo("Reference dropMZ finished")
         if reference is None:
             raise QgsProcessingException(
                 self.invalidSourceError(parameters, self.INPUT_REFERENCE)
