@@ -501,16 +501,16 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             thematic.sourceCrs().authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer
 
-        outputs[self.INPUT_THEMATIC + "_enriched"] = processing.run(
-            "qgis:exportaddgeometrycolumns",
-            {"INPUT": thematic, "CALC_METHOD": 0, "OUTPUT": "TEMPORARY_OUTPUT"},
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        thematic = context.getMapLayer(
-            outputs[self.INPUT_THEMATIC + "_enriched"]["OUTPUT"]
-        )
+        # outputs[self.INPUT_THEMATIC + "_enriched"] = processing.run(
+        #     "qgis:exportaddgeometrycolumns",
+        #     {"INPUT": thematic, "CALC_METHOD": 0, "OUTPUT": "TEMPORARY_OUTPUT"},
+        #     context=context,
+        #     feedback=feedback,
+        #     is_child_algorithm=True,
+        # )
+        # thematic = context.getMapLayer(
+        #     outputs[self.INPUT_THEMATIC + "_enriched"]["OUTPUT"]
+        # )
         outputs[self.INPUT_THEMATIC + "_dropMZ"] = processing.run(
             "native:dropmzvalues",
             {
