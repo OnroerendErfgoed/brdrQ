@@ -324,7 +324,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             for feature in geojson["features"]:
                 if "version_date" in feature["properties"]:
                     feature["properties"]["version_date"] = None
-        fcString = json.dumps(geojson_polygon_to_multipolygon(geojson))
+        fcString = json.dumps(geojson_polygon_to_multipolygon(geojson), default=str)
 
         vl = QgsVectorLayer(fcString, name, "ogr")
         vl.setCrs(QgsCoordinateReferenceSystem(self.CRS))
@@ -443,7 +443,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature.geometry())
             try:
                 dict_thematic_formula[id_theme] = {
-                    BASE_FORMULA_FIELD_NAME: feature.attribute(self.FORMULA_FIELDNAME)}
+                    self.FORMULA_FIELDNAME: feature.attribute(self.FORMULA_FIELDNAME)}
             except:
                 raise Exception("Formula -attribute-field (json) can not be loaded")
 

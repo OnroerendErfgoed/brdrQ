@@ -135,7 +135,6 @@ except (ModuleNotFoundError, ValueError):
 
 from brdr.aligner import Aligner
 from brdr.loader import DictLoader
-from brdr.constants import NEW_FORMULA_FIELD_NAME
 from brdr.enums import OpenbaarDomeinStrategy, GRBType, AlignerInputType, AlignerResultType
 from brdr.geometry_utils import geojson_polygon_to_multipolygon
 from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader, update_to_actual_grb
@@ -161,37 +160,39 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     LAYER_REFERENCE_NAME = "LAYER_REFERENCE_NAME"  # Name of the local referencelayer in the TOC
     ID_REFERENCE_FIELDNAME = "CAPAKEY"  # field that holds the fieldname of the unique reference id,defaults to CAPAKEY
     # ENUM for choosing the reference
-    GRB_TYPES = [e.name for e in GRBType]#types of actual GRB: parcels, buildings, artwork
-    ADPF_VERSIONS = ["Adpf" + str(x) for x in [datetime.datetime.today().year - i for i in range(6)]]# Fiscal parcels of past 5 years
-    ENUM_REFERENCE_OPTIONS = ["LOCAL REFERENCE LAYER (choose LAYER and ID below)"] + GRB_TYPES + ADPF_VERSIONS #Options for downloadable reference layers
-    SELECTED_REFERENCE = None #parameter that holds the chosen reference layer (0 means that a local reference layer is used)
+    GRB_TYPES = [e.name for e in GRBType]  # types of actual GRB: parcels, buildings, artwork
+    ADPF_VERSIONS = ["Adpf" + str(x) for x in
+                     [datetime.datetime.today().year - i for i in range(6)]]  # Fiscal parcels of past 5 years
+    ENUM_REFERENCE_OPTIONS = [
+                                 "LOCAL REFERENCE LAYER (choose LAYER and ID below)"] + GRB_TYPES + ADPF_VERSIONS  # Options for downloadable reference layers
+    SELECTED_REFERENCE = None  # parameter that holds the chosen reference layer (0 means that a local reference layer is used)
 
     # ENUM for choosing the OD-strategy
-    ENUM_OD_STRATEGY_OPTIONS = [e.name for e in OpenbaarDomeinStrategy]#list with od-strategy-options
+    ENUM_OD_STRATEGY_OPTIONS = [e.name for e in OpenbaarDomeinStrategy]  # list with od-strategy-options
 
     # LAYER parameters
-    PREFIX = "brdrQ" #prefix used for all layers and group layers
-    SUFFIX = "" #parameter for composing a suffix for the layers
-    GROUP_LAYER = PREFIX #parameter for group layer
-    GROUP_LAYER_ACTUAL = PREFIX + "_ACTUAL" #parameter for group layer when calculating an actualisation to actual GRB
-    LAYER_RESULT = "RESULT" #parameter that holds the TOC layername of the result
-    LAYER_RESULT_DIFF = "DIFF" #parameter that holds the TOC layername of the resulting diff
-    LAYER_RESULT_DIFF_PLUS = "DIFF_PLUS" #parameter that holds the TOC layername of the resulting diff_plus
-    LAYER_RESULT_DIFF_MIN = "DIFF_MIN" #parameter that holds the TOC layername of the resulting diff_min
-    LAYER_RELEVANT_INTERSECTION = "RLVNT_ISECT" #parameter that holds the TOC layername of the relevant intersection
-    LAYER_RELEVANT_DIFFERENCE = "RLVNT_DIFF" #parameter that holds the TOC layername of the relevant difference
+    PREFIX = "brdrQ"  # prefix used for all layers and group layers
+    SUFFIX = ""  # parameter for composing a suffix for the layers
+    GROUP_LAYER = PREFIX  # parameter for group layer
+    GROUP_LAYER_ACTUAL = PREFIX + "_ACTUAL"  # parameter for group layer when calculating an actualisation to actual GRB
+    LAYER_RESULT = "RESULT"  # parameter that holds the TOC layername of the result
+    LAYER_RESULT_DIFF = "DIFF"  # parameter that holds the TOC layername of the resulting diff
+    LAYER_RESULT_DIFF_PLUS = "DIFF_PLUS"  # parameter that holds the TOC layername of the resulting diff_plus
+    LAYER_RESULT_DIFF_MIN = "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
+    LAYER_RELEVANT_INTERSECTION = "RLVNT_ISECT"  # parameter that holds the TOC layername of the relevant intersection
+    LAYER_RELEVANT_DIFFERENCE = "RLVNT_DIFF"  # parameter that holds the TOC layername of the relevant difference
 
-    LAYER_RESULT_ACTUAL = "RESULT_ACTUAL" #parameter that holds the TOC layername of the actualised result
-    LAYER_RESULT_ACTUAL_DIFF = "RESULT_ACTUAL_DIFF" #parameter that holds the TOC layername of the actualised resulting diff
-    PREFIX_LOCAL_LAYER = "LOCREF" #prefix for the TOC layername, when a local layer is used
+    LAYER_RESULT_ACTUAL = "RESULT_ACTUAL"  # parameter that holds the TOC layername of the actualised result
+    LAYER_RESULT_ACTUAL_DIFF = "RESULT_ACTUAL_DIFF"  # parameter that holds the TOC layername of the actualised resulting diff
+    PREFIX_LOCAL_LAYER = "LOCREF"  # prefix for the TOC layername, when a local layer is used
 
     # ALIGNER parameters
-    CRS = "EPSG:31370" #default CRS for the aligner,updated by CRS of thematic inputlayer
-    OD_STRATEGY = 0 #default OD_STRATEGY for the aligner,updated by user-choice
-    THRESHOLD_OVERLAP_PERCENTAGE = 50 #default THRESHOLD_OVERLAP_PERCENTAGE for the aligner,updated by user-choice
-    RELEVANT_DISTANCE = 0 #default RELEVANT_DISTANCE for the aligner,updated by user-choice
-    CORR_DISTANCE = 0.01 #default CORR_DISTANCE for the aligner
-    MULTI_AS_SINGLE_MODUS = True #default MULTI_AS_SINGLE_MODUS for the aligner
+    CRS = "EPSG:31370"  # default CRS for the aligner,updated by CRS of thematic inputlayer
+    OD_STRATEGY = 0  # default OD_STRATEGY for the aligner,updated by user-choice
+    THRESHOLD_OVERLAP_PERCENTAGE = 50  # default THRESHOLD_OVERLAP_PERCENTAGE for the aligner,updated by user-choice
+    RELEVANT_DISTANCE = 0  # default RELEVANT_DISTANCE for the aligner,updated by user-choice
+    CORR_DISTANCE = 0.01  # default CORR_DISTANCE for the aligner
+    MULTI_AS_SINGLE_MODUS = True  # default MULTI_AS_SINGLE_MODUS for the aligner
 
     # CHECKBOX parameters defaults
     SHOW_INTERMEDIATE_LAYERS = True
@@ -202,8 +203,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     SHOW_LOG_INFO = False
 
     # OTHER parameters
-    MAX_AREA_FOR_DOWNLOADING_REFERENCE = 2500000 #maximum area that is covered by thematic features for blocking on-the fly downloading reference layers
-    MAX_DISTANCE_FOR_ACTUALISATION = 3 #maximum relevant distance that is used in the predictor when trying to update to actual GRB
+    MAX_AREA_FOR_DOWNLOADING_REFERENCE = 2500000  # maximum area that is covered by thematic features for blocking on-the fly downloading reference layers
+    MAX_DISTANCE_FOR_ACTUALISATION = 3  # maximum relevant distance that is used in the predictor when trying to update to actual GRB
 
     def flags(self):
         return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
@@ -391,7 +392,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 root.removeLayer(lyr)
                 qinst.removeMapLayer(lyr.id())
 
-        fcString = json.dumps(geojson_polygon_to_multipolygon(geojson))
+        fcString = json.dumps(geojson_polygon_to_multipolygon(geojson), default=str)
 
         vl = QgsVectorLayer(fcString, name, "ogr")
         vl.setCrs(QgsCoordinateReferenceSystem(self.CRS))
@@ -475,7 +476,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter = QgsProcessingParameterField(
             "COMBOBOX_ID_REFERENCE",
             "Choose reference ID",
-            self.ID_REFERENCE_FIELDNAME,#defaults to CAPAKEY
+            self.ID_REFERENCE_FIELDNAME,  # defaults to CAPAKEY
             self.INPUT_REFERENCE,
             optional=True,
         )
@@ -902,7 +903,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # PARAMETER PREPARATION
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
         self.CRS = QgsProject.instance().layerTreeRoot().findLayer(
-            parameters[self.INPUT_THEMATIC]).layer().sourceCrs().authid()  # set CRS for the calculations, based on the THEMATIC input layer
+            parameters[
+                self.INPUT_THEMATIC]).layer().sourceCrs().authid()  # set CRS for the calculations, based on the THEMATIC input layer
         self.ID_THEME_FIELDNAME = str(parameters["COMBOBOX_ID_THEME"])
         self.ID_REFERENCE_FIELDNAME = str(parameters["COMBOBOX_ID_REFERENCE"])
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
