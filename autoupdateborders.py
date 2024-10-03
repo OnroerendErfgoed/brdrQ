@@ -452,14 +452,18 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                                    base_formula_field=self.FORMULA_FIELDNAME,
                                    max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
                                    feedback=None)
+        if fcs is not None and fcs != {}:
+            # Add RESULT TO TOC
+            self.geojson_to_layer(self.LAYER_RESULT, fcs["result"],
+                                  QgsStyle.defaultStyle().symbol("outline blue"),
+                                  True, self.GROUP_LAYER)
+            self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"],
+                                  QgsStyle.defaultStyle().symbol("hashed black cblue /"),
+                                  False, self.GROUP_LAYER)
+            feedback.pushInfo("Resulterende geometrie berekend")
+        else:
+            feedback.pushInfo("Geen wijzigingen gedetecteerd binnen tijdspanne in referentielaag (GRB-percelen)")
 
-        # Add RESULT TO TOC
-        self.geojson_to_layer(self.LAYER_RESULT, fcs["result"],
-                              QgsStyle.defaultStyle().symbol("outline blue"),
-                              True, self.GROUP_LAYER)
-        self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"],
-                              QgsStyle.defaultStyle().symbol("hashed black cblue /"),
-                              False, self.GROUP_LAYER)
         if feedback.isCanceled():
             return {}
 

@@ -719,14 +719,17 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                                        base_formula_field=FORMULA_FIELD_NAME,
                                        max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
                                        feedback=log_info, attributes=self.ATTRIBUTES)
-            # Add RESULT TO TOC
-            self.geojson_to_layer(self.LAYER_RESULT_ACTUAL, fcs["result"],
-                                  QgsStyle.defaultStyle().symbol("outline blue"),
-                                  True, self.GROUP_LAYER_ACTUAL)
-            self.geojson_to_layer(self.LAYER_RESULT_ACTUAL_DIFF, fcs["result_diff"],
-                                  QgsStyle.defaultStyle().symbol("hashed clbue /"),
-                                  False, self.GROUP_LAYER_ACTUAL)
-            feedback.pushInfo("Resulterende geometrie berekend")
+            if fcs is not None and fcs != {}:
+                # Add RESULT TO TOC
+                self.geojson_to_layer(self.LAYER_RESULT_ACTUAL, fcs["result"],
+                                      QgsStyle.defaultStyle().symbol("outline blue"),
+                                      True, self.GROUP_LAYER_ACTUAL)
+                self.geojson_to_layer(self.LAYER_RESULT_ACTUAL_DIFF, fcs["result_diff"],
+                                      QgsStyle.defaultStyle().symbol("hashed clbue /"),
+                                      False, self.GROUP_LAYER_ACTUAL)
+                feedback.pushInfo("Resulterende geometrie berekend")
+            else:
+                feedback.pushInfo("Geen wijzigingen gedetecteerd binnen tijdspanne in referentielaag (GRB-percelen)")
             if feedback.isCanceled():
                 return {}
 
