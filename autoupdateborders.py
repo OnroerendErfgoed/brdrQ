@@ -430,6 +430,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # Load thematic into a shapely_dict:
         dict_thematic = {}
         dict_thematic_formula = {}
+        dict_thematic_properties = {}
         features = thematic.getFeatures()
 
         for current, feature in enumerate(features):
@@ -437,14 +438,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 return {}
             id_theme = feature.attribute(self.ID_THEME_FIELDNAME)
             dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature.geometry())
-            try:
-                dict_thematic_formula[id_theme] = {
-                    self.FORMULA_FIELDNAME: feature.attribute(self.FORMULA_FIELDNAME)}
-            except:
-                raise Exception("Formula -attribute-field (json) can not be loaded")
+            dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
 
         aligner = Aligner()
-        aligner.load_thematic_data(DictLoader(data_dict=dict_thematic, data_dict_properties=dict_thematic_formula))
+        aligner.load_thematic_data(DictLoader(data_dict=dict_thematic, data_dict_properties=dict_thematic_properties))
         fc = aligner.get_input_as_geojson(inputtype=AlignerInputType.THEMATIC)
 
         feedback.pushInfo("START ACTUALISATION")
