@@ -3,11 +3,12 @@
 """
 ***************************************************************************
 *   name: brdrQ - AutoUpdateBorders
-*   version: v0.9.7
+*   version: v0.9.8
 *   author: Karel Dieussaert
 *   Docs and Code- repo: https://github.com/OnroerendErfgoed/brdrQ/
 *   history:
 *            -initial version
+*            -refactoring of functions to brdr-functions for v0.4.0
 
 MIT LICENSE:
 Copyright (c) 2023-2024 Flanders Heritage Agency
@@ -95,12 +96,12 @@ except (ModuleNotFoundError):
 try:
     import brdr
 
-    if brdr.__version__ != "0.3.0":
+    if brdr.__version__ != "0.4.0":
         raise ValueError("Version mismatch")
 
 except (ModuleNotFoundError, ValueError):
     subprocess.check_call([python_exe,
-                           '-m', 'pip', 'install', 'brdr==0.3.0'])
+                           '-m', 'pip', 'install', 'brdr==0.4.0'])
     import brdr
 
     print(brdr.__version__)
@@ -109,7 +110,7 @@ from brdr.aligner import Aligner
 from brdr.loader import DictLoader
 from brdr.geometry_utils import geojson_polygon_to_multipolygon
 from brdr.enums import AlignerInputType
-from brdr.constants import FORMULA_FIELD_NAME
+from brdr.constants import BASE_FORMULA_FIELD_NAME
 from brdr.grb import update_to_actual_grb
 
 
@@ -123,32 +124,25 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
 
-    START_DATE = "START_DATE"
-    END_DATE = "END_DATE"
-    INPUT_THEMATIC = "INPUT_THEMATIC"
-    ID_THEME = "id_theme"
-    ID_THEME_FIELDNAME = ""  # field that holds the fieldname of the unique theme id
-    # TODO research inconsistency for ID_THEME and ID_THEME_FIELDNAME
-    MITRE_LIMIT = 10
-    CRS = "EPSG:31370"
-    QUAD_SEGS = 5
-    BUFFER_MULTIPLICATION_FACTOR = 1.01
-    RELEVANT_DISTANCE = 1
-    FORMULA_FIELD = "FORMULA_FIELD"
-    RESULT = "RESULT"
-    OUTPUT_RESULT = "OUTPUT_RESULT"
-    LAYER_RESULT = "brdrQ_RESULT"
-    LAYER_RESULT_DIFF = "brdrQ_RESULT_DIFF"
-    START_DATE = "2022-01-01 00:00:00"
-    DATE_FORMAT = "yyyy-MM-dd hh:mm:ss"
-    FIELD_LAST_VERSION_DATE = "last_version_date"
-    SHOW_LOG_INFO = False
+    INPUT_THEMATIC = "INPUT_THEMATIC"  # reference to the combobox for choosing the thematic input layer
+    ID_THEME_FIELDNAME = ""  # parameters that holds the fieldname of the unique theme id
 
-    FORMULA = True
+    # ALIGNER parameters
+    CRS = "EPSG:31370"  # default CRS for the aligner,updated by CRS of thematic inputlayer
+    OD_STRATEGY = 0  # default OD_STRATEGY for the aligner,updated by user-choice
+    THRESHOLD_OVERLAP_PERCENTAGE = 50  # default THRESHOLD_OVERLAP_PERCENTAGE for the aligner,updated by user-choice
+    RELEVANT_DISTANCE = 1  # default RELEVANT_DISTANCE for the aligner,updated by user-choice
+    CORR_DISTANCE = 0.01  # default CORR_DISTANCE for the aligner
+    MULTI_AS_SINGLE_MODUS = True  # default MULTI_AS_SINGLE_MODUS for the aligner
+
+    FORMULA_FIELDNAME = BASE_FORMULA_FIELD_NAME
+    LAYER_RESULT = "brdrQ_RESULT"  # parameter that holds the TOC layername of the result
+    LAYER_RESULT_DIFF = "brdrQ_RESULT_DIFF"  # parameter that holds the TOC layername of the resulting diff
 
     GROUP_LAYER = "BRDRQ_UPDATES"
-    # TODO: add parameter in UI for MAX_REFERENCE_FOR_ACTUALISATION
-    MAX_DISTANCE_FOR_ACTUALISATION = 3
+
+    # OTHER parameters
+    MAX_DISTANCE_FOR_ACTUALISATION = 3  # maximum relevant distance that is used in the predictor when trying to update to actual GRB
 
     def flags(self):
         return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
@@ -326,12 +320,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 root.removeLayer(lyr)
                 qinst.removeMapLayer(lyr.id())
 
-        # TODO fix for version_date (has to be fixed in brdr 0.3.1)
-        if geojson is not None and "features" in geojson:
-            for feature in geojson["features"]:
-                if "version_date" in feature["properties"]:
-                    feature["properties"]["version_date"] = None
-        fcString = json.dumps(geojson_polygon_to_multipolygon(geojson))
+        fcString = json.dumps(geojson_polygon_to_multipolygon(geojson), default=str)
 
         vl = QgsVectorLayer(fcString, name, "ogr")
         vl.setCrs(QgsCoordinateReferenceSystem(self.CRS))
@@ -377,7 +366,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterField(
-            self.ID_THEME,
+            "COMBOBOX_ID_THEME",
             "Choose thematic ID",
             "theme_identifier",
             self.INPUT_THEMATIC,
@@ -386,7 +375,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterField(
-            self.FORMULA_FIELD,
+            "FORMULA_FIELD",
             "Formula field",  # (if empty, formula will be calculated based on following alignment-date)
             "brdr_formula",
             self.INPUT_THEMATIC,
@@ -402,24 +391,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             optional=True
         )
         parameter.setFlags(parameter.flags())
-        # self.addParameter(parameter)
-
-        ## INPUT  standard parameters
-        # make your own widget is also possible!
-        # https://gis.stackexchange.com/questions/432849/changing-appearence-of-datetime-input-in-qgis-processing-tool-to-international-d
-        # https://www.faunalia.eu/en/blog/2019-07-02-custom-processing-widget
-
-        # START DATETIME
-        # parameter = QgsProcessingParameterDateTime(
-        #    self.START_DATE,
-        #    'VersionDate (date of version of reference layer where the thematic layer is aligned on):',
-        #    type=QgsProcessingParameterDateTime.Date
-        #    ,
-        #    #defaultValue = QDateTime.currentDateTime().addDays(2*-365)
-        #    defaultValue = QDateTime.fromString(self.START_DATE,self.DATE_FORMAT)
-        # )
-        # parameter.setFlags(parameter.flags())
-        # self.addParameter(parameter)
 
         parameter = QgsProcessingParameterNumber(
             "MAX_RELEVANT_DISTANCE",
@@ -432,7 +403,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         self.addOutput(
             QgsProcessingOutputVectorLayer(
-                self.OUTPUT_RESULT,
+                "OUTPUT_RESULT",
                 self.LAYER_RESULT,
                 QgsProcessing.TypeVectorAnyGeometry,
             )
@@ -459,45 +430,52 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # Load thematic into a shapely_dict:
         dict_thematic = {}
         dict_thematic_formula = {}
+        dict_thematic_properties = {}
         features = thematic.getFeatures()
 
+        BRDR_ID_FIELDNAME = "brdr_id"  # TODO fix
         for current, feature in enumerate(features):
             if feedback.isCanceled():
                 return {}
-            id_theme = feature.attribute(self.ID_THEME)
+
+            # id_theme = feature.attribute(self.ID_THEME_FIELDNAME)
+            # dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature.geometry())
+            # dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
+            # TODO: remove str when bugfix in brdr is released
+            id_theme = str(feature.attribute(self.ID_THEME_FIELDNAME))
             dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature.geometry())
-            try:
-                dict_thematic_formula[id_theme] = {
-                    FORMULA_FIELD_NAME: feature.attribute(self.FORMULA_FIELD)}
-            except:
-                raise Exception("Formula -attribute-field (json) can not be loaded")
+            dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
+            dict_thematic_properties[id_theme][BRDR_ID_FIELDNAME] = id_theme
+            # END fix
+
+        self.ID_THEME_FIELDNAME = BRDR_ID_FIELDNAME  # todo fix -remove after new brdr
 
         aligner = Aligner()
-        aligner.load_thematic_data(DictLoader(data_dict=dict_thematic, data_dict_properties=dict_thematic_formula))
+        aligner.load_thematic_data(DictLoader(data_dict=dict_thematic, data_dict_properties=dict_thematic_properties))
         fc = aligner.get_input_as_geojson(inputtype=AlignerInputType.THEMATIC)
 
         feedback.pushInfo("START ACTUALISATION")
-        fcs = update_to_actual_grb(fc, id_theme_fieldname=self.ID_THEME_FIELDNAME,
-                                   formula_field=self.FORMULA_FIELD,
-                                   max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
-                                   feedback=None)
 
-        # Add RESULT TO TOC
-        self.geojson_to_layer(self.LAYER_RESULT, fcs["result"],
-                              QgsStyle.defaultStyle().symbol("outline blue"),
-                              True, self.GROUP_LAYER)
-        self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"],
-                              QgsStyle.defaultStyle().symbol("hashed black cblue /"),
-                              False, self.GROUP_LAYER)
-        if feedback.isCanceled():
+        fcs_actualisation = update_to_actual_grb(fc, id_theme_fieldname=self.ID_THEME_FIELDNAME,
+                                                 base_formula_field=self.FORMULA_FIELDNAME,
+                                                 max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
+                                                 feedback=None)
+        if fcs_actualisation is None or fcs_actualisation == {}:
+            feedback.pushInfo("Geen wijzigingen gedetecteerd binnen tijdspanne in referentielaag (GRB-percelen)")
+            feedback.pushInfo("Proces wordt afgesloten")
             return {}
 
+        # Add RESULT TO TOC
+        self.geojson_to_layer(self.LAYER_RESULT, fcs_actualisation["result"],
+                              QgsStyle.defaultStyle().symbol("outline blue"),
+                              True, self.GROUP_LAYER)
+        self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs_actualisation["result_diff"],
+                              QgsStyle.defaultStyle().symbol("hashed black cblue /"),
+                              False, self.GROUP_LAYER)
+        feedback.pushInfo("Resulterende geometrie berekend")
         feedback.pushInfo("END ACTUALISATION")
-
-        self.RESULT = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
-
+        result = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
         QgsProject.instance().reloadAllLayers()
-
         feedback.pushInfo("Resulterende geometrie berekend")
         feedback.setCurrentStep(6)
         if feedback.isCanceled():
@@ -506,7 +484,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo("END PROCESSING")
         feedback.pushInfo("EINDE: RESULTAAT BEREKEND")
         return {
-            self.OUTPUT_RESULT: self.RESULT
+            "OUTPUT_RESULT": result
         }
 
     def _thematic_preparation(self, context, feedback, outputs, parameters):
@@ -522,37 +500,20 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         thematic = context.getMapLayer(
             outputs[self.INPUT_THEMATIC + "_fixed"]["OUTPUT"]
         )
-
-        outputs[self.INPUT_THEMATIC + "_id"] = processing.run(
-            "native:fieldcalculator",
-            {
-                "INPUT": thematic,
-                "FIELD_NAME": self.ID_THEME,
-                "FIELD_TYPE": 2,
-                "FIELD_LENGTH": 0,
-                "FIELD_PRECISION": 0,
-                "FORMULA": "to_string(" + parameters[self.ID_THEME] + ")",
-                "OUTPUT": "TEMPORARY_OUTPUT",
-            },
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        thematic = context.getMapLayer(outputs[self.INPUT_THEMATIC + "_id"]["OUTPUT"])
         self.CRS = (
             thematic.sourceCrs().authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer
 
-        outputs[self.INPUT_THEMATIC + "_enriched"] = processing.run(
-            "qgis:exportaddgeometrycolumns",
-            {"INPUT": thematic, "CALC_METHOD": 0, "OUTPUT": "TEMPORARY_OUTPUT"},
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        thematic = context.getMapLayer(
-            outputs[self.INPUT_THEMATIC + "_enriched"]["OUTPUT"]
-        )
+        # outputs[self.INPUT_THEMATIC + "_enriched"] = processing.run(
+        #     "qgis:exportaddgeometrycolumns",
+        #     {"INPUT": thematic, "CALC_METHOD": 0, "OUTPUT": "TEMPORARY_OUTPUT"},
+        #     context=context,
+        #     feedback=feedback,
+        #     is_child_algorithm=True,
+        # )
+        # thematic = context.getMapLayer(
+        #     outputs[self.INPUT_THEMATIC + "_enriched"]["OUTPUT"]
+        # )
         outputs[self.INPUT_THEMATIC + "_dropMZ"] = processing.run(
             "native:dropmzvalues",
             {
@@ -574,11 +535,11 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "native:buffer",
             {
                 "INPUT": thematic,
-                "DISTANCE": self.BUFFER_MULTIPLICATION_FACTOR * self.RELEVANT_DISTANCE,
-                "SEGMENTS": self.QUAD_SEGS,
+                "DISTANCE": 1.01 * self.RELEVANT_DISTANCE,
+                "SEGMENTS": 10,
                 "END_CAP_STYLE": 0,
                 "JOIN_STYLE": 1,
-                "MITRE_LIMIT": self.MITRE_LIMIT,
+                "MITRE_LIMIT": 10,
                 "DISSOLVE": False,
                 "OUTPUT": "TEMPORARY_OUTPUT",
             },
@@ -592,5 +553,5 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         return thematic, thematic_buffered
 
     def prepare_parameters(self, parameters):
-        self.FORMULA_FIELD = parameters["FORMULA_FIELD"]
-        self.ID_THEME_FIELDNAME = str(parameters[self.ID_THEME])
+        self.FORMULA_FIELDNAME = parameters["FORMULA_FIELD"]
+        self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
