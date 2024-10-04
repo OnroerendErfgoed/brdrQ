@@ -553,4 +553,4 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     def prepare_parameters(self, parameters):
         self.FORMULA_FIELDNAME = parameters["FORMULA_FIELD"]
-        self.ID_THEME_FIELDNAME = str(parameters["COMBOBOX_ID_THEME"])
+        self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]

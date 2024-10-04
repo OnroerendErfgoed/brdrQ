@@ -903,8 +903,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.CRS = QgsProject.instance().layerTreeRoot().findLayer(
             parameters[
                 self.INPUT_THEMATIC]).layer().sourceCrs().authid()  # set CRS for the calculations, based on the THEMATIC input layer
-        self.ID_THEME_FIELDNAME = str(parameters["COMBOBOX_ID_THEME"])
-        self.ID_REFERENCE_FIELDNAME = str(parameters["COMBOBOX_ID_REFERENCE"])
+        self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
+        self.ID_REFERENCE_FIELDNAME = parameters["COMBOBOX_ID_REFERENCE"]
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
         self.OD_STRATEGY = OpenbaarDomeinStrategy[self.ENUM_OD_STRATEGY_OPTIONS[parameters["ENUM_OD_STRATEGY"]]]
         self.ADD_FORMULA = parameters["ADD_FORMULA"]
