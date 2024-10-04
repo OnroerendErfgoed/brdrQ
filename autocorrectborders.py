@@ -610,16 +610,20 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # Load thematic into a shapely_dict:
         dict_thematic = {}
         dict_thematic_properties = {}
+        BRDR_ID_FIELDNAME = "brdr_id"  # TODO fix - remove after new brdr
         features = thematic.getFeatures()
         for current, feature in enumerate(features):
             feature_geom = feature.geometry()
             if feedback.isCanceled():
                 return {}
-            id_theme = feature.attribute(self.ID_THEME_FIELDNAME)
+            # id_theme = feature.attribute(self.ID_THEME_FIELDNAME)
+            id_theme = str(feature.attribute(self.ID_THEME_FIELDNAME))  # todo fix - remove str after new brdr
             dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature_geom)
             if self.ATTRIBUTES:
                 dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
-                # json.loads(QgsJsonUtils.exportAttributes(feature))
+            dict_thematic_properties[id_theme][BRDR_ID_FIELDNAME] = id_theme  # todo fix - remove after new brdr
+
+        self.ID_THEME_FIELDNAME = BRDR_ID_FIELDNAME  # todo fix -remove after new brdr
 
         area = make_valid(unary_union(list(dict_thematic.values()))).area
         feedback.pushInfo("Area of thematic zone: " + str(area))
@@ -730,6 +734,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 feedback.pushInfo("Resulterende geometrie berekend")
             else:
                 feedback.pushInfo("Geen wijzigingen gedetecteerd binnen tijdspanne in referentielaag (GRB-percelen)")
+
             if feedback.isCanceled():
                 return {}
 

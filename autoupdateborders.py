@@ -433,45 +433,49 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         dict_thematic_properties = {}
         features = thematic.getFeatures()
 
+        BRDR_ID_FIELDNAME = "brdr_id"  # TODO fix
         for current, feature in enumerate(features):
             if feedback.isCanceled():
                 return {}
-            id_theme = feature.attribute(self.ID_THEME_FIELDNAME)
+
+            # id_theme = feature.attribute(self.ID_THEME_FIELDNAME)
+            # dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature.geometry())
+            # dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
+            # TODO: remove str when bugfix in brdr is released
+            id_theme = str(feature.attribute(self.ID_THEME_FIELDNAME))
             dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature.geometry())
             dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
+            dict_thematic_properties[id_theme][BRDR_ID_FIELDNAME] = id_theme
+            # END fix
+
+        self.ID_THEME_FIELDNAME = BRDR_ID_FIELDNAME  # todo fix -remove after new brdr
 
         aligner = Aligner()
         aligner.load_thematic_data(DictLoader(data_dict=dict_thematic, data_dict_properties=dict_thematic_properties))
         fc = aligner.get_input_as_geojson(inputtype=AlignerInputType.THEMATIC)
 
         feedback.pushInfo("START ACTUALISATION")
+
         fcs_actualisation = update_to_actual_grb(fc, id_theme_fieldname=self.ID_THEME_FIELDNAME,
-                                   base_formula_field=self.FORMULA_FIELDNAME,
-                                   max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
-                                   feedback=None)
-        if fcs_actualisation is not None and fcs_actualisation != {}:
-            # Add RESULT TO TOC
-            self.geojson_to_layer(self.LAYER_RESULT, fcs_actualisation["result"],
-                                  QgsStyle.defaultStyle().symbol("outline blue"),
-                                  True, self.GROUP_LAYER)
-            self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs_actualisation["result_diff"],
-                                  QgsStyle.defaultStyle().symbol("hashed black cblue /"),
-                                  False, self.GROUP_LAYER)
-            feedback.pushInfo("Resulterende geometrie berekend")
-        else:
+                                                 base_formula_field=self.FORMULA_FIELDNAME,
+                                                 max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
+                                                 feedback=None)
+        if fcs_actualisation is None or fcs_actualisation == {}:
             feedback.pushInfo("Geen wijzigingen gedetecteerd binnen tijdspanne in referentielaag (GRB-percelen)")
             feedback.pushInfo("Proces wordt afgesloten")
             return {}
 
-        if feedback.isCanceled():
-            return {}
-
+        # Add RESULT TO TOC
+        self.geojson_to_layer(self.LAYER_RESULT, fcs_actualisation["result"],
+                              QgsStyle.defaultStyle().symbol("outline blue"),
+                              True, self.GROUP_LAYER)
+        self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs_actualisation["result_diff"],
+                              QgsStyle.defaultStyle().symbol("hashed black cblue /"),
+                              False, self.GROUP_LAYER)
+        feedback.pushInfo("Resulterende geometrie berekend")
         feedback.pushInfo("END ACTUALISATION")
-
         result = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
-
         QgsProject.instance().reloadAllLayers()
-
         feedback.pushInfo("Resulterende geometrie berekend")
         feedback.setCurrentStep(6)
         if feedback.isCanceled():
