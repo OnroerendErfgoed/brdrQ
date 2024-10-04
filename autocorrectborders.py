@@ -715,16 +715,16 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         if self.UPDATE_TO_ACTUAL:
             feedback.pushInfo("START ACTUALISATION")
-            fcs = update_to_actual_grb(fcs["result"], id_theme_fieldname=self.ID_THEME_FIELDNAME,
-                                       base_formula_field=FORMULA_FIELD_NAME,
-                                       max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
-                                       feedback=log_info, attributes=self.ATTRIBUTES)
-            if fcs is not None and fcs != {}:
+            fcs_actualisation = update_to_actual_grb(fcs["result"], id_theme_fieldname=self.ID_THEME_FIELDNAME,
+                                                     base_formula_field=FORMULA_FIELD_NAME,
+                                                     max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
+                                                     feedback=log_info, attributes=self.ATTRIBUTES)
+            if fcs_actualisation is not None and fcs_actualisation != {}:
                 # Add RESULT TO TOC
-                self.geojson_to_layer(self.LAYER_RESULT_ACTUAL, fcs["result"],
+                self.geojson_to_layer(self.LAYER_RESULT_ACTUAL, fcs_actualisation["result"],
                                       QgsStyle.defaultStyle().symbol("outline blue"),
                                       True, self.GROUP_LAYER_ACTUAL)
-                self.geojson_to_layer(self.LAYER_RESULT_ACTUAL_DIFF, fcs["result_diff"],
+                self.geojson_to_layer(self.LAYER_RESULT_ACTUAL_DIFF, fcs_actualisation["result_diff"],
                                       QgsStyle.defaultStyle().symbol("hashed clbue /"),
                                       False, self.GROUP_LAYER_ACTUAL)
                 feedback.pushInfo("Resulterende geometrie berekend")
@@ -909,9 +909,15 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.OD_STRATEGY = OpenbaarDomeinStrategy[self.ENUM_OD_STRATEGY_OPTIONS[parameters["ENUM_OD_STRATEGY"]]]
         self.ADD_FORMULA = parameters["ADD_FORMULA"]
         self.ATTRIBUTES = parameters["ADD_ATTRIBUTES"]
-        self.PREDICTIONS = parameters["PREDICTIONS"]
         self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
+        self.PREDICTIONS = parameters["PREDICTIONS"]
         self.UPDATE_TO_ACTUAL = parameters["UPDATE_TO_ACTUAL"]
+        if self.PREDICTIONS and self.UPDATE_TO_ACTUAL:
+            raise QgsProcessingException(
+                "The PREDICTIONS-checkbox and the UPDATE_TO_ACTUAL_GRB-checkbox cannot be checked simultaneously")
+        if not self.ADD_FORMULA and self.UPDATE_TO_ACTUAL:
+            raise QgsProcessingException(
+                "The ADD FORMULA-checkbox must be checked when using the UPDATE_TO_ACTUAL_GRB-checkbox")
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
         self.MAX_DISTANCE_FOR_ACTUALISATION = parameters["MAX_DISTANCE_FOR_ACTUALISATION"]
 

@@ -448,21 +448,23 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         fc = aligner.get_input_as_geojson(inputtype=AlignerInputType.THEMATIC)
 
         feedback.pushInfo("START ACTUALISATION")
-        fcs = update_to_actual_grb(fc, id_theme_fieldname=self.ID_THEME_FIELDNAME,
+        fcs_actualisation = update_to_actual_grb(fc, id_theme_fieldname=self.ID_THEME_FIELDNAME,
                                    base_formula_field=self.FORMULA_FIELDNAME,
                                    max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
                                    feedback=None)
-        if fcs is not None and fcs != {}:
+        if fcs_actualisation is not None and fcs_actualisation != {}:
             # Add RESULT TO TOC
-            self.geojson_to_layer(self.LAYER_RESULT, fcs["result"],
+            self.geojson_to_layer(self.LAYER_RESULT, fcs_actualisation["result"],
                                   QgsStyle.defaultStyle().symbol("outline blue"),
                                   True, self.GROUP_LAYER)
-            self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"],
+            self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs_actualisation["result_diff"],
                                   QgsStyle.defaultStyle().symbol("hashed black cblue /"),
                                   False, self.GROUP_LAYER)
             feedback.pushInfo("Resulterende geometrie berekend")
         else:
             feedback.pushInfo("Geen wijzigingen gedetecteerd binnen tijdspanne in referentielaag (GRB-percelen)")
+            feedback.pushInfo("Proces wordt afgesloten")
+            return {}
 
         if feedback.isCanceled():
             return {}
