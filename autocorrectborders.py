@@ -49,17 +49,16 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ***************************************************************************
 """
 import datetime
-import json
 import os
 import site
 import subprocess
 import sys
 
 import numpy as np
+from geojson import dump
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtCore import Qt
-from qgis.core import QgsCoordinateReferenceSystem
+from qgis.PyQt.QtCore import Qt, QDate, QDateTime
 from qgis.core import QgsFeatureRequest
 from qgis.core import QgsGeometry
 from qgis.core import QgsProcessing
@@ -72,6 +71,7 @@ from qgis.core import QgsProcessingParameterDefinition
 from qgis.core import QgsProcessingParameterEnum
 from qgis.core import QgsProcessingParameterFeatureSource
 from qgis.core import QgsProcessingParameterField
+from qgis.core import QgsProcessingParameterFile
 from qgis.core import QgsProcessingParameterNumber
 from qgis.core import QgsProject
 from qgis.core import QgsSimpleLineSymbolLayer, QgsFillSymbol, \
@@ -207,6 +207,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     # OTHER parameters
     MAX_AREA_FOR_DOWNLOADING_REFERENCE = 2500000  # maximum area that is covered by thematic features for blocking on-the fly downloading reference layers
     MAX_DISTANCE_FOR_ACTUALISATION = 3  # maximum relevant distance that is used in the predictor when trying to update to actual GRB
+    TEMPFOLDER = ""
 
     def flags(self):
         return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
@@ -285,6 +286,19 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         wkt = geom_qgis.asWkt()
         geom_shapely = from_wkt(wkt)
         return make_valid(geom_shapely)
+
+    def write_geojson(self, path_to_file, geojson):
+        """
+        Write a GeoJSON object to a file.
+
+        Args:
+            path_to_file (str): Path to the output file.
+            geojson (FeatureCollection): The GeoJSON object to write.
+        """
+        parent = os.path.dirname(path_to_file)
+        os.makedirs(parent, exist_ok=True)
+        with open(path_to_file, "w") as f:
+            dump(geojson, f, default=str)
 
     def get_layer_by_name(self, layer_name):
         """
@@ -394,17 +408,14 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 root.removeLayer(lyr)
                 qinst.removeMapLayer(lyr.id())
 
-        fcString = json.dumps(geojson_polygon_to_multipolygon(geojson), default=str)
+        tempfilename = self.TEMPFOLDER + "/" + name + ".geojson"
+        self.write_geojson(tempfilename, geojson_polygon_to_multipolygon(geojson))
 
-        vl = QgsVectorLayer(fcString, name, "ogr")
-        vl.setCrs(QgsCoordinateReferenceSystem(self.CRS))
-        # pr = vl.dataProvider()
-        vl.updateFields()
+        vl = QgsVectorLayer(tempfilename, name, "ogr")
         # styling
-        # vl.setOpacity(0.5)
-
         if symbol is not None and vl.renderer() is not None:
             vl.renderer().setSymbol(symbol)
+        # vl.setOpacity(0.5)
 
         # adding layer to TOC
         qinst.addMapLayer(
@@ -430,6 +441,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         """
 
         # standard parameters
+
         parameter = QgsProcessingParameterFeatureSource(
             self.INPUT_THEMATIC,
             self.tr("THEMATIC LAYER"),
@@ -482,6 +494,14 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.INPUT_REFERENCE,
             optional=True,
         )
+        parameter.setFlags(parameter.flags())
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterFile(
+            "WORK_FOLDER",
+            self.tr("Working folder"),
+            behavior=QgsProcessingParameterFile.Folder,
+            optional=True, )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
@@ -620,7 +640,17 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             id_theme = str(feature.attribute(self.ID_THEME_FIELDNAME))  # todo fix - remove str after new brdr
             dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature_geom)
             if self.ATTRIBUTES:
-                dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
+                # dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
+                attributes = feature.attributeMap()
+                attributes_dict = {}
+                for key, value in attributes.items():
+                    if isinstance(value, QDate):
+                        attributes_dict[key] = value.toPyDate()
+                    elif isinstance(value, QDateTime):
+                        attributes_dict[key] = value.toPyDateTime()
+                    else:
+                        attributes_dict[key] = value
+                dict_thematic_properties[id_theme] = attributes_dict
             dict_thematic_properties[id_theme][BRDR_ID_FIELDNAME] = id_theme  # todo fix - remove after new brdr
 
         self.ID_THEME_FIELDNAME = BRDR_ID_FIELDNAME  # todo fix -remove after new brdr
@@ -904,6 +934,14 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     def prepare_parameters(self, parameters):
         # PARAMETER PREPARATION
+        self.TEMPFOLDER = parameters["WORK_FOLDER"]
+        now = datetime.datetime.now()
+        date_string = now.strftime("%Y%m%d%H%M%S")
+        if self.TEMPFOLDER is None or str(self.TEMPFOLDER) == 'NULL' or str(self.TEMPFOLDER) == "":
+            self.TEMPFOLDER = "brdrQ"
+            # dest =QgsProcessingParameterFolderDestination (name="brdrQ")
+            # self.TEMPFOLDER =dest.generateTemporaryDestination()
+        self.TEMPFOLDER = os.path.join(self.TEMPFOLDER, date_string)
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
         self.CRS = QgsProject.instance().layerTreeRoot().findLayer(
             parameters[
