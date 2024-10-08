@@ -3,28 +3,9 @@
 """
 ***************************************************************************
 *   name: brdrQ - Autocorrectborders
-*   version: v0.9.7
+*   version: v0.9.8
 *   author: Karel Dieussaert
-*   Docs and Code- repo: https://github.com/OnroerendErfgoed/brdrQ/
-*   history:
-*            -initial version based on pyQGIS
-*            -added exclusion of circles
-*            -more efficient merge/union-logical
-*            -removed resulting group layer (to prevent crashing of QGIS) - extra research needed
-*            -add logic for openbaar domein (od_strategy)
-*            -intermediate layers added as an advanced parameter
-*            -Native processes as child_algorithms
-*            -Process NonThreaded to fix QGIS from crashing
-*            -Added advanced parameter for processing input-multipolygons as single polygons
-*            -rewriting to use Aligner (shapely-python)
-*            -cleanup and added docs to Aligner
-*            -resulting output made available for further QGIS-modelling
-*            -added enum - parameter to download actual GRB (adp-gbg-knw)
-*            -added enum - parameter for od-strategy
-*            -changes implemented for refactored brdr
-*            -uses new version of brdr (0.2.0?)
-*            -refactoring of functions to brdr-functions
-*            -possibility to use predictor-function in brdr
+*   Docs, history and Code- repo: https://github.com/OnroerendErfgoed/brdrQ/
 
 MIT LICENSE:
 Copyright (c) 2023-2024 Flanders Heritage Agency
@@ -48,17 +29,16 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ***************************************************************************
 """
 import datetime
-import json
 import os
 import site
 import subprocess
 import sys
 
 import numpy as np
+from geojson import dump
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtCore import Qt
-from qgis.core import QgsCoordinateReferenceSystem
+from qgis.PyQt.QtCore import Qt, QDate, QDateTime
 from qgis.core import QgsFeatureRequest
 from qgis.core import QgsGeometry
 from qgis.core import QgsProcessing
@@ -71,6 +51,7 @@ from qgis.core import QgsProcessingParameterDefinition
 from qgis.core import QgsProcessingParameterEnum
 from qgis.core import QgsProcessingParameterFeatureSource
 from qgis.core import QgsProcessingParameterField
+from qgis.core import QgsProcessingParameterFile
 from qgis.core import QgsProcessingParameterNumber
 from qgis.core import QgsProject
 from qgis.core import QgsSimpleLineSymbolLayer, QgsFillSymbol, \
@@ -123,12 +104,12 @@ except (ModuleNotFoundError):
 try:
     import brdr
 
-    if brdr.__version__ != "0.3.0":
+    if brdr.__version__ != "0.4.0":
         raise ValueError("Version mismatch")
 
 except (ModuleNotFoundError, ValueError):
     subprocess.check_call([python_exe,
-                           '-m', 'pip', 'install', 'brdr==0.3.0'])
+                           '-m', 'pip', 'install', 'brdr==0.4.0'])
     import brdr
 
     print(brdr.__version__)
@@ -138,6 +119,7 @@ from brdr.loader import DictLoader
 from brdr.enums import OpenbaarDomeinStrategy, GRBType, AlignerInputType, AlignerResultType
 from brdr.geometry_utils import geojson_polygon_to_multipolygon
 from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader, update_to_actual_grb
+from brdr.constants import FORMULA_FIELD_NAME
 
 
 class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -151,78 +133,61 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
 
-    INPUT_THEMATIC = "INPUT_THEMATIC"
-    INPUT_REFERENCE = "INPUT_REFERENCE"
+    # THEMATIC PARAMETERS
+    INPUT_THEMATIC = "INPUT_THEMATIC"  # reference to the combobox for choosing the thematic input layer
+    ID_THEME_FIELDNAME = ""  # parameters that holds the fieldname of the unique theme id
 
+    # REFERENCE PARAMETERS
+    INPUT_REFERENCE = "INPUT_REFERENCE"  # reference to the combobox for choosing the reference input layer
+    LAYER_REFERENCE_NAME = "LAYER_REFERENCE_NAME"  # Name of the local referencelayer in the TOC
+    ID_REFERENCE_FIELDNAME = "CAPAKEY"  # field that holds the fieldname of the unique reference id,defaults to CAPAKEY
     # ENUM for choosing the reference
-    ENUM_REFERENCE = "ENUM_REFERENCE"
-    GRB_TYPES = [e.name for e in GRBType]
-    ADPF_VERSIONS = ["Adpf" + str(x) for x in [datetime.datetime.today().year - i for i in range(6)]]
-    ENUM_REFERENCE_OPTIONS = ["LOCAL REFERENCE LAYER (choose LAYER and ID below)"] + GRB_TYPES + ADPF_VERSIONS
-    SELECTED_REFERENCE = None
+    GRB_TYPES = [e.name for e in GRBType]  # types of actual GRB: parcels, buildings, artwork
+    ADPF_VERSIONS = ["Adpf" + str(x) for x in
+                     [datetime.datetime.today().year - i for i in range(6)]]  # Fiscal parcels of past 5 years
+    ENUM_REFERENCE_OPTIONS = [
+                                 "LOCAL REFERENCE LAYER (choose LAYER and ID below)"] + GRB_TYPES + ADPF_VERSIONS  # Options for downloadable reference layers
+    SELECTED_REFERENCE = None  # parameter that holds the chosen reference layer (0 means that a local reference layer is used)
 
     # ENUM for choosing the OD-strategy
-    ENUM_OD_STRATEGY = "ENUM_OD_STRATEGY"
-    OD_STRATEGY_TYPES = [e.name for e in OpenbaarDomeinStrategy]
-    ENUM_OD_STRATEGY_OPTIONS = OD_STRATEGY_TYPES
-    SELECTED_OD_STRATEGY = None
+    ENUM_OD_STRATEGY_OPTIONS = [e.name for e in OpenbaarDomeinStrategy]  # list with od-strategy-options
 
-    RESULT = "RESULT"
-    RESULT_DIFF = "RESULT_DIFF"
-    RESULT_DIFF_PLUS = "RESULT_DIFF_PLUS"
-    RESULT_DIFF_MIN = "RESULT_DIFF_MIN"
-    OUTPUT_RESULT = "OUTPUT_RESULT"
-    OUTPUT_RESULT_DIFF = "OUTPUT_RESULT_DIFF"
-    OUTPUT_RESULT_DIFF_PLUS = "OUTPUT_RESULT_DIFF_PLUS"
-    OUTPUT_RESULT_DIFF_MIN = "OUTPUT_RESULT_DIFF_MIN"
+    # LAYER parameters
+    PREFIX = "brdrQ"  # prefix used for all layers and group layers
+    SUFFIX = ""  # parameter for composing a suffix for the layers
+    GROUP_LAYER = PREFIX  # parameter for group layer
+    GROUP_LAYER_ACTUAL = PREFIX + "_ACTUAL"  # parameter for group layer when calculating an actualisation to actual GRB
+    LAYER_RESULT = "RESULT"  # parameter that holds the TOC layername of the result
+    LAYER_RESULT_DIFF = "DIFF"  # parameter that holds the TOC layername of the resulting diff
+    LAYER_RESULT_DIFF_PLUS = "DIFF_PLUS"  # parameter that holds the TOC layername of the resulting diff_plus
+    LAYER_RESULT_DIFF_MIN = "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
+    LAYER_RELEVANT_INTERSECTION = "RLVNT_ISECT"  # parameter that holds the TOC layername of the relevant intersection
+    LAYER_RELEVANT_DIFFERENCE = "RLVNT_DIFF"  # parameter that holds the TOC layername of the relevant difference
 
-    # Layers
-    PREFIX = "brdrQ"
-    SUFFIX = ""
-    GROUP_LAYER = PREFIX
-    GROUP_LAYER_ACTUAL = PREFIX + "_ACTUAL"
-    LAYER_RESULT = "RESULT"
-    LAYER_RESULT_DIFF = "DIFF"
-    LAYER_RESULT_DIFF_PLUS = "DIFF_PLUS"
-    LAYER_RESULT_DIFF_MIN = "DIFF_MIN"
-    LAYER_RELEVANT_INTERSECTION = "RLVNT_ISECT"
-    LAYER_RELEVANT_DIFFERENCE = "RLVNT_DIFF"
-    LAYER_REFERENCE = "LAYER_REFERENCE"
-    LAYER_RESULT_ACTUAL = "RESULT_ACTUAL"
-    LAYER_RESULT_ACTUAL_DIFF = "RESULT_ACTUAL_DIFF"
-    PREFIX_LOCAL_LAYER = "LOCREF"
+    LAYER_RESULT_ACTUAL = "RESULT_ACTUAL"  # parameter that holds the TOC layername of the actualised result
+    LAYER_RESULT_ACTUAL_DIFF = "RESULT_ACTUAL_DIFF"  # parameter that holds the TOC layername of the actualised resulting diff
+    PREFIX_LOCAL_LAYER = "LOCREF"  # prefix for the TOC layername, when a local layer is used
 
-    ID_THEME = "id_theme"
-    ID_REFERENCE = "id_ref"
-    ID_THEME_FIELDNAME = ""  # field that holds the fieldname of the unique theme id
-    # TODO research inconsistency for ID_THEME and ID_THEME_FIELDNAME
-    OVERLAY_FIELDS_PREFIX = ""
-    OD_STRATEGY = 0
-    THRESHOLD_OVERLAP_PERCENTAGE = 50
-    THRESHOLD_EXCLUSION_AREA = 0
-    THRESHOLD_EXCLUSION_PERCENTAGE = 0
-    RELEVANT_DISTANCE = 0
-    BUFFER_DISTANCE = 0
-    THRESHOLD_CIRCLE_RATIO = 0.98
-    CORR_DISTANCE = 0.01
+    # ALIGNER parameters
+    CRS = "EPSG:31370"  # default CRS for the aligner,updated by CRS of thematic inputlayer
+    OD_STRATEGY = 0  # default OD_STRATEGY for the aligner,updated by user-choice
+    THRESHOLD_OVERLAP_PERCENTAGE = 50  # default THRESHOLD_OVERLAP_PERCENTAGE for the aligner,updated by user-choice
+    RELEVANT_DISTANCE = 0  # default RELEVANT_DISTANCE for the aligner,updated by user-choice
+    CORR_DISTANCE = 0.01  # default CORR_DISTANCE for the aligner
+    MULTI_AS_SINGLE_MODUS = True  # default MULTI_AS_SINGLE_MODUS for the aligner
+
+    # CHECKBOX parameters defaults
     SHOW_INTERMEDIATE_LAYERS = True
-    FORMULA = True
-    FORMULA_FIELD = "brdr_formula"
-    MITRE_LIMIT = 10
-    CRS = "EPSG:31370"
-    QUAD_SEGS = 5
-    BUFFER_MULTIPLICATION_FACTOR = 1.01
-    DOWNLOAD_LIMIT = 10000
-    MAX_REFERENCE_BUFFER = 10
-    MAX_AREA_FOR_DOWNLOADING_REFERENCE = 2500000
+    ADD_FORMULA = True
+    ATTRIBUTES = True
     PREDICTIONS = False
     UPDATE_TO_ACTUAL = False
     SHOW_LOG_INFO = False
-    # TODO: add parameter in UI for MAX_REFERENCE_FOR_ACTUALISATION
-    MAX_DISTANCE_FOR_ACTUALISATION = 3
-    START_DATE = "2022-01-01 00:00:00"
-    DATE_FORMAT = "yyyy-MM-dd hh:mm:ss"
-    FIELD_LAST_VERSION_DATE = "last_version_date"
+
+    # OTHER parameters
+    MAX_AREA_FOR_DOWNLOADING_REFERENCE = 2500000  # maximum area that is covered by thematic features for blocking on-the fly downloading reference layers
+    MAX_DISTANCE_FOR_ACTUALISATION = 3  # maximum relevant distance that is used in the predictor when trying to update to actual GRB
+    TEMPFOLDER = ""
 
     def flags(self):
         return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
@@ -301,6 +266,19 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         wkt = geom_qgis.asWkt()
         geom_shapely = from_wkt(wkt)
         return make_valid(geom_shapely)
+
+    def write_geojson(self, path_to_file, geojson):
+        """
+        Write a GeoJSON object to a file.
+
+        Args:
+            path_to_file (str): Path to the output file.
+            geojson (FeatureCollection): The GeoJSON object to write.
+        """
+        parent = os.path.dirname(path_to_file)
+        os.makedirs(parent, exist_ok=True)
+        with open(path_to_file, "w") as f:
+            dump(geojson, f, default=str)
 
     def get_layer_by_name(self, layer_name):
         """
@@ -409,22 +387,15 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             for lyr in lyrs:
                 root.removeLayer(lyr)
                 qinst.removeMapLayer(lyr.id())
-        # TODO fix for version_date (has to be fixed in brdr 0.3.1)
-        if geojson is not None and "features" in geojson:
-            for feature in geojson["features"]:
-                if "version_date" in feature["properties"]:
-                    feature["properties"]["version_date"] = None
-        fcString = json.dumps(geojson_polygon_to_multipolygon(geojson))
 
-        vl = QgsVectorLayer(fcString, name, "ogr")
-        vl.setCrs(QgsCoordinateReferenceSystem(self.CRS))
-        # pr = vl.dataProvider()
-        vl.updateFields()
+        tempfilename = self.TEMPFOLDER + "/" + name + ".geojson"
+        self.write_geojson(tempfilename, geojson_polygon_to_multipolygon(geojson))
+
+        vl = QgsVectorLayer(tempfilename, name, "ogr")
         # styling
-        # vl.setOpacity(0.5)
-
         if symbol is not None and vl.renderer() is not None:
             vl.renderer().setSymbol(symbol)
+        # vl.setOpacity(0.5)
 
         # adding layer to TOC
         qinst.addMapLayer(
@@ -450,6 +421,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         """
 
         # standard parameters
+
         parameter = QgsProcessingParameterFeatureSource(
             self.INPUT_THEMATIC,
             self.tr("THEMATIC LAYER"),
@@ -459,7 +431,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
         parameter = QgsProcessingParameterField(
-            self.ID_THEME,
+            "COMBOBOX_ID_THEME",
             "Choose thematic ID",
             "theme_identifier",
             self.INPUT_THEMATIC,
@@ -477,7 +449,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterEnum(
-            self.ENUM_REFERENCE,
+            "ENUM_REFERENCE",
             "Select Reference Layer:",
             options=self.ENUM_REFERENCE_OPTIONS,
             defaultValue=0,  # Index of the default option (e.g., 'Option A')
@@ -489,45 +461,54 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.INPUT_REFERENCE,
             self.tr("REFERENCE LAYER"),
             [QgsProcessing.TypeVectorAnyGeometry],
-            # defaultValue="reference",
+            # defaultValue="referencelayer",
             optional=True
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
+
         parameter = QgsProcessingParameterField(
-            self.ID_REFERENCE,
+            "COMBOBOX_ID_REFERENCE",
             "Choose reference ID",
-            "CAPAKEY",
+            self.ID_REFERENCE_FIELDNAME,  # defaults to CAPAKEY
             self.INPUT_REFERENCE,
             optional=True,
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
+        parameter = QgsProcessingParameterFile(
+            "WORK_FOLDER",
+            self.tr("Working folder"),
+            behavior=QgsProcessingParameterFile.Folder,
+            optional=True, )
+        parameter.setFlags(parameter.flags())
+        self.addParameter(parameter)
+
         self.addOutput(
             QgsProcessingOutputVectorLayer(
-                self.OUTPUT_RESULT,
+                "OUTPUT_RESULT",
                 self.LAYER_RESULT,
                 QgsProcessing.TypeVectorAnyGeometry,
             )
         )
         self.addOutput(
             QgsProcessingOutputVectorLayer(
-                self.OUTPUT_RESULT_DIFF,
+                "OUTPUT_RESULT_DIFF",
                 self.LAYER_RESULT_DIFF,
                 QgsProcessing.TypeVectorAnyGeometry,
             )
         )
         self.addOutput(
             QgsProcessingOutputVectorLayer(
-                self.OUTPUT_RESULT_DIFF_PLUS,
+                "OUTPUT_RESULT_DIFF_PLUS",
                 self.LAYER_RESULT_DIFF_PLUS,
                 QgsProcessing.TypeVectorAnyGeometry,
             )
         )
         self.addOutput(
             QgsProcessingOutputVectorLayer(
-                self.OUTPUT_RESULT_DIFF_MIN,
+                "OUTPUT_RESULT_DIFF_MIN",
                 self.LAYER_RESULT_DIFF_MIN,
                 QgsProcessing.TypeVectorAnyGeometry,
             )
@@ -535,7 +516,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # advanced parameters
 
         parameter = QgsProcessingParameterEnum(
-            self.ENUM_OD_STRATEGY,
+            "ENUM_OD_STRATEGY",
             'Select OD-STRATEGY:',
             options=self.ENUM_OD_STRATEGY_OPTIONS,
             defaultValue=5  # Index of the default option (e.g., 'SNAP_FULL_AREA_ALL_SIDE')
@@ -555,28 +536,36 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
-            "ADD_FORMULA", "ADD_FORMULA", defaultValue=True
+            "ADD_FORMULA", "ADD_FORMULA", defaultValue=self.ADD_FORMULA
         )
         parameter.setFlags(parameter.flags() |
                            QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
-            "SHOW_INTERMEDIATE_LAYERS", "SHOW_INTERMEDIATE_LAYERS", defaultValue=True
+            "ADD_ATTRIBUTES", "ADD_ATTRIBUTES", defaultValue=self.ATTRIBUTES
         )
         parameter.setFlags(parameter.flags() |
                            QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
-            "PREDICTIONS", "GET_ALL_PREDICTIONS_FOR_RELEVANT_DISTANCE", defaultValue=False
+            "SHOW_INTERMEDIATE_LAYERS", "SHOW_INTERMEDIATE_LAYERS", defaultValue=self.SHOW_INTERMEDIATE_LAYERS
         )
         parameter.setFlags(parameter.flags() |
                            QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
-            "UPDATE_TO_ACTUAL", "UPDATE_TO_ACTUAL_GRB_ADP_VERSION (adp-parcels only)", defaultValue=False
+            "PREDICTIONS", "GET_ALL_PREDICTIONS_FOR_RELEVANT_DISTANCE", defaultValue=self.PREDICTIONS
+        )
+        parameter.setFlags(parameter.flags() |
+                           QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterBoolean(
+            "UPDATE_TO_ACTUAL", "UPDATE_TO_ACTUAL_GRB_ADP_VERSION (adp-parcels only)",
+            defaultValue=self.UPDATE_TO_ACTUAL
         )
         parameter.setFlags(parameter.flags() |
                            QgsProcessingParameterDefinition.FlagAdvanced)
@@ -594,7 +583,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
-            "SHOW_LOG_INFO", "SHOW_LOG_INFO (brdr-log)", defaultValue=False
+            "SHOW_LOG_INFO", "SHOW_LOG_INFO (brdr-log)", defaultValue=self.SHOW_LOG_INFO
         )
         parameter.setFlags(parameter.flags() |
                            QgsProcessingParameterDefinition.FlagAdvanced)
@@ -604,10 +593,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         """
         Here is where the processing itself takes place.
         """
-
         feedback_steps = 6
         feedback = QgsProcessingMultiStepFeedback(feedback_steps, feedback)
         feedback.pushInfo("START")
+        feedback.setCurrentStep(1)
         outputs = {}
 
         self.prepare_parameters(parameters)
@@ -620,16 +609,31 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         # Load thematic into a shapely_dict:
         dict_thematic = {}
+        dict_thematic_properties = {}
+        BRDR_ID_FIELDNAME = "brdr_id"  # TODO fix - remove after new brdr
         features = thematic.getFeatures()
         for current, feature in enumerate(features):
             feature_geom = feature.geometry()
             if feedback.isCanceled():
                 return {}
-            id_theme = feature.attribute(self.ID_THEME)
-            # feedback.pushInfo(str(self.ID_THEME))
-            # feedback.pushInfo(str(id_theme))
-
+            # id_theme = feature.attribute(self.ID_THEME_FIELDNAME)
+            id_theme = str(feature.attribute(self.ID_THEME_FIELDNAME))  # todo fix - remove str after new brdr
             dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature_geom)
+            if self.ATTRIBUTES:
+                # dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
+                attributes = feature.attributeMap()
+                attributes_dict = {}
+                for key, value in attributes.items():
+                    if isinstance(value, QDate):
+                        attributes_dict[key] = value.toPyDate()
+                    elif isinstance(value, QDateTime):
+                        attributes_dict[key] = value.toPyDateTime()
+                    else:
+                        attributes_dict[key] = value
+                dict_thematic_properties[id_theme] = attributes_dict
+            dict_thematic_properties[id_theme][BRDR_ID_FIELDNAME] = id_theme  # todo fix - remove after new brdr
+
+        self.ID_THEME_FIELDNAME = BRDR_ID_FIELDNAME  # todo fix -remove after new brdr
 
         area = make_valid(unary_union(list(dict_thematic.values()))).area
         feedback.pushInfo("Area of thematic zone: " + str(area))
@@ -641,7 +645,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 "Please make use of a local REFERENCELAYER (for performance reasons)"
             )
         feedback.pushInfo("1) BEREKENING - Thematic layer fixed")
-        feedback.setCurrentStep(1)
+        feedback.setCurrentStep(2)
         if feedback.isCanceled():
             return {}
 
@@ -657,12 +661,12 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             for current, feature in enumerate(features):
                 if feedback.isCanceled():
                     return {}
-                id_reference = feature.attribute(self.ID_REFERENCE)
+                id_reference = feature.attribute(self.ID_REFERENCE_FIELDNAME)
                 dict_reference[id_reference] = self.geom_qgis_to_shapely(
                     feature.geometry()
                 )
         feedback.pushInfo("2) BEREKENING - Reference layer fixed")
-        feedback.setCurrentStep(2)
+        feedback.setCurrentStep(3)
         if feedback.isCanceled():
             return {}
 
@@ -673,36 +677,23 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             log_info = None
         aligner = Aligner(feedback=log_info,
                           relevant_distance=self.RELEVANT_DISTANCE,
+                          od_strategy=self.OD_STRATEGY,
+                          crs=self.CRS,
+                          multi_as_single_modus=self.MULTI_AS_SINGLE_MODUS,
+                          correction_distance=self.CORR_DISTANCE,
                           threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
                           )
 
-        # set parameters
-        aligner.relevant_distance = self.RELEVANT_DISTANCE
-        aligner.od_strategy = self.OD_STRATEGY
-        aligner.THRESHOLD_CIRCLE_RATIO = self.THRESHOLD_CIRCLE_RATIO
-        aligner.THRESHOLD_EXCLUSION_AREA = self.THRESHOLD_EXCLUSION_AREA
-        aligner.THRESHOLD_EXCLUSION_PERCENTAGE = (
-            self.THRESHOLD_EXCLUSION_PERCENTAGE
-        )
-        aligner.CORR_DISTANCE = self.CORR_DISTANCE
-        aligner.MITRE_LIMIT = self.MITRE_LIMIT
-        aligner.QUAD_SEGS = self.QUAD_SEGS
-        aligner.BUFFER_MULTIPLICATION_FACTOR = self.BUFFER_MULTIPLICATION_FACTOR
-        aligner.MAX_REFERENCE_BUFFER = self.MAX_REFERENCE_BUFFER
-        aligner.CRS = self.CRS
-        aligner.DOWNLOAD_LIMIT = self.DOWNLOAD_LIMIT
-
         feedback.pushInfo("Load thematic data")
-        aligner.load_thematic_data(DictLoader(dict_thematic))
+        aligner.load_thematic_data(DictLoader(dict_thematic, dict_thematic_properties))
         aligner.name_thematic_id = self.ID_THEME_FIELDNAME
 
         feedback.pushInfo("Load reference data")
         if self.SELECTED_REFERENCE == 0:
             reference_loader = DictLoader(dict_reference)
-            # reference_loader.data_dict_source["source"] = "local_"
-            # reference_loader.data_dict_source["version_date"] = "unknown"
             aligner.load_reference_data(DictLoader(dict_reference))
-            aligner.dict_reference_source["source"] = self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE
+            aligner.name_reference_id = self.ID_REFERENCE_FIELDNAME
+            aligner.dict_reference_source["source"] = self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE_NAME
             aligner.dict_reference_source["version_date"] = "unknown"
         elif self.SELECTED_REFERENCE in self.ADPF_VERSIONS:
             year = self.SELECTED_REFERENCE.removeprefix("Adpf")
@@ -710,7 +701,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         else:
             aligner.load_reference_data(
                 GRBActualLoader(grb_type=GRBType(self.SELECTED_REFERENCE.value), partition=1000, aligner=aligner))
-
+        feedback.setCurrentStep(4)
         feedback.pushInfo("START PROCESSING")
         feedback.pushInfo(
             "calculation for relevant distance (m): " + str(self.RELEVANT_DISTANCE) + " - Predictions: " + str(
@@ -724,42 +715,48 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 relevant_distance=self.RELEVANT_DISTANCE, od_strategy=self.OD_STRATEGY,
                 threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE
             )
-            fcs = aligner.get_results_as_geojson(formula=self.FORMULA)
+            fcs = aligner.get_results_as_geojson(formula=self.ADD_FORMULA, attributes=self.ATTRIBUTES)
         else:
             dict_series, dict_predicted, diffs = aligner.predictor(od_strategy=self.OD_STRATEGY,
                                                                    relevant_distances=np.arange(0,
                                                                                                 self.RELEVANT_DISTANCE * 100,
                                                                                                 10, dtype=int) / 100,
                                                                    threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE)
-            fcs = aligner.get_results_as_geojson(resulttype=AlignerResultType.PREDICTIONS, formula=self.FORMULA)
+            fcs = aligner.get_results_as_geojson(resulttype=AlignerResultType.PREDICTIONS, formula=self.ADD_FORMULA,
+                                                 attributes=self.ATTRIBUTES)
 
         feedback.pushInfo("END PROCESSING")
 
         if self.UPDATE_TO_ACTUAL:
             feedback.pushInfo("START ACTUALISATION")
-            fcs = update_to_actual_grb(fcs["result"], id_theme_fieldname=self.ID_THEME_FIELDNAME,
-                                       formula_field=self.FORMULA_FIELD,
-                                       max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
-                                       feedback=log_info)
-            # Add RESULT TO TOC
-            self.geojson_to_layer(self.LAYER_RESULT_ACTUAL, fcs["result"],
-                                  QgsStyle.defaultStyle().symbol("outline blue"),
-                                  True, self.GROUP_LAYER_ACTUAL)
-            self.geojson_to_layer(self.LAYER_RESULT_ACTUAL_DIFF, fcs["result_diff"],
-                                  QgsStyle.defaultStyle().symbol("hashed clbue /"),
-                                  False, self.GROUP_LAYER_ACTUAL)
-            feedback.pushInfo("Resulterende geometrie berekend")
+            fcs_actualisation = update_to_actual_grb(fcs["result"], id_theme_fieldname=self.ID_THEME_FIELDNAME,
+                                                     base_formula_field=FORMULA_FIELD_NAME,
+                                                     max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
+                                                     feedback=log_info, attributes=self.ATTRIBUTES)
+            if fcs_actualisation is not None and fcs_actualisation != {}:
+                # Add RESULT TO TOC
+                self.geojson_to_layer(self.LAYER_RESULT_ACTUAL, fcs_actualisation["result"],
+                                      QgsStyle.defaultStyle().symbol("outline blue"),
+                                      True, self.GROUP_LAYER_ACTUAL)
+                self.geojson_to_layer(self.LAYER_RESULT_ACTUAL_DIFF, fcs_actualisation["result_diff"],
+                                      QgsStyle.defaultStyle().symbol("hashed clbue /"),
+                                      False, self.GROUP_LAYER_ACTUAL)
+                feedback.pushInfo("Resulterende geometrie berekend")
+            else:
+                feedback.pushInfo("Geen wijzigingen gedetecteerd binnen tijdspanne in referentielaag (GRB-percelen)")
+
             if feedback.isCanceled():
                 return {}
 
             feedback.pushInfo("END ACTUALISATION")
 
         # write results to output-layers
+        feedback.setCurrentStep(5)
         feedback.pushInfo("WRITING RESULTS")
 
         # MAKE TEMPORARY LAYERS
         if self.SELECTED_REFERENCE != 0:
-            self.geojson_to_layer(self.LAYER_REFERENCE,
+            self.geojson_to_layer(self.LAYER_REFERENCE_NAME,
                                   aligner.get_input_as_geojson(inputtype=AlignerInputType.REFERENCE),
                                   QgsStyle.defaultStyle().symbol("outline black"),
                                   True, self.GROUP_LAYER)
@@ -785,30 +782,27 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                               QgsStyle.defaultStyle().symbol("outline green"),
                               True, self.GROUP_LAYER)
 
-        self.RESULT = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
-        self.RESULT_DIFF = QgsProject.instance().mapLayersByName(
+        result = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
+        result_diff = QgsProject.instance().mapLayersByName(
             self.LAYER_RESULT_DIFF
         )[0]
-        self.RESULT_DIFF_PLUS = QgsProject.instance().mapLayersByName(
+        result_diff_plus = QgsProject.instance().mapLayersByName(
             self.LAYER_RESULT_DIFF_PLUS
         )[0]
-        self.RESULT_DIFF_MIN = QgsProject.instance().mapLayersByName(
+        result_diff_min = QgsProject.instance().mapLayersByName(
             self.LAYER_RESULT_DIFF_MIN
         )[0]
-
         QgsProject.instance().reloadAllLayers()
-
         feedback.pushInfo("Resulterende geometrie berekend")
-        feedback.setCurrentStep(6)
         if feedback.isCanceled():
             return {}
-
         feedback.pushInfo("EINDE: RESULTAAT BEREKEND")
+        # feedback.setCurrentStep(6) #removed so the script will end before 100%-progressbar is reached
         return {
-            self.OUTPUT_RESULT: self.RESULT,
-            self.OUTPUT_RESULT_DIFF: self.RESULT_DIFF,
-            self.OUTPUT_RESULT_DIFF_PLUS: self.RESULT_DIFF_PLUS,
-            self.OUTPUT_RESULT_DIFF_MIN: self.RESULT_DIFF_MIN,
+            "OUTPUT_RESULT": result,
+            "OUTPUT_RESULT_DIFF": result_diff,
+            "OUTPUT_RESULT_DIFF_PLUS": result_diff_plus,
+            "OUTPUT_RESULT_DIFF_MIN": result_diff_min,
         }
 
     def _thematic_preparation(self, context, feedback, outputs, parameters):
@@ -825,36 +819,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             outputs[self.INPUT_THEMATIC + "_fixed"]["OUTPUT"]
         )
 
-        outputs[self.INPUT_THEMATIC + "_id"] = processing.run(
-            "native:fieldcalculator",
-            {
-                "INPUT": thematic,
-                "FIELD_NAME": self.ID_THEME,
-                "FIELD_TYPE": 2,
-                "FIELD_LENGTH": 0,
-                "FIELD_PRECISION": 0,
-                "FORMULA": "to_string(" + parameters[self.ID_THEME] + ")",
-                "OUTPUT": "TEMPORARY_OUTPUT",
-            },
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        thematic = context.getMapLayer(outputs[self.INPUT_THEMATIC + "_id"]["OUTPUT"])
-        self.CRS = (
-            thematic.sourceCrs().authid()
-        )  # set CRS for the calculations, based on the THEMATIC input layer
-
-        outputs[self.INPUT_THEMATIC + "_enriched"] = processing.run(
-            "qgis:exportaddgeometrycolumns",
-            {"INPUT": thematic, "CALC_METHOD": 0, "OUTPUT": "TEMPORARY_OUTPUT"},
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        thematic = context.getMapLayer(
-            outputs[self.INPUT_THEMATIC + "_enriched"]["OUTPUT"]
-        )
         outputs[self.INPUT_THEMATIC + "_dropMZ"] = processing.run(
             "native:dropmzvalues",
             {
@@ -876,11 +840,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "native:buffer",
             {
                 "INPUT": thematic,
-                "DISTANCE": self.BUFFER_MULTIPLICATION_FACTOR * self.RELEVANT_DISTANCE,
-                "SEGMENTS": self.QUAD_SEGS,
+                "DISTANCE": 1.01 * self.RELEVANT_DISTANCE,
+                "SEGMENTS": 10,
                 "END_CAP_STYLE": 0,
                 "JOIN_STYLE": 1,
-                "MITRE_LIMIT": self.MITRE_LIMIT,
+                "MITRE_LIMIT": 10,
                 "DISSOLVE": False,
                 "OUTPUT": "TEMPORARY_OUTPUT",
             },
@@ -910,11 +874,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         reference = context.getMapLayer(
             outputs[self.INPUT_REFERENCE + "_extract"]["OUTPUT"]
         )
-        if reference.sourceCrs().authid() != self.CRS:
-            raise QgsProcessingException(
-                "Thematic layer and ReferenceLayer are in a different CRS. "
-                "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"
-            )
+        feedback.pushInfo("Reference extraction finished")
         outputs[self.INPUT_REFERENCE + "_fixed"] = processing.run(
             "native:fixgeometries",
             {
@@ -929,25 +889,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         reference = context.getMapLayer(
             outputs[self.INPUT_REFERENCE + "_fixed"]["OUTPUT"]
         )
-
-        outputs[self.INPUT_REFERENCE + "_id"] = processing.run(
-            "native:fieldcalculator",
-            {
-                "INPUT": reference,
-                "FIELD_NAME": self.ID_REFERENCE,
-                "FIELD_TYPE": 2,
-                "FIELD_LENGTH": 0,
-                "FIELD_PRECISION": 0,
-                "FORMULA": "to_string(" + parameters[self.ID_REFERENCE] + ")",
-                "OUTPUT": "TEMPORARY_OUTPUT",
-            },
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        reference = context.getMapLayer(
-            outputs[self.INPUT_REFERENCE + "_id"]["OUTPUT"]
-        )
+        feedback.pushInfo("Reference repair finished")
         outputs[self.INPUT_REFERENCE + "_dropMZ"] = processing.run(
             "native:dropmzvalues",
             {
@@ -963,6 +905,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         reference = context.getMapLayer(
             outputs[self.INPUT_REFERENCE + "_dropMZ"]["OUTPUT"]
         )
+        feedback.pushInfo("Reference dropMZ finished")
         if reference is None:
             raise QgsProcessingException(
                 self.invalidSourceError(parameters, self.INPUT_REFERENCE)
@@ -971,40 +914,63 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     def prepare_parameters(self, parameters):
         # PARAMETER PREPARATION
+        self.TEMPFOLDER = parameters["WORK_FOLDER"]
+        now = datetime.datetime.now()
+        date_string = now.strftime("%Y%m%d%H%M%S")
+        if self.TEMPFOLDER is None or str(self.TEMPFOLDER) == 'NULL' or str(self.TEMPFOLDER) == "":
+            self.TEMPFOLDER = "brdrQ"
+            # dest =QgsProcessingParameterFolderDestination (name="brdrQ")
+            # self.TEMPFOLDER =dest.generateTemporaryDestination()
+        self.TEMPFOLDER = os.path.join(self.TEMPFOLDER, date_string)
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
-        self.ID_THEME_FIELDNAME = str(parameters[self.ID_THEME])
-        # self.ID_REFERENCE = parameters["ID_REFERENCE"]
-        self.BUFFER_DISTANCE = self.RELEVANT_DISTANCE / 2
+        self.CRS = QgsProject.instance().layerTreeRoot().findLayer(
+            parameters[
+                self.INPUT_THEMATIC]).layer().sourceCrs().authid()  # set CRS for the calculations, based on the THEMATIC input layer
+        self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
+        self.ID_REFERENCE_FIELDNAME = parameters["COMBOBOX_ID_REFERENCE"]
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
-        self.OD_STRATEGY = OpenbaarDomeinStrategy[self.ENUM_OD_STRATEGY_OPTIONS[parameters[self.ENUM_OD_STRATEGY]]]
-        self.FORMULA = parameters["ADD_FORMULA"]
-        self.PREDICTIONS = parameters["PREDICTIONS"]
+        self.OD_STRATEGY = OpenbaarDomeinStrategy[self.ENUM_OD_STRATEGY_OPTIONS[parameters["ENUM_OD_STRATEGY"]]]
+        self.ADD_FORMULA = parameters["ADD_FORMULA"]
+        self.ATTRIBUTES = parameters["ADD_ATTRIBUTES"]
         self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
+        self.PREDICTIONS = parameters["PREDICTIONS"]
         self.UPDATE_TO_ACTUAL = parameters["UPDATE_TO_ACTUAL"]
+        if self.PREDICTIONS and self.UPDATE_TO_ACTUAL:
+            raise QgsProcessingException(
+                "The PREDICTIONS-checkbox and the UPDATE_TO_ACTUAL_GRB-checkbox cannot be checked simultaneously")
+        if not self.ADD_FORMULA and self.UPDATE_TO_ACTUAL:
+            raise QgsProcessingException(
+                "The ADD FORMULA-checkbox must be checked when using the UPDATE_TO_ACTUAL_GRB-checkbox")
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
         self.MAX_DISTANCE_FOR_ACTUALISATION = parameters["MAX_DISTANCE_FOR_ACTUALISATION"]
 
-        ref = self.ENUM_REFERENCE_OPTIONS[parameters[self.ENUM_REFERENCE]]
+        ref = self.ENUM_REFERENCE_OPTIONS[parameters["ENUM_REFERENCE"]]
 
         if ref in self.GRB_TYPES:
             self.SELECTED_REFERENCE = GRBType[ref]
-            self.LAYER_REFERENCE = GRBType[ref]
+            self.LAYER_REFERENCE_NAME = GRBType[ref]
             ref_suffix = str(ref)
         elif ref in self.ADPF_VERSIONS:
             self.SELECTED_REFERENCE = ref
-            self.LAYER_REFERENCE = ref
+            self.LAYER_REFERENCE_NAME = ref
             ref_suffix = str(ref)
         else:
             self.SELECTED_REFERENCE = 0
 
-            if parameters[self.INPUT_REFERENCE] is None or str(parameters[self.ID_REFERENCE]) == 'NULL':
+            if parameters[self.INPUT_REFERENCE] is None or self.ID_REFERENCE_FIELDNAME == 'NULL':
                 raise QgsProcessingException(
                     "Please choose a REFERENCELAYER from the table of contents, and the associated unique REFERENCE ID")
-            self.LAYER_REFERENCE = QgsProject.instance().layerTreeRoot().findLayer(
-                parameters[self.INPUT_REFERENCE]).name()
-            ref_suffix = self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE
+            layer_reference = QgsProject.instance().layerTreeRoot().findLayer(
+                parameters[self.INPUT_REFERENCE]).layer()
+            self.LAYER_REFERENCE_NAME = layer_reference.name()
+            ref_suffix = self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE_NAME
 
-        self.SUFFIX = "_DIST_" + str(self.RELEVANT_DISTANCE) + "_" + ref_suffix  # + "_OD_" + str(self.OD_STRATEGY.name)
+            if layer_reference.sourceCrs().authid() != self.CRS:
+                raise QgsProcessingException(
+                    "Thematic layer and ReferenceLayer are in a different CRS. "
+                    "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"
+                )
+        self.SUFFIX = "_DIST_" + str(self.RELEVANT_DISTANCE) + "_" + ref_suffix
         if self.PREDICTIONS:
             self.SUFFIX = self.SUFFIX + "_PREDICTIONS"
         self.LAYER_RELEVANT_INTERSECTION = self.LAYER_RELEVANT_INTERSECTION + self.SUFFIX
