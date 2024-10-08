@@ -1,6 +1,6 @@
 # v0.9.8
 
-- Upgrade to brdr version 0.5.0
+- Upgrade to brdr version 0.4.0
 - Cleanup of variables in the scripts  [#21]
 - Refinement of the progressbar, ending when process is fulle complete [#54]
 - Added/revised error-messages for CRS & when choosing unsupported combinations of checkboxes [#55]
