@@ -5,10 +5,7 @@
 *   name: brdrQ - AutoUpdateBorders
 *   version: v0.9.8
 *   author: Karel Dieussaert
-*   Docs and Code- repo: https://github.com/OnroerendErfgoed/brdrQ/
-*   history:
-*            -initial version
-*            -refactoring of functions to brdr-functions for v0.4.0
+*   Docs, history & and Code- repo: https://github.com/OnroerendErfgoed/brdrQ/
 
 MIT LICENSE:
 Copyright (c) 2023-2024 Flanders Heritage Agency
