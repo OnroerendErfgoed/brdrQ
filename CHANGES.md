@@ -2,7 +2,7 @@
 
 - Upgrade to brdr version 0.4.0
 - Cleanup of variables in the scripts  [#21]
-- Refinement of the progressbar, ending when process is fulle complete [#54]
+- Refinement of the progressbar, ending when process is fully complete [#54]
 - Added/revised error-messages for CRS & when choosing unsupported combinations of checkboxes [#55]
 - Added possibility of adding the original attributes to the result (ADD_ATTRIBUTES - default True)
 - Refactored saving of result-layer: memory-geojson-layer changed by saved geojson layer (WORKFOLDER introduced as
