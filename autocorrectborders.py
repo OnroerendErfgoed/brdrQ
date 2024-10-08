@@ -5,27 +5,7 @@
 *   name: brdrQ - Autocorrectborders
 *   version: v0.9.8
 *   author: Karel Dieussaert
-*   Docs and Code- repo: https://github.com/OnroerendErfgoed/brdrQ/
-*   history:
-*            -initial version based on pyQGIS
-*            -added exclusion of circles
-*            -more efficient merge/union-logical
-*            -removed resulting group layer (to prevent crashing of QGIS) - extra research needed
-*            -add logic for openbaar domein (od_strategy)
-*            -intermediate layers added as an advanced parameter
-*            -Native processes as child_algorithms
-*            -Process NonThreaded to fix QGIS from crashing
-*            -Added advanced parameter for processing input-multipolygons as single polygons
-*            -rewriting to use Aligner (shapely-python)
-*            -cleanup and added docs to Aligner
-*            -resulting output made available for further QGIS-modelling
-*            -added enum - parameter to download actual GRB (adp-gbg-knw)
-*            -added enum - parameter for od-strategy
-*            -changes implemented for refactored brdr
-*            -uses new version of brdr (0.2.0?)
-*            -refactoring of functions to brdr-functions
-*            -possibility to use predictor-function in brdr
-*            -refactoring of functions to brdr-functions for v0.4.0
+*   Docs, history and Code- repo: https://github.com/OnroerendErfgoed/brdrQ/
 
 MIT LICENSE:
 Copyright (c) 2023-2024 Flanders Heritage Agency
