@@ -30,12 +30,16 @@ __copyright__ = '(C) 2024 by Karel Dieussaert / Onroerend Erfgoed'
 
 __revision__ = '$Format:%H$'
 
+import inspect
 import os
 import sys
-import inspect
-from PyQt5.QtWidgets import QAction
+
 from PyQt5.QtGui import QIcon
-from qgis.core import QgsProcessingAlgorithm, QgsApplication
+from PyQt5.QtWidgets import QAction, QMessageBox
+from brdr.loader import DictLoader
+from qgis.core import QgsApplication
+from shapely.io import from_wkt
+
 from .brdrq_provider import BrdrQProvider
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -43,7 +47,6 @@ cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 if cmd_folder not in sys.path:
     sys.path.insert(0, cmd_folder)
 
-import brdr_importer
 import brdr
 # try:
 #     import brdr
@@ -51,9 +54,14 @@ import brdr
 #     import brdr
 #     print("Module brdr not found. Please install it manually: pip install brdr==0.4.0")
 
+from brdr.aligner import Aligner
+from brdr.grb import GRBActualLoader
+from brdr.enums import GRBType
+
+
 class BrdrQPlugin(object):
 
-    def __init__(self,iface):
+    def __init__(self, iface):
         self.provider = None
         self.iface = iface
 
@@ -76,5 +84,40 @@ class BrdrQPlugin(object):
 
     def run(self):
         brdr_version = str(brdr.__version__)
+        # take active layer
+        layer = self.iface.activeLayer()
+        # take selected feature(s)
+        # run brdr (to actual GRB) for this feature
+        list = []
+        aligner = Aligner()
 
-        self.iface.messageBar().pushMessage('Brdr_version: ' + brdr_version)
+
+        for feature in layer.selectedFeatures():
+            feature_geom = feature.geometry()
+            break
+        wkt = feature_geom.asWkt()
+        geom_shapely = from_wkt(wkt)
+        # Load thematic &reference data
+        loader = DictLoader({'1': geom_shapely})
+        aligner.load_thematic_data(loader)
+        loader = GRBActualLoader(grb_type=GRBType.ADP, partition=1000, aligner=aligner)
+        aligner.load_reference_data(loader)
+        dict_series, dict_predictions, diffs_dict = aligner.predictor()
+        for predicted_dist, result in dict_predictions['1'].items():
+            resulting_geom = result['result']
+            break
+
+
+
+        mb = QMessageBox()
+        mb.setText('Brdr_version: ' + brdr_version + "//Predicted geometry at : " + str(
+            predicted_dist) + " // Found wkt: " + str(resulting_geom.wkt))
+        mb.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        return_value = mb.exec()
+        if return_value == QMessageBox.Ok:
+            print(str(resulting_geom.wkt))
+        elif return_value == QMessageBox.Cancel:
+            print('You pressed Cancel')
+
+        self.iface.messageBar().pushMessage('Brdr_version: ' + brdr_version + "//Predicted geometry at : " + str(
+            predicted_dist) + " // Found wkt: " + str(resulting_geom.wkt))
