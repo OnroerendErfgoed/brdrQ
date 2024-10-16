@@ -56,3 +56,13 @@ except (ModuleNotFoundError, ValueError):
     import brdr
 
     print(brdr.__version__)
+
+try:
+    import matplotlib
+
+except (ModuleNotFoundError, ValueError):
+    subprocess.check_call([python_exe,
+                           '-m', 'pip', 'install', 'matplotlib'])
+    import matplotlib
+
+    print(matplotlib.__version__)

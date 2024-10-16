@@ -34,6 +34,7 @@ import inspect
 import os
 import sys
 
+import numpy as np
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt,QCoreApplication
 from PyQt5.QtWidgets import QAction, QMessageBox
@@ -44,7 +45,7 @@ from shapely.io import from_wkt
 
 from .brdrq_dockwidget import brdrQDockWidget
 from .brdrq_provider import BrdrQProvider
-
+from .utils import plot_series, show_map
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 
@@ -175,12 +176,19 @@ class BrdrQPlugin(object):
         aligner.load_thematic_data(loader)
         loader = GRBActualLoader(grb_type=GRBType.ADP, partition=1000, aligner=aligner)
         aligner.load_reference_data(loader)
-        dict_series, dict_predictions, diffs_dict = aligner.predictor()
+        series = np.arange(0, 300, 10, dtype=int) / 100
+        dict_series, dict_predictions, diffs_dict = aligner.predictor(relevant_distances=series)
         for predicted_dist, result in dict_predictions['1'].items():
             resulting_geom = result['result']
             break
 
-
+        for key in dict_predictions:
+            plot_series(series, {key: diffs_dict[key]})
+            show_map(
+                {key: dict_predictions[key]},
+                {key: aligner.dict_thematic[key]},
+                aligner.dict_reference,
+            )
 
         mb = QMessageBox()
         mb.setText('Brdr_version: ' + brdr_version + "//Predicted geometry at : " + str(
