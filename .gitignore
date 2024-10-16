@@ -12,7 +12,7 @@ experimental/
 
 # Distribution / packaging
 .Python
-plugin/brdrq/zip_build
+plugin/dist
 build/
 develop-eggs/
 dist/

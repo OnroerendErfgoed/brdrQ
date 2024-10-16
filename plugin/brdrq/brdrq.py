@@ -35,12 +35,16 @@ import os
 import sys
 
 from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import Qt,QCoreApplication
 from PyQt5.QtWidgets import QAction, QMessageBox
 from brdr.loader import DictLoader
 from qgis.core import QgsApplication
 from shapely.io import from_wkt
 
+
+from .brdrq_dockwidget import brdrQDockWidget
 from .brdrq_provider import BrdrQProvider
+
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 
@@ -64,25 +68,94 @@ class BrdrQPlugin(object):
     def __init__(self, iface):
         self.provider = None
         self.iface = iface
+        self.dockwidget = None
+        self.pluginIsActive = False
+        self.actions = []
+        #self.menu = self.tr('brdrQ')
+        self.toolbar = self.iface.addToolBar('brdrQ')
+        self.toolbar.setObjectName('brdrQ')
+
+    # noinspection PyMethodMayBeStatic
+    def tr(self, message):
+        """Get the translation for a string using Qt translation API.
+
+        We implement this ourselves since we do not inherit QObject.
+
+        :param message: String for translation.
+        :type message: str, QString
+
+        :returns: Translated version of message.
+        :rtype: QString
+        """
+        # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
+        return QCoreApplication.translate('brdrQ', message)
 
     def initProcessing(self):
         """Init Processing provider for QGIS >= 3.8."""
+
         self.provider = BrdrQProvider()
         QgsApplication.processingRegistry().addProvider(self.provider)
 
     def initGui(self):
         self.initProcessing()
         icon = os.path.join(os.path.join(cmd_folder, 'icon.png'))
-        self.action = QAction(QIcon(icon), 'brdrQ - Align borders', self.iface.mainWindow())
-        self.iface.addToolBarIcon(self.action)
-        self.action.triggered.connect(self.run)
+        action = QAction(QIcon(icon), 'brdrQ - Align borders', self.iface.mainWindow())
+        self.iface.addToolBarIcon(action)
+        action.triggered.connect(self.openDock)
+        self.actions.append(action)
+        # show the dockwidget
+        #self.openDock()
+
+    def onClosePlugin(self):
+        """Cleanup necessary items here when plugin dockwidget is closed"""
+        pass
+        #print "** CLOSING brdrQ"
+
+        # disconnects
+        self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
+
+        # remove this statement if dockwidget is to remain
+        # for reuse if plugin is reopened
+        # Commented next statement since it causes QGIS crashe
+        # when closing the docked window:
+        # self.dockwidget = None
+
+        self.pluginIsActive = False
 
     def unload(self):
         QgsApplication.processingRegistry().removeProvider(self.provider)
-        self.iface.removeToolBarIcon(self.action)
-        del self.action
+        for action in self.actions:
+            self.iface.removePluginMenu('brdrQ',
+                action)
+            self.iface.removeToolBarIcon(action)
+            del action
+        # remove the toolbar
+        del self.toolbar
 
-    def run(self):
+    def openDock(self):
+        if not self.pluginIsActive:
+            self.pluginIsActive = True
+
+            #print "** STARTING brdrQ"
+
+            # dockwidget may not exist if:
+            #    first run of plugin
+            #    removed on close (see self.onClosePlugin method)
+            if self.dockwidget == None:
+                # Create the dockwidget (after translation) and keep reference
+                self.dockwidget = brdrQDockWidget()
+
+            # connect to provide cleanup on closing of dockwidget
+            self.dockwidget.closingPlugin.connect(self.onClosePlugin)
+            self.dockwidget.pushButton.clicked.connect(self.align)
+
+            # show the dockwidget
+            # TODO: fix to allow choice of dock location
+            self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
+            self.dockwidget.show()
+
+    def align(self):
+        print ("alignment_start")
         brdr_version = str(brdr.__version__)
         # take active layer
         layer = self.iface.activeLayer()
