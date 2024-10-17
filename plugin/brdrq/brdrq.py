@@ -35,13 +35,12 @@ import os
 import sys
 
 import numpy as np
+from PyQt5.QtCore import Qt, QCoreApplication
 from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt,QCoreApplication
 from PyQt5.QtWidgets import QAction, QMessageBox
 from brdr.loader import DictLoader
 from qgis.core import QgsApplication
 from shapely.io import from_wkt
-
 
 from .brdrq_dockwidget import brdrQDockWidget
 from .brdrq_provider import BrdrQProvider
@@ -72,7 +71,7 @@ class BrdrQPlugin(object):
         self.dockwidget = None
         self.pluginIsActive = False
         self.actions = []
-        #self.menu = self.tr('brdrQ')
+        # self.menu = self.tr('brdrQ')
         self.toolbar = self.iface.addToolBar('brdrQ')
         self.toolbar.setObjectName('brdrQ')
 
@@ -101,16 +100,18 @@ class BrdrQPlugin(object):
         self.initProcessing()
         icon = os.path.join(os.path.join(cmd_folder, 'icon.png'))
         action = QAction(QIcon(icon), 'brdrQ - Align borders', self.iface.mainWindow())
-        self.iface.addToolBarIcon(action)
         action.triggered.connect(self.openDock)
+        self.iface.addToolBarIcon(action)
+        self.iface.addPluginToMenu("brdQ menu", action)
+        self.toolbar.addAction(action)
         self.actions.append(action)
         # show the dockwidget
-        #self.openDock()
+        # self.openDock()
 
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
         pass
-        #print "** CLOSING brdrQ"
+        # print "** CLOSING brdrQ"
 
         # disconnects
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
@@ -127,8 +128,10 @@ class BrdrQPlugin(object):
         QgsApplication.processingRegistry().removeProvider(self.provider)
         for action in self.actions:
             self.iface.removePluginMenu('brdrQ',
-                action)
+                                        action)
             self.iface.removeToolBarIcon(action)
+            self.toolbar.removeAction(action)
+            self.iface.removePluginMenu("brdQ menu", action)
             del action
         # remove the toolbar
         del self.toolbar
@@ -137,7 +140,7 @@ class BrdrQPlugin(object):
         if not self.pluginIsActive:
             self.pluginIsActive = True
 
-            #print "** STARTING brdrQ"
+            # print "** STARTING brdrQ"
 
             # dockwidget may not exist if:
             #    first run of plugin
@@ -148,57 +151,105 @@ class BrdrQPlugin(object):
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
-            self.dockwidget.pushButton.clicked.connect(self.align)
+            self.dockwidget.pushButton_grafiek.clicked.connect(self.get_graphic)
+            self.dockwidget.pushButton_visualisatie.clicked.connect(self.get_visualisation)
+            self.dockwidget.mMapLayerComboBox.layerChanged.connect(self.setIds)
+            self.dockwidget.mFeaturePickerWidget.featureChanged.connect(self.zoomToFeature)
+
+            #
+            # def select_feature():
+            #     layer = self.iface.activeLayer()
+            #     layer.removeSelection()
+            #
+            #     feature = picker.feature()
+            #
+            #     # Do whatever you need with feature
+            #
+            #     # For example, select the feature
+            #     layer.select(feature.id())
+            #
+            # button = self.dlg.pushButton
+            # button.clicked.connect(select_feature)
 
             # show the dockwidget
             # TODO: fix to allow choice of dock location
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
             self.dockwidget.show()
 
-    def align(self):
-        print ("alignment_start")
+    def setIds(self):
+        picker = self.dockwidget.mFeaturePickerWidget
+        layer = self.dockwidget.mMapLayerComboBox.currentLayer()
+        picker.setLayer(layer)
+        picker.setDisplayExpression('$id')  # show ids in combobox
+
+    def zoomToFeature(self,feature):
+        box = feature.geometry().boundingBox()
+        self.iface.mapCanvas().setExtent(box)
+        self.iface.mapCanvas().refresh()
+
+    def get_graphic(self):
+        self._align(graphic=True, visualisation=False)
+
+    def get_visualisation(self):
+        self._align(graphic=False, visualisation=True)
+
+    def _align(self, graphic=False, visualisation=False):
+        print("alignment_start")
         brdr_version = str(brdr.__version__)
-        # take active layer
-        layer = self.iface.activeLayer()
+        feat = self.dockwidget.mFeaturePickerWidget.feature()
+        selectedFeatures =[]
+        if feat is not None:
+            selectedFeatures.append(feat)
+        #selectedFeatures = layer.selectedFeatures()
+        if len(selectedFeatures) == 0:
+            self.dockwidget.textEdit_output.setText("Geen features geselecteerd. Gelieve een feature te selecteren uit de actieve laag")
+            return
         # take selected feature(s)
         # run brdr (to actual GRB) for this feature
         list = []
         aligner = Aligner()
 
+        i = 0
+        dict_to_load = {}
 
-        for feature in layer.selectedFeatures():
+        for feature in selectedFeatures:
+            i = i + 1
             feature_geom = feature.geometry()
-            break
-        wkt = feature_geom.asWkt()
-        geom_shapely = from_wkt(wkt)
+            wkt = feature_geom.asWkt()
+            geom_shapely = from_wkt(wkt)
+            dict_to_load[i] = geom_shapely
         # Load thematic &reference data
-        loader = DictLoader({'1': geom_shapely})
-        aligner.load_thematic_data(loader)
+        aligner.load_thematic_data(DictLoader(dict_to_load))
         loader = GRBActualLoader(grb_type=GRBType.ADP, partition=1000, aligner=aligner)
         aligner.load_reference_data(loader)
         series = np.arange(0, 300, 10, dtype=int) / 100
         dict_series, dict_predictions, diffs_dict = aligner.predictor(relevant_distances=series)
-        for predicted_dist, result in dict_predictions['1'].items():
-            resulting_geom = result['result']
-            break
 
         for key in dict_predictions:
-            plot_series(series, {key: diffs_dict[key]})
-            show_map(
-                {key: dict_predictions[key]},
-                {key: aligner.dict_thematic[key]},
-                aligner.dict_reference,
-            )
+            for predicted_dist, result in dict_predictions[key].items():
+                resulting_geom = result['result']
+                if graphic:
+                    plot_series(series, {key: diffs_dict[key]})
+                if visualisation:
+                    show_map(
+                        {key: dict_predictions[key]},
+                        {key: aligner.dict_thematic[key]},
+                        aligner.dict_reference,
+                    )
+            outputMessage = "Voorspelde relevante afstanden: " + str(dict_predictions[key].keys())
 
-        mb = QMessageBox()
-        mb.setText('Brdr_version: ' + brdr_version + "//Predicted geometry at : " + str(
-            predicted_dist) + " // Found wkt: " + str(resulting_geom.wkt))
-        mb.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
-        return_value = mb.exec()
-        if return_value == QMessageBox.Ok:
-            print(str(resulting_geom.wkt))
-        elif return_value == QMessageBox.Cancel:
-            print('You pressed Cancel')
+            self.dockwidget.textEdit_output.setText(outputMessage)
+            self.iface.messageBar().pushMessage(outputMessage)
 
-        self.iface.messageBar().pushMessage('Brdr_version: ' + brdr_version + "//Predicted geometry at : " + str(
-            predicted_dist) + " // Found wkt: " + str(resulting_geom.wkt))
+                #mb = QMessageBox()
+
+                # mb.setText('Brdr_version: ' + brdr_version + "//Predicted geometry at : " + str(
+                #     predicted_dist) + " // Found wkt: " + str(resulting_geom.wkt))
+                # mb.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+                # return_value = mb.exec()
+                # if return_value == QMessageBox.Ok:
+                #     print(str(resulting_geom.wkt))
+                # elif return_value == QMessageBox.Cancel:
+                #     print('You pressed Cancel')
+
+
