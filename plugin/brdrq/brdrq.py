@@ -44,7 +44,7 @@ from shapely.io import from_wkt
 
 from .brdrq_dockwidget import brdrQDockWidget
 from .brdrq_provider import BrdrQProvider
-from .utils import plot_series, show_map
+from .brdrq_utils import plot_series, show_map, geom_shapely_to_qgis
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 
@@ -153,6 +153,7 @@ class BrdrQPlugin(object):
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
             self.dockwidget.pushButton_grafiek.clicked.connect(self.get_graphic)
             self.dockwidget.pushButton_visualisatie.clicked.connect(self.get_visualisation)
+            self.dockwidget.pushButton_geometrie.clicked.connect(self.change_geometry)
             self.dockwidget.mMapLayerComboBox.layerChanged.connect(self.setIds)
             self.dockwidget.mFeaturePickerWidget.featureChanged.connect(self.zoomToFeature)
 
@@ -188,12 +189,15 @@ class BrdrQPlugin(object):
         self.iface.mapCanvas().refresh()
 
     def get_graphic(self):
-        self._align(graphic=True, visualisation=False)
+        self._align(graphic=True)
 
     def get_visualisation(self):
-        self._align(graphic=False, visualisation=True)
+        self._align(visualisation=True)
 
-    def _align(self, graphic=False, visualisation=False):
+    def change_geometry(self):
+        self._align(changeGeometry=True)
+
+    def _align(self, graphic=False, visualisation=False,changeGeometry=False):
         print("alignment_start")
         brdr_version = str(brdr.__version__)
         feat = self.dockwidget.mFeaturePickerWidget.feature()
@@ -227,7 +231,7 @@ class BrdrQPlugin(object):
 
         for key in dict_predictions:
             for predicted_dist, result in dict_predictions[key].items():
-                resulting_geom = result['result']
+
                 if graphic:
                     plot_series(series, {key: diffs_dict[key]})
                 if visualisation:
@@ -236,6 +240,21 @@ class BrdrQPlugin(object):
                         {key: aligner.dict_thematic[key]},
                         aligner.dict_reference,
                     )
+                if changeGeometry:
+                    resulting_geom = result['result']
+                    layer = self.dockwidget.mMapLayerComboBox.currentLayer()
+                    layer.startEditing()
+                    print(layer)
+                    print (feat)
+                    print(feat.id())
+                    qgis_geom = geom_shapely_to_qgis(resulting_geom)
+                    print(qgis_geom)
+                    print(resulting_geom.wkt)
+                    #feat.setGeometry(geom_shapely_to_qgis(resulting_geom))
+                    layer.changeGeometry(feat.id(), qgis_geom)
+                    print (feat.geometry())
+                    layer.commitChanges()
+                    self.iface.messageBar().pushMessage("geometrie aangepast")
             outputMessage = "Voorspelde relevante afstanden: " + str(dict_predictions[key].keys())
 
             self.dockwidget.textEdit_output.setText(outputMessage)

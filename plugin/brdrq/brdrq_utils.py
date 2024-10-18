@@ -2,6 +2,24 @@ from math import ceil
 import geopandas as gpd
 import matplotlib.pyplot as plt
 from brdr.typings import ProcessResult
+from qgis.core import QgsGeometry
+from shapely import (
+    Polygon,
+    from_wkt,
+    to_wkt,
+    unary_union,
+    make_valid
+)
+from shapely.geometry import shape
+
+
+def geom_shapely_to_qgis(geom_shapely):
+    """
+    Method to convert a Shapely-geometry to a QGIS geometry
+    """
+    wkt = to_wkt(make_valid(geom_shapely), rounding_precision=-1, output_dimension=2)
+    geom_qgis = QgsGeometry.fromWkt(wkt)
+    return geom_qgis
 
 def _make_map(ax, processresult, thematic_dict, reference_dict):
     """
