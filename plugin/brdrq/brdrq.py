@@ -37,7 +37,7 @@ import sys
 import numpy as np
 from PyQt5.QtCore import Qt, QCoreApplication
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QAction, QMessageBox
+from PyQt5.QtWidgets import QAction
 from brdr.loader import DictLoader
 from qgis.core import QgsApplication
 from shapely.io import from_wkt
@@ -74,6 +74,11 @@ class BrdrQPlugin(object):
         # self.menu = self.tr('brdrQ')
         self.toolbar = self.iface.addToolBar('brdrQ')
         self.toolbar.setObjectName('brdrQ')
+        self.relevant_distances = np.arange(0, 300, 10, dtype=int) / 100
+        self.dict_series = None
+        self.dict_predictions = None
+        self.diffs_dict = None
+        self.aligner = Aligner()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -155,7 +160,7 @@ class BrdrQPlugin(object):
             self.dockwidget.pushButton_visualisatie.clicked.connect(self.get_visualisation)
             self.dockwidget.pushButton_geometrie.clicked.connect(self.change_geometry)
             self.dockwidget.mMapLayerComboBox.layerChanged.connect(self.setIds)
-            self.dockwidget.mFeaturePickerWidget.featureChanged.connect(self.zoomToFeature)
+            self.dockwidget.mFeaturePickerWidget.featureChanged.connect(self.onFeatureChange)
 
             #
             # def select_feature():
@@ -183,92 +188,109 @@ class BrdrQPlugin(object):
         picker.setLayer(layer)
         picker.setDisplayExpression('$id')  # show ids in combobox
 
-    def zoomToFeature(self,feature):
+    def onFeatureChange(self, feature):
+        # zoom to feature
         box = feature.geometry().boundingBox()
         self.iface.mapCanvas().setExtent(box)
         self.iface.mapCanvas().refresh()
 
+        # do alignment/prediction
+        self._align()
+
+        #set list with predicted values
+        self.dockwidget.listWidget.clear()
+        self.dockwidget.listWidget.addItems([str(k) for k in self.dict_predictions[feature.id()]])
+
+
     def get_graphic(self):
-        self._align(graphic=True)
+        self._act(graphic=True)
 
     def get_visualisation(self):
-        self._align(visualisation=True)
+        self._act(visualisation=True)
 
     def change_geometry(self):
-        self._align(changeGeometry=True)
+        self._act(changeGeometry=True)
 
-    def _align(self, graphic=False, visualisation=False,changeGeometry=False):
+    def _align(self):
         print("alignment_start")
         brdr_version = str(brdr.__version__)
         feat = self.dockwidget.mFeaturePickerWidget.feature()
-        selectedFeatures =[]
+        selectedFeatures = []
         if feat is not None:
             selectedFeatures.append(feat)
-        #selectedFeatures = layer.selectedFeatures()
+        # selectedFeatures = layer.selectedFeatures()
         if len(selectedFeatures) == 0:
-            self.dockwidget.textEdit_output.setText("Geen features geselecteerd. Gelieve een feature te selecteren uit de actieve laag")
+            self.dockwidget.textEdit_output.setText(
+                "Geen features geselecteerd. Gelieve een feature te selecteren uit de actieve laag")
             return
         # take selected feature(s)
         # run brdr (to actual GRB) for this feature
         list = []
-        aligner = Aligner()
+        self.aligner = Aligner()
 
-        i = 0
+        #i = 0
         dict_to_load = {}
 
         for feature in selectedFeatures:
-            i = i + 1
+            #i = i + 1
             feature_geom = feature.geometry()
             wkt = feature_geom.asWkt()
             geom_shapely = from_wkt(wkt)
-            dict_to_load[i] = geom_shapely
+            dict_to_load[feature.id()] = geom_shapely
         # Load thematic &reference data
-        aligner.load_thematic_data(DictLoader(dict_to_load))
-        loader = GRBActualLoader(grb_type=GRBType.ADP, partition=1000, aligner=aligner)
-        aligner.load_reference_data(loader)
-        series = np.arange(0, 300, 10, dtype=int) / 100
-        dict_series, dict_predictions, diffs_dict = aligner.predictor(relevant_distances=series)
+        self.aligner.load_thematic_data(DictLoader(dict_to_load))
+        loader = GRBActualLoader(grb_type=GRBType.ADP, partition=1000, aligner=self.aligner)
+        self.aligner.load_reference_data(loader)
+        print("predict")
 
-        for key in dict_predictions:
-            for predicted_dist, result in dict_predictions[key].items():
+        self.dict_series, self.dict_predictions, self.diffs_dict = self.aligner.predictor(
+            relevant_distances=self.relevant_distances)
+        print("prediction done")
+        print (self.dict_predictions)
+        outputMessage = "Voorspelde relevante afstanden: " + str(
+            [str(k) for k in self.dict_predictions[feat.id()].keys()])
+
+        self.dockwidget.textEdit_output.setText(outputMessage)
+        self.iface.messageBar().pushMessage(outputMessage)
+        return self.dict_series, self.dict_predictions, self.diffs_dict
+
+    def _act(self, graphic=False, visualisation=False, changeGeometry=False):
+        feat = self.dockwidget.mFeaturePickerWidget.feature()
+        for key in self.dict_predictions:
+            for predicted_dist, result in self.dict_predictions[key].items():
 
                 if graphic:
-                    plot_series(series, {key: diffs_dict[key]})
+                    plot_series(self.relevant_distances, {key: self.diffs_dict[key]})
                 if visualisation:
                     show_map(
-                        {key: dict_predictions[key]},
-                        {key: aligner.dict_thematic[key]},
-                        aligner.dict_reference,
+                        {key: self.dict_predictions[key]},
+                        {key: self.aligner.dict_thematic[key]},
+                        self.aligner.dict_reference,
                     )
                 if changeGeometry:
                     resulting_geom = result['result']
                     layer = self.dockwidget.mMapLayerComboBox.currentLayer()
                     layer.startEditing()
                     print(layer)
-                    print (feat)
+                    print(feat)
                     print(feat.id())
                     qgis_geom = geom_shapely_to_qgis(resulting_geom)
                     print(qgis_geom)
                     print(resulting_geom.wkt)
-                    #feat.setGeometry(geom_shapely_to_qgis(resulting_geom))
+                    # feat.setGeometry(geom_shapely_to_qgis(resulting_geom))
                     layer.changeGeometry(feat.id(), qgis_geom)
-                    print (feat.geometry())
+                    print(feat.geometry())
                     layer.commitChanges()
                     self.iface.messageBar().pushMessage("geometrie aangepast")
-            outputMessage = "Voorspelde relevante afstanden: " + str(dict_predictions[key].keys())
-
-            self.dockwidget.textEdit_output.setText(outputMessage)
-            self.iface.messageBar().pushMessage(outputMessage)
-
-                #mb = QMessageBox()
-
-                # mb.setText('Brdr_version: ' + brdr_version + "//Predicted geometry at : " + str(
-                #     predicted_dist) + " // Found wkt: " + str(resulting_geom.wkt))
-                # mb.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
-                # return_value = mb.exec()
-                # if return_value == QMessageBox.Ok:
-                #     print(str(resulting_geom.wkt))
-                # elif return_value == QMessageBox.Cancel:
-                #     print('You pressed Cancel')
 
 
+            # mb = QMessageBox()
+
+            # mb.setText('Brdr_version: ' + brdr_version + "//Predicted geometry at : " + str(
+            #     predicted_dist) + " // Found wkt: " + str(resulting_geom.wkt))
+            # mb.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+            # return_value = mb.exec()
+            # if return_value == QMessageBox.Ok:
+            #     print(str(resulting_geom.wkt))
+            # elif return_value == QMessageBox.Cancel:
+            #     print('You pressed Cancel')
