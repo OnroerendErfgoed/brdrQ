@@ -24,7 +24,7 @@
 
 import os
 
-from qgis.PyQt import QtGui, QtWidgets, uic
+from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -32,7 +32,6 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 
 
 class brdrQDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
-
     closingPlugin = pyqtSignal()
 
     def __init__(self, parent=None):

@@ -1,16 +1,13 @@
 from math import ceil
+
 import geopandas as gpd
 import matplotlib.pyplot as plt
 from brdr.typings import ProcessResult
 from qgis.core import QgsGeometry
 from shapely import (
-    Polygon,
-    from_wkt,
     to_wkt,
-    unary_union,
     make_valid
 )
-from shapely.geometry import shape
 
 
 def geom_shapely_to_qgis(geom_shapely):
@@ -20,6 +17,7 @@ def geom_shapely_to_qgis(geom_shapely):
     wkt = to_wkt(make_valid(geom_shapely), rounding_precision=-1, output_dimension=2)
     geom_qgis = QgsGeometry.fromWkt(wkt)
     return geom_qgis
+
 
 def _make_map(ax, processresult, thematic_dict, reference_dict):
     """
@@ -103,9 +101,9 @@ def _make_map(ax, processresult, thematic_dict, reference_dict):
 
 
 def show_map(
-    dict_results: dict[any, dict[float, ProcessResult]],
-    dict_thematic,
-    dict_reference,
+        dict_results: dict[any, dict[float, ProcessResult]],
+        dict_thematic,
+        dict_reference,
 ):
     """
     Show results on a map
@@ -151,11 +149,11 @@ def print_brdr_formula(dict_results, aligner):
 
 
 def plot_series(
-    series,
-    dictionary,
-    xlabel="relevant distance",
-    ylabel="difference",
-    title="Relevant distance vs difference",
+        series,
+        dictionary,
+        xlabel="relevant distance",
+        ylabel="difference",
+        title="Relevant distance vs difference",
 ):
     for key in dictionary:
         if len(dictionary[key]) == len(series):
@@ -204,12 +202,12 @@ def _processresult_to_dicts(processresult):
         results_relevant_intersection,
         results_relevant_diff,
     )
-#https://www.pythonguis.com/tutorials/plotting-matplotlib/
-import sys
-import matplotlib
-matplotlib.use('Qt5Agg')
 
-from PyQt5 import QtCore, QtWidgets
+
+# https://www.pythonguis.com/tutorials/plotting-matplotlib/
+import matplotlib
+
+matplotlib.use('Qt5Agg')
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure

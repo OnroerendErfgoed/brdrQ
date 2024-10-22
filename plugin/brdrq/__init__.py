@@ -26,6 +26,7 @@ __author__ = 'Karel Dieussaert / Onroerend Erfgoed'
 __date__ = '2024-10-11'
 __copyright__ = '(C) 2024 by Karel Dieussaert / Onroerend Erfgoed'
 
+
 # noinspection PyPep8Naming
 def classFactory(iface):  # pylint: disable=invalid-name
     """Load BrdrQ class from file BrdrQ.

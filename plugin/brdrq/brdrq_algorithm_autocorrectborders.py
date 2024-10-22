@@ -1,5 +1,3 @@
-
-        
 # -*- coding: utf-8 -*-
 
 """
@@ -30,26 +28,22 @@ CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFT
 THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ***************************************************************************
 """
+import inspect
 import os
 import sys
-import inspect
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 if cmd_folder not in sys.path:
     sys.path.insert(0, cmd_folder)
-import brdr_importer
-import brdr
+
 try:
-    #import brdr
+    # import brdr
     from geojson import dump
 except:
-    #import brdr
+    # import brdr
     from geojson import dump
 import datetime
 import os
-import site
-import subprocess
-import sys
 import numpy as np
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
@@ -81,7 +75,6 @@ from brdr.enums import OpenbaarDomeinStrategy, GRBType, AlignerInputType, Aligne
 from brdr.geometry_utils import geojson_polygon_to_multipolygon
 from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader, update_to_actual_grb
 from brdr.constants import FORMULA_FIELD_NAME
-
 
 
 class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -943,4 +936,3 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.LAYER_RESULT_DIFF_MIN = self.LAYER_RESULT_DIFF_MIN + self.SUFFIX
         self.GROUP_LAYER = self.GROUP_LAYER + self.SUFFIX
         self.GROUP_LAYER_ACTUAL = self.GROUP_LAYER_ACTUAL + self.SUFFIX
-

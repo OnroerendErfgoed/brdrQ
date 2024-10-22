@@ -8,10 +8,10 @@ __license__ = "GPL"
 __copyright__ = 'Copyright 2012, Australia Indonesia Facility for '
 __copyright__ += 'Disaster Reduction'
 
+import configparser
+import logging
 import os
 import unittest
-import logging
-import configparser
 
 LOGGER = logging.getLogger('QGIS')
 
@@ -59,6 +59,7 @@ class TestInit(unittest.TestCase):
                 expectation, file_path))
 
             self.assertIn(expectation, dict(metadata), message)
+
 
 if __name__ == '__main__':
     unittest.main()

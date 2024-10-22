@@ -1,8 +1,8 @@
-
-import sys
 import os
 import site
 import subprocess
+import sys
+
 
 # helper function to find embedded python
 # path in windows. Based on
@@ -18,6 +18,7 @@ def find_python():
             return assumed_path
 
     raise Exception("Python executable not found")
+
 
 sys.path.insert(0, site.getusersitepackages())
 python_exe = find_python()

@@ -31,6 +31,7 @@ __copyright__ = '(C) 2024 by Karel Dieussaert / Onroerend Erfgoed'
 __revision__ = '$Format:%H$'
 
 from qgis.core import QgsProcessingProvider
+
 from .brdrq_algorithm_autocorrectborders import AutocorrectBordersProcessingAlgorithm
 from .brdrq_algorithm_autoupdateborders import AutoUpdateBordersProcessingAlgorithm
 
