@@ -77,13 +77,11 @@ from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader, update_to_actual_gr
 from brdr.constants import FORMULA_FIELD_NAME
 
 from shapely import (
-    Polygon,
     from_wkt,
     to_wkt,
     unary_union,
     make_valid
 )
-from shapely.geometry import shape
 
 
 class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
