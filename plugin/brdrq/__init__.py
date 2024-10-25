@@ -35,5 +35,7 @@ def classFactory(iface):  # pylint: disable=invalid-name
     :type iface: QgsInterface
     """
     #
+    from .brdrq_module_importer import import_modules
+    import_modules()
     from .brdrq import BrdrQPlugin
     return BrdrQPlugin(iface)

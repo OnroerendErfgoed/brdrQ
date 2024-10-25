@@ -48,7 +48,7 @@ from shapely.io import from_wkt
 
 from .brdrq_dockwidget import brdrQDockWidget
 from .brdrq_provider import BrdrQProvider
-from .brdrq_utils import plot_series, show_map, geom_shapely_to_qgis
+from .brdrq_utils import plot_series, show_map, geom_shapely_to_qgis, write_geojson
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 
@@ -60,10 +60,7 @@ if cmd_folder not in sys.path:
 # except:
 #     import brdr
 #     print("Module brdr not found. Please install it manually: pip install brdr==0.4.0")
-try:
-    from geojson import dump
-except:
-    from geojson import dump
+
 from brdr.aligner import Aligner
 from brdr.grb import GRBActualLoader
 from brdr.enums import GRBType, AlignerResultType
@@ -450,7 +447,7 @@ class BrdrQPlugin(object):
                 qinst.removeMapLayer(lyr.id())
 
         tempfilename = self.TEMPFOLDER + "/" + name + ".geojson"
-        self.write_geojson(tempfilename, geojson_polygon_to_multipolygon(geojson))
+        write_geojson(tempfilename, geojson_polygon_to_multipolygon(geojson))
 
         vl = QgsVectorLayer(tempfilename, name, "ogr")
         # styling
@@ -570,18 +567,6 @@ class BrdrQPlugin(object):
         layers = QgsProject.instance().mapLayersByName(layer_name)
         return layers[0]
 
-    def write_geojson(self, path_to_file, geojson):
-        """
-        Write a GeoJSON object to a file.
-
-        Args:
-            path_to_file (str): Path to the output file.
-            geojson (FeatureCollection): The GeoJSON object to write.
-        """
-        parent = os.path.dirname(path_to_file)
-        os.makedirs(parent, exist_ok=True)
-        with open(path_to_file, "w") as f:
-            dump(geojson, f, default=str)
 
 # from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify
 # from qgis.core import (

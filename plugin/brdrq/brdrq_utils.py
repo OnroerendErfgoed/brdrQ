@@ -1,3 +1,15 @@
+import os
+try:
+    import brdr
+except:
+    import brdr
+try:
+    import geojson
+    from geojson import dump
+except:
+    import geojson
+    from geojson import dump
+
 from math import ceil
 
 import geopandas as gpd
@@ -8,6 +20,20 @@ from shapely import (
     to_wkt,
     make_valid
 )
+
+
+def write_geojson(path_to_file, geojson):
+    """
+    Write a GeoJSON object to a file.
+
+    Args:
+        path_to_file (str): Path to the output file.
+        geojson (FeatureCollection): The GeoJSON object to write.
+    """
+    parent = os.path.dirname(path_to_file)
+    os.makedirs(parent, exist_ok=True)
+    with open(path_to_file, "w") as f:
+        dump(geojson, f, default=str)
 
 
 def geom_shapely_to_qgis(geom_shapely):

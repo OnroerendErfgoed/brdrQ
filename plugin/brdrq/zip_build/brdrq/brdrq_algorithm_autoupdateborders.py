@@ -30,6 +30,8 @@ __copyright__ = '(C) 2024 by kd'
 
 __revision__ = '$Format:%H$'
 
+
+
 # -*- coding: utf-8 -*-
 
 """
@@ -66,7 +68,6 @@ import site
 import subprocess
 import sys
 
-from geojson import dump
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import Qt, QDate, QDateTime
@@ -85,6 +86,8 @@ from qgis.core import QgsSimpleLineSymbolLayer, QgsFillSymbol, \
 from qgis.core import QgsStyle
 from qgis.core import QgsVectorLayer
 from qgis.utils import iface
+
+from .brdrq_utils import write_geojson
 
 
 # helper function to find embedded python
@@ -323,18 +326,18 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         return (node_object_clone, group_object)
 
-    def write_geojson(self, path_to_file, geojson):
-        """
-        Write a GeoJSON object to a file.
-
-        Args:
-            path_to_file (str): Path to the output file.
-            geojson (FeatureCollection): The GeoJSON object to write.
-        """
-        parent = os.path.dirname(path_to_file)
-        os.makedirs(parent, exist_ok=True)
-        with open(path_to_file, "w") as f:
-            dump(geojson, f, default=str)
+    # def write_geojson(self, path_to_file, geojson):
+    #     """
+    #     Write a GeoJSON object to a file.
+    #
+    #     Args:
+    #         path_to_file (str): Path to the output file.
+    #         geojson (FeatureCollection): The GeoJSON object to write.
+    #     """
+    #     parent = os.path.dirname(path_to_file)
+    #     os.makedirs(parent, exist_ok=True)
+    #     with open(path_to_file, "w") as f:
+    #         dump(geojson, f, default=str)
 
     def get_renderer(self, fill_symbol):
         """
@@ -365,7 +368,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 qinst.removeMapLayer(lyr.id())
 
         tempfilename = self.TEMPFOLDER + "/" + name + ".geojson"
-        self.write_geojson(tempfilename, geojson_polygon_to_multipolygon(geojson))
+        write_geojson(tempfilename, geojson_polygon_to_multipolygon(geojson))
 
         vl = QgsVectorLayer(tempfilename, name, "ogr")
         # styling

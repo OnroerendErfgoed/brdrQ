@@ -32,16 +32,12 @@ import inspect
 import os
 import sys
 
+from .brdrq_utils import write_geojson
+
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 if cmd_folder not in sys.path:
     sys.path.insert(0, cmd_folder)
 
-try:
-    # import brdr
-    from geojson import dump
-except:
-    # import brdr
-    from geojson import dump
 import datetime
 import os
 import numpy as np
@@ -229,18 +225,18 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         geom_shapely = from_wkt(wkt)
         return make_valid(geom_shapely)
 
-    def write_geojson(self, path_to_file, geojson):
-        """
-        Write a GeoJSON object to a file.
-
-        Args:
-            path_to_file (str): Path to the output file.
-            geojson (FeatureCollection): The GeoJSON object to write.
-        """
-        parent = os.path.dirname(path_to_file)
-        os.makedirs(parent, exist_ok=True)
-        with open(path_to_file, "w") as f:
-            dump(geojson, f, default=str)
+    # def write_geojson(self, path_to_file, geojson):
+    #     """
+    #     Write a GeoJSON object to a file.
+    #
+    #     Args:
+    #         path_to_file (str): Path to the output file.
+    #         geojson (FeatureCollection): The GeoJSON object to write.
+    #     """
+    #     parent = os.path.dirname(path_to_file)
+    #     os.makedirs(parent, exist_ok=True)
+    #     with open(path_to_file, "w") as f:
+    #         dump(geojson, f, default=str)
 
     def get_layer_by_name(self, layer_name):
         """
@@ -351,7 +347,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 qinst.removeMapLayer(lyr.id())
 
         tempfilename = self.TEMPFOLDER + "/" + name + ".geojson"
-        self.write_geojson(tempfilename, geojson_polygon_to_multipolygon(geojson))
+        write_geojson(tempfilename, geojson_polygon_to_multipolygon(geojson))
 
         vl = QgsVectorLayer(tempfilename, name, "ogr")
         # styling
