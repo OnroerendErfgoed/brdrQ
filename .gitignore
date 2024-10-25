@@ -168,3 +168,5 @@ cython_debug/
 
 plugin/brdrq/zip_build
 plugin/brdrq/zip_build/
+/plugin/brdrq/zip_build
+/plugin/brdrq/zip_build/
