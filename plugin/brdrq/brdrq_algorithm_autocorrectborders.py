@@ -28,14 +28,19 @@ CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFT
 THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ***************************************************************************
 """
-import datetime
+import inspect
 import os
-import site
-import subprocess
 import sys
 
+from .brdrq_utils import write_geojson
+
+cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
+if cmd_folder not in sys.path:
+    sys.path.insert(0, cmd_folder)
+
+import datetime
+import os
 import numpy as np
-from geojson import dump
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import Qt, QDate, QDateTime
@@ -60,66 +65,19 @@ from qgis.core import QgsStyle
 from qgis.core import QgsVectorLayer
 from qgis.utils import iface
 
-
-# helper function to find embedded python
-# path in windows. Based on
-# https://github.com/qgis/QGIS/issues/45646
-def find_python():
-    if sys.platform != "win32":
-        return sys.executable
-
-    for path in sys.path:
-        assumed_path = os.path.join(path, "python.exe")
-        if os.path.isfile(assumed_path):
-            return assumed_path
-
-    raise Exception("Python executable not found")
-
-
-sys.path.insert(0, site.getusersitepackages())
-python_exe = find_python()
-
-try:
-    from shapely import (
-        Polygon,
-        from_wkt,
-        to_wkt,
-        unary_union,
-        make_valid
-    )
-    from shapely.geometry import shape
-except (ModuleNotFoundError):
-    print("Module shapely not found. Installing from PyPi.")
-    subprocess.check_call([python_exe,
-                           '-m', 'pip', 'install', 'shapely'])
-    from shapely import (
-        Polygon,
-        from_wkt,
-        to_wkt,
-        unary_union,
-        make_valid
-    )
-    from shapely.geometry import shape
-
-try:
-    import brdr
-
-    if brdr.__version__ != "0.4.0":
-        raise ValueError("Version mismatch")
-
-except (ModuleNotFoundError, ValueError):
-    subprocess.check_call([python_exe,
-                           '-m', 'pip', 'install', 'brdr==0.4.0'])
-    import brdr
-
-    print(brdr.__version__)
-
 from brdr.aligner import Aligner
 from brdr.loader import DictLoader
 from brdr.enums import OpenbaarDomeinStrategy, GRBType, AlignerInputType, AlignerResultType
 from brdr.geometry_utils import geojson_polygon_to_multipolygon
 from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader, update_to_actual_grb
 from brdr.constants import FORMULA_FIELD_NAME
+
+from shapely import (
+    from_wkt,
+    to_wkt,
+    unary_union,
+    make_valid
+)
 
 
 class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -267,18 +225,18 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         geom_shapely = from_wkt(wkt)
         return make_valid(geom_shapely)
 
-    def write_geojson(self, path_to_file, geojson):
-        """
-        Write a GeoJSON object to a file.
-
-        Args:
-            path_to_file (str): Path to the output file.
-            geojson (FeatureCollection): The GeoJSON object to write.
-        """
-        parent = os.path.dirname(path_to_file)
-        os.makedirs(parent, exist_ok=True)
-        with open(path_to_file, "w") as f:
-            dump(geojson, f, default=str)
+    # def write_geojson(self, path_to_file, geojson):
+    #     """
+    #     Write a GeoJSON object to a file.
+    #
+    #     Args:
+    #         path_to_file (str): Path to the output file.
+    #         geojson (FeatureCollection): The GeoJSON object to write.
+    #     """
+    #     parent = os.path.dirname(path_to_file)
+    #     os.makedirs(parent, exist_ok=True)
+    #     with open(path_to_file, "w") as f:
+    #         dump(geojson, f, default=str)
 
     def get_layer_by_name(self, layer_name):
         """
@@ -389,7 +347,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 qinst.removeMapLayer(lyr.id())
 
         tempfilename = self.TEMPFOLDER + "/" + name + ".geojson"
-        self.write_geojson(tempfilename, geojson_polygon_to_multipolygon(geojson))
+        write_geojson(tempfilename, geojson_polygon_to_multipolygon(geojson))
 
         vl = QgsVectorLayer(tempfilename, name, "ogr")
         # styling
@@ -923,9 +881,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             # self.TEMPFOLDER =dest.generateTemporaryDestination()
         self.TEMPFOLDER = os.path.join(self.TEMPFOLDER, date_string)
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
+        thematic_layer = parameters[self.INPUT_THEMATIC]
+        if not isinstance(thematic_layer, str):
+            thematic_layer = thematic_layer.source.toVariant()['val']
         self.CRS = QgsProject.instance().layerTreeRoot().findLayer(
-            parameters[
-                self.INPUT_THEMATIC]).layer().sourceCrs().authid()  # set CRS for the calculations, based on the THEMATIC input layer
+            thematic_layer).layer().sourceCrs().authid()  # set CRS for the calculations, based on the THEMATIC input layer
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
         self.ID_REFERENCE_FIELDNAME = parameters["COMBOBOX_ID_REFERENCE"]
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]

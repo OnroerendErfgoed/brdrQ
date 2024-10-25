@@ -1,6 +1,6 @@
 #
 
-`brdrQ`: Autocorrectborders, a QGIS-processing script for aligning thematic borders to reference borders. (for QGIS
+`brdrQ`: a QGIS-processing plugin for aligning thematic borders to reference borders. (for QGIS
 v3.34.8 or higher)
 
 <!-- badges: start -->
@@ -16,10 +16,10 @@ Quick links:
 
 ## Description
 
-`brdrQ` is a QGIS-processing script that searches for overlap relevance between thematic borders and reference borders,
+`brdrQ` is a QGIS-processing plugin that searches for overlap relevance between thematic borders and reference borders,
 and creates a resulting border based on the overlapping areas that are relevant.
 
-The purpose of this script is to automatically adjust thematic boundaries (polygons) on a reference layer (polygons)
+The purpose of this plugin is to automatically adjust thematic boundaries (polygons) on a reference layer (polygons)
 based on a 'relevant distance'. This parameter is used in the algorithm to determine where the boundaries are
 effectively adjusted to the reference layer, or where the original boundary is preserved. Thus, the adjustment of the
 boundaries of resulting geometries and original geometries is at most as large as the 'relevant distance'
@@ -41,15 +41,16 @@ You can install the latest release of `brdrQ` from
 
 ### Installation-steps
 
-The QGIS script 'autocorrectborders.py' can be loaded into the QGIS Processing Toolbar.
-Follow the steps below to make the script available in QGIS Processing Toolbar
+At this moment, the QGIS plugin 'brdrQ' has to be installed based on a zip-folder-installation. (In future we want to provide it as as a plugin in the QGIS-plugin-repository)
+Follow the steps below to make the plugin available in the QGISToolbar and QGIS Processing Toolbox
+1. Download the zip-file from Github and save it on your local machine:
+<https://github.com/OnroerendErfgoed/brdrQ/tree/main/dist/brdrq.zip>
 
-1. Open the Processing Toolbox from the bar at the top, so that Processing Toolbox appears on the right side of the
-   screen
+2. Open the 'Plugins'>>'Manage and install plugins...' from the topbar of QGIS
 
 <img src="docs/figures/installation-step-1.png" width="100%" />
 
-2. Choose: 'Add script to Toolbox...' (see red arrow) and select the script 'autocorrectborders.py'
+3. Choose: 'Install from zip' (see red box) and select the zip-file you downloaded in step 1
 
 <img src="docs/figures/installation-step-2.png" width="100%" />
 
@@ -62,17 +63,24 @@ screen will close automatically after installation.)
 
 <img src="docs/figures/installation-step-2c.png" width="50%" />
 
-3. Close QGIS, and (re-)open QGIS
+3. After a successful installation, check in the 'Installed'-tab if the plugin is activated (red arrow). if not, you have to activate the checkbox
 
-4. The tool 'Autocorrectborders' is now available in the Processing Toolbox under 'brdrQ'
+<img src="docs/figures/installation-step-2d.png" width="100%" />
 
-<img src="docs/figures/installation-step-3.png" width="100%" />
+4. The plugin 'brdrQ' is now installed and  the brdrQProvider is available in the Processing Toolbox. First open the processing toolbox and look for 'brdrQProvider'
+
+<img src="docs/figures/installation-step-3a.png" width="50%" />
+<img src="docs/figures/installation-step-3b.png" width="50%" />
 
 5. Double-click on the 'Autocorrectborders' tool, and the tool opens:
 
- <img src="docs/figures/installation-step-4.png" width="100%" />
+ <img src="docs/figures/installation-step-4.png" width="50%" />
 
-## Getting started (Quickstart)
+6. The brdrQ-plugin also provides an experimental tool to align features to GRB-actual parcels (Flanders-specific)
+
+<img src="docs/figures/installation-step-5.png" width="50%" />
+
+## Getting started (Quickstart - Autocorrectborders (Processing toolbox))
 
 <img src="docs/figures/input.png" width="100%" />
 
