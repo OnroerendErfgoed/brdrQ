@@ -15,7 +15,7 @@ experimental/
 plugin/dist
 build/
 develop-eggs/
-dist/
+#dist/
 downloads/
 eggs/
 .eggs/
@@ -166,5 +166,5 @@ cython_debug/
 /.idea
 /experimental
 
-#/plugin/brdrq/zip_build
-#/plugin/brdrq/zip_build/
+plugin/brdrq/zip_build
+plugin/brdrq/zip_build/

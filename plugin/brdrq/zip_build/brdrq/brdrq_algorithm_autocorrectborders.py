@@ -885,9 +885,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             # self.TEMPFOLDER =dest.generateTemporaryDestination()
         self.TEMPFOLDER = os.path.join(self.TEMPFOLDER, date_string)
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
+        thematic_layer = parameters[self.INPUT_THEMATIC]
+        if not isinstance(thematic_layer, str):
+            thematic_layer = thematic_layer.source.toVariant()['val']
         self.CRS = QgsProject.instance().layerTreeRoot().findLayer(
-            parameters[
-                self.INPUT_THEMATIC]).layer().sourceCrs().authid()  # set CRS for the calculations, based on the THEMATIC input layer
+            thematic_layer).layer().sourceCrs().authid()  # set CRS for the calculations, based on the THEMATIC input layer
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
         self.ID_REFERENCE_FIELDNAME = parameters["COMBOBOX_ID_REFERENCE"]
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]

@@ -79,7 +79,6 @@ class BrdrQPlugin(object):
         self.dockwidget = None
         self.pluginIsActive = False
         self.actions = []
-        # self.menu = self.tr('brdrQ')
         self.toolbar = self.iface.addToolBar('brdrQ')
         self.toolbar.setObjectName('brdrQ')
         self.minimum = 0
@@ -126,10 +125,10 @@ class BrdrQPlugin(object):
     def initGui(self):
         self.initProcessing()
         icon = os.path.join(os.path.join(cmd_folder, 'icon.png'))
-        action = QAction(QIcon(icon), 'brdrQ - Align borders', self.iface.mainWindow())
+        action = QAction(QIcon(icon), 'brdrQ - GRB actual Parcel Aligner', self.iface.mainWindow())
         action.triggered.connect(self.openDock)
         # self.iface.addToolBarIcon(action)
-        self.iface.addPluginToMenu("brdQ menu", action)
+        self.iface.addPluginToMenu("brdQ", action)
         self.toolbar.addAction(action)
         self.actions.append(action)
         # show the dockwidget
@@ -157,11 +156,9 @@ class BrdrQPlugin(object):
     def unload(self):
         QgsApplication.processingRegistry().removeProvider(self.provider)
         for action in self.actions:
-            self.iface.removePluginMenu('brdrQ',
-                                        action)
             self.iface.removeToolBarIcon(action)
             self.toolbar.removeAction(action)
-            self.iface.removePluginMenu("brdQ menu", action)
+            self.iface.removePluginMenu("brdQ", action)
             del action
         # remove the toolbar
         del self.toolbar
