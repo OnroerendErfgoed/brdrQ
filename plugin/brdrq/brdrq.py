@@ -215,6 +215,9 @@ class BrdrQPlugin(object):
 
     def setFeatures(self):
         self.layer = self.dockwidget.mMapLayerComboBox.currentLayer()
+        if self.layer is None:
+            self.dockwidget.textEdit_output.setText("Please select a layer")
+            return
         if self.layer.selectedFeatureCount() > self.max_feature_count or (
                 self.layer.selectedFeatureCount() == 0 and self.layer.featureCount() > self.max_feature_count):
             self.dockwidget.textEdit_output.setText(
@@ -292,7 +295,7 @@ class BrdrQPlugin(object):
         items = [str(k) for k in self.dict_predictions[key]]
         self.dockwidget.listWidget_predictions.addItems(items)
         if len(items) > 0:
-            self.dockwidget.doubleSpinBox.setValue(float(items[0]))
+            self.dockwidget.doubleSpinBox.setValue(round(float(items[0]),1))
             self.dockwidget.listWidget_predictions.setCurrentRow(1)
 
     def onListItemChange(self, currentItem, previousItem):
@@ -305,7 +308,7 @@ class BrdrQPlugin(object):
 
         if currentItem is None:
             return
-        value = float(currentItem.text())
+        value = round(float(currentItem.text()),1)
         self.dockwidget.doubleSpinBox.setValue(value)
         self.dockwidget.horizontalSlider.setValue(int(100 * value))
         return
