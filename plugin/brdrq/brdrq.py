@@ -30,10 +30,10 @@ __copyright__ = '(C) 2024 by Karel Dieussaert / Onroerend Erfgoed'
 
 __revision__ = '$Format:%H$'
 
-import datetime
 import inspect
 import os
 import sys
+from datetime import datetime
 
 import numpy as np
 from PyQt5.QtGui import QIcon
@@ -42,16 +42,15 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsApplication
 from qgis.core import QgsProject
-from qgis.core import QgsSimpleLineSymbolLayer, QgsFillSymbol, \
-    QgsSingleSymbolRenderer, QgsMapLayer, QgsLayerTreeNode, QgsLayerTreeGroup
-from qgis.core import QgsStyle, QgsVectorLayer
+from qgis.core import QgsStyle
 from shapely.io import from_wkt
 
 from .brdrq_dockwidget import brdrQDockWidget
 from .brdrq_help import brdrQHelp
 from .brdrq_provider import BrdrQProvider
 from .brdrq_settings import brdrQSettings
-from .brdrq_utils import plot_series, show_map, geom_shapely_to_qgis, write_geojson
+from .brdrq_utils import plot_series, show_map, geom_shapely_to_qgis, ENUM_REFERENCE_OPTIONS, \
+    LOCAL_REFERENCE_LAYER, GRB_TYPES, ADPF_VERSIONS, geojson_to_layer
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 
@@ -61,17 +60,7 @@ if cmd_folder not in sys.path:
 from brdr.aligner import Aligner
 from brdr.grb import GRBActualLoader
 from brdr.enums import GRBType, AlignerResultType, OpenbaarDomeinStrategy
-from brdr.geometry_utils import geojson_polygon_to_multipolygon
 from brdr.loader import DictLoader
-
-LOCAL_REFERENCE_LAYER = "LOCAL REFERENCE LAYER (choose LAYER and ID below)"
-
-GRB_TYPES = [e.name for e in GRBType]  # types of actual GRB: parcels, buildings, artwork
-ADPF_VERSIONS = ["Adpf" + str(x) for x in
-                 [datetime.datetime.today().year - i for i in range(6)]]  # Fiscal parcels of past 5 years
-
-ENUM_REFERENCE_OPTIONS = [
-                             LOCAL_REFERENCE_LAYER] + GRB_TYPES + ADPF_VERSIONS  # Options for downloadable reference layers
 
 
 class BrdrQPlugin(object):
@@ -110,6 +99,7 @@ class BrdrQPlugin(object):
         self.LAYER_RESULT_DIFF_MIN = "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
         self.helpDialog = brdrQHelp()
         self.settingsDialog = brdrQSettings()
+        self.tempfolder = os.path.join("brdrQ", datetime.now().strftime("%Y%m%d%H%M%S"))
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -332,18 +322,18 @@ class BrdrQPlugin(object):
 
         fcs = self.aligner.get_results_as_geojson(resulttype=AlignerResultType.PROCESSRESULTS)
 
-        self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"],
-                              QgsStyle.defaultStyle().symbol("hashed black X"),
-                              False, self.GROUP_LAYER)
-        self.geojson_to_layer(self.LAYER_RESULT_DIFF_PLUS, fcs["result_diff_plus"],
-                              QgsStyle.defaultStyle().symbol("hashed cgreen /"),
-                              True, self.GROUP_LAYER)
-        self.geojson_to_layer(self.LAYER_RESULT_DIFF_MIN, fcs["result_diff_min"],
-                              QgsStyle.defaultStyle().symbol("hashed cred /"),
-                              True, self.GROUP_LAYER)
-        self.geojson_to_layer(self.LAYER_RESULT, fcs["result"],
-                              QgsStyle.defaultStyle().symbol("outline green"),
-                              True, self.GROUP_LAYER)
+        geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"],
+                         QgsStyle.defaultStyle().symbol("hashed black X"),
+                         False, self.GROUP_LAYER, self.tempfolder)
+        geojson_to_layer(self.LAYER_RESULT_DIFF_PLUS, fcs["result_diff_plus"],
+                         QgsStyle.defaultStyle().symbol("hashed cgreen /"),
+                         True, self.GROUP_LAYER, self.tempfolder)
+        geojson_to_layer(self.LAYER_RESULT_DIFF_MIN, fcs["result_diff_min"],
+                         QgsStyle.defaultStyle().symbol("hashed cred /"),
+                         True, self.GROUP_LAYER, self.tempfolder)
+        geojson_to_layer(self.LAYER_RESULT, fcs["result"],
+                         QgsStyle.defaultStyle().symbol("outline green"),
+                         True, self.GROUP_LAYER, self.tempfolder)
 
         # set list with predicted values
         self.dockwidget.listWidget_predictions.clear()
@@ -503,140 +493,6 @@ class BrdrQPlugin(object):
         self.dockwidget.textEdit_output.setText(outputMessage)
         self.iface.messageBar().pushMessage(outputMessage)
         return self.dict_series, self.dict_predictions, self.diffs_dict
-
-    def geojson_to_layer(self, name, geojson, symbol, visible, group):
-        """
-        Add a geojson to a QGIS-layer to add it to the TOC
-        """
-        qinst = QgsProject.instance()
-        lyrs = qinst.mapLayersByName(name)
-        root = qinst.layerTreeRoot()
-
-        if len(lyrs) != 0:
-            for lyr in lyrs:
-                root.removeLayer(lyr)
-                qinst.removeMapLayer(lyr.id())
-
-        tempfilename = self.TEMPFOLDER + "/" + name + ".geojson"
-        write_geojson(tempfilename, geojson_polygon_to_multipolygon(geojson))
-
-        vl = QgsVectorLayer(tempfilename, name, "ogr")
-        # styling
-        if symbol is not None and vl.renderer() is not None:
-            vl.renderer().setSymbol(symbol)
-        # vl.setOpacity(0.5)
-
-        # adding layer to TOC
-        qinst.addMapLayer(
-            vl, False
-        )  # False so that it doesn't get inserted at default position
-
-        root.insertLayer(0, vl)
-
-        node = root.findLayer(vl.id())
-        if node:
-            new_state = Qt.Checked if visible else Qt.Unchecked
-            node.setItemVisibilityChecked(new_state)
-
-        self.move_to_group(vl, group)
-        vl.triggerRepaint()
-        self.iface.layerTreeView().refreshLayerSymbology(vl.id())
-        return vl
-
-    def move_to_group(self, thing, group, pos=0, expanded=False):
-        """Move a layer tree node into a layer tree group.
-        docs:https://docs.qgis.org/3.34/en/docs/pyqgis_developer_cookbook/cheat_sheet.html
-
-        Parameter
-        ---------
-
-        thing : group name (str), layer id (str), qgis.core.QgsMapLayer, qgis.core.QgsLayerTreeNode
-
-          Thing to move.  Can be a tree node (i.e. a layer or a group) or
-          a map layer, the object or the string name/id.
-
-        group : group name (str) or qgis.core.QgsLayerTreeGroup
-
-          Group to move the thing to. If group does not already exist, it
-          will be created.
-
-        pos : int
-
-          Position to insert into group. Default is 0.
-
-        extended : bool
-
-          Collapse or expand the thing moved. Default is False.
-
-        Returns
-        -------
-
-        Tuple containing the moved thing and the group moved to.
-
-        Note
-        ----
-
-        Moving destroys the original thing and creates a copy. It is the
-        copy which is returned.
-
-        """
-
-        qinst = QgsProject.instance()
-        tree = qinst.layerTreeRoot()
-
-        # thing
-        if isinstance(thing, str):
-            try:  # group name
-                node_object = tree.findGroup(thing)
-            except:  # layer id
-                node_object = tree.findLayer(thing)
-        elif isinstance(thing, QgsMapLayer):
-            node_object = tree.findLayer(thing)
-        elif isinstance(thing, QgsLayerTreeNode):
-            node_object = thing  # tree layer or group
-
-        # group
-        if isinstance(group, QgsLayerTreeGroup):
-            group_name = group.name()
-        else:  # group is str
-            group_name = group
-
-        group_object = tree.findGroup(group_name)
-
-        if not group_object:
-            group_object = tree.insertGroup(0, group_name)
-
-        # do the move
-        node_object_clone = node_object.clone()
-        node_object_clone.setExpanded(expanded)
-        group_object.insertChildNode(pos, node_object_clone)
-
-        parent = node_object.parent()
-        parent.removeChildNode(node_object)
-
-        return (node_object_clone, group_object)
-
-    def get_renderer(self, fill_symbol):
-        """
-        Get a QGIS renderer to add symbology to a QGIS-layer
-        """
-        # to get all properties of symbol:
-        # print(layer.renderer().symbol().symbolLayers()[0].properties())
-        # see: https://opensourceoptions.com/loading-and-symbolizing-vector-layers
-        if isinstance(fill_symbol, str):
-            fill_symbol = QgsStyle.defaultStyle().symbol(fill_symbol)
-        if fill_symbol is None:
-            fill_symbol = QgsFillSymbol([QgsSimpleLineSymbolLayer.create()])
-        if isinstance(fill_symbol, QgsFillSymbol):
-            return QgsSingleSymbolRenderer(fill_symbol.clone()).clone()
-        return None
-
-    def get_layer_by_name(self, layer_name):
-        """
-        Get the layer-object based on the layername
-        """
-        layers = QgsProject.instance().mapLayersByName(layer_name)
-        return layers[0]
 
 # from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify
 # from qgis.core import (

@@ -30,8 +30,6 @@ __copyright__ = '(C) 2024 by kd'
 
 __revision__ = '$Format:%H$'
 
-
-
 # -*- coding: utf-8 -*-
 
 """
@@ -70,7 +68,7 @@ import sys
 
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtCore import Qt, QDate, QDateTime
+from qgis.PyQt.QtCore import QDate, QDateTime
 from qgis.core import QgsFeatureRequest
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
@@ -81,13 +79,9 @@ from qgis.core import QgsProcessingParameterFeatureSource, QgsProcessingParamete
     QgsProcessingParameterNumber
 from qgis.core import QgsProcessingParameterFile
 from qgis.core import QgsProject
-from qgis.core import QgsSimpleLineSymbolLayer, QgsFillSymbol, \
-    QgsSingleSymbolRenderer, QgsMapLayer, QgsLayerTreeNode, QgsLayerTreeGroup
 from qgis.core import QgsStyle
-from qgis.core import QgsVectorLayer
-from qgis.utils import iface
 
-from .brdrq_utils import write_geojson
+from .brdrq_utils import geom_qgis_to_shapely, geojson_to_layer
 
 
 # helper function to find embedded python
@@ -141,7 +135,6 @@ except (ModuleNotFoundError, ValueError):
 
 from brdr.aligner import Aligner
 from brdr.loader import DictLoader
-from brdr.geometry_utils import geojson_polygon_to_multipolygon
 from brdr.enums import AlignerInputType
 from brdr.constants import BASE_FORMULA_FIELD_NAME
 from brdr.grb import update_to_actual_grb
@@ -236,163 +229,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "Documentation can be found at: https://github.com/OnroerendErfgoed/brdrQ/ "
         )
 
-    def geom_qgis_to_shapely(self, geom_qgis):
-        """
-        Method to convert a QGIS-geometry to a Shapely-geometry
-        """
-        if geom_qgis.isNull() or geom_qgis.isEmpty():
-            return None
-        wkt = geom_qgis.asWkt()
-        geom_shapely = from_wkt(wkt)
-        return make_valid(geom_shapely)
-
-    def get_layer_by_name(self, layer_name):
-        """
-        Get the layer-object based on the layername
-        """
-        layers = QgsProject.instance().mapLayersByName(layer_name)
-        return layers[0]
-
-    def move_to_group(self, thing, group, pos=0, expanded=False):
-        """Move a layer tree node into a layer tree group.
-        docs:https://docs.qgis.org/3.34/en/docs/pyqgis_developer_cookbook/cheat_sheet.html
-
-        Parameter
-        ---------
-
-        thing : group name (str), layer id (str), qgis.core.QgsMapLayer, qgis.core.QgsLayerTreeNode
-
-          Thing to move.  Can be a tree node (i.e. a layer or a group) or
-          a map layer, the object or the string name/id.
-
-        group : group name (str) or qgis.core.QgsLayerTreeGroup
-
-          Group to move the thing to. If group does not already exist, it
-          will be created.
-
-        pos : int
-
-          Position to insert into group. Default is 0.
-
-        extended : bool
-
-          Collapse or expand the thing moved. Default is False.
-
-        Returns
-        -------
-
-        Tuple containing the moved thing and the group moved to.
-
-        Note
-        ----
-
-        Moving destroys the original thing and creates a copy. It is the
-        copy which is returned.
-
-        """
-
-        qinst = QgsProject.instance()
-        tree = qinst.layerTreeRoot()
-
-        # thing
-        if isinstance(thing, str):
-            try:  # group name
-                node_object = tree.findGroup(thing)
-            except:  # layer id
-                node_object = tree.findLayer(thing)
-        elif isinstance(thing, QgsMapLayer):
-            node_object = tree.findLayer(thing)
-        elif isinstance(thing, QgsLayerTreeNode):
-            node_object = thing  # tree layer or group
-
-        # group
-        if isinstance(group, QgsLayerTreeGroup):
-            group_name = group.name()
-        else:  # group is str
-            group_name = group
-
-        group_object = tree.findGroup(group_name)
-
-        if not group_object:
-            group_object = tree.insertGroup(0, group_name)
-
-        # do the move
-        node_object_clone = node_object.clone()
-        node_object_clone.setExpanded(expanded)
-        group_object.insertChildNode(pos, node_object_clone)
-
-        parent = node_object.parent()
-        parent.removeChildNode(node_object)
-
-        return (node_object_clone, group_object)
-
-    # def write_geojson(self, path_to_file, geojson):
-    #     """
-    #     Write a GeoJSON object to a file.
-    #
-    #     Args:
-    #         path_to_file (str): Path to the output file.
-    #         geojson (FeatureCollection): The GeoJSON object to write.
-    #     """
-    #     parent = os.path.dirname(path_to_file)
-    #     os.makedirs(parent, exist_ok=True)
-    #     with open(path_to_file, "w") as f:
-    #         dump(geojson, f, default=str)
-
-    def get_renderer(self, fill_symbol):
-        """
-        Get a QGIS renderer to add symbology to a QGIS-layer
-        """
-        # to get all properties of symbol:
-        # print(layer.renderer().symbol().symbolLayers()[0].properties())
-        # see: https://opensourceoptions.com/loading-and-symbolizing-vector-layers
-        if isinstance(fill_symbol, str):
-            fill_symbol = QgsStyle.defaultStyle().symbol(fill_symbol)
-        if fill_symbol is None:
-            fill_symbol = QgsFillSymbol([QgsSimpleLineSymbolLayer.create()])
-        if isinstance(fill_symbol, QgsFillSymbol):
-            return QgsSingleSymbolRenderer(fill_symbol.clone()).clone()
-        return None
-
-    def geojson_to_layer(self, name, geojson, symbol, visible, group):
-        """
-        Add a geojson to a QGIS-layer to add it to the TOC
-        """
-        qinst = QgsProject.instance()
-        lyrs = qinst.mapLayersByName(name)
-        root = qinst.layerTreeRoot()
-
-        if len(lyrs) != 0:
-            for lyr in lyrs:
-                root.removeLayer(lyr)
-                qinst.removeMapLayer(lyr.id())
-
-        tempfilename = self.TEMPFOLDER + "/" + name + ".geojson"
-        write_geojson(tempfilename, geojson_polygon_to_multipolygon(geojson))
-
-        vl = QgsVectorLayer(tempfilename, name, "ogr")
-        # styling
-        if symbol is not None and vl.renderer() is not None:
-            vl.renderer().setSymbol(symbol)
-        # vl.setOpacity(0.5)
-
-        # adding layer to TOC
-        qinst.addMapLayer(
-            vl, False
-        )  # False so that it doesn't get inserted at default position
-
-        root.insertLayer(0, vl)
-
-        node = root.findLayer(vl.id())
-        if node:
-            new_state = Qt.Checked if visible else Qt.Unchecked
-            node.setItemVisibilityChecked(new_state)
-
-        self.move_to_group(vl, group)
-        vl.triggerRepaint()
-        iface.layerTreeView().refreshLayerSymbology(vl.id())
-        return vl
-
     def initAlgorithm(self, config=None):
         """
         Here we define the inputs and output of the algorithm, along
@@ -427,14 +263,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
-
-        parameter = QgsProcessingParameterNumber(
-            "RELEVANT_DISTANCE_FOR_FORMULA",
-            "RELEVANT_DISTANCE_FOR_FORMULA (meter) - If no formula-field is stated, a formula-field will be calculated with this relevant distance",
-            type=QgsProcessingParameterNumber.Double,
-            optional=True
-        )
-        parameter.setFlags(parameter.flags())
 
         parameter = QgsProcessingParameterNumber(
             "MAX_RELEVANT_DISTANCE",
@@ -494,7 +322,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             # dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
             # TODO: remove str when bugfix in brdr is released
             id_theme = str(feature.attribute(self.ID_THEME_FIELDNAME))
-            dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature.geometry())
+            dict_thematic[id_theme] = geom_qgis_to_shapely(feature.geometry())
             # dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
             attributes = feature.attributeMap()
             attributes_dict = {}
@@ -528,12 +356,12 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             return {}
 
         # Add RESULT TO TOC
-        self.geojson_to_layer(self.LAYER_RESULT, fcs_actualisation["result"],
-                              QgsStyle.defaultStyle().symbol("outline blue"),
-                              True, self.GROUP_LAYER)
-        self.geojson_to_layer(self.LAYER_RESULT_DIFF, fcs_actualisation["result_diff"],
-                              QgsStyle.defaultStyle().symbol("hashed black cblue /"),
-                              False, self.GROUP_LAYER)
+        geojson_to_layer(self.LAYER_RESULT, fcs_actualisation["result"],
+                         QgsStyle.defaultStyle().symbol("outline blue"),
+                         True, self.GROUP_LAYER, self.TEMPFOLDER)
+        geojson_to_layer(self.LAYER_RESULT_DIFF, fcs_actualisation["result_diff"],
+                         QgsStyle.defaultStyle().symbol("hashed black cblue /"),
+                         False, self.GROUP_LAYER, self.TEMPFOLDER)
         feedback.pushInfo("Resulterende geometrie berekend")
         feedback.pushInfo("END ACTUALISATION")
         result = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
@@ -566,16 +394,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             thematic.sourceCrs().authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer
 
-        # outputs[self.INPUT_THEMATIC + "_enriched"] = processing.run(
-        #     "qgis:exportaddgeometrycolumns",
-        #     {"INPUT": thematic, "CALC_METHOD": 0, "OUTPUT": "TEMPORARY_OUTPUT"},
-        #     context=context,
-        #     feedback=feedback,
-        #     is_child_algorithm=True,
-        # )
-        # thematic = context.getMapLayer(
-        #     outputs[self.INPUT_THEMATIC + "_enriched"]["OUTPUT"]
-        # )
         outputs[self.INPUT_THEMATIC + "_dropMZ"] = processing.run(
             "native:dropmzvalues",
             {
@@ -623,6 +441,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             # dest =QgsProcessingParameterFolderDestination (name="brdrQ")
             # self.TEMPFOLDER =dest.generateTemporaryDestination()
         self.TEMPFOLDER = os.path.join(self.TEMPFOLDER, date_string)
+        self.MAX_DISTANCE_FOR_ACTUALISATION = parameters["MAX_RELEVANT_DISTANCE"]
 
         self.FORMULA_FIELDNAME = parameters["FORMULA_FIELD"]
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
