@@ -469,7 +469,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         feedback.pushInfo("Load reference data")
         if self.SELECTED_REFERENCE == 0:
-            reference_loader = DictLoader(dict_reference)
             aligner.load_reference_data(DictLoader(dict_reference))
             aligner.name_reference_id = self.ID_REFERENCE_FIELDNAME
             aligner.dict_reference_source["source"] = self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE_NAME

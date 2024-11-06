@@ -50,7 +50,7 @@ from .brdrq_help import brdrQHelp
 from .brdrq_provider import BrdrQProvider
 from .brdrq_settings import brdrQSettings
 from .brdrq_utils import plot_series, show_map, geom_shapely_to_qgis, ENUM_REFERENCE_OPTIONS, \
-    LOCAL_REFERENCE_LAYER, GRB_TYPES, ADPF_VERSIONS, geojson_to_layer
+    LOCAL_REFERENCE_LAYER, geojson_to_layer, ADPF_VERSIONS, geom_qgis_to_shapely, GRB_TYPES, get_layer_by_name
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 
@@ -58,7 +58,7 @@ if cmd_folder not in sys.path:
     sys.path.insert(0, cmd_folder)
 
 from brdr.aligner import Aligner
-from brdr.grb import GRBActualLoader
+from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader
 from brdr.enums import GRBType, AlignerResultType, OpenbaarDomeinStrategy
 from brdr.loader import DictLoader
 
@@ -74,7 +74,7 @@ class BrdrQPlugin(object):
         self.toolbar = self.iface.addToolBar('brdrQ')
         self.toolbar.setObjectName('brdrQ')
         self.minimum = 0
-        self.maximum = 600
+        self.maximum = 1000
         self.step = 10
         self.relevant_distances = np.arange(self.minimum, self.maximum + self.step, self.step, dtype=int) / 100
         self.max_feature_count = 5000
@@ -90,6 +90,7 @@ class BrdrQPlugin(object):
         self.reference_choice = None
         self.reference_layer = None
         self.reference_id = None
+        self.reference_loader = None
         self.original_geometry = None
         self.GROUP_LAYER = "brdrQ_plugin"
         self.TEMPFOLDER = "brdrQ"
@@ -142,30 +143,73 @@ class BrdrQPlugin(object):
             self.settingsDialog.comboBox_odstrategy.addItem(od.name)
 
         self.settingsDialog.spinBox_threshold.setValue(50)
-
+        self.settingsDialog.comboBox_referencelayer.currentIndexChanged.connect(self.update_reference_choice)
         self.settingsDialog.mMapLayerComboBox_reference.layerChanged.connect(self.updateFields_reference)
+        self.settingsDialog.buttonBox_settings.accepted.connect(self.push_settings_ok)
 
-        self.settingsDialog.buttonBox_settings.accepted.connect(self.update_settings)
-        self.update_settings()
+        #Set initial settings
+        self.settingsDialog.comboBox_referencelayer.setCurrentIndex(1)
+        self.settingsDialog.comboBox_odstrategy.setCurrentIndex(5)
+        self.settingsDialog.spinBox_threshold.setValue(50)
+        self.settingsDialog.spinBox_max_relevant_distance.setValue(5)
+
+        #Load initial settings into tool (same as pushing OK in settings Dialog)
+        self._update_settings()
+        return
+
+    def update_reference_choice(self, index):
+        print(str(index))
+        if index == 0:
+            self.settingsDialog.mMapLayerComboBox_reference.setEnabled(True)
+            self.settingsDialog.mFieldComboBox_reference.setEnabled(True)
+        else:
+            self.settingsDialog.mMapLayerComboBox_reference.setEnabled(False)
+            self.settingsDialog.mFieldComboBox_reference.setEnabled(False)
         return
 
     def updateFields_reference(self):
         layer = self.settingsDialog.mMapLayerComboBox_reference.currentLayer()
         self.settingsDialog.mFieldComboBox_reference.setLayer(layer)
 
-    def update_settings(self):
+    def push_settings_ok(self):
+        self._update_settings()
+        #self.dockwidget.listWidget_features.clear()
+        self.dockwidget.listWidget_predictions.clear()
+        self.dockwidget.textEdit_output.setText("Please select a feature to align")
+        self.dockwidget.doubleSpinBox.setMaximum(self.maximum/100)
+        self.dockwidget.horizontalSlider.setMaximum(self.maximum)
+
+    def _update_settings(self):
+        self.maximum = self.settingsDialog.spinBox_max_relevant_distance.value()*100
+        self.relevant_distances = np.arange(self.minimum, self.maximum + self.step, self.step, dtype=int) / 100
+        self.od_strategy = OpenbaarDomeinStrategy[self.settingsDialog.comboBox_odstrategy.currentText()]
+        self.threshold_overlap_percentage = self.settingsDialog.spinBox_threshold.value()
         self.reference_choice = self.settingsDialog.comboBox_referencelayer.currentText()
         self.reference_layer = None
         self.reference_id = None
+        self.aligner = Aligner(od_strategy=self.od_strategy,
+                               threshold_overlap_percentage=self.threshold_overlap_percentage)
         if self.reference_choice == LOCAL_REFERENCE_LAYER:
+
             self.reference_layer = self.settingsDialog.mMapLayerComboBox_reference.currentLayer()
             self.reference_id = self.settingsDialog.mFieldComboBox_reference.currentField()
-        elif self.reference_choice in GRB_TYPES:
-            pass
-        elif self.reference_choice in ADPF_VERSIONS:
-            pass
-        self.od_strategy = OpenbaarDomeinStrategy[self.settingsDialog.comboBox_odstrategy.currentText()]
-        self.threshold_overlap_percentage = self.settingsDialog.spinBox_threshold.value()
+
+            # Load reference into a shapely_dict:
+            dict_reference = {}
+            features = self.reference_layer.getFeatures()
+            for current, feature in enumerate(features):
+                id_reference = feature.attribute(self.reference_id)
+                dict_reference[id_reference] = geom_qgis_to_shapely(
+                    feature.geometry()
+                )
+            self.aligner.load_reference_data(DictLoader(dict_reference))
+            self.aligner.name_reference_id = self.reference_id
+            self.aligner.dict_reference_source["source"] = "local"
+            self.aligner.dict_reference_source["version_date"] = "unknown"
+
+
+        print(
+            f"settings updated: Reference choice={self.reference_choice} - od_strategy={self.od_strategy} - threshold overlap percenatge = {str(self.threshold_overlap_percentage)}")
         return
 
     def onClosePlugin(self):
@@ -219,24 +263,17 @@ class BrdrQPlugin(object):
             self.dockwidget.doubleSpinBox.setDecimals(1)
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
-            self.dockwidget.pushButton_help.clicked.connect(self.help)
-            self.dockwidget.pushButton_settings.clicked.connect(self.settings)
+            self.dockwidget.pushButton_help.clicked.connect(self.show_help_dialog)
+            self.dockwidget.pushButton_settings.clicked.connect(self.show_settings_dialog)
             self.dockwidget.pushButton_grafiek.clicked.connect(self.get_graphic)
             self.dockwidget.pushButton_visualisatie.clicked.connect(self.get_visualisation)
             self.dockwidget.pushButton_save.clicked.connect(self.change_geometry)
             self.dockwidget.pushButton_reset.clicked.connect(self.reset_geometry)
             # self.dockwidget.pushButton_select.clicked.connect(self.start_line_edit)
             self.dockwidget.pushButton_wkt.clicked.connect(self.get_wkt)
-            # self.dockwidget.mMapLayerComboBox.layerChanged.connect(self.setIds)
             self.dockwidget.mMapLayerComboBox.layerChanged.connect(self.setFeatures)
-            # self.dockwidget.mFeaturePickerWidget.featureChanged.connect(self.onFeatureChange)
-            self.dockwidget.listWidget_features.currentItemChanged.connect(self.onFeatureChange)
-            self.dockwidget.listWidget_features.itemActivated.connect(self.onFeatureActivated)
-            self.dockwidget.listWidget_features.itemClicked.connect(self.onFeatureActivated)
-            self.dockwidget.listWidget_predictions.currentItemChanged.connect(self.onListItemChange)
-            self.dockwidget.listWidget_predictions.itemActivated.connect(self.onListItemActivated)
-            self.dockwidget.listWidget_predictions.itemClicked.connect(self.onListItemActivated)
-            # self.dockwidget.horizontalSlider.valueChanged.connect(self.onSliderChange)
+            self.dockwidget.listWidget_features.itemPressed.connect(self.onFeatureActivated)
+            self.dockwidget.listWidget_predictions.itemPressed.connect(self.onListItemActivated)
             self.dockwidget.horizontalSlider.sliderMoved.connect(self.onSliderChange)
             self.dockwidget.doubleSpinBox.valueChanged.connect(self.onSpinboxChange)
 
@@ -246,10 +283,10 @@ class BrdrQPlugin(object):
             # self.dockwidget.show()
             self.layer = self.dockwidget.mMapLayerComboBox.currentLayer()
 
-    def help(self):
+    def show_help_dialog(self):
         self.helpDialog.show()
 
-    def settings(self):
+    def show_settings_dialog(self):
         self.settingsDialog.show()
 
     # def setIds(self):
@@ -285,9 +322,6 @@ class BrdrQPlugin(object):
         self.dockwidget.textEdit_output.setText(f"#Features: {str(len(self.selected_features))}")
         return
 
-    def onFeatureChange(self, currentItem, previousItem):
-        self._onFeatureChange(currentItem)
-
     def onFeatureActivated(self, currentItem):
         self._onFeatureChange(currentItem)
 
@@ -298,14 +332,14 @@ class BrdrQPlugin(object):
             print("currentItem is none")
             return
         feature_id = currentItem.text().split('*')[1]
-        print(f"Feature_id is {feature_id}")
+        #print(f"Feature_id is {feature_id}")
         for feat in self.selected_features:
-            print(str(feat.id()))
+            #print(str(feat.id()))
             if str(feat.id()) == feature_id:
-                print("equal - >break")
+                #print("equal - >break")
                 self.feature = feat
                 break
-        print(self.feature)
+        #print(self.feature)
         if self.feature is None:
             self.dockwidget.textEdit_output.setText(f"No feature found with ID {feature_id}")
             return
@@ -339,38 +373,46 @@ class BrdrQPlugin(object):
         self.dockwidget.listWidget_predictions.clear()
         items = [str(k) for k in self.dict_predictions[key]]
         self.dockwidget.listWidget_predictions.addItems(items)
-        if len(items) > 0:
-            self.dockwidget.doubleSpinBox.setValue(round(float(items[0]), 1))
+        if len(items) > 1:
             self.dockwidget.listWidget_predictions.setCurrentRow(1)
-
-    def onListItemChange(self, currentItem, previousItem):
-        self._listItemActivated(currentItem)
+            self.dockwidget.doubleSpinBox.setValue(round(float(items[1]), 1))
+        elif len(items) > 0:
+            self.dockwidget.listWidget_predictions.setCurrentRow(0)
+            self.dockwidget.doubleSpinBox.setValue(round(float(items[0]), 1))
+        else:
+            self.dockwidget.textEdit_output.setText("No predictions")
 
     def onListItemActivated(self, currentItem):
+        print("onListItemActivated")
         self._listItemActivated(currentItem)
 
     def _listItemActivated(self, currentItem):
 
         if currentItem is None:
+            print ("currentitem zero")
             return
+        print("item activated with rd: " + currentItem.text())
         value = round(float(currentItem.text()), 1)
+        print ("item activated with rd - value: " + str(value))
         self.dockwidget.doubleSpinBox.setValue(value)
         self.dockwidget.horizontalSlider.setValue(int(100 * value))
         return
 
     def onSliderChange(self, value):
+        print("onSliderChange: value -> " + str(value))
         self.dockwidget.doubleSpinBox.setValue(value / 100)
         return
 
     def onSpinboxChange(self, value):
         self.dockwidget.horizontalSlider.setValue(int(value * 100))
+        print ("onSpinboxChange: value -> " + str(value))
 
         # self.change_geometry()
         # Filter layers based on relevant distance
-        self.get_layer_by_name(self.LAYER_RESULT).setSubsetString(f"brdr_relevant_distance = {value}")
-        self.get_layer_by_name(self.LAYER_RESULT_DIFF).setSubsetString(f"brdr_relevant_distance = {value}")
-        self.get_layer_by_name(self.LAYER_RESULT_DIFF_MIN).setSubsetString(f"brdr_relevant_distance = {value}")
-        self.get_layer_by_name(self.LAYER_RESULT_DIFF_PLUS).setSubsetString(f"brdr_relevant_distance = {value}")
+        get_layer_by_name(self.LAYER_RESULT).setSubsetString(f"brdr_relevant_distance = {value}")
+        get_layer_by_name(self.LAYER_RESULT_DIFF).setSubsetString(f"brdr_relevant_distance = {value}")
+        get_layer_by_name(self.LAYER_RESULT_DIFF_MIN).setSubsetString(f"brdr_relevant_distance = {value}")
+        get_layer_by_name(self.LAYER_RESULT_DIFF_PLUS).setSubsetString(f"brdr_relevant_distance = {value}")
         return
 
     # def start_line_edit(self):
@@ -454,8 +496,6 @@ class BrdrQPlugin(object):
         self.dockwidget.textEdit_output.setText(wkt)
 
     def _align(self):
-
-        # brdr_version = str(brdr.__version__)
         # feat = self.dockwidget.mFeaturePickerWidget.feature()
         feat = self.feature
         selectedFeatures = []
@@ -467,23 +507,32 @@ class BrdrQPlugin(object):
             return
         # take selected feature(s)
         # run brdr (to actual GRB) for this feature
-        list = []
-        self.aligner = Aligner(od_strategy=self.od_strategy,
-                               threshold_overlap_percentage=self.threshold_overlap_percentage)
+        if self.reference_choice != LOCAL_REFERENCE_LAYER:
+            self.aligner = Aligner(od_strategy=self.od_strategy,
+                                   threshold_overlap_percentage=self.threshold_overlap_percentage)
 
-        # i = 0
         dict_to_load = {}
 
         for feature in selectedFeatures:
-            # i = i + 1
             feature_geom = feature.geometry()
             wkt = feature_geom.asWkt()
             geom_shapely = from_wkt(wkt)
             dict_to_load[feature.id()] = geom_shapely
-        # Load thematic &reference data
+        # Load thematic data
         self.aligner.load_thematic_data(DictLoader(dict_to_load))
-        loader = GRBActualLoader(grb_type=GRBType.ADP, partition=1000, aligner=self.aligner)
-        self.aligner.load_reference_data(loader)
+        # Load reference data for the on-the fly reference versions
+        print (self.reference_choice)
+        if self.reference_choice in GRB_TYPES:
+            self.aligner.load_reference_data(
+                GRBActualLoader(grb_type=GRBType[self.reference_choice], partition=1000, aligner=self.aligner))
+            print ("grbtype")
+        elif self.reference_choice in ADPF_VERSIONS:
+            year = self.reference_choice.removeprefix("Adpf")
+            self.aligner.load_reference_data(GRBFiscalParcelLoader(year=year, aligner=self.aligner, partition=1000))
+            print("adpftype")
+        else:
+            print("localtype")
+            pass
 
         self.dict_series, self.dict_predictions, self.diffs_dict = self.aligner.predictor(
             relevant_distances=self.relevant_distances)
