@@ -10,7 +10,6 @@ except:
     from geojson import dump
 
 import datetime
-import os
 from math import ceil
 
 import geopandas as gpd
@@ -18,6 +17,7 @@ import matplotlib.pyplot as plt
 from brdr.enums import GRBType, OpenbaarDomeinStrategy
 from brdr.geometry_utils import geojson_polygon_to_multipolygon
 from brdr.typings import ProcessResult
+from brdr.utils import write_geojson
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsGeometry
 from qgis.core import QgsProject
@@ -201,20 +201,6 @@ def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
     vl.triggerRepaint()
     iface.layerTreeView().refreshLayerSymbology(vl.id())
     return vl
-
-
-def write_geojson(path_to_file, geojson):
-    """
-    Write a GeoJSON object to a file.
-
-    Args:
-        path_to_file (str): Path to the output file.
-        geojson (FeatureCollection): The GeoJSON object to write.
-    """
-    parent = os.path.dirname(path_to_file)
-    os.makedirs(parent, exist_ok=True)
-    with open(path_to_file, "w") as f:
-        dump(geojson, f, default=str)
 
 
 def _make_map(ax, processresult, thematic_dict, reference_dict):

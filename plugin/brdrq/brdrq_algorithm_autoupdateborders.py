@@ -359,9 +359,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         geojson_to_layer(self.LAYER_RESULT, fcs_actualisation["result"],
                          QgsStyle.defaultStyle().symbol("outline blue"),
                          True, self.GROUP_LAYER, self.TEMPFOLDER)
-        geojson_to_layer(self.LAYER_RESULT_DIFF, fcs_actualisation["result_diff"],
-                         QgsStyle.defaultStyle().symbol("hashed black cblue /"),
-                         False, self.GROUP_LAYER, self.TEMPFOLDER)
+        if "result_diff" in fcs_actualisation:
+            geojson_to_layer(self.LAYER_RESULT_DIFF, fcs_actualisation["result_diff"],
+                             QgsStyle.defaultStyle().symbol("hashed black cblue /"),
+                             False, self.GROUP_LAYER, self.TEMPFOLDER)
         feedback.pushInfo("Resulterende geometrie berekend")
         feedback.pushInfo("END ACTUALISATION")
         result = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]

@@ -76,7 +76,7 @@ class BrdrQPlugin(object):
         self.minimum = 0
         self.maximum = 1000
         self.step = 10
-        self.relevant_distances = np.arange(self.minimum, self.maximum + self.step, self.step, dtype=int) / 100
+        self.relevant_distances = None
         self.max_feature_count = 5000
         self.layer = None
         self.selected_features = None
@@ -181,8 +181,9 @@ class BrdrQPlugin(object):
 
     def _update_settings(self):
         self.maximum = self.settingsDialog.spinBox_max_relevant_distance.value()*100
-        self.relevant_distances = np.arange(self.minimum, self.maximum + self.step, self.step, dtype=int) / 100
+        self.relevant_distances = [round(k,1) for k in np.arange(self.minimum, self.maximum + self.step, self.step, dtype=int) / 100]
         self.od_strategy = OpenbaarDomeinStrategy[self.settingsDialog.comboBox_odstrategy.currentText()]
+        print (self.od_strategy)
         self.threshold_overlap_percentage = self.settingsDialog.spinBox_threshold.value()
         self.reference_choice = self.settingsDialog.comboBox_referencelayer.currentText()
         self.reference_layer = None
@@ -400,10 +401,12 @@ class BrdrQPlugin(object):
 
     def onSliderChange(self, value):
         print("onSliderChange: value -> " + str(value))
-        self.dockwidget.doubleSpinBox.setValue(value / 100)
+        value = round(value/100,1)
+        self.dockwidget.doubleSpinBox.setValue(value)
         return
 
     def onSpinboxChange(self, value):
+        value = round(value,1)
         self.dockwidget.horizontalSlider.setValue(int(value * 100))
         print ("onSpinboxChange: value -> " + str(value))
 
@@ -507,9 +510,9 @@ class BrdrQPlugin(object):
             return
         # take selected feature(s)
         # run brdr (to actual GRB) for this feature
-        if self.reference_choice != LOCAL_REFERENCE_LAYER:
-            self.aligner = Aligner(od_strategy=self.od_strategy,
-                                   threshold_overlap_percentage=self.threshold_overlap_percentage)
+        # if self.reference_choice != LOCAL_REFERENCE_LAYER:
+        #     self.aligner = Aligner(od_strategy=self.od_strategy,
+        #                            threshold_overlap_percentage=self.threshold_overlap_percentage)
 
         dict_to_load = {}
 

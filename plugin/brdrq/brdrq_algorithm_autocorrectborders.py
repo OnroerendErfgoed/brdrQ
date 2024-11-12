@@ -516,9 +516,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 geojson_to_layer(self.LAYER_RESULT_ACTUAL, fcs_actualisation["result"],
                                       QgsStyle.defaultStyle().symbol("outline blue"),
                                       True, self.GROUP_LAYER_ACTUAL,self.TEMPFOLDER)
-                geojson_to_layer(self.LAYER_RESULT_ACTUAL_DIFF, fcs_actualisation["result_diff"],
-                                      QgsStyle.defaultStyle().symbol("hashed clbue /"),
-                                      False, self.GROUP_LAYER_ACTUAL,self.TEMPFOLDER)
+
+                if "result_diff" in fcs_actualisation:
+                    geojson_to_layer(self.LAYER_RESULT_ACTUAL_DIFF, fcs_actualisation["result_diff"],
+                                          QgsStyle.defaultStyle().symbol("hashed clbue /"),
+                                          False, self.GROUP_LAYER_ACTUAL,self.TEMPFOLDER)
                 feedback.pushInfo("Resulterende geometrie berekend")
             else:
                 feedback.pushInfo("Geen wijzigingen gedetecteerd binnen tijdspanne in referentielaag (GRB-percelen)")
