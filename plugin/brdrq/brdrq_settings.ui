@@ -1,233 +1,233 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
-    <class>Dialog</class>
-    <widget class="QDialog" name="Dialog">
-        <property name="geometry">
-            <rect>
-                <x>0</x>
-                <y>0</y>
-                <width>523</width>
-                <height>300</height>
-            </rect>
-        </property>
-        <property name="windowTitle">
-            <string>Settings</string>
-        </property>
-        <widget class="QDialogButtonBox" name="buttonBox_settings">
-            <property name="geometry">
-                <rect>
-                    <x>430</x>
-                    <y>20</y>
-                    <width>81</width>
-                    <height>241</height>
-                </rect>
-            </property>
-            <property name="orientation">
-                <enum>Qt::Vertical</enum>
-            </property>
-            <property name="standardButtons">
-                <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-            </property>
-        </widget>
-        <widget class="QComboBox" name="comboBox_referencelayer">
-            <property name="geometry">
-                <rect>
-                    <x>200</x>
-                    <y>20</y>
-                    <width>201</width>
-                    <height>22</height>
-                </rect>
-            </property>
-        </widget>
-        <widget class="QgsMapLayerComboBox" name="mMapLayerComboBox_reference">
-            <property name="geometry">
-                <rect>
-                    <x>200</x>
-                    <y>60</y>
-                    <width>201</width>
-                    <height>27</height>
-                </rect>
-            </property>
-        </widget>
-        <widget class="QgsFieldComboBox" name="mFieldComboBox_reference">
-            <property name="geometry">
-                <rect>
-                    <x>200</x>
-                    <y>100</y>
-                    <width>201</width>
-                    <height>27</height>
-                </rect>
-            </property>
-        </widget>
-        <widget class="QComboBox" name="comboBox_odstrategy">
-            <property name="geometry">
-                <rect>
-                    <x>200</x>
-                    <y>150</y>
-                    <width>201</width>
-                    <height>21</height>
-                </rect>
-            </property>
-        </widget>
-        <widget class="QSpinBox" name="spinBox_threshold">
-            <property name="geometry">
-                <rect>
-                    <x>200</x>
-                    <y>190</y>
-                    <width>201</width>
-                    <height>21</height>
-                </rect>
-            </property>
-            <property name="maximum">
-                <number>100</number>
-            </property>
-            <property name="value">
-                <number>50</number>
-            </property>
-        </widget>
-        <widget class="QLabel" name="label">
-            <property name="geometry">
-                <rect>
-                    <x>10</x>
-                    <y>20</y>
-                    <width>151</width>
-                    <height>21</height>
-                </rect>
-            </property>
-            <property name="text">
-                <string>Reference layer</string>
-            </property>
-        </widget>
-        <widget class="QLabel" name="label_2">
-            <property name="geometry">
-                <rect>
-                    <x>10</x>
-                    <y>60</y>
-                    <width>181</width>
-                    <height>21</height>
-                </rect>
-            </property>
-            <property name="text">
-                <string>Local reference layer</string>
-            </property>
-        </widget>
-        <widget class="QLabel" name="label_3">
-            <property name="geometry">
-                <rect>
-                    <x>10</x>
-                    <y>100</y>
-                    <width>181</width>
-                    <height>21</height>
-                </rect>
-            </property>
-            <property name="text">
-                <string>Local reference layer id</string>
-            </property>
-        </widget>
-        <widget class="QLabel" name="label_4">
-            <property name="geometry">
-                <rect>
-                    <x>10</x>
-                    <y>150</y>
-                    <width>161</width>
-                    <height>21</height>
-                </rect>
-            </property>
-            <property name="text">
-                <string>OpenbaarDomein Strategy</string>
-            </property>
-        </widget>
-        <widget class="QLabel" name="label_5">
-            <property name="geometry">
-                <rect>
-                    <x>10</x>
-                    <y>190</y>
-                    <width>131</width>
-                    <height>21</height>
-                </rect>
-            </property>
-            <property name="text">
-                <string>Threshold value</string>
-            </property>
-        </widget>
-        <widget class="QLabel" name="label_6">
-            <property name="geometry">
-                <rect>
-                    <x>10</x>
-                    <y>240</y>
-                    <width>191</width>
-                    <height>16</height>
-                </rect>
-            </property>
-            <property name="text">
-                <string>Maximale relevante afstand (m)</string>
-            </property>
-        </widget>
-        <widget class="QSpinBox" name="spinBox_max_relevant_distance">
-            <property name="geometry">
-                <rect>
-                    <x>200</x>
-                    <y>240</y>
-                    <width>201</width>
-                    <height>22</height>
-                </rect>
-            </property>
-            <property name="minimum">
-                <number>1</number>
-            </property>
-            <property name="maximum">
-                <number>10</number>
-            </property>
-            <property name="value">
-                <number>5</number>
-            </property>
-        </widget>
-    </widget>
-    <customwidgets>
-        <customwidget>
-            <class>QgsFieldComboBox</class>
-            <extends>QComboBox</extends>
-            <header>qgsfieldcombobox.h</header>
-        </customwidget>
-        <customwidget>
-            <class>QgsMapLayerComboBox</class>
-            <extends>QComboBox</extends>
-            <header>qgsmaplayercombobox.h</header>
-        </customwidget>
-    </customwidgets>
-    <resources/>
-    <connections>
-        <connection>
-            <sender>buttonBox_settings</sender>
-            <signal>accepted()</signal>
-            <receiver>Dialog</receiver>
-            <slot>accept()</slot>
-            <hints>
-                <hint type="sourcelabel">
-                    <x>248</x>
-                    <y>254</y>
-                </hint>
-                <hint type="destinationlabel">
-                    <x>157</x>
-                    <y>274</y>
-                </hint>
-            </hints>
-        </connection>
-        <connection>
-            <sender>buttonBox_settings</sender>
-            <signal>rejected()</signal>
-            <receiver>Dialog</receiver>
-            <slot>reject()</slot>
-            <hints>
-                <hint type="sourcelabel">
-                    <x>316</x>
-                    <y>260</y>
-                </hint>
-                <hint type="destinationlabel">
-                    <x>286</x>
-                    <y>274</y>
-                </hint>
-            </hints>
-        </connection>
-    </connections>
+ <class>Dialog</class>
+ <widget class="QDialog" name="Dialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>523</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Settings</string>
+  </property>
+  <widget class="QDialogButtonBox" name="buttonBox_settings">
+   <property name="geometry">
+    <rect>
+     <x>430</x>
+     <y>20</y>
+     <width>81</width>
+     <height>241</height>
+    </rect>
+   </property>
+   <property name="orientation">
+    <enum>Qt::Vertical</enum>
+   </property>
+   <property name="standardButtons">
+    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+   </property>
+  </widget>
+  <widget class="QComboBox" name="comboBox_referencelayer">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>20</y>
+     <width>201</width>
+     <height>22</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QgsMapLayerComboBox" name="mMapLayerComboBox_reference">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>60</y>
+     <width>201</width>
+     <height>27</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QgsFieldComboBox" name="mFieldComboBox_reference">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>100</y>
+     <width>201</width>
+     <height>27</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QComboBox" name="comboBox_odstrategy">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>150</y>
+     <width>201</width>
+     <height>21</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QSpinBox" name="spinBox_threshold">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>190</y>
+     <width>201</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="maximum">
+    <number>100</number>
+   </property>
+   <property name="value">
+    <number>50</number>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>20</y>
+     <width>151</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Reference layer</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_2">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>60</y>
+     <width>181</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Local reference layer</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_3">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>100</y>
+     <width>181</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Local reference layer id</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_4">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>150</y>
+     <width>161</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>OpenbaarDomein Strategy</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_5">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>190</y>
+     <width>131</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Threshold value</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_6">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>240</y>
+     <width>191</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Maximale relevante afstand (m)</string>
+   </property>
+  </widget>
+  <widget class="QSpinBox" name="spinBox_max_relevant_distance">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>240</y>
+     <width>201</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="minimum">
+    <number>1</number>
+   </property>
+   <property name="maximum">
+    <number>10</number>
+   </property>
+   <property name="value">
+    <number>5</number>
+   </property>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QgsFieldComboBox</class>
+   <extends>QComboBox</extends>
+   <header>qgsfieldcombobox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsMapLayerComboBox</class>
+   <extends>QComboBox</extends>
+   <header>qgsmaplayercombobox.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>buttonBox_settings</sender>
+   <signal>accepted()</signal>
+   <receiver>Dialog</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>248</x>
+     <y>254</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>157</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox_settings</sender>
+   <signal>rejected()</signal>
+   <receiver>Dialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>316</x>
+     <y>260</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>286</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>
