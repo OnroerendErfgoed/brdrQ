@@ -239,7 +239,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter = QgsProcessingParameterFeatureSource(
             self.INPUT_THEMATIC,
             self.tr("THEMATIC LAYER"),
-            [QgsProcessing.TypeVectorAnyGeometry],
+            [QgsProcessing.TypeVectorPolygon],
             defaultValue="themelayer",
         )
         parameter.setFlags(parameter.flags())
@@ -285,7 +285,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingOutputVectorLayer(
                 "OUTPUT_RESULT",
                 self.LAYER_RESULT,
-                QgsProcessing.TypeVectorAnyGeometry,
+                QgsProcessing.TypeVectorPolygon,
             )
         )
 

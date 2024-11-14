@@ -204,7 +204,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter = QgsProcessingParameterFeatureSource(
             self.INPUT_THEMATIC,
             self.tr("THEMATIC LAYER"),
-            [QgsProcessing.TypeVectorAnyGeometry],
+            [QgsProcessing.TypeVectorPolygon],
             defaultValue="themelayer",
         )
         parameter.setFlags(parameter.flags())
@@ -239,7 +239,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter = QgsProcessingParameterFeatureSource(
             self.INPUT_REFERENCE,
             self.tr("REFERENCE LAYER"),
-            [QgsProcessing.TypeVectorAnyGeometry],
+            [QgsProcessing.TypeVectorPolygon],
             # defaultValue="referencelayer",
             optional=True
         )
@@ -268,28 +268,28 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingOutputVectorLayer(
                 "OUTPUT_RESULT",
                 self.LAYER_RESULT,
-                QgsProcessing.TypeVectorAnyGeometry,
+                QgsProcessing.TypeVectorPolygon,
             )
         )
         self.addOutput(
             QgsProcessingOutputVectorLayer(
                 "OUTPUT_RESULT_DIFF",
                 self.LAYER_RESULT_DIFF,
-                QgsProcessing.TypeVectorAnyGeometry,
+                QgsProcessing.TypeVectorPolygon,
             )
         )
         self.addOutput(
             QgsProcessingOutputVectorLayer(
                 "OUTPUT_RESULT_DIFF_PLUS",
                 self.LAYER_RESULT_DIFF_PLUS,
-                QgsProcessing.TypeVectorAnyGeometry,
+                QgsProcessing.TypeVectorPolygon,
             )
         )
         self.addOutput(
             QgsProcessingOutputVectorLayer(
                 "OUTPUT_RESULT_DIFF_MIN",
                 self.LAYER_RESULT_DIFF_MIN,
-                QgsProcessing.TypeVectorAnyGeometry,
+                QgsProcessing.TypeVectorPolygon,
             )
         )
         # advanced parameters

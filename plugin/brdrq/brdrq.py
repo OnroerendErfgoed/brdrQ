@@ -40,7 +40,8 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QListWidgetItem
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import Qt
-from qgis.core import QgsApplication
+from qgis.core import QgsMapLayerProxyModel
+from qgis.core import QgsApplication, LayerFilters
 from qgis.core import QgsProject
 from qgis.core import QgsStyle
 from shapely.io import from_wkt
@@ -312,6 +313,7 @@ class BrdrQPlugin(object):
             self.dockwidget.pushButton_reset.clicked.connect(self.reset_geometry)
             # self.dockwidget.pushButton_select.clicked.connect(self.start_line_edit)
             self.dockwidget.pushButton_wkt.clicked.connect(self.get_wkt)
+            self.dockwidget.mMapLayerComboBox.setFilters(QgsMapLayerProxyModel.PolygonLayer)
             self.dockwidget.mMapLayerComboBox.layerChanged.connect(self.setFeatures)
             self.dockwidget.listWidget_features.itemPressed.connect(
                 self.onFeatureActivated
