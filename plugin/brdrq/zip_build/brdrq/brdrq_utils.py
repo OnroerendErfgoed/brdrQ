@@ -1,4 +1,5 @@
 import os
+
 try:
     import brdr
 except:
@@ -16,10 +17,7 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 from brdr.typings import ProcessResult
 from qgis.core import QgsGeometry
-from shapely import (
-    to_wkt,
-    make_valid
-)
+from shapely import to_wkt, make_valid
 
 
 def write_geojson(path_to_file, geojson):
@@ -127,9 +125,9 @@ def _make_map(ax, processresult, thematic_dict, reference_dict):
 
 
 def show_map(
-        dict_results: dict[any, dict[float, ProcessResult]],
-        dict_thematic,
-        dict_reference,
+    dict_results: dict[any, dict[float, ProcessResult]],
+    dict_thematic,
+    dict_reference,
 ):
     """
     Show results on a map
@@ -175,11 +173,11 @@ def print_brdr_formula(dict_results, aligner):
 
 
 def plot_series(
-        series,
-        dictionary,
-        xlabel="relevant distance",
-        ylabel="difference",
-        title="Relevant distance vs difference",
+    series,
+    dictionary,
+    xlabel="relevant distance",
+    ylabel="difference",
+    title="Relevant distance vs difference",
 ):
     for key in dictionary:
         if len(dictionary[key]) == len(series):
@@ -233,7 +231,7 @@ def _processresult_to_dicts(processresult):
 # https://www.pythonguis.com/tutorials/plotting-matplotlib/
 import matplotlib
 
-matplotlib.use('Qt5Agg')
+matplotlib.use("Qt5Agg")
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
