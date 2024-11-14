@@ -22,13 +22,13 @@
  ***************************************************************************/
 """
 
-__author__ = 'Karel Dieussaert / Onroerend Erfgoed'
-__date__ = '2024-10-11'
-__copyright__ = '(C) 2024 by Karel Dieussaert / Onroerend Erfgoed'
+__author__ = "Karel Dieussaert / Onroerend Erfgoed"
+__date__ = "2024-10-11"
+__copyright__ = "(C) 2024 by Karel Dieussaert / Onroerend Erfgoed"
 
 # This will get replaced with a git SHA1 when you do a git archive
 
-__revision__ = '$Format:%H$'
+__revision__ = "$Format:%H$"
 
 import inspect
 import os
@@ -49,8 +49,18 @@ from .brdrq_dockwidget import brdrQDockWidget
 from .brdrq_help import brdrQHelp
 from .brdrq_provider import BrdrQProvider
 from .brdrq_settings import brdrQSettings
-from .brdrq_utils import plot_series, show_map, geom_shapely_to_qgis, ENUM_REFERENCE_OPTIONS, \
-    LOCAL_REFERENCE_LAYER, geojson_to_layer, ADPF_VERSIONS, geom_qgis_to_shapely, GRB_TYPES, get_layer_by_name
+from .brdrq_utils import (
+    plot_series,
+    show_map,
+    geom_shapely_to_qgis,
+    ENUM_REFERENCE_OPTIONS,
+    LOCAL_REFERENCE_LAYER,
+    geojson_to_layer,
+    ADPF_VERSIONS,
+    geom_qgis_to_shapely,
+    GRB_TYPES,
+    get_layer_by_name,
+)
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 
@@ -71,8 +81,8 @@ class BrdrQPlugin(object):
         self.dockwidget = None
         self.pluginIsActive = False
         self.actions = []
-        self.toolbar = self.iface.addToolBar('brdrQ')
-        self.toolbar.setObjectName('brdrQ')
+        self.toolbar = self.iface.addToolBar("brdrQ")
+        self.toolbar.setObjectName("brdrQ")
         self.minimum = 0
         self.maximum = 1000
         self.step = 10
@@ -94,8 +104,12 @@ class BrdrQPlugin(object):
         self.original_geometry = None
         self.GROUP_LAYER = "brdrQ_plugin"
         self.TEMPFOLDER = "brdrQ"
-        self.LAYER_RESULT = "RESULT"  # parameter that holds the TOC layername of the result
-        self.LAYER_RESULT_DIFF = "DIFF"  # parameter that holds the TOC layername of the resulting diff
+        self.LAYER_RESULT = (
+            "RESULT"  # parameter that holds the TOC layername of the result
+        )
+        self.LAYER_RESULT_DIFF = (
+            "DIFF"  # parameter that holds the TOC layername of the resulting diff
+        )
         self.LAYER_RESULT_DIFF_PLUS = "DIFF_PLUS"  # parameter that holds the TOC layername of the resulting diff_plus
         self.LAYER_RESULT_DIFF_MIN = "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
         self.helpDialog = brdrQHelp()
@@ -115,7 +129,7 @@ class BrdrQPlugin(object):
         :rtype: QString
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate('brdrQ', message)
+        return QCoreApplication.translate("brdrQ", message)
 
     def initProcessing(self):
         """Init Processing provider for QGIS >= 3.8."""
@@ -125,8 +139,10 @@ class BrdrQPlugin(object):
 
     def initGui(self):
         self.initProcessing()
-        icon = os.path.join(os.path.join(cmd_folder, 'icon.png'))
-        action = QAction(QIcon(icon), 'brdrQ - GRB actual Parcel Aligner', self.iface.mainWindow())
+        icon = os.path.join(os.path.join(cmd_folder, "icon.png"))
+        action = QAction(
+            QIcon(icon), "brdrQ - GRB actual Parcel Aligner", self.iface.mainWindow()
+        )
         action.triggered.connect(self.openDock)
         # self.iface.addToolBarIcon(action)
         self.iface.addPluginToMenu("brdQ", action)
@@ -143,17 +159,21 @@ class BrdrQPlugin(object):
             self.settingsDialog.comboBox_odstrategy.addItem(od.name)
 
         self.settingsDialog.spinBox_threshold.setValue(50)
-        self.settingsDialog.comboBox_referencelayer.currentIndexChanged.connect(self.update_reference_choice)
-        self.settingsDialog.mMapLayerComboBox_reference.layerChanged.connect(self.updateFields_reference)
+        self.settingsDialog.comboBox_referencelayer.currentIndexChanged.connect(
+            self.update_reference_choice
+        )
+        self.settingsDialog.mMapLayerComboBox_reference.layerChanged.connect(
+            self.updateFields_reference
+        )
         self.settingsDialog.buttonBox_settings.accepted.connect(self.push_settings_ok)
 
-        #Set initial settings
+        # Set initial settings
         self.settingsDialog.comboBox_referencelayer.setCurrentIndex(1)
         self.settingsDialog.comboBox_odstrategy.setCurrentIndex(5)
         self.settingsDialog.spinBox_threshold.setValue(50)
         self.settingsDialog.spinBox_max_relevant_distance.setValue(5)
 
-        #Load initial settings into tool (same as pushing OK in settings Dialog)
+        # Load initial settings into tool (same as pushing OK in settings Dialog)
         self._update_settings()
         return
 
@@ -173,44 +193,60 @@ class BrdrQPlugin(object):
 
     def push_settings_ok(self):
         self._update_settings()
-        #self.dockwidget.listWidget_features.clear()
+        # self.dockwidget.listWidget_features.clear()
         self.dockwidget.listWidget_predictions.clear()
         self.dockwidget.textEdit_output.setText("Please select a feature to align")
-        self.dockwidget.doubleSpinBox.setMaximum(self.maximum/100)
+        self.dockwidget.doubleSpinBox.setMaximum(self.maximum / 100)
         self.dockwidget.horizontalSlider.setMaximum(self.maximum)
 
     def _update_settings(self):
-        self.maximum = self.settingsDialog.spinBox_max_relevant_distance.value()*100
-        self.relevant_distances = [round(k,1) for k in np.arange(self.minimum, self.maximum + self.step, self.step, dtype=int) / 100]
-        self.od_strategy = OpenbaarDomeinStrategy[self.settingsDialog.comboBox_odstrategy.currentText()]
-        print (self.od_strategy)
-        self.threshold_overlap_percentage = self.settingsDialog.spinBox_threshold.value()
-        self.reference_choice = self.settingsDialog.comboBox_referencelayer.currentText()
+        self.maximum = self.settingsDialog.spinBox_max_relevant_distance.value() * 100
+        self.relevant_distances = [
+            round(k, 1)
+            for k in np.arange(
+                self.minimum, self.maximum + self.step, self.step, dtype=int
+            )
+            / 100
+        ]
+        self.od_strategy = OpenbaarDomeinStrategy[
+            self.settingsDialog.comboBox_odstrategy.currentText()
+        ]
+        print(self.od_strategy)
+        self.threshold_overlap_percentage = (
+            self.settingsDialog.spinBox_threshold.value()
+        )
+        self.reference_choice = (
+            self.settingsDialog.comboBox_referencelayer.currentText()
+        )
         self.reference_layer = None
         self.reference_id = None
-        self.aligner = Aligner(od_strategy=self.od_strategy,
-                               threshold_overlap_percentage=self.threshold_overlap_percentage)
+        self.aligner = Aligner(
+            od_strategy=self.od_strategy,
+            threshold_overlap_percentage=self.threshold_overlap_percentage,
+        )
         if self.reference_choice == LOCAL_REFERENCE_LAYER:
 
-            self.reference_layer = self.settingsDialog.mMapLayerComboBox_reference.currentLayer()
-            self.reference_id = self.settingsDialog.mFieldComboBox_reference.currentField()
+            self.reference_layer = (
+                self.settingsDialog.mMapLayerComboBox_reference.currentLayer()
+            )
+            self.reference_id = (
+                self.settingsDialog.mFieldComboBox_reference.currentField()
+            )
 
             # Load reference into a shapely_dict:
             dict_reference = {}
             features = self.reference_layer.getFeatures()
             for current, feature in enumerate(features):
                 id_reference = feature.attribute(self.reference_id)
-                dict_reference[id_reference] = geom_qgis_to_shapely(
-                    feature.geometry()
-                )
+                dict_reference[id_reference] = geom_qgis_to_shapely(feature.geometry())
             self.aligner.load_reference_data(DictLoader(dict_reference))
             self.aligner.name_reference_id = self.reference_id
             self.aligner.dict_reference_source["source"] = "local"
             self.aligner.dict_reference_source["version_date"] = "unknown"
 
-
         print(
-            f"settings updated: Reference choice={self.reference_choice} - od_strategy={self.od_strategy} - threshold overlap percenatge = {str(self.threshold_overlap_percentage)}")
+            f"settings updated: Reference choice={self.reference_choice} - od_strategy={self.od_strategy} - threshold overlap percenatge = {str(self.threshold_overlap_percentage)}"
+        )
         return
 
     def onClosePlugin(self):
@@ -265,16 +301,24 @@ class BrdrQPlugin(object):
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
             self.dockwidget.pushButton_help.clicked.connect(self.show_help_dialog)
-            self.dockwidget.pushButton_settings.clicked.connect(self.show_settings_dialog)
+            self.dockwidget.pushButton_settings.clicked.connect(
+                self.show_settings_dialog
+            )
             self.dockwidget.pushButton_grafiek.clicked.connect(self.get_graphic)
-            self.dockwidget.pushButton_visualisatie.clicked.connect(self.get_visualisation)
+            self.dockwidget.pushButton_visualisatie.clicked.connect(
+                self.get_visualisation
+            )
             self.dockwidget.pushButton_save.clicked.connect(self.change_geometry)
             self.dockwidget.pushButton_reset.clicked.connect(self.reset_geometry)
             # self.dockwidget.pushButton_select.clicked.connect(self.start_line_edit)
             self.dockwidget.pushButton_wkt.clicked.connect(self.get_wkt)
             self.dockwidget.mMapLayerComboBox.layerChanged.connect(self.setFeatures)
-            self.dockwidget.listWidget_features.itemPressed.connect(self.onFeatureActivated)
-            self.dockwidget.listWidget_predictions.itemPressed.connect(self.onListItemActivated)
+            self.dockwidget.listWidget_features.itemPressed.connect(
+                self.onFeatureActivated
+            )
+            self.dockwidget.listWidget_predictions.itemPressed.connect(
+                self.onListItemActivated
+            )
             self.dockwidget.horizontalSlider.sliderMoved.connect(self.onSliderChange)
             self.dockwidget.doubleSpinBox.valueChanged.connect(self.onSpinboxChange)
 
@@ -302,14 +346,19 @@ class BrdrQPlugin(object):
             self.dockwidget.textEdit_output.setText("Please select a layer")
             return
         if self.layer.selectedFeatureCount() > self.max_feature_count or (
-                self.layer.selectedFeatureCount() == 0 and self.layer.featureCount() > self.max_feature_count):
+            self.layer.selectedFeatureCount() == 0
+            and self.layer.featureCount() > self.max_feature_count
+        ):
             self.dockwidget.textEdit_output.setText(
-                f"Nr of features bigger than {str(self.max_feature_count)}. Please make a smaller selection of features")
+                f"Nr of features bigger than {str(self.max_feature_count)}. Please make a smaller selection of features"
+            )
             return
         self.selected_features = [f for f in self.layer.getSelectedFeatures()]
         if self.layer.selectedFeatureCount() == 0:
             self.selected_features = [f for f in self.layer.getFeatures()]
-            self.dockwidget.textEdit_output.setText("No selected features in this layer, all features returned")
+            self.dockwidget.textEdit_output.setText(
+                "No selected features in this layer, all features returned"
+            )
 
         # Clear the list widget
         self.dockwidget.listWidget_features.clear()
@@ -318,9 +367,13 @@ class BrdrQPlugin(object):
         for feature in self.selected_features:
             attributes = feature.attributes()
             attribute_string = ", ".join(str(attribute) for attribute in attributes)
-            item = QListWidgetItem(f"ID: *{feature.id()}*, Attributes: {attribute_string}")
+            item = QListWidgetItem(
+                f"ID: *{feature.id()}*, Attributes: {attribute_string}"
+            )
             self.dockwidget.listWidget_features.addItem(item)
-        self.dockwidget.textEdit_output.setText(f"#Features: {str(len(self.selected_features))}")
+        self.dockwidget.textEdit_output.setText(
+            f"#Features: {str(len(self.selected_features))}"
+        )
         return
 
     def onFeatureActivated(self, currentItem):
@@ -332,17 +385,19 @@ class BrdrQPlugin(object):
         if currentItem is None:
             print("currentItem is none")
             return
-        feature_id = currentItem.text().split('*')[1]
-        #print(f"Feature_id is {feature_id}")
+        feature_id = currentItem.text().split("*")[1]
+        # print(f"Feature_id is {feature_id}")
         for feat in self.selected_features:
-            #print(str(feat.id()))
+            # print(str(feat.id()))
             if str(feat.id()) == feature_id:
-                #print("equal - >break")
+                # print("equal - >break")
                 self.feature = feat
                 break
-        #print(self.feature)
+        # print(self.feature)
         if self.feature is None:
-            self.dockwidget.textEdit_output.setText(f"No feature found with ID {feature_id}")
+            self.dockwidget.textEdit_output.setText(
+                f"No feature found with ID {feature_id}"
+            )
             return
 
         # zoom to feature
@@ -355,20 +410,42 @@ class BrdrQPlugin(object):
         # do alignment/prediction
         self._align()
 
-        fcs = self.aligner.get_results_as_geojson(resulttype=AlignerResultType.PROCESSRESULTS)
+        fcs = self.aligner.get_results_as_geojson(
+            resulttype=AlignerResultType.PROCESSRESULTS
+        )
 
-        geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"],
-                         QgsStyle.defaultStyle().symbol("hashed black X"),
-                         False, self.GROUP_LAYER, self.tempfolder)
-        geojson_to_layer(self.LAYER_RESULT_DIFF_PLUS, fcs["result_diff_plus"],
-                         QgsStyle.defaultStyle().symbol("hashed cgreen /"),
-                         True, self.GROUP_LAYER, self.tempfolder)
-        geojson_to_layer(self.LAYER_RESULT_DIFF_MIN, fcs["result_diff_min"],
-                         QgsStyle.defaultStyle().symbol("hashed cred /"),
-                         True, self.GROUP_LAYER, self.tempfolder)
-        geojson_to_layer(self.LAYER_RESULT, fcs["result"],
-                         QgsStyle.defaultStyle().symbol("outline green"),
-                         True, self.GROUP_LAYER, self.tempfolder)
+        geojson_to_layer(
+            self.LAYER_RESULT_DIFF,
+            fcs["result_diff"],
+            QgsStyle.defaultStyle().symbol("hashed black X"),
+            False,
+            self.GROUP_LAYER,
+            self.tempfolder,
+        )
+        geojson_to_layer(
+            self.LAYER_RESULT_DIFF_PLUS,
+            fcs["result_diff_plus"],
+            QgsStyle.defaultStyle().symbol("hashed cgreen /"),
+            True,
+            self.GROUP_LAYER,
+            self.tempfolder,
+        )
+        geojson_to_layer(
+            self.LAYER_RESULT_DIFF_MIN,
+            fcs["result_diff_min"],
+            QgsStyle.defaultStyle().symbol("hashed cred /"),
+            True,
+            self.GROUP_LAYER,
+            self.tempfolder,
+        )
+        geojson_to_layer(
+            self.LAYER_RESULT,
+            fcs["result"],
+            QgsStyle.defaultStyle().symbol("outline green"),
+            True,
+            self.GROUP_LAYER,
+            self.tempfolder,
+        )
 
         # set list with predicted values
         self.dockwidget.listWidget_predictions.clear()
@@ -390,32 +467,40 @@ class BrdrQPlugin(object):
     def _listItemActivated(self, currentItem):
 
         if currentItem is None:
-            print ("currentitem zero")
+            print("currentitem zero")
             return
         print("item activated with rd: " + currentItem.text())
         value = round(float(currentItem.text()), 1)
-        print ("item activated with rd - value: " + str(value))
+        print("item activated with rd - value: " + str(value))
         self.dockwidget.doubleSpinBox.setValue(value)
         self.dockwidget.horizontalSlider.setValue(int(100 * value))
         return
 
     def onSliderChange(self, value):
         print("onSliderChange: value -> " + str(value))
-        value = round(value/100,1)
+        value = round(value / 100, 1)
         self.dockwidget.doubleSpinBox.setValue(value)
         return
 
     def onSpinboxChange(self, value):
-        value = round(value,1)
+        value = round(value, 1)
         self.dockwidget.horizontalSlider.setValue(int(value * 100))
-        print ("onSpinboxChange: value -> " + str(value))
+        print("onSpinboxChange: value -> " + str(value))
 
         # self.change_geometry()
         # Filter layers based on relevant distance
-        get_layer_by_name(self.LAYER_RESULT).setSubsetString(f"brdr_relevant_distance = {value}")
-        get_layer_by_name(self.LAYER_RESULT_DIFF).setSubsetString(f"brdr_relevant_distance = {value}")
-        get_layer_by_name(self.LAYER_RESULT_DIFF_MIN).setSubsetString(f"brdr_relevant_distance = {value}")
-        get_layer_by_name(self.LAYER_RESULT_DIFF_PLUS).setSubsetString(f"brdr_relevant_distance = {value}")
+        get_layer_by_name(self.LAYER_RESULT).setSubsetString(
+            f"brdr_relevant_distance = {value}"
+        )
+        get_layer_by_name(self.LAYER_RESULT_DIFF).setSubsetString(
+            f"brdr_relevant_distance = {value}"
+        )
+        get_layer_by_name(self.LAYER_RESULT_DIFF_MIN).setSubsetString(
+            f"brdr_relevant_distance = {value}"
+        )
+        get_layer_by_name(self.LAYER_RESULT_DIFF_PLUS).setSubsetString(
+            f"brdr_relevant_distance = {value}"
+        )
         return
 
     # def start_line_edit(self):
@@ -454,9 +539,11 @@ class BrdrQPlugin(object):
         relevant_distance = self.dockwidget.doubleSpinBox.value()
         if relevant_distance in self.dict_series[key]:
             result = self.dict_series[key][relevant_distance]
-            resulting_geom = result['result']
+            resulting_geom = result["result"]
         else:
-            errormesssage = "Relevant_distance_result not calculated for: " + str(relevant_distance)
+            errormesssage = "Relevant_distance_result not calculated for: " + str(
+                relevant_distance
+            )
             self.iface.messageBar().pushMessage(errormesssage)
             print(errormesssage)
             return
@@ -489,9 +576,11 @@ class BrdrQPlugin(object):
         relevant_distance = self.dockwidget.doubleSpinBox.value()
         if relevant_distance in self.dict_series[key]:
             result = self.dict_series[key][relevant_distance]
-            resulting_geom = result['result']
+            resulting_geom = result["result"]
         else:
-            errormesssage = "Relevant_distance_result not calculated for: " + str(relevant_distance)
+            errormesssage = "Relevant_distance_result not calculated for: " + str(
+                relevant_distance
+            )
             self.iface.messageBar().pushMessage(errormesssage)
             self.dockwidget.textEdit_output.setText(errormesssage)
             return
@@ -506,7 +595,8 @@ class BrdrQPlugin(object):
             selectedFeatures.append(feat)
         if len(selectedFeatures) == 0:
             self.dockwidget.textEdit_output.setText(
-                "Geen features geselecteerd. Gelieve een feature te selecteren uit de actieve laag")
+                "Geen features geselecteerd. Gelieve een feature te selecteren uit de actieve laag"
+            )
             return
         # take selected feature(s)
         # run brdr (to actual GRB) for this feature
@@ -524,27 +614,37 @@ class BrdrQPlugin(object):
         # Load thematic data
         self.aligner.load_thematic_data(DictLoader(dict_to_load))
         # Load reference data for the on-the fly reference versions
-        print (self.reference_choice)
+        print(self.reference_choice)
         if self.reference_choice in GRB_TYPES:
             self.aligner.load_reference_data(
-                GRBActualLoader(grb_type=GRBType[self.reference_choice], partition=1000, aligner=self.aligner))
-            print ("grbtype")
+                GRBActualLoader(
+                    grb_type=GRBType[self.reference_choice],
+                    partition=1000,
+                    aligner=self.aligner,
+                )
+            )
+            print("grbtype")
         elif self.reference_choice in ADPF_VERSIONS:
             year = self.reference_choice.removeprefix("Adpf")
-            self.aligner.load_reference_data(GRBFiscalParcelLoader(year=year, aligner=self.aligner, partition=1000))
+            self.aligner.load_reference_data(
+                GRBFiscalParcelLoader(year=year, aligner=self.aligner, partition=1000)
+            )
             print("adpftype")
         else:
             print("localtype")
             pass
 
-        self.dict_series, self.dict_predictions, self.diffs_dict = self.aligner.predictor(
-            relevant_distances=self.relevant_distances)
+        self.dict_series, self.dict_predictions, self.diffs_dict = (
+            self.aligner.predictor(relevant_distances=self.relevant_distances)
+        )
         outputMessage = "Voorspelde relevante afstanden: " + str(
-            [str(k) for k in self.dict_predictions[feat.id()].keys()])
+            [str(k) for k in self.dict_predictions[feat.id()].keys()]
+        )
 
         self.dockwidget.textEdit_output.setText(outputMessage)
         self.iface.messageBar().pushMessage(outputMessage)
         return self.dict_series, self.dict_predictions, self.diffs_dict
+
 
 # from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify
 # from qgis.core import (
