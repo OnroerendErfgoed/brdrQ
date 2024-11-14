@@ -84,7 +84,7 @@ class BrdrQPlugin(object):
         self.toolbar = self.iface.addToolBar("brdrQ")
         self.toolbar.setObjectName("brdrQ")
         self.minimum = 0
-        self.maximum = 1000
+        self.maximum = 1500
         self.step = 10
         self.relevant_distances = None
         self.max_feature_count = 5000
@@ -94,7 +94,7 @@ class BrdrQPlugin(object):
         self.dict_series = None
         self.dict_predictions = None
         self.diffs_dict = None
-        self.aligner = Aligner()
+        self.aligner = None
         self.od_strategy = None
         self.threshold_overlap_percentage = None
         self.reference_choice = None
@@ -211,7 +211,6 @@ class BrdrQPlugin(object):
         self.od_strategy = OpenbaarDomeinStrategy[
             self.settingsDialog.comboBox_odstrategy.currentText()
         ]
-        print(self.od_strategy)
         self.threshold_overlap_percentage = (
             self.settingsDialog.spinBox_threshold.value()
         )
@@ -220,6 +219,7 @@ class BrdrQPlugin(object):
         )
         self.reference_layer = None
         self.reference_id = None
+        self.aligner = None
         self.aligner = Aligner(
             od_strategy=self.od_strategy,
             threshold_overlap_percentage=self.threshold_overlap_percentage,
@@ -598,11 +598,6 @@ class BrdrQPlugin(object):
                 "Geen features geselecteerd. Gelieve een feature te selecteren uit de actieve laag"
             )
             return
-        # take selected feature(s)
-        # run brdr (to actual GRB) for this feature
-        # if self.reference_choice != LOCAL_REFERENCE_LAYER:
-        #     self.aligner = Aligner(od_strategy=self.od_strategy,
-        #                            threshold_overlap_percentage=self.threshold_overlap_percentage)
 
         dict_to_load = {}
 
@@ -635,7 +630,7 @@ class BrdrQPlugin(object):
             pass
 
         self.dict_series, self.dict_predictions, self.diffs_dict = (
-            self.aligner.predictor(relevant_distances=self.relevant_distances)
+            self.aligner.predictor(relevant_distances=self.relevant_distances,od_strategy=self.od_strategy,threshold_overlap_percentage=self.threshold_overlap_percentage)
         )
         outputMessage = "Voorspelde relevante afstanden: " + str(
             [str(k) for k in self.dict_predictions[feat.id()].keys()]
