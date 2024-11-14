@@ -3,7 +3,6 @@
 """
 ***************************************************************************
 *   name: brdrQ - Autocorrectborders
-*   version: v0.9.8
 *   author: Karel Dieussaert
 *   Docs, history and Code- repo: https://github.com/OnroerendErfgoed/brdrQ/
 
@@ -33,14 +32,12 @@ import os
 import sys
 
 from .brdrq_utils import ENUM_REFERENCE_OPTIONS, ENUM_OD_STRATEGY_OPTIONS, ADPF_VERSIONS, GRB_TYPES, \
-    geom_qgis_to_shapely, geojson_to_layer
+    geom_qgis_to_shapely, geojson_to_layer, set_workfolder
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 if cmd_folder not in sys.path:
     sys.path.insert(0, cmd_folder)
 
-import datetime
-import os
 import numpy as np
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
@@ -131,7 +128,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     # OTHER parameters
     MAX_AREA_FOR_DOWNLOADING_REFERENCE = 2500000  # maximum area that is covered by thematic features for blocking on-the fly downloading reference layers
     MAX_DISTANCE_FOR_ACTUALISATION = 3  # maximum relevant distance that is used in the predictor when trying to update to actual GRB
-    TEMPFOLDER = ""
+    WORKFOLDER = "brdrQ_autocorrectborders"
 
     def flags(self):
         return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
@@ -514,13 +511,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             if fcs_actualisation is not None and fcs_actualisation != {}:
                 # Add RESULT TO TOC
                 geojson_to_layer(self.LAYER_RESULT_ACTUAL, fcs_actualisation["result"],
-                                      QgsStyle.defaultStyle().symbol("outline blue"),
-                                      True, self.GROUP_LAYER_ACTUAL,self.TEMPFOLDER)
+                                 QgsStyle.defaultStyle().symbol("outline blue"),
+                                 True, self.GROUP_LAYER_ACTUAL, self.WORKFOLDER)
 
                 if "result_diff" in fcs_actualisation:
                     geojson_to_layer(self.LAYER_RESULT_ACTUAL_DIFF, fcs_actualisation["result_diff"],
-                                          QgsStyle.defaultStyle().symbol("hashed clbue /"),
-                                          False, self.GROUP_LAYER_ACTUAL,self.TEMPFOLDER)
+                                     QgsStyle.defaultStyle().symbol("hashed clbue /"),
+                                     False, self.GROUP_LAYER_ACTUAL, self.WORKFOLDER)
                 feedback.pushInfo("Resulterende geometrie berekend")
             else:
                 feedback.pushInfo("Geen wijzigingen gedetecteerd binnen tijdspanne in referentielaag (GRB-percelen)")
@@ -537,30 +534,30 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # MAKE TEMPORARY LAYERS
         if self.SELECTED_REFERENCE != 0:
             geojson_to_layer(self.LAYER_REFERENCE_NAME,
-                                  aligner.get_input_as_geojson(inputtype=AlignerInputType.REFERENCE),
-                                  QgsStyle.defaultStyle().symbol("outline black"),
-                                  True, self.GROUP_LAYER,self.TEMPFOLDER)
+                             aligner.get_input_as_geojson(inputtype=AlignerInputType.REFERENCE),
+                             QgsStyle.defaultStyle().symbol("outline black"),
+                             True, self.GROUP_LAYER, self.WORKFOLDER)
 
         if self.SHOW_INTERMEDIATE_LAYERS:
             geojson_to_layer(self.LAYER_RELEVANT_INTERSECTION, fcs["result_relevant_intersection"],
-                                  QgsStyle.defaultStyle().symbol("gradient green fill"),
-                                  False, self.GROUP_LAYER,self.TEMPFOLDER)
+                             QgsStyle.defaultStyle().symbol("gradient green fill"),
+                             False, self.GROUP_LAYER, self.WORKFOLDER)
             geojson_to_layer(self.LAYER_RELEVANT_DIFFERENCE, fcs["result_relevant_diff"],
-                                  QgsStyle.defaultStyle().symbol("gradient red fill"),
-                                  False, self.GROUP_LAYER,self.TEMPFOLDER)
+                             QgsStyle.defaultStyle().symbol("gradient red fill"),
+                             False, self.GROUP_LAYER, self.WORKFOLDER)
 
         geojson_to_layer(self.LAYER_RESULT_DIFF, fcs["result_diff"],
-                              QgsStyle.defaultStyle().symbol("hashed black X"),
-                              False, self.GROUP_LAYER,self.TEMPFOLDER)
+                         QgsStyle.defaultStyle().symbol("hashed black X"),
+                         False, self.GROUP_LAYER, self.WORKFOLDER)
         geojson_to_layer(self.LAYER_RESULT_DIFF_PLUS, fcs["result_diff_plus"],
-                              QgsStyle.defaultStyle().symbol("hashed cgreen /"),
-                              False, self.GROUP_LAYER,self.TEMPFOLDER)
+                         QgsStyle.defaultStyle().symbol("hashed cgreen /"),
+                         False, self.GROUP_LAYER, self.WORKFOLDER)
         geojson_to_layer(self.LAYER_RESULT_DIFF_MIN, fcs["result_diff_min"],
-                              QgsStyle.defaultStyle().symbol("hashed cred /"),
-                              False, self.GROUP_LAYER,self.TEMPFOLDER)
+                         QgsStyle.defaultStyle().symbol("hashed cred /"),
+                         False, self.GROUP_LAYER, self.WORKFOLDER)
         geojson_to_layer(self.LAYER_RESULT, fcs["result"],
-                              QgsStyle.defaultStyle().symbol("outline green"),
-                              True, self.GROUP_LAYER,self.TEMPFOLDER)
+                         QgsStyle.defaultStyle().symbol("outline green"),
+                         True, self.GROUP_LAYER, self.WORKFOLDER)
 
         result = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
         result_diff = QgsProject.instance().mapLayersByName(
@@ -694,14 +691,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     def prepare_parameters(self, parameters):
         # PARAMETER PREPARATION
-        self.TEMPFOLDER = parameters["WORK_FOLDER"]
-        now = datetime.datetime.now()
-        date_string = now.strftime("%Y%m%d%H%M%S")
-        if self.TEMPFOLDER is None or str(self.TEMPFOLDER) == 'NULL' or str(self.TEMPFOLDER) == "":
-            self.TEMPFOLDER = "brdrQ"
-            # dest =QgsProcessingParameterFolderDestination (name="brdrQ")
-            # self.TEMPFOLDER =dest.generateTemporaryDestination()
-        self.TEMPFOLDER = os.path.join(self.TEMPFOLDER, date_string)
+        wrkfldr =parameters["WORK_FOLDER"]
+        if wrkfldr is None or str(wrkfldr)== "" or  str(wrkfldr)=="NULL":
+            wrkfldr= self.WORKFOLDER
+        self.WORKFOLDER = set_workfolder(wrkfldr)
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
         thematic_layer = parameters[self.INPUT_THEMATIC]
         if not isinstance(thematic_layer, str):

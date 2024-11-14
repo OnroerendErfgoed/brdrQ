@@ -1,3 +1,7 @@
+import os
+
+from qgis.core import QgsProcessingParameterFolderDestination
+
 try:
     import brdr
 except:
@@ -177,6 +181,8 @@ def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
     if tempfolder is None or str(tempfolder) == 'NULL' or str(tempfolder) == "":
         tempfolder = "tempfolder"
     tempfilename = tempfolder + "/" + name + ".geojson"
+    print (tempfolder)
+    print(tempfilename)
     write_geojson(tempfilename, geojson_polygon_to_multipolygon(geojson))
 
     vl = QgsVectorLayer(tempfilename, name, "ogr")
@@ -202,6 +208,16 @@ def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
     iface.layerTreeView().refreshLayerSymbology(vl.id())
     return vl
 
+def set_workfolder(foldername):
+    if foldername is None or str(foldername) == 'NULL' or str(foldername) == "":
+        #CREATE a temporary folder
+        dest =QgsProcessingParameterFolderDestination (name="brdrQ")
+        tempfoldername = dest.generateTemporaryDestination()
+        print (tempfoldername)
+        return tempfoldername
+    now = datetime.datetime.now()
+    date_string = now.strftime("%Y%m%d%H%M%S")
+    return os.path.join(foldername, date_string)
 
 def _make_map(ax, processresult, thematic_dict, reference_dict):
     """

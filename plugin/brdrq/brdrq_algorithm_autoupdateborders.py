@@ -62,12 +62,12 @@ CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFT
 THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ***************************************************************************
 """
-import datetime
-import os
-import site
-import subprocess
-import sys
 
+from brdr.aligner import Aligner
+from brdr.constants import BASE_FORMULA_FIELD_NAME
+from brdr.enums import AlignerInputType
+from brdr.grb import update_to_actual_grb
+from brdr.loader import DictLoader
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QDate, QDateTime
@@ -76,71 +76,15 @@ from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
 from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingMultiStepFeedback
-from qgis.core import QgsProcessingParameterBoolean
 from qgis.core import QgsProcessingOutputVectorLayer
+from qgis.core import QgsProcessingParameterBoolean
 from qgis.core import QgsProcessingParameterFeatureSource, QgsProcessingParameterField, \
     QgsProcessingParameterNumber
 from qgis.core import QgsProcessingParameterFile
 from qgis.core import QgsProject
 from qgis.core import QgsStyle
 
-from .brdrq_utils import geom_qgis_to_shapely, geojson_to_layer
-
-
-# helper function to find embedded python
-# path in windows. Based on
-# https://github.com/qgis/QGIS/issues/45646
-def find_python():
-    if sys.platform != "win32":
-        return sys.executable
-
-    for path in sys.path:
-        assumed_path = os.path.join(path, "python.exe")
-        if os.path.isfile(assumed_path):
-            return assumed_path
-
-    raise Exception("Python executable not found")
-
-
-sys.path.insert(0, site.getusersitepackages())
-python_exe = find_python()
-
-try:
-    from shapely import (
-        Polygon,
-        from_wkt,
-        to_wkt,
-        unary_union, make_valid
-    )
-except (ModuleNotFoundError):
-    print("Module shapely not found. Installing from PyPi.")
-    subprocess.check_call([python_exe,
-                           '-m', 'pip', 'install', 'shapely'])
-    from shapely import (
-        Polygon,
-        from_wkt,
-        to_wkt,
-        unary_union, make_valid
-    )
-
-try:
-    import brdr
-
-    if brdr.__version__ != "0.4.0":
-        raise ValueError("Version mismatch")
-
-except (ModuleNotFoundError, ValueError):
-    subprocess.check_call([python_exe,
-                           '-m', 'pip', 'install', 'brdr==0.4.0'])
-    import brdr
-
-    print(brdr.__version__)
-
-from brdr.aligner import Aligner
-from brdr.loader import DictLoader
-from brdr.enums import AlignerInputType
-from brdr.constants import BASE_FORMULA_FIELD_NAME
-from brdr.grb import update_to_actual_grb
+from .brdrq_utils import geom_qgis_to_shapely, geojson_to_layer, set_workfolder
 
 
 class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -172,7 +116,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     # OTHER parameters
     MAX_DISTANCE_FOR_ACTUALISATION = 3  # maximum relevant distance that is used in the predictor when trying to update to actual GRB
-    TEMPFOLDER = ""
+    WORKFOLDER = "brdrQ_autoupdateborders"
     SHOW_LOG_INFO = True
 
     def flags(self):
@@ -370,11 +314,11 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # Add RESULT TO TOC
         geojson_to_layer(self.LAYER_RESULT, fcs_actualisation["result"],
                          QgsStyle.defaultStyle().symbol("outline blue"),
-                         True, self.GROUP_LAYER, self.TEMPFOLDER)
+                         True, self.GROUP_LAYER, self.WORKFOLDER)
         if "result_diff" in fcs_actualisation:
             geojson_to_layer(self.LAYER_RESULT_DIFF, fcs_actualisation["result_diff"],
                              QgsStyle.defaultStyle().symbol("hashed black cblue /"),
-                             False, self.GROUP_LAYER, self.TEMPFOLDER)
+                             False, self.GROUP_LAYER, self.WORKFOLDER)
         feedback.pushInfo("Resulterende geometrie berekend")
         feedback.pushInfo("END ACTUALISATION")
         result = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
@@ -446,14 +390,11 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         return thematic, thematic_buffered
 
     def prepare_parameters(self, parameters):
-        self.TEMPFOLDER = parameters["WORK_FOLDER"]
-        now = datetime.datetime.now()
-        date_string = now.strftime("%Y%m%d%H%M%S")
-        if self.TEMPFOLDER is None or str(self.TEMPFOLDER) == 'NULL' or str(self.TEMPFOLDER) == "":
-            self.TEMPFOLDER = "brdrQ"
-            # dest =QgsProcessingParameterFolderDestination (name="brdrQ")
-            # self.TEMPFOLDER =dest.generateTemporaryDestination()
-        self.TEMPFOLDER = os.path.join(self.TEMPFOLDER, date_string)
+
+        wrkfldr = parameters["WORK_FOLDER"]
+        if wrkfldr is None or str(wrkfldr) == "" or str(wrkfldr) == "NULL":
+            wrkfldr = self.WORKFOLDER
+        self.WORKFOLDER = set_workfolder(wrkfldr)
         self.MAX_DISTANCE_FOR_ACTUALISATION = parameters["MAX_RELEVANT_DISTANCE"]
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
         self.FORMULA_FIELDNAME = parameters["FORMULA_FIELD"]

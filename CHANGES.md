@@ -1,3 +1,9 @@
+# v0.9.9
+
+- Upgrade to brdr version 0.5.0
+- Conversion from scripts to plugin (new installation method)
+- Added experimental tool to align individual features based on predictions
+
 # v0.9.8
 
 - Upgrade to brdr version 0.4.0

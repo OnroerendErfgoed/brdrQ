@@ -60,7 +60,7 @@ from .brdrq_utils import (
     ADPF_VERSIONS,
     geom_qgis_to_shapely,
     GRB_TYPES,
-    get_layer_by_name,
+    get_layer_by_name, set_workfolder,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -104,7 +104,6 @@ class BrdrQPlugin(object):
         self.reference_loader = None
         self.original_geometry = None
         self.GROUP_LAYER = "brdrQ_plugin"
-        self.TEMPFOLDER = "brdrQ"
         self.LAYER_RESULT = (
             "RESULT"  # parameter that holds the TOC layername of the result
         )
@@ -115,7 +114,7 @@ class BrdrQPlugin(object):
         self.LAYER_RESULT_DIFF_MIN = "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
         self.helpDialog = brdrQHelp()
         self.settingsDialog = brdrQSettings()
-        self.tempfolder = os.path.join("brdrQ", datetime.now().strftime("%Y%m%d%H%M%S"))
+        self.tempfolder = set_workfolder("")
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
