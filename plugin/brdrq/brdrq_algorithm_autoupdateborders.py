@@ -30,6 +30,8 @@ __copyright__ = '(C) 2024 by kd'
 
 __revision__ = '$Format:%H$'
 
+
+
 # -*- coding: utf-8 -*-
 
 """
@@ -74,6 +76,7 @@ from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
 from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingMultiStepFeedback
+from qgis.core import QgsProcessingParameterBoolean
 from qgis.core import QgsProcessingOutputVectorLayer
 from qgis.core import QgsProcessingParameterFeatureSource, QgsProcessingParameterField, \
     QgsProcessingParameterNumber
@@ -170,6 +173,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     # OTHER parameters
     MAX_DISTANCE_FOR_ACTUALISATION = 3  # maximum relevant distance that is used in the predictor when trying to update to actual GRB
     TEMPFOLDER = ""
+    SHOW_LOG_INFO = True
 
     def flags(self):
         return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
@@ -281,6 +285,11 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
+        parameter = QgsProcessingParameterBoolean(
+            "SHOW_LOG_INFO", "SHOW_LOG_INFO (brdr-log)", defaultValue=self.SHOW_LOG_INFO
+        )
+        self.addParameter(parameter)
+
         self.addOutput(
             QgsProcessingOutputVectorLayer(
                 "OUTPUT_RESULT",
@@ -345,11 +354,14 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         fc = aligner.get_input_as_geojson(inputtype=AlignerInputType.THEMATIC)
 
         feedback.pushInfo("START ACTUALISATION")
-
+        if self.SHOW_LOG_INFO:
+            log_info = feedback
+        else:
+            log_info = None
         fcs_actualisation = update_to_actual_grb(fc, id_theme_fieldname=self.ID_THEME_FIELDNAME,
                                                  base_formula_field=self.FORMULA_FIELDNAME,
                                                  max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
-                                                 feedback=None)
+                                                 feedback=log_info)
         if fcs_actualisation is None or fcs_actualisation == {}:
             feedback.pushInfo("Geen wijzigingen gedetecteerd binnen tijdspanne in referentielaag (GRB-percelen)")
             feedback.pushInfo("Proces wordt afgesloten")
@@ -443,6 +455,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             # self.TEMPFOLDER =dest.generateTemporaryDestination()
         self.TEMPFOLDER = os.path.join(self.TEMPFOLDER, date_string)
         self.MAX_DISTANCE_FOR_ACTUALISATION = parameters["MAX_RELEVANT_DISTANCE"]
-
+        self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
         self.FORMULA_FIELDNAME = parameters["FORMULA_FIELD"]
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
