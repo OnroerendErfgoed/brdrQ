@@ -22,9 +22,9 @@
  This script initializes the plugin, making it known to QGIS.
 """
 
-__author__ = 'Karel Dieussaert / Onroerend Erfgoed'
-__date__ = '2024-10-11'
-__copyright__ = '(C) 2024 by Karel Dieussaert / Onroerend Erfgoed'
+__author__ = "Karel Dieussaert / Onroerend Erfgoed"
+__date__ = "2024-10-11"
+__copyright__ = "(C) 2024 by Karel Dieussaert / Onroerend Erfgoed"
 
 
 # noinspection PyPep8Naming
@@ -36,6 +36,8 @@ def classFactory(iface):  # pylint: disable=invalid-name
     """
     #
     from .brdrq_module_importer import import_modules
+
     import_modules()
     from .brdrq import BrdrQPlugin
+
     return BrdrQPlugin(iface)

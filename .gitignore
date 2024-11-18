@@ -166,5 +166,10 @@ cython_debug/
 /.idea
 /experimental
 
+/plugin/brdrq/zip_build
+/plugin/brdrq/zip_build/
 plugin/brdrq/zip_build
-plugin/brdrq/zip_build/
+plugin/brdrq/zip_build/brdrq
+plugin/brdrq/zip_build/brdrq/
+
+

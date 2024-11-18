@@ -1,4 +1,7 @@
 import os
+
+from qgis.core import QgsProcessingParameterFolderDestination
+
 try:
     import brdr
 except:
@@ -10,30 +13,39 @@ except:
     import geojson
     from geojson import dump
 
+import datetime
 from math import ceil
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
+from brdr.enums import GRBType, OpenbaarDomeinStrategy
+from brdr.geometry_utils import geojson_polygon_to_multipolygon
 from brdr.typings import ProcessResult
+from brdr.utils import write_geojson
+from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsGeometry
+from qgis.core import QgsProject
+from qgis.core import QgsSimpleLineSymbolLayer, QgsFillSymbol, \
+    QgsSingleSymbolRenderer, QgsMapLayer, QgsLayerTreeNode, QgsLayerTreeGroup
+from qgis.core import QgsStyle
+from qgis.core import QgsVectorLayer
+from qgis.utils import iface
 from shapely import (
-    to_wkt,
+    to_wkt, from_wkt,
     make_valid
 )
 
+LOCAL_REFERENCE_LAYER = "LOCAL REFERENCE LAYER (choose LAYER and ID below)"
 
-def write_geojson(path_to_file, geojson):
-    """
-    Write a GeoJSON object to a file.
+GRB_TYPES = [e.name for e in GRBType]  # types of actual GRB: parcels, buildings, artwork
+ADPF_VERSIONS = ["Adpf" + str(x) for x in
+                 [datetime.datetime.today().year - i for i in range(6)]]  # Fiscal parcels of past 5 years
 
-    Args:
-        path_to_file (str): Path to the output file.
-        geojson (FeatureCollection): The GeoJSON object to write.
-    """
-    parent = os.path.dirname(path_to_file)
-    os.makedirs(parent, exist_ok=True)
-    with open(path_to_file, "w") as f:
-        dump(geojson, f, default=str)
+ENUM_REFERENCE_OPTIONS = [
+                             LOCAL_REFERENCE_LAYER] + GRB_TYPES + ADPF_VERSIONS  # Options for downloadable reference layers
+
+# ENUM for choosing the OD-strategy
+ENUM_OD_STRATEGY_OPTIONS = [e.name for e in OpenbaarDomeinStrategy]  # list with od-strategy-options
 
 
 def geom_shapely_to_qgis(geom_shapely):
@@ -44,6 +56,178 @@ def geom_shapely_to_qgis(geom_shapely):
     geom_qgis = QgsGeometry.fromWkt(wkt)
     return geom_qgis
 
+
+def geom_qgis_to_shapely(geom_qgis):
+    """
+    Method to convert a QGIS-geometry to a Shapely-geometry
+    """
+    if geom_qgis.isNull() or geom_qgis.isEmpty():
+        return None
+    wkt = geom_qgis.asWkt()
+    geom_shapely = from_wkt(wkt)
+    return make_valid(geom_shapely)
+
+
+def get_layer_by_name(layer_name):
+    """
+    Get the layer-object based on the layername
+    """
+    layers = QgsProject.instance().mapLayersByName(layer_name)
+    return layers[0]
+
+
+def move_to_group(thing, group, pos=0, expanded=False):
+    """Move a layer tree node into a layer tree group.
+    docs:https://docs.qgis.org/3.34/en/docs/pyqgis_developer_cookbook/cheat_sheet.html
+
+    Parameter
+    ---------
+
+    thing : group name (str), layer id (str), qgis.core.QgsMapLayer, qgis.core.QgsLayerTreeNode
+
+      Thing to move.  Can be a tree node (i.e. a layer or a group) or
+      a map layer, the object or the string name/id.
+
+    group : group name (str) or qgis.core.QgsLayerTreeGroup
+
+      Group to move the thing to. If group does not already exist, it
+      will be created.
+
+    pos : int
+
+      Position to insert into group. Default is 0.
+
+    extended : bool
+
+      Collapse or expand the thing moved. Default is False.
+
+    Returns
+    -------
+
+    Tuple containing the moved thing and the group moved to.
+
+    Note
+    ----
+
+    Moving destroys the original thing and creates a copy. It is the
+    copy which is returned.
+
+    """
+
+    qinst = QgsProject.instance()
+    tree = qinst.layerTreeRoot()
+
+    # thing
+    if isinstance(thing, str):
+        try:  # group name
+            node_object = tree.findGroup(thing)
+        except:  # layer id
+            node_object = tree.findLayer(thing)
+    elif isinstance(thing, QgsMapLayer):
+        node_object = tree.findLayer(thing)
+    elif isinstance(thing, QgsLayerTreeNode):
+        node_object = thing  # tree layer or group
+
+    # group
+    if isinstance(group, QgsLayerTreeGroup):
+        group_name = group.name()
+    else:  # group is str
+        group_name = group
+
+    group_object = tree.findGroup(group_name)
+
+    if not group_object:
+        group_object = tree.insertGroup(0, group_name)
+
+    # do the move
+    node_object_clone = node_object.clone()
+    node_object_clone.setExpanded(expanded)
+    group_object.insertChildNode(pos, node_object_clone)
+
+    parent = node_object.parent()
+    parent.removeChildNode(node_object)
+
+    return (node_object_clone, group_object)
+
+
+def get_renderer(fill_symbol):
+    """
+    Get a QGIS renderer to add symbology to a QGIS-layer
+    """
+    # to get all properties of symbol:
+    # print(layer.renderer().symbol().symbolLayers()[0].properties())
+    # see: https://opensourceoptions.com/loading-and-symbolizing-vector-layers
+    if isinstance(fill_symbol, str):
+        fill_symbol = QgsStyle.defaultStyle().symbol(fill_symbol)
+    if fill_symbol is None:
+        fill_symbol = QgsFillSymbol([QgsSimpleLineSymbolLayer.create()])
+    if isinstance(fill_symbol, QgsFillSymbol):
+        return QgsSingleSymbolRenderer(fill_symbol.clone()).clone()
+    return None
+
+
+def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
+    """
+    Add a geojson to a QGIS-layer to add it to the TOC
+    """
+    qinst = QgsProject.instance()
+    lyrs = qinst.mapLayersByName(name)
+    root = qinst.layerTreeRoot()
+
+    if len(lyrs) != 0:
+        for lyr in lyrs:
+            root.removeLayer(lyr)
+            qinst.removeMapLayer(lyr.id())
+    if tempfolder is None or str(tempfolder) == 'NULL' or str(tempfolder) == "":
+        tempfolder = "tempfolder"
+    tempfilename = tempfolder + "/" + name + ".geojson"
+    print (tempfolder)
+    print(tempfilename)
+    write_geojson(tempfilename, geojson_polygon_to_multipolygon(geojson))
+
+    vl = QgsVectorLayer(tempfilename, name, "ogr")
+    # styling
+    if symbol is not None and vl.renderer() is not None:
+        vl.renderer().setSymbol(symbol)
+    # vl.setOpacity(0.5)
+
+    # adding layer to TOC
+    qinst.addMapLayer(
+        vl, False
+    )  # False so that it doesn't get inserted at default position
+
+    root.insertLayer(0, vl)
+
+    node = root.findLayer(vl.id())
+    if node:
+        new_state = Qt.Checked if visible else Qt.Unchecked
+        node.setItemVisibilityChecked(new_state)
+
+    move_to_group(vl, group)
+    vl.triggerRepaint()
+    iface.layerTreeView().refreshLayerSymbology(vl.id())
+    return vl
+
+def get_workfolder(folderpath ="", name="", temporary = False):
+    """
+    Creates a workfolder-path
+    *temporary:
+        *If temporary =True, a temporary folder will be generated that will be removed when Qgis is closed
+        *If temporary = False. The folderpath and name is used to build the foldername
+    """
+    if name is None or name =="":
+        name = ""
+    if temporary:
+        # CREATE a temporary folder
+        foldername = QgsProcessingParameterFolderDestination(name=name)
+        foldername = foldername.generateTemporaryDestination()
+        return foldername
+    if folderpath is None or str(folderpath) == 'NULL' or str(folderpath) == "":
+        folderpath = ""
+    now = datetime.datetime.now()
+    date_string = now.strftime("%Y%m%d%H%M%S")
+    foldername = os.path.join(folderpath, name, date_string)
+    return foldername
 
 def _make_map(ax, processresult, thematic_dict, reference_dict):
     """
