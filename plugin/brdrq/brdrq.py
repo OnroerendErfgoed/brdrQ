@@ -33,15 +33,15 @@ __revision__ = "$Format:%H$"
 import inspect
 import os
 import sys
-from datetime import datetime
 
 import numpy as np
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QListWidgetItem
+from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import Qt
+from qgis.core import QgsApplication
 from qgis.core import QgsMapLayerProxyModel
-from qgis.core import QgsApplication, LayerFilters
 from qgis.core import QgsProject
 from qgis.core import QgsStyle
 from shapely.io import from_wkt
@@ -60,7 +60,8 @@ from .brdrq_utils import (
     ADPF_VERSIONS,
     geom_qgis_to_shapely,
     GRB_TYPES,
-    get_layer_by_name, get_workfolder,
+    get_layer_by_name,
+    get_workfolder,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -233,17 +234,6 @@ class BrdrQPlugin(object):
                 self.settingsDialog.mFieldComboBox_reference.currentField()
             )
 
-            # Load reference into a shapely_dict:
-            dict_reference = {}
-            features = self.reference_layer.getFeatures()
-            for current, feature in enumerate(features):
-                id_reference = feature.attribute(self.reference_id)
-                dict_reference[id_reference] = geom_qgis_to_shapely(feature.geometry())
-            self.aligner.load_reference_data(DictLoader(dict_reference))
-            self.aligner.name_reference_id = self.reference_id
-            self.aligner.dict_reference_source["source"] = "local"
-            self.aligner.dict_reference_source["version_date"] = "unknown"
-
         print(
             f"settings updated: Reference choice={self.reference_choice} - od_strategy={self.od_strategy} - threshold overlap percenatge = {str(self.threshold_overlap_percentage)}"
         )
@@ -312,7 +302,9 @@ class BrdrQPlugin(object):
             self.dockwidget.pushButton_reset.clicked.connect(self.reset_geometry)
             # self.dockwidget.pushButton_select.clicked.connect(self.start_line_edit)
             self.dockwidget.pushButton_wkt.clicked.connect(self.get_wkt)
-            self.dockwidget.mMapLayerComboBox.setFilters(QgsMapLayerProxyModel.PolygonLayer)
+            self.dockwidget.mMapLayerComboBox.setFilters(
+                QgsMapLayerProxyModel.PolygonLayer
+            )
             self.dockwidget.mMapLayerComboBox.layerChanged.connect(self.setFeatures)
             self.dockwidget.listWidget_features.itemPressed.connect(
                 self.onFeatureActivated
@@ -628,10 +620,33 @@ class BrdrQPlugin(object):
             print("adpftype")
         else:
             print("localtype")
-            pass
+            # Load reference into a shapely_dict:
+            dict_reference = {}
+            processing.run(
+                "native:selectwithindistance",
+                {
+                    "INPUT": self.reference_layer,
+                    "REFERENCE": self.layer,
+                    "DISTANCE": 2 * self.maximum / 100,
+                    "METHOD": 0,
+                },
+            )
+            features = self.reference_layer.selectedFeatures()
+            for current, feature in enumerate(features):
+                id_reference = feature.attribute(self.reference_id)
+                dict_reference[id_reference] = geom_qgis_to_shapely(feature.geometry())
+            self.reference_layer.removeSelection()
+            self.aligner.load_reference_data(DictLoader(dict_reference))
+            self.aligner.name_reference_id = self.reference_id
+            self.aligner.dict_reference_source["source"] = "local"
+            self.aligner.dict_reference_source["version_date"] = "unknown"
 
         self.dict_series, self.dict_predictions, self.diffs_dict = (
-            self.aligner.predictor(relevant_distances=self.relevant_distances,od_strategy=self.od_strategy,threshold_overlap_percentage=self.threshold_overlap_percentage)
+            self.aligner.predictor(
+                relevant_distances=self.relevant_distances,
+                od_strategy=self.od_strategy,
+                threshold_overlap_percentage=self.threshold_overlap_percentage,
+            )
         )
         outputMessage = "Voorspelde relevante afstanden: " + str(
             [str(k) for k in self.dict_predictions[feat.id()].keys()]
