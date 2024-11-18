@@ -84,7 +84,7 @@ from qgis.core import QgsProcessingParameterFile
 from qgis.core import QgsProject
 from qgis.core import QgsStyle
 
-from .brdrq_utils import geom_qgis_to_shapely, geojson_to_layer, set_workfolder
+from .brdrq_utils import geom_qgis_to_shapely, geojson_to_layer, get_workfolder
 
 
 class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -116,7 +116,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     # OTHER parameters
     MAX_DISTANCE_FOR_ACTUALISATION = 3  # maximum relevant distance that is used in the predictor when trying to update to actual GRB
-    WORKFOLDER = "brdrQ_autoupdateborders"
+    WORKFOLDER = "brdrQ"
     SHOW_LOG_INFO = True
 
     def flags(self):
@@ -394,7 +394,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         wrkfldr = parameters["WORK_FOLDER"]
         if wrkfldr is None or str(wrkfldr) == "" or str(wrkfldr) == "NULL":
             wrkfldr = self.WORKFOLDER
-        self.WORKFOLDER = set_workfolder(wrkfldr)
+        self.WORKFOLDER = get_workfolder(wrkfldr, name="autoupdateborders", temporary=False)
         self.MAX_DISTANCE_FOR_ACTUALISATION = parameters["MAX_RELEVANT_DISTANCE"]
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
         self.FORMULA_FIELDNAME = parameters["FORMULA_FIELD"]

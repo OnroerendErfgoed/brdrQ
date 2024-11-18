@@ -208,16 +208,26 @@ def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
     iface.layerTreeView().refreshLayerSymbology(vl.id())
     return vl
 
-def set_workfolder(foldername):
-    if foldername is None or str(foldername) == 'NULL' or str(foldername) == "":
-        #CREATE a temporary folder
-        dest =QgsProcessingParameterFolderDestination (name="brdrQ")
-        tempfoldername = dest.generateTemporaryDestination()
-        print (tempfoldername)
-        return tempfoldername
+def get_workfolder(folderpath ="", name="", temporary = False):
+    """
+    Creates a workfolder-path
+    *temporary:
+        *If temporary =True, a temporary folder will be generated that will be removed when Qgis is closed
+        *If temporary = False. The folderpath and name is used to build the foldername
+    """
+    if name is None or name =="":
+        name = ""
+    if temporary:
+        # CREATE a temporary folder
+        foldername = QgsProcessingParameterFolderDestination(name=name)
+        foldername = foldername.generateTemporaryDestination()
+        return foldername
+    if folderpath is None or str(folderpath) == 'NULL' or str(folderpath) == "":
+        folderpath = ""
     now = datetime.datetime.now()
     date_string = now.strftime("%Y%m%d%H%M%S")
-    return os.path.join(foldername, date_string)
+    foldername = os.path.join(folderpath, name, date_string)
+    return foldername
 
 def _make_map(ax, processresult, thematic_dict, reference_dict):
     """
