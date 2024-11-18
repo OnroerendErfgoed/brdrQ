@@ -409,7 +409,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         """
         Here is where the processing itself takes place.
         """
-        print (str(parameters))
+        print(str(parameters))
         print(str(context))
         feedback_steps = 6
         feedback = QgsProcessingMultiStepFeedback(feedback_steps, feedback)
@@ -817,7 +817,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         wrkfldr = parameters["WORK_FOLDER"]
         if wrkfldr is None or str(wrkfldr) == "" or str(wrkfldr) == "NULL":
             wrkfldr = self.WORKFOLDER
-        self.WORKFOLDER = get_workfolder(wrkfldr, name="autocorrectborders", temporary=False)
+        self.WORKFOLDER = get_workfolder(
+            wrkfldr, name="autocorrectborders", temporary=False
+        )
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
         thematic_layer = parameters[self.INPUT_THEMATIC]
         if not isinstance(thematic_layer, str):
