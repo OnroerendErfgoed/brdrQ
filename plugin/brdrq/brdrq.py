@@ -194,11 +194,14 @@ class BrdrQPlugin(object):
 
     def push_settings_ok(self):
         self._update_settings()
-        # self.dockwidget.listWidget_features.clear()
+        # self.dockwidget.listWidget_features.clearSelection()
         self.dockwidget.listWidget_predictions.clear()
         self.dockwidget.textEdit_output.setText("Please select a feature to align")
         self.dockwidget.doubleSpinBox.setMaximum(self.maximum / 100)
+        self.dockwidget.doubleSpinBox.setValue(0.0)
         self.dockwidget.horizontalSlider.setMaximum(self.maximum)
+        self.remove_brdrq_layers()
+        self.feature=None
 
     def _update_settings(self):
         self.maximum = self.settingsDialog.spinBox_max_relevant_distance.value() * 100
@@ -239,13 +242,16 @@ class BrdrQPlugin(object):
         )
         return
 
+    def remove_brdrq_layers(self):
+        tree = QgsProject.instance().layerTreeRoot()
+        node_object = tree.findGroup(self.GROUP_LAYER)
+        tree.removeChildNode(node_object)
+
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
         pass
         # print "** CLOSING brdrQ"
-        tree = QgsProject.instance().layerTreeRoot()
-        node_object = tree.findGroup(self.GROUP_LAYER)
-        tree.removeChildNode(node_object)
+        self.remove_brdrq_layers()
 
         # disconnects
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
