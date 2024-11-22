@@ -141,14 +141,23 @@ class BrdrQPlugin(object):
     def initGui(self):
         self.initProcessing()
         icon = os.path.join(os.path.join(cmd_folder, "icon.png"))
-        action = QAction(
+        action_featurepredictor = QAction(
             QIcon(icon), "brdrQ - GRB actual Parcel Aligner", self.iface.mainWindow()
         )
-        action.triggered.connect(self.openDock)
+        action_featurepredictor.triggered.connect(self.openDock)
+        self.iface.addPluginToMenu("brdQ", action_featurepredictor)
+        self.toolbar.addAction(action_featurepredictor)
+        self.actions.append(action_featurepredictor)
+        icon_autocorrectborders = os.path.join(os.path.join(cmd_folder, "icon_autocorrectborders.png"))
+        action_autocorrectborders = QAction(
+            QIcon(icon_autocorrectborders), "Autocorrectborders", self.iface.mainWindow()
+        )
+        action_autocorrectborders.triggered.connect(self.openAutocorrectbordersscript)
         # self.iface.addToolBarIcon(action)
-        self.iface.addPluginToMenu("brdQ", action)
-        self.toolbar.addAction(action)
-        self.actions.append(action)
+        self.iface.addPluginToMenu("brdQ", action_autocorrectborders)
+        self.toolbar.addAction(action_autocorrectborders)
+        self.actions.append(action_autocorrectborders)
+
         # show the dockwidget
         # self.openDock()
         self.load_settings()
@@ -241,6 +250,12 @@ class BrdrQPlugin(object):
             f"settings updated: Reference choice={self.reference_choice} - od_strategy={self.od_strategy} - threshold overlap percenatge = {str(self.threshold_overlap_percentage)}"
         )
         return
+
+    def openAutocorrectbordersscript(self):
+        dialog_autocorrectborders = processing.createAlgorithmDialog(
+            'brdrqprovider:brdrqautocorrectborders'
+        )
+        dialog_autocorrectborders.exec()
 
     def remove_brdrq_layers(self):
         tree = QgsProject.instance().layerTreeRoot()
