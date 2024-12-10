@@ -47,7 +47,6 @@ ENUM_REFERENCE_OPTIONS = [
 # ENUM for choosing the OD-strategy
 ENUM_OD_STRATEGY_OPTIONS = [e.name for e in OpenbaarDomeinStrategy]  # list with od-strategy-options
 
-
 def geom_shapely_to_qgis(geom_shapely):
     """
     Method to convert a Shapely-geometry to a QGIS geometry

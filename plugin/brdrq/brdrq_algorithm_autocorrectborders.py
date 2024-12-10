@@ -321,7 +321,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "ENUM_OD_STRATEGY",
             "Select OD-STRATEGY:",
             options=ENUM_OD_STRATEGY_OPTIONS,
-            defaultValue=5,  # Index of the default option (e.g., 'SNAP_FULL_AREA_ALL_SIDE')
+            defaultValue=4,  # Index of the default option (e.g., 'SNAP_FULL_AREA_ALL_SIDE')
         )
         parameter.setFlags(
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
