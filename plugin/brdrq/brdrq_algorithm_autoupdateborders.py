@@ -231,17 +231,13 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         dict_thematic_properties = {}
         features = thematic.getFeatures()
 
-        BRDR_ID_FIELDNAME = "brdr_id"  # TODO fix
+
         for current, feature in enumerate(features):
             if feedback.isCanceled():
                 return {}
 
-            # id_theme = feature.attribute(self.ID_THEME_FIELDNAME)
-            # dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature.geometry())
-            # dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
-            # TODO: remove str when bugfix in brdr is released
-            id_theme = str(feature.attribute(self.ID_THEME_FIELDNAME))
-            dict_thematic[id_theme] = geom_qgis_to_shapely(feature.geometry())
+            id_theme = feature.attribute(self.ID_THEME_FIELDNAME)
+            dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature.geometry())
             # dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
             attributes = feature.attributeMap()
             attributes_dict = {}
@@ -253,11 +249,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 else:
                     attributes_dict[key] = value
             dict_thematic_properties[id_theme] = attributes_dict
-
-            dict_thematic_properties[id_theme][BRDR_ID_FIELDNAME] = id_theme
-            # END fix
-
-        self.ID_THEME_FIELDNAME = BRDR_ID_FIELDNAME  # todo fix -remove after new brdr
 
         aligner = Aligner()
         aligner.load_thematic_data(DictLoader(data_dict=dict_thematic, data_dict_properties=dict_thematic_properties))
