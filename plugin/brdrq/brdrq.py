@@ -179,7 +179,7 @@ class BrdrQPlugin(object):
 
         # Set initial settings
         self.settingsDialog.comboBox_referencelayer.setCurrentIndex(1)
-        self.settingsDialog.comboBox_odstrategy.setCurrentIndex(4)
+        self.settingsDialog.comboBox_odstrategy.setCurrentIndex(3)
         self.settingsDialog.spinBox_threshold.setValue(50)
         self.settingsDialog.spinBox_max_relevant_distance.setValue(5)
 
