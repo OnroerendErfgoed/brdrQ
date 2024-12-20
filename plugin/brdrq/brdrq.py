@@ -43,6 +43,7 @@ from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsApplication
 from qgis.core import QgsMapLayerProxyModel
 from qgis.core import QgsProject
+from qgis.core import QgsSettings
 from qgis.core import QgsStyle
 from shapely.io import from_wkt
 
@@ -78,6 +79,7 @@ from brdr.loader import DictLoader
 class BrdrQPlugin(object):
 
     def __init__(self, iface):
+        print ("init")
         self.provider = None
         self.iface = iface
         self.dockwidget = None
@@ -139,6 +141,7 @@ class BrdrQPlugin(object):
         QgsApplication.processingRegistry().addProvider(self.provider)
 
     def initGui(self):
+        #print ("initGui")
         self.initProcessing()
         icon = os.path.join(os.path.join(cmd_folder, "icon.png"))
         action_featurepredictor = QAction(
@@ -163,12 +166,11 @@ class BrdrQPlugin(object):
         self.load_settings()
 
     def load_settings(self):
+        #print("load settings")
         for r in ENUM_REFERENCE_OPTIONS:
             self.settingsDialog.comboBox_referencelayer.addItem(r)
         for od in OpenbaarDomeinStrategy:
             self.settingsDialog.comboBox_odstrategy.addItem(od.name)
-
-        self.settingsDialog.spinBox_threshold.setValue(50)
         self.settingsDialog.comboBox_referencelayer.currentIndexChanged.connect(
             self.update_reference_choice
         )
@@ -180,15 +182,15 @@ class BrdrQPlugin(object):
         # Set initial settings
         self.settingsDialog.comboBox_referencelayer.setCurrentIndex(1)
         self.settingsDialog.comboBox_odstrategy.setCurrentIndex(3)
-        self.settingsDialog.spinBox_threshold.setValue(50)
         self.settingsDialog.spinBox_max_relevant_distance.setValue(5)
+
 
         # Load initial settings into tool (same as pushing OK in settings Dialog)
         self._update_settings()
         return
 
     def update_reference_choice(self, index):
-        print(str(index))
+        #print(str(index))
         if index == 0:
             self.settingsDialog.mMapLayerComboBox_reference.setEnabled(True)
             self.settingsDialog.mFieldComboBox_reference.setEnabled(True)
@@ -202,6 +204,7 @@ class BrdrQPlugin(object):
         self.settingsDialog.mFieldComboBox_reference.setLayer(layer)
 
     def push_settings_ok(self):
+        print("push settings ok")
         self._update_settings()
         # self.dockwidget.listWidget_features.clearSelection()
         self.dockwidget.listWidget_predictions.clear()
@@ -212,7 +215,20 @@ class BrdrQPlugin(object):
         self.remove_brdrq_layers()
         self.feature=None
 
-    def _update_settings(self):
+    def _update_settings(self, proj=None):
+        #print ("update settings")
+        #print (str(self.threshold_overlap_percentage))
+        # if QgsProject is None or QgsProject.instance() is None:
+        #     return
+        #proj = QgsProject.instance()
+        s = QgsSettings()
+        if self.threshold_overlap_percentage is None:
+            self.threshold_overlap_percentage = int(s.value("brdrq/threshold_overlap_percentage", 50))
+            #print (str(self.threshold_overlap_percentage))
+            # self.threshold_overlap_percentage, type_conversion_ok = proj.readNumEntry("brdrq",
+            #                                               "threshold_overlap_percentage",50)
+            self.settingsDialog.spinBox_threshold.setValue(self.threshold_overlap_percentage)
+        #print(str(self.threshold_overlap_percentage))
         self.maximum = self.settingsDialog.spinBox_max_relevant_distance.value() * 100
         self.relevant_distances = [
             round(k, 1)
@@ -227,6 +243,7 @@ class BrdrQPlugin(object):
         self.threshold_overlap_percentage = (
             self.settingsDialog.spinBox_threshold.value()
         )
+        #print(str(self.threshold_overlap_percentage))
         self.reference_choice = (
             self.settingsDialog.comboBox_referencelayer.currentText()
         )
@@ -249,6 +266,9 @@ class BrdrQPlugin(object):
         print(
             f"settings updated: Reference choice={self.reference_choice} - od_strategy={self.od_strategy} - threshold overlap percenatge = {str(self.threshold_overlap_percentage)}"
         )
+        #write settings to project
+        #proj.writeEntry("brdrq", "threshold_overlap_percentage", self.threshold_overlap_percentage)
+        s.setValue("brdrq/threshold_overlap_percentage",  self.threshold_overlap_percentage)
         return
 
     def openAutocorrectbordersscript(self):
@@ -290,6 +310,7 @@ class BrdrQPlugin(object):
         del self.toolbar
 
     def openDock(self):
+        print("openDock")
         if not self.pluginIsActive:
             self.pluginIsActive = True
 
@@ -337,10 +358,10 @@ class BrdrQPlugin(object):
             self.dockwidget.doubleSpinBox.valueChanged.connect(self.onSpinboxChange)
 
             # show the dockwidget
-            # TODO: fix to allow choice of dock location
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
             # self.dockwidget.show()
             self.layer = self.dockwidget.mMapLayerComboBox.currentLayer()
+            self._update_settings()
 
     def show_help_dialog(self):
         self.helpDialog.show()
