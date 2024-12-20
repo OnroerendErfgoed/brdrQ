@@ -1,3 +1,9 @@
+# v0.9.10
+
+- Upgrade to brdr version 0.6.0
+- fix for handling IDs[#97]
+- fix on visualisation[#85]
+
 # v0.9.9
 
 - Upgrade to brdr version 0.5.0

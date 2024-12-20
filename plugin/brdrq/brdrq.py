@@ -141,14 +141,23 @@ class BrdrQPlugin(object):
     def initGui(self):
         self.initProcessing()
         icon = os.path.join(os.path.join(cmd_folder, "icon.png"))
-        action = QAction(
+        action_featurepredictor = QAction(
             QIcon(icon), "brdrQ - GRB actual Parcel Aligner", self.iface.mainWindow()
         )
-        action.triggered.connect(self.openDock)
+        action_featurepredictor.triggered.connect(self.openDock)
+        self.iface.addPluginToMenu("brdQ", action_featurepredictor)
+        self.toolbar.addAction(action_featurepredictor)
+        self.actions.append(action_featurepredictor)
+        icon_autocorrectborders = os.path.join(os.path.join(cmd_folder, "icon_autocorrectborders.png"))
+        action_autocorrectborders = QAction(
+            QIcon(icon_autocorrectborders), "Autocorrectborders", self.iface.mainWindow()
+        )
+        action_autocorrectborders.triggered.connect(self.openAutocorrectbordersscript)
         # self.iface.addToolBarIcon(action)
-        self.iface.addPluginToMenu("brdQ", action)
-        self.toolbar.addAction(action)
-        self.actions.append(action)
+        self.iface.addPluginToMenu("brdQ", action_autocorrectborders)
+        self.toolbar.addAction(action_autocorrectborders)
+        self.actions.append(action_autocorrectborders)
+
         # show the dockwidget
         # self.openDock()
         self.load_settings()
@@ -170,7 +179,7 @@ class BrdrQPlugin(object):
 
         # Set initial settings
         self.settingsDialog.comboBox_referencelayer.setCurrentIndex(1)
-        self.settingsDialog.comboBox_odstrategy.setCurrentIndex(5)
+        self.settingsDialog.comboBox_odstrategy.setCurrentIndex(3)
         self.settingsDialog.spinBox_threshold.setValue(50)
         self.settingsDialog.spinBox_max_relevant_distance.setValue(5)
 
@@ -194,11 +203,14 @@ class BrdrQPlugin(object):
 
     def push_settings_ok(self):
         self._update_settings()
-        # self.dockwidget.listWidget_features.clear()
+        # self.dockwidget.listWidget_features.clearSelection()
         self.dockwidget.listWidget_predictions.clear()
         self.dockwidget.textEdit_output.setText("Please select a feature to align")
         self.dockwidget.doubleSpinBox.setMaximum(self.maximum / 100)
+        self.dockwidget.doubleSpinBox.setValue(0.0)
         self.dockwidget.horizontalSlider.setMaximum(self.maximum)
+        self.remove_brdrq_layers()
+        self.feature=None
 
     def _update_settings(self):
         self.maximum = self.settingsDialog.spinBox_max_relevant_distance.value() * 100
@@ -239,13 +251,22 @@ class BrdrQPlugin(object):
         )
         return
 
+    def openAutocorrectbordersscript(self):
+        dialog_autocorrectborders = processing.createAlgorithmDialog(
+            'brdrqprovider:brdrqautocorrectborders'
+        )
+        dialog_autocorrectborders.exec()
+
+    def remove_brdrq_layers(self):
+        tree = QgsProject.instance().layerTreeRoot()
+        node_object = tree.findGroup(self.GROUP_LAYER)
+        tree.removeChildNode(node_object)
+
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
         pass
         # print "** CLOSING brdrQ"
-        tree = QgsProject.instance().layerTreeRoot()
-        node_object = tree.findGroup(self.GROUP_LAYER)
-        tree.removeChildNode(node_object)
+        self.remove_brdrq_layers()
 
         # disconnects
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)

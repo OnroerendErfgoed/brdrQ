@@ -45,8 +45,7 @@ ENUM_REFERENCE_OPTIONS = [
                              LOCAL_REFERENCE_LAYER] + GRB_TYPES + ADPF_VERSIONS  # Options for downloadable reference layers
 
 # ENUM for choosing the OD-strategy
-ENUM_OD_STRATEGY_OPTIONS = [e.name for e in OpenbaarDomeinStrategy]  # list with od-strategy-options
-
+ENUM_OD_STRATEGY_OPTIONS = [e.name for e in OpenbaarDomeinStrategy if e.value<=2]  # list with od-strategy-options
 
 def geom_shapely_to_qgis(geom_shapely):
     """
@@ -242,8 +241,8 @@ def _make_map(ax, processresult, thematic_dict, reference_dict):
     try:
         dicts = _processresult_to_dicts(processresult)
         results = dicts[0]
-        results_diff_pos = dicts[1]
-        results_diff_neg = dicts[2]
+        results_diff_pos = dicts[2]
+        results_diff_neg = dicts[3]
         if ax is None:
             ax = plt.subplot(1, 1, 1)
         # ax_result =

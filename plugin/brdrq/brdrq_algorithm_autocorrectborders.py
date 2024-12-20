@@ -321,7 +321,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "ENUM_OD_STRATEGY",
             "Select OD-STRATEGY:",
             options=ENUM_OD_STRATEGY_OPTIONS,
-            defaultValue=5,  # Index of the default option (e.g., 'SNAP_FULL_AREA_ALL_SIDE')
+            defaultValue=3,  # Index of the default option (e.g., 'SNAP_FULL_AREA_ALL_SIDE')
         )
         parameter.setFlags(
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
@@ -428,16 +428,12 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # Load thematic into a shapely_dict:
         dict_thematic = {}
         dict_thematic_properties = {}
-        BRDR_ID_FIELDNAME = "brdr_id"  # TODO fix - remove after new brdr
         features = thematic.getFeatures()
         for current, feature in enumerate(features):
             feature_geom = feature.geometry()
             if feedback.isCanceled():
                 return {}
-            # id_theme = feature.attribute(self.ID_THEME_FIELDNAME)
-            id_theme = str(
-                feature.attribute(self.ID_THEME_FIELDNAME)
-            )  # todo fix - remove str after new brdr
+            id_theme = feature.attribute(self.ID_THEME_FIELDNAME)
             dict_thematic[id_theme] = geom_qgis_to_shapely(feature_geom)
             if self.ATTRIBUTES:
                 # dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
@@ -451,11 +447,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                     else:
                         attributes_dict[key] = value
                 dict_thematic_properties[id_theme] = attributes_dict
-            dict_thematic_properties[id_theme][
-                BRDR_ID_FIELDNAME
-            ] = id_theme  # todo fix - remove after new brdr
-
-        self.ID_THEME_FIELDNAME = BRDR_ID_FIELDNAME  # todo fix -remove after new brdr
 
         area = make_valid(unary_union(list(dict_thematic.values()))).area
         feedback.pushInfo("Area of thematic zone: " + str(area))
