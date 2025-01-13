@@ -1,4 +1,5 @@
 from brdrq.brdrq_dockwidget import brdrQDockWidget
+from brdrq.brdrq_utils import get_workfolder
 
 
 def _run():
@@ -32,4 +33,6 @@ def _run():
 
 
 if __name__ == '__main__':
-    _run()
+    workfolder = get_workfolder("notwritable/","testrun",False)
+    print (workfolder)
+    # _run()

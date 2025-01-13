@@ -229,6 +229,16 @@ def get_workfolder(folderpath ="", name="", temporary = False):
     now = datetime.datetime.now()
     date_string = now.strftime("%Y%m%d%H%M%S")
     foldername = os.path.join(folderpath, name, date_string)
+    try:
+        test_path_file = os.path.join(foldername,'test.txt')
+        parent = os.path.dirname(test_path_file)
+        os.makedirs(parent, exist_ok=True)
+        with open(test_path_file, "w") as f:
+            dump({}, f, default=str)
+        os.remove(test_path_file)
+    except:
+        print ("folder not writable; creating temporary folder")
+        return get_workfolder(folderpath ="", name=name, temporary = True)
     return foldername
 
 def _make_map(ax, processresult, thematic_dict, reference_dict):
