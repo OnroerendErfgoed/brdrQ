@@ -18,7 +18,7 @@ from math import ceil
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
-from brdr.enums import GRBType, OpenbaarDomeinStrategy
+from brdr.enums import GRBType, OpenbaarDomeinStrategy, SnapStrategy
 from brdr.geometry_utils import geojson_polygon_to_multipolygon
 from brdr.typings import ProcessResult
 from brdr.utils import write_geojson
@@ -45,7 +45,10 @@ ENUM_REFERENCE_OPTIONS = [
                              LOCAL_REFERENCE_LAYER] + GRB_TYPES + ADPF_VERSIONS  # Options for downloadable reference layers
 
 # ENUM for choosing the OD-strategy
-ENUM_OD_STRATEGY_OPTIONS = [e.name for e in OpenbaarDomeinStrategy if e.value<=2]  # list with od-strategy-options
+ENUM_OD_STRATEGY_OPTIONS = [e.name for e in OpenbaarDomeinStrategy]  # list with od-strategy-options #if e.value<=2
+
+# ENUM for choosing the snap-strategy
+ENUM_SNAP_STRATEGY_OPTIONS = [e.name for e in SnapStrategy]
 
 def geom_shapely_to_qgis(geom_shapely):
     """
