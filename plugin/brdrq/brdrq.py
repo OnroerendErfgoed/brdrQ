@@ -86,6 +86,7 @@ class BrdrQPlugin(object):
         self.actions = []
         self.toolbar = self.iface.addToolBar("brdrQ")
         self.toolbar.setObjectName("brdrQ")
+        self.max_rel_dist = None
         self.minimum = 0
         self.maximum = 1500
         self.step = 10
@@ -105,6 +106,7 @@ class BrdrQPlugin(object):
         self.reference_id = None
         self.reference_loader = None
         self.original_geometry = None
+        self.formula = None
         self.full_parcel = None
         self.partial_snapping =None
         self.partial_snapping_strategy =None
@@ -204,8 +206,10 @@ class BrdrQPlugin(object):
     def update_partial_snapping(self, state):
         if state==2:
             self.settingsDialog.comboBox_snapstrategy.setEnabled(True)
+            self.settingsDialog.spinBox_snap_max_segment_length.setEnabled(True)
         else:
             self.settingsDialog.comboBox_snapstrategy.setEnabled(False)
+            self.settingsDialog.spinBox_snap_max_segment_length.setEnabled(False)
         return
 
     def updateFields_reference(self):
@@ -232,12 +236,13 @@ class BrdrQPlugin(object):
         self.threshold_overlap_percentage = (
             self.settingsDialog.spinBox_threshold.value()
         )
-        if self.maximum is None:
-            self.maximum = int(s.value("brdrq/maximum", 5))
-            self.settingsDialog.spinBox_max_relevant_distance.setValue(self.maximum)
-        self.maximum = (
+        if self.max_rel_dist is None:
+            self.max_rel_dist = int(s.value("brdrq/max_rel_dist", 5))
+            self.settingsDialog.spinBox_max_relevant_distance.setValue(self.max_rel_dist)
+        self.max_rel_dist = (
             self.settingsDialog.spinBox_max_relevant_distance.value()
         )
+        self.maximum = self.max_rel_dist*100
         self.relevant_distances = [
             round(k, 1)
             for k in np.arange(
@@ -288,6 +293,13 @@ class BrdrQPlugin(object):
             self.settingsDialog.checkBox_full_parcel.checkState()
         )
 
+        if self.formula is None:
+            self.formula = int(s.value("brdrq/formula", 0))
+            self.settingsDialog.checkBox_formula.setCheckState(self.formula)
+        self.formula = (
+            self.settingsDialog.checkBox_formula.checkState()
+        )
+
         if self.partial_snapping is None:
             self.partial_snapping = int(s.value("brdrq/partial_snapping", 0))
             self.settingsDialog.checkBox_partial_snapping.setCheckState(self.partial_snapping)
@@ -320,7 +332,8 @@ class BrdrQPlugin(object):
         s.setValue("brdrq/reference_choice", self.reference_choice)
         s.setValue("brdrq/reference_id", self.reference_id)
         s.setValue("brdrq/reference_layer", self.reference_layer)
-        s.setValue("brdrq/maximum", self.maximum)
+        s.setValue("brdrq/max_rel_dist", self.max_rel_dist)
+        s.setValue("brdrq/formula", self.formula)
         s.setValue("brdrq/full_parcel", self.full_parcel)
         s.setValue("brdrq/partial_snapping", self.partial_snapping)
         s.setValue("brdrq/partial_snapping_strategy", self.partial_snapping_strategy.name)
@@ -385,6 +398,7 @@ class BrdrQPlugin(object):
             if self.dockwidget == None:
                 # Create the dockwidget (after translation) and keep reference
                 self.dockwidget = brdrQDockWidget()
+
 
             self.dockwidget.horizontalSlider.setMinimum(self.minimum)
             self.dockwidget.horizontalSlider.setMaximum(self.maximum)
@@ -509,7 +523,8 @@ class BrdrQPlugin(object):
         self._align()
 
         fcs = self.aligner.get_results_as_geojson(
-            resulttype=AlignerResultType.PROCESSRESULTS
+            resulttype=AlignerResultType.PROCESSRESULTS,
+            formula=self.formula
         )
 
         geojson_to_layer(

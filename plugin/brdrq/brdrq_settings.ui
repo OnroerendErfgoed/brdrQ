@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>523</width>
-    <height>465</height>
+    <height>562</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -186,7 +186,7 @@
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>330</y>
+     <y>360</y>
      <width>191</width>
      <height>16</height>
     </rect>
@@ -199,7 +199,7 @@
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>370</y>
+     <y>400</y>
      <width>191</width>
      <height>16</height>
     </rect>
@@ -212,7 +212,7 @@
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>410</y>
+     <y>440</y>
      <width>191</width>
      <height>31</height>
     </rect>
@@ -225,7 +225,7 @@
    <property name="geometry">
     <rect>
      <x>200</x>
-     <y>410</y>
+     <y>440</y>
      <width>201</width>
      <height>22</height>
     </rect>
@@ -244,7 +244,7 @@
    <property name="geometry">
     <rect>
      <x>200</x>
-     <y>330</y>
+     <y>360</y>
      <width>81</width>
      <height>20</height>
     </rect>
@@ -263,7 +263,7 @@
    <property name="geometry">
     <rect>
      <x>200</x>
-     <y>370</y>
+     <y>400</y>
      <width>201</width>
      <height>21</height>
     </rect>
@@ -273,7 +273,7 @@
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>290</y>
+     <y>320</y>
      <width>191</width>
      <height>16</height>
     </rect>
@@ -286,7 +286,7 @@
    <property name="geometry">
     <rect>
      <x>200</x>
-     <y>290</y>
+     <y>320</y>
      <width>81</width>
      <height>20</height>
     </rect>
@@ -299,6 +299,38 @@
    </property>
    <property name="tristate">
     <bool>false</bool>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="checkBox_formula">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>280</y>
+     <width>81</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="tristate">
+    <bool>false</bool>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_11">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>280</y>
+     <width>191</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>brdr_formula toevoegen</string>
    </property>
   </widget>
  </widget>
