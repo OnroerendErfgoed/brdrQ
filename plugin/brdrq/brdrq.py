@@ -93,6 +93,8 @@ class BrdrQPlugin(object):
         self.step = 10
         self.relevant_distances = None
         self.max_feature_count = 5000
+        self.max_area_optimization = 100000
+        self.max_area_limit = 400000 #maximum m² where the calculation will be done for
         self.layer = None
         self.selected_features = None
         self.feature = None
@@ -168,7 +170,7 @@ class BrdrQPlugin(object):
         self.actions.append(action_autocorrectborders)
 
         # show the dockwidget
-        # self.openDock()
+        #self.openDock()
         self.load_settings()
 
     def load_settings(self):
@@ -223,9 +225,6 @@ class BrdrQPlugin(object):
         # self.dockwidget.listWidget_features.clearSelection()
         self.dockwidget.listWidget_predictions.clear()
         self.dockwidget.textEdit_output.setText("Please select a feature to align")
-        self.dockwidget.doubleSpinBox.setMaximum(self.maximum / 100)
-        self.dockwidget.doubleSpinBox.setValue(0.0)
-        self.dockwidget.horizontalSlider.setMaximum(self.maximum)
         self.remove_brdrq_layers()
         self.feature=None
 
@@ -244,6 +243,7 @@ class BrdrQPlugin(object):
             self.settingsDialog.spinBox_max_relevant_distance.value()
         )
         self.maximum = self.max_rel_dist*100
+
         self.relevant_distances = [
             round(k, 1)
             for k in np.arange(
@@ -251,6 +251,17 @@ class BrdrQPlugin(object):
             )
             / 100
         ]
+        if not self.dockwidget is None:
+            self.dockwidget.doubleSpinBox.setMinimum(self.minimum / 100)
+            self.dockwidget.doubleSpinBox.setMaximum(self.maximum / 100)
+            self.dockwidget.doubleSpinBox.setSingleStep(self.step / 100)
+            self.dockwidget.doubleSpinBox.setDecimals(1)
+            self.dockwidget.doubleSpinBox.setValue(0.0)
+            self.dockwidget.horizontalSlider.setMinimum(0)
+            self.dockwidget.horizontalSlider.setMaximum(len(self.relevant_distances)-1)
+            self.dockwidget.horizontalSlider.setSingleStep(1)
+
+
         if self.od_strategy is None:
             self.od_strategy = int(s.value("brdrq/od_strategy", 2))
             index = self.settingsDialog.comboBox_odstrategy.findText(OpenbaarDomeinStrategy(self.od_strategy).name)
@@ -339,13 +350,6 @@ class BrdrQPlugin(object):
         s.setValue("brdrq/partial_snapping", self.partial_snapping)
         s.setValue("brdrq/partial_snapping_strategy", self.partial_snapping_strategy.name)
         s.setValue("brdrq/snap_max_segment_length", self.snap_max_segment_length)
-
-        # print("referencelayer")
-        # value = s.value("brdrq/reference_layer", "none")
-        # print(str(type(value)))
-        # print (value)
-
-
         return
 
     def openAutocorrectbordersscript(self):
@@ -400,14 +404,6 @@ class BrdrQPlugin(object):
                 # Create the dockwidget (after translation) and keep reference
                 self.dockwidget = brdrQDockWidget()
 
-
-            self.dockwidget.horizontalSlider.setMinimum(self.minimum)
-            self.dockwidget.horizontalSlider.setMaximum(self.maximum)
-            self.dockwidget.horizontalSlider.setSingleStep(self.step)
-            self.dockwidget.doubleSpinBox.setMinimum(self.minimum / 100)
-            self.dockwidget.doubleSpinBox.setMaximum(self.maximum / 100)
-            self.dockwidget.doubleSpinBox.setSingleStep(self.step / 100)
-            self.dockwidget.doubleSpinBox.setDecimals(1)
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
             self.dockwidget.pushButton_help.clicked.connect(self.show_help_dialog)
@@ -492,6 +488,8 @@ class BrdrQPlugin(object):
 
     def onFeatureActivated(self, currentItem):
         self.dockwidget.progressBar.setValue(0)
+        self.dockwidget.listWidget_predictions.clear()
+        self.dockwidget.textEdit_output.setText("")
         with OverrideCursor(Qt.WaitCursor):
             self._onFeatureChange(currentItem)
         self.dockwidget.progressBar.setValue(100)
@@ -523,6 +521,28 @@ class BrdrQPlugin(object):
         self.iface.mapCanvas().setExtent(box)
         self.iface.mapCanvas().refresh()
         key = self.feature.id()
+
+        # Check feature on area
+        # check area of feature and optimize/block calculation
+        area = self.original_geometry.area()
+        self.step = 10
+        if area > self.max_area_optimization:
+            if area > self.max_area_limit:
+                msg = f"Very big area, {str(area)} m²: The calculation is blocked. Please use the bulk tool for this feature"
+                self.dockwidget.textEdit_output.setText(
+                    f"{msg}"
+                )
+                # self.iface.messageBar().pushMessage(msg)
+                return
+            else:
+                msg = f"Warning - Big area, {str(area)} m²: the calculation will be adapted/optimized. Only for every meter a calculation will be done"
+                self.dockwidget.textEdit_output.setText(
+                    f"{msg}"
+                )
+                # self.iface.messageBar().pushMessage(msg)
+                self.step = 100
+
+        self._update_settings()
 
         # do alignment/prediction
         self._align()
@@ -591,18 +611,20 @@ class BrdrQPlugin(object):
         value = round(float(currentItem.text()), 1)
         print("item activated with rd - value: " + str(value))
         self.dockwidget.doubleSpinBox.setValue(value)
-        self.dockwidget.horizontalSlider.setValue(int(100 * value))
+        index = self.relevant_distances.index(value)
+        self.dockwidget.horizontalSlider.setValue(index)
         return
 
-    def onSliderChange(self, value):
-        print("onSliderChange: value -> " + str(value))
-        value = round(value / 100, 1)
+    def onSliderChange(self, index):
+        print("onSliderChange: index -> " + str(index))
+        value = self.relevant_distances[index]
         self.dockwidget.doubleSpinBox.setValue(value)
         return
 
     def onSpinboxChange(self, value):
         value = round(value, 1)
-        self.dockwidget.horizontalSlider.setValue(int(value * 100))
+        index = self.relevant_distances.index(value)
+        self.dockwidget.horizontalSlider.setValue(index)
         print("onSpinboxChange: value -> " + str(value))
 
         # self.change_geometry()
@@ -784,20 +806,6 @@ class BrdrQPlugin(object):
         #self.dockwidget.progressBar.setValue(100)
         return self.dict_series, self.dict_predictions, self.diffs_dict
 
-    # def progdialog(self,min, max):
-    #     self.dialog = QProgressDialog()
-    #     self.dialog.setWindowTitle("Progress")
-    #     self.dialog.setLabelText("text")
-    #     self.bar = QProgressBar(self.dialog)
-    #     self.bar.setTextVisible(True)
-    #     self.bar.setMinimum(min)
-    #     self.bar.setMaximum(max)
-    #     self.dialog.setBar(self.bar)
-    #     self.dialog.setMinimumWidth(300)
-    #     self.dialog.show()
-    #     return
-
-
 # from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify
 # from qgis.core import (
 #     Qgis, QgsVectorLayer
@@ -824,5 +832,3 @@ class BrdrQPlugin(object):
 #
 #     def deactivate(self):
 #         self.layer.removeSelection()
-
-
