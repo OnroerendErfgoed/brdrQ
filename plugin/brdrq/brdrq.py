@@ -45,6 +45,7 @@ from qgis.core import QgsMapLayerProxyModel
 from qgis.core import QgsProject
 from qgis.core import QgsSettings
 from qgis.core import QgsStyle
+from qgis.utils import OverrideCursor
 from shapely.io import from_wkt
 
 from .brdrq_dockwidget import brdrQDockWidget
@@ -453,6 +454,7 @@ class BrdrQPlugin(object):
     #     picker.setDisplayExpression('$id')  # show ids in combobox
 
     def setFeatures(self):
+        self.dockwidget.progressBar.setValue(0)
         self.layer = self.dockwidget.mMapLayerComboBox.currentLayer()
         if self.layer is None:
             self.dockwidget.textEdit_output.setText("Please select a layer")
@@ -489,7 +491,10 @@ class BrdrQPlugin(object):
         return
 
     def onFeatureActivated(self, currentItem):
-        self._onFeatureChange(currentItem)
+        self.dockwidget.progressBar.setValue(0)
+        with OverrideCursor(Qt.WaitCursor):
+            self._onFeatureChange(currentItem)
+        self.dockwidget.progressBar.setValue(100)
 
     def _onFeatureChange(self, currentItem):
         print("_onFeatureChange")
@@ -714,13 +719,16 @@ class BrdrQPlugin(object):
 
         dict_to_load = {}
 
+        self.dockwidget.progressBar.setValue(0)
         for feature in selectedFeatures:
             feature_geom = feature.geometry()
             wkt = feature_geom.asWkt()
             geom_shapely = from_wkt(wkt)
             dict_to_load[feature.id()] = geom_shapely
+
         # Load thematic data
         self.aligner.load_thematic_data(DictLoader(dict_to_load))
+        self.dockwidget.progressBar.setValue(25)
         # Load reference data for the on-the fly reference versions
         print(self.reference_choice)
         if self.reference_choice in GRB_TYPES:
@@ -760,7 +768,7 @@ class BrdrQPlugin(object):
             self.aligner.name_reference_id = self.reference_id
             self.aligner.dict_reference_source["source"] = "local"
             self.aligner.dict_reference_source["version_date"] = "unknown"
-
+        self.dockwidget.progressBar.setValue(50)
         self.dict_series, self.dict_predictions, self.diffs_dict = (
             self.aligner.predictor(
                 relevant_distances=self.relevant_distances,
@@ -771,10 +779,23 @@ class BrdrQPlugin(object):
         outputMessage = "Voorspelde relevante afstanden: " + str(
             [str(k) for k in self.dict_predictions[feat.id()].keys()]
         )
-
         self.dockwidget.textEdit_output.setText(outputMessage)
         self.iface.messageBar().pushMessage(outputMessage)
+        #self.dockwidget.progressBar.setValue(100)
         return self.dict_series, self.dict_predictions, self.diffs_dict
+
+    # def progdialog(self,min, max):
+    #     self.dialog = QProgressDialog()
+    #     self.dialog.setWindowTitle("Progress")
+    #     self.dialog.setLabelText("text")
+    #     self.bar = QProgressBar(self.dialog)
+    #     self.bar.setTextVisible(True)
+    #     self.bar.setMinimum(min)
+    #     self.bar.setMaximum(max)
+    #     self.dialog.setBar(self.bar)
+    #     self.dialog.setMinimumWidth(300)
+    #     self.dialog.show()
+    #     return
 
 
 # from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify
@@ -803,3 +824,5 @@ class BrdrQPlugin(object):
 #
 #     def deactivate(self):
 #         self.layer.removeSelection()
+
+
