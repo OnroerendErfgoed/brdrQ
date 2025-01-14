@@ -37,6 +37,7 @@ import sys
 import numpy as np
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QListWidgetItem
+from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import Qt
@@ -74,6 +75,7 @@ from brdr.aligner import Aligner
 from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader
 from brdr.enums import GRBType, AlignerResultType, OpenbaarDomeinStrategy, SnapStrategy
 from brdr.loader import DictLoader
+from brdr.utils import diffs_from_dict_processresults
 
 
 class BrdrQPlugin(object):
@@ -98,8 +100,9 @@ class BrdrQPlugin(object):
         self.layer = None
         self.selected_features = None
         self.feature = None
-        self.dict_series = None
-        self.dict_predictions = None
+        self.dict_processresults = None
+        self.dict_evaluated_predictions = None
+        self.props_dict_evaluated_predictions = None
         self.diffs_dict = None
         self.aligner = None
         self.od_strategy = None
@@ -299,7 +302,7 @@ class BrdrQPlugin(object):
             self.settingsDialog.mFieldComboBox_reference.currentField()
         )
         if self.full_parcel is None:
-            self.full_parcel = int(s.value("brdrq/full_parcel", 0))
+            self.full_parcel = int(s.value("brdrq/full_parcel", 2))
             self.settingsDialog.checkBox_full_parcel.setCheckState(self.full_parcel)
         self.full_parcel = (
             self.settingsDialog.checkBox_full_parcel.checkState()
@@ -329,7 +332,7 @@ class BrdrQPlugin(object):
         print(
             f"settings updated: Reference choice={self.reference_choice} - od_strategy={self.od_strategy} - threshold overlap percenatge = {str(self.threshold_overlap_percentage)}"
         )
-
+        self.partial_snapping = False
         self.aligner = None
         self.aligner = Aligner(
             od_strategy=self.od_strategy,
@@ -587,14 +590,28 @@ class BrdrQPlugin(object):
 
         # set list with predicted values
         self.dockwidget.listWidget_predictions.clear()
-        items = [str(k) for k in self.dict_predictions[key]]
-        self.dockwidget.listWidget_predictions.addItems(items)
-        if len(items) > 1:
-            self.dockwidget.listWidget_predictions.setCurrentRow(1)
-            self.dockwidget.doubleSpinBox.setValue(round(float(items[1]), 1))
-        elif len(items) > 0:
-            self.dockwidget.listWidget_predictions.setCurrentRow(0)
-            self.dockwidget.doubleSpinBox.setValue(round(float(items[0]), 1))
+        #TODO, loop over predictions en voeg toe met boodschap
+        items =[]
+        items_with_name = []
+        best_index = 0
+        best_score = 0
+        list_predictions = [k for k in (self.dict_evaluated_predictions[key]).keys()]
+        print (str(list_predictions))
+        for k in list_predictions:
+            print(str(k))
+            items.append(str(k))
+            score = self.props_dict_evaluated_predictions[key][k][PREDICTION_SCORE]
+            evaluation = self.props_dict_evaluated_predictions[key][k][EVALUATION_FIELD_NAME]
+            items_with_name.append( f"{str(k)}: {str(evaluation)} (score: {str(score)})" )
+            if score > best_score:
+                best_score = score
+                best_index = list_predictions.index(k)
+                print ("best index: " +  str(best_index))
+        self.dockwidget.listWidget_predictions.setFocus()
+        self.dockwidget.listWidget_predictions.addItems(items_with_name)
+        if len(items) > 0:
+            self.dockwidget.listWidget_predictions.setCurrentRow(best_index)
+            self.dockwidget.doubleSpinBox.setValue(round(float(items[best_index]), 1))
         else:
             self.dockwidget.textEdit_output.setText("No predictions")
 
@@ -608,7 +625,9 @@ class BrdrQPlugin(object):
             print("currentitem zero")
             return
         print("item activated with rd: " + currentItem.text())
-        value = round(float(currentItem.text()), 1)
+        value = currentItem.text()
+        value = value.split(":")[0]
+        value = round(float(value), 1)
         print("item activated with rd - value: " + str(value))
         self.dockwidget.doubleSpinBox.setValue(value)
         index = self.relevant_distances.index(value)
@@ -654,6 +673,7 @@ class BrdrQPlugin(object):
         if feat is None:
             return
         key = feat.id()
+        #TODO; hoe deze bekomen?
         plot_series(self.relevant_distances, {key: self.diffs_dict[key]})
         return
 
@@ -664,7 +684,7 @@ class BrdrQPlugin(object):
             return
         key = feat.id()
         show_map(
-            {key: self.dict_predictions[key]},
+            {key: self.dict_evaluated_predictions[key]},
             {key: self.aligner.dict_thematic[key]},
             self.aligner.dict_reference,
         )
@@ -677,8 +697,8 @@ class BrdrQPlugin(object):
             return
         key = feat.id()
         relevant_distance = self.dockwidget.doubleSpinBox.value()
-        if relevant_distance in self.dict_series[key]:
-            result = self.dict_series[key][relevant_distance]
+        if relevant_distance in self.dict_processresults[key]:
+            result = self.dict_processresults[key][relevant_distance]
             resulting_geom = result["result"]
         else:
             errormesssage = "Relevant_distance_result not calculated for: " + str(
@@ -714,8 +734,8 @@ class BrdrQPlugin(object):
             return
         key = feat.id()
         relevant_distance = self.dockwidget.doubleSpinBox.value()
-        if relevant_distance in self.dict_series[key]:
-            result = self.dict_series[key][relevant_distance]
+        if relevant_distance in self.dict_processresults[key]:
+            result = self.dict_processresults[key][relevant_distance]
             resulting_geom = result["result"]
         else:
             errormesssage = "Relevant_distance_result not calculated for: " + str(
@@ -791,20 +811,33 @@ class BrdrQPlugin(object):
             self.aligner.dict_reference_source["source"] = "local"
             self.aligner.dict_reference_source["version_date"] = "unknown"
         self.dockwidget.progressBar.setValue(50)
-        self.dict_series, self.dict_predictions, self.diffs_dict = (
-            self.aligner.predictor(
-                relevant_distances=self.relevant_distances,
-                od_strategy=self.od_strategy,
-                threshold_overlap_percentage=self.threshold_overlap_percentage,
-            )
+        # self.dict_series, self.dict_predictions, self.diffs_dict = (
+        #     self.aligner.predictor(
+        #         relevant_distances=self.relevant_distances,
+        #         od_strategy=self.od_strategy,
+        #         threshold_overlap_percentage=self.threshold_overlap_percentage,
+        #     )
+        # )
+        dict_evaluated, props_dict_evaluated_predictions = self.aligner.evaluate(
+            ids_to_evaluate=None,
+            base_formula_field=None,
+            all_predictions=True,
+            relevant_distances=self.relevant_distances,
+            prefer_full=self.full_parcel,
         )
+
+        self.dict_processresults = self.aligner.dict_processresults
+        self.dict_evaluated_predictions=dict_evaluated
+        self.props_dict_evaluated_predictions=props_dict_evaluated_predictions
+        self.diffs_dict = diffs_from_dict_processresults(self.dict_processresults,self.aligner.dict_thematic)
+
         outputMessage = "Voorspelde relevante afstanden: " + str(
-            [str(k) for k in self.dict_predictions[feat.id()].keys()]
+            [str(k) for k in self.dict_evaluated_predictions[feat.id()].keys()]
         )
         self.dockwidget.textEdit_output.setText(outputMessage)
         self.iface.messageBar().pushMessage(outputMessage)
         #self.dockwidget.progressBar.setValue(100)
-        return self.dict_series, self.dict_predictions, self.diffs_dict
+        return self.dict_processresults, self.dict_evaluated_predictions, self.diffs_dict
 
 # from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify
 # from qgis.core import (

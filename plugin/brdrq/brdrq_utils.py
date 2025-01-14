@@ -183,8 +183,6 @@ def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
     if tempfolder is None or str(tempfolder) == 'NULL' or str(tempfolder) == "":
         tempfolder = "tempfolder"
     tempfilename = tempfolder + "/" + name + ".geojson"
-    print (tempfolder)
-    print(tempfilename)
     write_geojson(tempfilename, geojson_polygon_to_multipolygon(geojson))
 
     vl = QgsVectorLayer(tempfilename, name, "ogr")
