@@ -22,13 +22,13 @@
  ***************************************************************************/
 """
 
-__author__ = 'Karel Dieussaert / Onroerend Erfgoed'
-__date__ = '2024-10-11'
-__copyright__ = '(C) 2024 by Karel Dieussaert / Onroerend Erfgoed'
+__author__ = "Karel Dieussaert / Onroerend Erfgoed"
+__date__ = "2024-10-11"
+__copyright__ = "(C) 2024 by Karel Dieussaert / Onroerend Erfgoed"
 
 # This will get replaced with a git SHA1 when you do a git archive
 
-__revision__ = '$Format:%H$'
+__revision__ = "$Format:%H$"
 
 from qgis.core import QgsProcessingProvider
 
@@ -66,7 +66,7 @@ class BrdrQProvider(QgsProcessingProvider):
         string should be a unique, short, character only string, eg "qgis" or
         "gdal". This string should not be localised.
         """
-        return 'brdrqprovider'
+        return "brdrqprovider"
 
     def name(self):
         """
@@ -75,7 +75,7 @@ class BrdrQProvider(QgsProcessingProvider):
 
         This string should be short (e.g. "Lastools") and localised.
         """
-        return self.tr('brdrQProvider')
+        return self.tr("brdrQProvider")
 
     def icon(self):
         """

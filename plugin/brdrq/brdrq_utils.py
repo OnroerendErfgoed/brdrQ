@@ -18,34 +18,47 @@ from math import ceil
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
-from brdr.enums import GRBType, OpenbaarDomeinStrategy
+from brdr.enums import GRBType, OpenbaarDomeinStrategy, SnapStrategy
 from brdr.geometry_utils import geojson_polygon_to_multipolygon
 from brdr.typings import ProcessResult
 from brdr.utils import write_geojson
 from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsGeometry
 from qgis.core import QgsProject
-from qgis.core import QgsSimpleLineSymbolLayer, QgsFillSymbol, \
-    QgsSingleSymbolRenderer, QgsMapLayer, QgsLayerTreeNode, QgsLayerTreeGroup
+from qgis.core import (
+    QgsSimpleLineSymbolLayer,
+    QgsFillSymbol,
+    QgsSingleSymbolRenderer,
+    QgsMapLayer,
+    QgsLayerTreeNode,
+    QgsLayerTreeGroup,
+)
 from qgis.core import QgsStyle
 from qgis.core import QgsVectorLayer
 from qgis.utils import iface
-from shapely import (
-    to_wkt, from_wkt,
-    make_valid
-)
+from shapely import to_wkt, from_wkt, make_valid
 
 LOCAL_REFERENCE_LAYER = "LOCAL REFERENCE LAYER (choose LAYER and ID below)"
 
-GRB_TYPES = [e.name for e in GRBType]  # types of actual GRB: parcels, buildings, artwork
-ADPF_VERSIONS = ["Adpf" + str(x) for x in
-                 [datetime.datetime.today().year - i for i in range(6)]]  # Fiscal parcels of past 5 years
+GRB_TYPES = [
+    e.name for e in GRBType
+]  # types of actual GRB: parcels, buildings, artwork
+ADPF_VERSIONS = [
+    "Adpf" + str(x) for x in [datetime.datetime.today().year - i for i in range(6)]
+]  # Fiscal parcels of past 5 years
 
-ENUM_REFERENCE_OPTIONS = [
-                             LOCAL_REFERENCE_LAYER] + GRB_TYPES + ADPF_VERSIONS  # Options for downloadable reference layers
+ENUM_REFERENCE_OPTIONS = (
+    [LOCAL_REFERENCE_LAYER] + GRB_TYPES + ADPF_VERSIONS
+)  # Options for downloadable reference layers
 
 # ENUM for choosing the OD-strategy
-ENUM_OD_STRATEGY_OPTIONS = [e.name for e in OpenbaarDomeinStrategy if e.value<=2]  # list with od-strategy-options
+ENUM_OD_STRATEGY_OPTIONS = [
+    e.name for e in OpenbaarDomeinStrategy
+]  # list with od-strategy-options #if e.value<=2
+
+# ENUM for choosing the snap-strategy
+ENUM_SNAP_STRATEGY_OPTIONS = [e.name for e in SnapStrategy]
+
 
 def geom_shapely_to_qgis(geom_shapely):
     """
@@ -177,11 +190,9 @@ def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
         for lyr in lyrs:
             root.removeLayer(lyr)
             qinst.removeMapLayer(lyr.id())
-    if tempfolder is None or str(tempfolder) == 'NULL' or str(tempfolder) == "":
+    if tempfolder is None or str(tempfolder) == "NULL" or str(tempfolder) == "":
         tempfolder = "tempfolder"
     tempfilename = tempfolder + "/" + name + ".geojson"
-    print (tempfolder)
-    print(tempfilename)
     write_geojson(tempfilename, geojson_polygon_to_multipolygon(geojson))
 
     vl = QgsVectorLayer(tempfilename, name, "ogr")
@@ -207,26 +218,38 @@ def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
     iface.layerTreeView().refreshLayerSymbology(vl.id())
     return vl
 
-def get_workfolder(folderpath ="", name="", temporary = False):
+
+def get_workfolder(folderpath="", name="", temporary=False):
     """
     Creates a workfolder-path
     *temporary:
         *If temporary =True, a temporary folder will be generated that will be removed when Qgis is closed
         *If temporary = False. The folderpath and name is used to build the foldername
     """
-    if name is None or name =="":
+    if name is None or name == "":
         name = ""
     if temporary:
         # CREATE a temporary folder
         foldername = QgsProcessingParameterFolderDestination(name=name)
         foldername = foldername.generateTemporaryDestination()
         return foldername
-    if folderpath is None or str(folderpath) == 'NULL' or str(folderpath) == "":
+    if folderpath is None or str(folderpath) == "NULL" or str(folderpath) == "":
         folderpath = ""
     now = datetime.datetime.now()
     date_string = now.strftime("%Y%m%d%H%M%S")
     foldername = os.path.join(folderpath, name, date_string)
+    try:
+        test_path_file = os.path.join(foldername, "test.txt")
+        parent = os.path.dirname(test_path_file)
+        os.makedirs(parent, exist_ok=True)
+        with open(test_path_file, "w") as f:
+            dump({}, f, default=str)
+        os.remove(test_path_file)
+    except:
+        print("folder not writable; creating temporary folder")
+        return get_workfolder(folderpath="", name=name, temporary=True)
     return foldername
+
 
 def _make_map(ax, processresult, thematic_dict, reference_dict):
     """
@@ -310,9 +333,9 @@ def _make_map(ax, processresult, thematic_dict, reference_dict):
 
 
 def show_map(
-        dict_results: dict[any, dict[float, ProcessResult]],
-        dict_thematic,
-        dict_reference,
+    dict_results: dict[any, dict[float, ProcessResult]],
+    dict_thematic,
+    dict_reference,
 ):
     """
     Show results on a map
@@ -358,11 +381,11 @@ def print_brdr_formula(dict_results, aligner):
 
 
 def plot_series(
-        series,
-        dictionary,
-        xlabel="relevant distance",
-        ylabel="difference",
-        title="Relevant distance vs difference",
+    series,
+    dictionary,
+    xlabel="relevant distance",
+    ylabel="difference",
+    title="Relevant distance vs difference",
 ):
     for key in dictionary:
         if len(dictionary[key]) == len(series):
@@ -416,7 +439,7 @@ def _processresult_to_dicts(processresult):
 # https://www.pythonguis.com/tutorials/plotting-matplotlib/
 import matplotlib
 
-matplotlib.use('Qt5Agg')
+matplotlib.use("Qt5Agg")
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure

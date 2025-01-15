@@ -34,16 +34,17 @@ def import_modules():
         from shapely import Polygon, from_wkt, to_wkt, unary_union, make_valid
         from shapely.geometry import shape
 
-    brdr_version = "0.6.0"
+    brdr_version = "0.7.0"
     try:
         import brdr
-
 
         if brdr.__version__ != brdr_version:
             raise ValueError("Version mismatch")
 
     except (ModuleNotFoundError, ValueError):
-        subprocess.check_call([python_exe, "-m", "pip", "install", "brdr==" + brdr_version])
+        subprocess.check_call(
+            [python_exe, "-m", "pip", "install", "brdr==" + brdr_version]
+        )
         import brdr
 
         print(brdr.__version__)

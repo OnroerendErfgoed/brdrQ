@@ -37,6 +37,7 @@ import sys
 import numpy as np
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QListWidgetItem
+from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import Qt
@@ -45,6 +46,7 @@ from qgis.core import QgsMapLayerProxyModel
 from qgis.core import QgsProject
 from qgis.core import QgsSettings
 from qgis.core import QgsStyle
+from qgis.utils import OverrideCursor
 from shapely.io import from_wkt
 
 from .brdrq_dockwidget import brdrQDockWidget
@@ -56,13 +58,14 @@ from .brdrq_utils import (
     show_map,
     geom_shapely_to_qgis,
     ENUM_REFERENCE_OPTIONS,
-    LOCAL_REFERENCE_LAYER,
     geojson_to_layer,
     ADPF_VERSIONS,
     geom_qgis_to_shapely,
     GRB_TYPES,
     get_layer_by_name,
     get_workfolder,
+    ENUM_SNAP_STRATEGY_OPTIONS,
+    ENUM_OD_STRATEGY_OPTIONS,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -72,14 +75,15 @@ if cmd_folder not in sys.path:
 
 from brdr.aligner import Aligner
 from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader
-from brdr.enums import GRBType, AlignerResultType, OpenbaarDomeinStrategy
+from brdr.enums import GRBType, AlignerResultType, OpenbaarDomeinStrategy, SnapStrategy
 from brdr.loader import DictLoader
+from brdr.utils import diffs_from_dict_processresults
 
 
 class BrdrQPlugin(object):
 
     def __init__(self, iface):
-        print ("init")
+        print("init")
         self.provider = None
         self.iface = iface
         self.dockwidget = None
@@ -87,16 +91,22 @@ class BrdrQPlugin(object):
         self.actions = []
         self.toolbar = self.iface.addToolBar("brdrQ")
         self.toolbar.setObjectName("brdrQ")
+        self.max_rel_dist = None
         self.minimum = 0
         self.maximum = 1500
         self.step = 10
         self.relevant_distances = None
         self.max_feature_count = 5000
+        self.max_area_optimization = 100000
+        self.max_area_limit = (
+            400000  # maximum m² where the calculation will be done for
+        )
         self.layer = None
         self.selected_features = None
         self.feature = None
-        self.dict_series = None
-        self.dict_predictions = None
+        self.dict_processresults = None
+        self.dict_evaluated_predictions = None
+        self.props_dict_evaluated_predictions = None
         self.diffs_dict = None
         self.aligner = None
         self.od_strategy = None
@@ -106,6 +116,11 @@ class BrdrQPlugin(object):
         self.reference_id = None
         self.reference_loader = None
         self.original_geometry = None
+        self.formula = None
+        self.full_parcel = None
+        self.partial_snapping = None
+        self.partial_snapping_strategy = None
+        self.snap_max_segment_length = None
         self.GROUP_LAYER = "brdrQ_plugin"
         self.LAYER_RESULT = (
             "RESULT"  # parameter that holds the TOC layername of the result
@@ -141,7 +156,7 @@ class BrdrQPlugin(object):
         QgsApplication.processingRegistry().addProvider(self.provider)
 
     def initGui(self):
-        #print ("initGui")
+        # print ("initGui")
         self.initProcessing()
         icon = os.path.join(os.path.join(cmd_folder, "icon.png"))
         action_featurepredictor = QAction(
@@ -151,9 +166,13 @@ class BrdrQPlugin(object):
         self.iface.addPluginToMenu("brdQ", action_featurepredictor)
         self.toolbar.addAction(action_featurepredictor)
         self.actions.append(action_featurepredictor)
-        icon_autocorrectborders = os.path.join(os.path.join(cmd_folder, "icon_autocorrectborders.png"))
+        icon_autocorrectborders = os.path.join(
+            os.path.join(cmd_folder, "icon_autocorrectborders.png")
+        )
         action_autocorrectborders = QAction(
-            QIcon(icon_autocorrectborders), "Autocorrectborders", self.iface.mainWindow()
+            QIcon(icon_autocorrectborders),
+            "Autocorrectborders",
+            self.iface.mainWindow(),
         )
         action_autocorrectborders.triggered.connect(self.openAutocorrectbordersscript)
         # self.iface.addToolBarIcon(action)
@@ -166,37 +185,45 @@ class BrdrQPlugin(object):
         self.load_settings()
 
     def load_settings(self):
-        #print("load settings")
+        # print("load settings")
         for r in ENUM_REFERENCE_OPTIONS:
             self.settingsDialog.comboBox_referencelayer.addItem(r)
-        for od in OpenbaarDomeinStrategy:
-            self.settingsDialog.comboBox_odstrategy.addItem(od.name)
+        for od in ENUM_OD_STRATEGY_OPTIONS:
+            self.settingsDialog.comboBox_odstrategy.addItem(od)
+        for s in ENUM_SNAP_STRATEGY_OPTIONS:
+            self.settingsDialog.comboBox_snapstrategy.addItem(s)
         self.settingsDialog.comboBox_referencelayer.currentIndexChanged.connect(
             self.update_reference_choice
+        )
+        self.settingsDialog.checkBox_partial_snapping.stateChanged.connect(
+            self.update_partial_snapping
         )
         self.settingsDialog.mMapLayerComboBox_reference.layerChanged.connect(
             self.updateFields_reference
         )
         self.settingsDialog.buttonBox_settings.accepted.connect(self.push_settings_ok)
 
-        # Set initial settings
-        self.settingsDialog.comboBox_referencelayer.setCurrentIndex(1)
-        self.settingsDialog.comboBox_odstrategy.setCurrentIndex(3)
-        self.settingsDialog.spinBox_max_relevant_distance.setValue(5)
-
-
         # Load initial settings into tool (same as pushing OK in settings Dialog)
         self._update_settings()
         return
 
     def update_reference_choice(self, index):
-        #print(str(index))
+        # print(str(index))
         if index == 0:
             self.settingsDialog.mMapLayerComboBox_reference.setEnabled(True)
             self.settingsDialog.mFieldComboBox_reference.setEnabled(True)
         else:
             self.settingsDialog.mMapLayerComboBox_reference.setEnabled(False)
             self.settingsDialog.mFieldComboBox_reference.setEnabled(False)
+        return
+
+    def update_partial_snapping(self, state):
+        if state == 2:
+            self.settingsDialog.comboBox_snapstrategy.setEnabled(True)
+            self.settingsDialog.spinBox_snap_max_segment_length.setEnabled(True)
+        else:
+            self.settingsDialog.comboBox_snapstrategy.setEnabled(False)
+            self.settingsDialog.spinBox_snap_max_segment_length.setEnabled(False)
         return
 
     def updateFields_reference(self):
@@ -209,27 +236,29 @@ class BrdrQPlugin(object):
         # self.dockwidget.listWidget_features.clearSelection()
         self.dockwidget.listWidget_predictions.clear()
         self.dockwidget.textEdit_output.setText("Please select a feature to align")
-        self.dockwidget.doubleSpinBox.setMaximum(self.maximum / 100)
-        self.dockwidget.doubleSpinBox.setValue(0.0)
-        self.dockwidget.horizontalSlider.setMaximum(self.maximum)
         self.remove_brdrq_layers()
-        self.feature=None
+        self.feature = None
 
-    def _update_settings(self, proj=None):
-        #print ("update settings")
-        #print (str(self.threshold_overlap_percentage))
-        # if QgsProject is None or QgsProject.instance() is None:
-        #     return
-        #proj = QgsProject.instance()
+    def _update_settings(self):
         s = QgsSettings()
         if self.threshold_overlap_percentage is None:
-            self.threshold_overlap_percentage = int(s.value("brdrq/threshold_overlap_percentage", 50))
-            #print (str(self.threshold_overlap_percentage))
-            # self.threshold_overlap_percentage, type_conversion_ok = proj.readNumEntry("brdrq",
-            #                                               "threshold_overlap_percentage",50)
-            self.settingsDialog.spinBox_threshold.setValue(self.threshold_overlap_percentage)
-        #print(str(self.threshold_overlap_percentage))
-        self.maximum = self.settingsDialog.spinBox_max_relevant_distance.value() * 100
+            self.threshold_overlap_percentage = int(
+                s.value("brdrq/threshold_overlap_percentage", 50)
+            )
+            self.settingsDialog.spinBox_threshold.setValue(
+                self.threshold_overlap_percentage
+            )
+        self.threshold_overlap_percentage = (
+            self.settingsDialog.spinBox_threshold.value()
+        )
+        if self.max_rel_dist is None:
+            self.max_rel_dist = int(s.value("brdrq/max_rel_dist", 5))
+            self.settingsDialog.spinBox_max_relevant_distance.setValue(
+                self.max_rel_dist
+            )
+        self.max_rel_dist = self.settingsDialog.spinBox_max_relevant_distance.value()
+        self.maximum = self.max_rel_dist * 100
+
         self.relevant_distances = [
             round(k, 1)
             for k in np.arange(
@@ -237,43 +266,140 @@ class BrdrQPlugin(object):
             )
             / 100
         ]
+        if not self.dockwidget is None:
+            self.dockwidget.doubleSpinBox.setMinimum(self.minimum / 100)
+            self.dockwidget.doubleSpinBox.setMaximum(self.maximum / 100)
+            self.dockwidget.doubleSpinBox.setSingleStep(self.step / 100)
+            self.dockwidget.doubleSpinBox.setDecimals(1)
+            self.dockwidget.doubleSpinBox.setValue(0.0)
+            self.dockwidget.horizontalSlider.setMinimum(0)
+            self.dockwidget.horizontalSlider.setMaximum(
+                len(self.relevant_distances) - 1
+            )
+            self.dockwidget.horizontalSlider.setSingleStep(1)
+
+        if self.od_strategy is None:
+            self.od_strategy = int(s.value("brdrq/od_strategy", 2))
+            index = self.settingsDialog.comboBox_odstrategy.findText(
+                OpenbaarDomeinStrategy(self.od_strategy).name
+            )
+            self.settingsDialog.comboBox_odstrategy.setCurrentIndex(index)
         self.od_strategy = OpenbaarDomeinStrategy[
             self.settingsDialog.comboBox_odstrategy.currentText()
+        ].value
+        if (
+            self.partial_snapping_strategy is None
+            or self.partial_snapping_strategy == ""
+        ):
+            no_pref = SnapStrategy.NO_PREFERENCE.name
+            self.partial_snapping_strategy = s.value(
+                "brdrq/partial_snapping_strategy", no_pref
+            )
+            index = self.settingsDialog.comboBox_snapstrategy.findText(
+                self.partial_snapping_strategy
+            )
+            if index == -1:
+                index = 0
+            self.settingsDialog.comboBox_snapstrategy.setCurrentIndex(index)
+        self.partial_snapping_strategy = SnapStrategy[
+            self.settingsDialog.comboBox_snapstrategy.currentText()
         ]
-        self.threshold_overlap_percentage = (
-            self.settingsDialog.spinBox_threshold.value()
-        )
-        #print(str(self.threshold_overlap_percentage))
+
+        if self.reference_choice is None:
+            self.reference_choice = s.value(
+                "brdrq/reference_choice", ENUM_REFERENCE_OPTIONS[1]
+            )
+            index = self.settingsDialog.comboBox_referencelayer.findText(
+                self.reference_choice
+            )
+            self.settingsDialog.comboBox_referencelayer.setCurrentIndex(index)
         self.reference_choice = (
             self.settingsDialog.comboBox_referencelayer.currentText()
         )
-        self.reference_layer = None
-        self.reference_id = None
-        self.aligner = None
-        self.aligner = Aligner(
-            od_strategy=self.od_strategy,
-            threshold_overlap_percentage=self.threshold_overlap_percentage,
+        current_reference_layer_index = (
+            self.settingsDialog.mMapLayerComboBox_reference.currentIndex()
         )
-        if self.reference_choice == LOCAL_REFERENCE_LAYER:
+        if current_reference_layer_index == -1 or current_reference_layer_index == 0:
+            self.reference_layer = s.value("brdrq/reference_layer", None)
+            self.settingsDialog.mMapLayerComboBox_reference.setLayer(
+                self.reference_layer
+            )
+        self.reference_layer = (
+            self.settingsDialog.mMapLayerComboBox_reference.currentLayer()
+        )
 
-            self.reference_layer = (
-                self.settingsDialog.mMapLayerComboBox_reference.currentLayer()
+        current_reference_id_index = (
+            self.settingsDialog.mFieldComboBox_reference.currentIndex()
+        )
+        if current_reference_id_index == -1 or current_reference_id_index == 0:
+            self.reference_id = s.value("brdrq/reference_id", None)
+            self.settingsDialog.mFieldComboBox_reference.setField(self.reference_id)
+        self.reference_id = self.settingsDialog.mFieldComboBox_reference.currentField()
+        if self.full_parcel is None:
+            self.full_parcel = int(s.value("brdrq/full_parcel", 2))
+            self.settingsDialog.checkBox_full_parcel.setCheckState(self.full_parcel)
+        self.full_parcel = self.settingsDialog.checkBox_full_parcel.checkState()
+
+        if self.formula is None:
+            self.formula = int(s.value("brdrq/formula", 0))
+            self.settingsDialog.checkBox_formula.setCheckState(self.formula)
+        self.formula = self.settingsDialog.checkBox_formula.checkState()
+
+        self.partial_snapping = 0
+        if self.partial_snapping is None:
+            self.partial_snapping = int(s.value("brdrq/partial_snapping", 0))
+            self.settingsDialog.checkBox_partial_snapping.setCheckState(
+                self.partial_snapping
             )
-            self.reference_id = (
-                self.settingsDialog.mFieldComboBox_reference.currentField()
+        self.partial_snapping = (
+            self.settingsDialog.checkBox_partial_snapping.checkState()
+        )
+        self.partial_snapping = 0
+
+        if self.snap_max_segment_length is None:
+            self.snap_max_segment_length = int(
+                s.value("brdrq/snap_max_segment_length", 2)
             )
+            self.settingsDialog.spinBox_snap_max_segment_length.setValue(
+                self.snap_max_segment_length
+            )
+        self.snap_max_segment_length = (
+            self.settingsDialog.spinBox_snap_max_segment_length.value()
+        )
 
         print(
             f"settings updated: Reference choice={self.reference_choice} - od_strategy={self.od_strategy} - threshold overlap percenatge = {str(self.threshold_overlap_percentage)}"
         )
-        #write settings to project
-        #proj.writeEntry("brdrq", "threshold_overlap_percentage", self.threshold_overlap_percentage)
-        s.setValue("brdrq/threshold_overlap_percentage",  self.threshold_overlap_percentage)
+        self.partial_snapping = False
+        self.aligner = None
+        self.aligner = Aligner(
+            od_strategy=self.od_strategy,
+            threshold_overlap_percentage=self.threshold_overlap_percentage,
+            partial_snapping=self.partial_snapping,
+            partial_snapping_strategy=self.partial_snapping_strategy,
+            snapping_max_segment_length=self.snap_max_segment_length,
+        )
+        # write settings
+        s.setValue(
+            "brdrq/threshold_overlap_percentage", self.threshold_overlap_percentage
+        )
+        s.setValue("brdrq/od_strategy", self.od_strategy)
+        s.setValue("brdrq/reference_choice", self.reference_choice)
+        s.setValue("brdrq/reference_id", self.reference_id)
+        s.setValue("brdrq/reference_layer", self.reference_layer)
+        s.setValue("brdrq/max_rel_dist", self.max_rel_dist)
+        s.setValue("brdrq/formula", self.formula)
+        s.setValue("brdrq/full_parcel", self.full_parcel)
+        s.setValue("brdrq/partial_snapping", self.partial_snapping)
+        s.setValue(
+            "brdrq/partial_snapping_strategy", self.partial_snapping_strategy.name
+        )
+        s.setValue("brdrq/snap_max_segment_length", self.snap_max_segment_length)
         return
 
     def openAutocorrectbordersscript(self):
         dialog_autocorrectborders = processing.createAlgorithmDialog(
-            'brdrqprovider:brdrqautocorrectborders'
+            "brdrqprovider:brdrqautocorrectborders"
         )
         dialog_autocorrectborders.exec()
 
@@ -323,13 +449,6 @@ class BrdrQPlugin(object):
                 # Create the dockwidget (after translation) and keep reference
                 self.dockwidget = brdrQDockWidget()
 
-            self.dockwidget.horizontalSlider.setMinimum(self.minimum)
-            self.dockwidget.horizontalSlider.setMaximum(self.maximum)
-            self.dockwidget.horizontalSlider.setSingleStep(self.step)
-            self.dockwidget.doubleSpinBox.setMinimum(self.minimum / 100)
-            self.dockwidget.doubleSpinBox.setMaximum(self.maximum / 100)
-            self.dockwidget.doubleSpinBox.setSingleStep(self.step / 100)
-            self.dockwidget.doubleSpinBox.setDecimals(1)
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
             self.dockwidget.pushButton_help.clicked.connect(self.show_help_dialog)
@@ -376,6 +495,7 @@ class BrdrQPlugin(object):
     #     picker.setDisplayExpression('$id')  # show ids in combobox
 
     def setFeatures(self):
+        self.dockwidget.progressBar.setValue(0)
         self.layer = self.dockwidget.mMapLayerComboBox.currentLayer()
         if self.layer is None:
             self.dockwidget.textEdit_output.setText("Please select a layer")
@@ -412,7 +532,12 @@ class BrdrQPlugin(object):
         return
 
     def onFeatureActivated(self, currentItem):
-        self._onFeatureChange(currentItem)
+        self.dockwidget.progressBar.setValue(0)
+        self.dockwidget.listWidget_predictions.clear()
+        self.dockwidget.textEdit_output.setText("")
+        with OverrideCursor(Qt.WaitCursor):
+            self._onFeatureChange(currentItem)
+        self.dockwidget.progressBar.setValue(100)
 
     def _onFeatureChange(self, currentItem):
         print("_onFeatureChange")
@@ -442,11 +567,29 @@ class BrdrQPlugin(object):
         self.iface.mapCanvas().refresh()
         key = self.feature.id()
 
+        # Check feature on area
+        # check area of feature and optimize/block calculation
+        area = self.original_geometry.area()
+        self.step = 10
+        if area > self.max_area_optimization:
+            if area > self.max_area_limit:
+                msg = f"Very big area, {str(area)} m²: The calculation is blocked. Please use the bulk tool for this feature"
+                self.dockwidget.textEdit_output.setText(f"{msg}")
+                # self.iface.messageBar().pushMessage(msg)
+                return
+            else:
+                msg = f"Warning - Big area, {str(area)} m²: the calculation will be adapted/optimized. Only for every meter a calculation will be done"
+                self.dockwidget.textEdit_output.setText(f"{msg}")
+                # self.iface.messageBar().pushMessage(msg)
+                self.step = 100
+
+        self._update_settings()
+
         # do alignment/prediction
         self._align()
 
         fcs = self.aligner.get_results_as_geojson(
-            resulttype=AlignerResultType.PROCESSRESULTS
+            resulttype=AlignerResultType.PROCESSRESULTS, formula=self.formula
         )
 
         geojson_to_layer(
@@ -484,14 +627,30 @@ class BrdrQPlugin(object):
 
         # set list with predicted values
         self.dockwidget.listWidget_predictions.clear()
-        items = [str(k) for k in self.dict_predictions[key]]
-        self.dockwidget.listWidget_predictions.addItems(items)
-        if len(items) > 1:
-            self.dockwidget.listWidget_predictions.setCurrentRow(1)
-            self.dockwidget.doubleSpinBox.setValue(round(float(items[1]), 1))
-        elif len(items) > 0:
-            self.dockwidget.listWidget_predictions.setCurrentRow(0)
-            self.dockwidget.doubleSpinBox.setValue(round(float(items[0]), 1))
+        # TODO, loop over predictions en voeg toe met boodschap
+        items = []
+        items_with_name = []
+        best_index = 0
+        best_score = 0
+        list_predictions = [k for k in (self.dict_evaluated_predictions[key]).keys()]
+        print(str(list_predictions))
+        for k in list_predictions:
+            print(str(k))
+            items.append(str(k))
+            score = self.props_dict_evaluated_predictions[key][k][PREDICTION_SCORE]
+            evaluation = self.props_dict_evaluated_predictions[key][k][
+                EVALUATION_FIELD_NAME
+            ]
+            items_with_name.append(f"{str(k)}: {str(evaluation)} (score: {str(score)})")
+            if score > best_score:
+                best_score = score
+                best_index = list_predictions.index(k)
+                print("best index: " + str(best_index))
+        self.dockwidget.listWidget_predictions.setFocus()
+        self.dockwidget.listWidget_predictions.addItems(items_with_name)
+        if len(items) > 0:
+            self.dockwidget.listWidget_predictions.setCurrentRow(best_index)
+            self.dockwidget.doubleSpinBox.setValue(round(float(items[best_index]), 1))
         else:
             self.dockwidget.textEdit_output.setText("No predictions")
 
@@ -505,21 +664,25 @@ class BrdrQPlugin(object):
             print("currentitem zero")
             return
         print("item activated with rd: " + currentItem.text())
-        value = round(float(currentItem.text()), 1)
+        value = currentItem.text()
+        value = value.split(":")[0]
+        value = round(float(value), 1)
         print("item activated with rd - value: " + str(value))
         self.dockwidget.doubleSpinBox.setValue(value)
-        self.dockwidget.horizontalSlider.setValue(int(100 * value))
+        index = self.relevant_distances.index(value)
+        self.dockwidget.horizontalSlider.setValue(index)
         return
 
-    def onSliderChange(self, value):
-        print("onSliderChange: value -> " + str(value))
-        value = round(value / 100, 1)
+    def onSliderChange(self, index):
+        print("onSliderChange: index -> " + str(index))
+        value = self.relevant_distances[index]
         self.dockwidget.doubleSpinBox.setValue(value)
         return
 
     def onSpinboxChange(self, value):
         value = round(value, 1)
-        self.dockwidget.horizontalSlider.setValue(int(value * 100))
+        index = self.relevant_distances.index(value)
+        self.dockwidget.horizontalSlider.setValue(index)
         print("onSpinboxChange: value -> " + str(value))
 
         # self.change_geometry()
@@ -549,6 +712,7 @@ class BrdrQPlugin(object):
         if feat is None:
             return
         key = feat.id()
+        # TODO; hoe deze bekomen?
         plot_series(self.relevant_distances, {key: self.diffs_dict[key]})
         return
 
@@ -559,7 +723,7 @@ class BrdrQPlugin(object):
             return
         key = feat.id()
         show_map(
-            {key: self.dict_predictions[key]},
+            {key: self.dict_evaluated_predictions[key]},
             {key: self.aligner.dict_thematic[key]},
             self.aligner.dict_reference,
         )
@@ -572,8 +736,8 @@ class BrdrQPlugin(object):
             return
         key = feat.id()
         relevant_distance = self.dockwidget.doubleSpinBox.value()
-        if relevant_distance in self.dict_series[key]:
-            result = self.dict_series[key][relevant_distance]
+        if relevant_distance in self.dict_processresults[key]:
+            result = self.dict_processresults[key][relevant_distance]
             resulting_geom = result["result"]
         else:
             errormesssage = "Relevant_distance_result not calculated for: " + str(
@@ -609,8 +773,8 @@ class BrdrQPlugin(object):
             return
         key = feat.id()
         relevant_distance = self.dockwidget.doubleSpinBox.value()
-        if relevant_distance in self.dict_series[key]:
-            result = self.dict_series[key][relevant_distance]
+        if relevant_distance in self.dict_processresults[key]:
+            result = self.dict_processresults[key][relevant_distance]
             resulting_geom = result["result"]
         else:
             errormesssage = "Relevant_distance_result not calculated for: " + str(
@@ -636,13 +800,16 @@ class BrdrQPlugin(object):
 
         dict_to_load = {}
 
+        self.dockwidget.progressBar.setValue(0)
         for feature in selectedFeatures:
             feature_geom = feature.geometry()
             wkt = feature_geom.asWkt()
             geom_shapely = from_wkt(wkt)
             dict_to_load[feature.id()] = geom_shapely
+
         # Load thematic data
         self.aligner.load_thematic_data(DictLoader(dict_to_load))
+        self.dockwidget.progressBar.setValue(25)
         # Load reference data for the on-the fly reference versions
         print(self.reference_choice)
         if self.reference_choice in GRB_TYPES:
@@ -682,21 +849,40 @@ class BrdrQPlugin(object):
             self.aligner.name_reference_id = self.reference_id
             self.aligner.dict_reference_source["source"] = "local"
             self.aligner.dict_reference_source["version_date"] = "unknown"
-
-        self.dict_series, self.dict_predictions, self.diffs_dict = (
-            self.aligner.predictor(
-                relevant_distances=self.relevant_distances,
-                od_strategy=self.od_strategy,
-                threshold_overlap_percentage=self.threshold_overlap_percentage,
-            )
+        self.dockwidget.progressBar.setValue(50)
+        # self.dict_series, self.dict_predictions, self.diffs_dict = (
+        #     self.aligner.predictor(
+        #         relevant_distances=self.relevant_distances,
+        #         od_strategy=self.od_strategy,
+        #         threshold_overlap_percentage=self.threshold_overlap_percentage,
+        #     )
+        # )
+        dict_evaluated, props_dict_evaluated_predictions = self.aligner.evaluate(
+            ids_to_evaluate=None,
+            base_formula_field=None,
+            all_predictions=True,
+            relevant_distances=self.relevant_distances,
+            prefer_full=self.full_parcel,
         )
+
+        self.dict_processresults = self.aligner.dict_processresults
+        self.dict_evaluated_predictions = dict_evaluated
+        self.props_dict_evaluated_predictions = props_dict_evaluated_predictions
+        self.diffs_dict = diffs_from_dict_processresults(
+            self.dict_processresults, self.aligner.dict_thematic
+        )
+
         outputMessage = "Voorspelde relevante afstanden: " + str(
-            [str(k) for k in self.dict_predictions[feat.id()].keys()]
+            [str(k) for k in self.dict_evaluated_predictions[feat.id()].keys()]
         )
-
         self.dockwidget.textEdit_output.setText(outputMessage)
         self.iface.messageBar().pushMessage(outputMessage)
-        return self.dict_series, self.dict_predictions, self.diffs_dict
+        # self.dockwidget.progressBar.setValue(100)
+        return (
+            self.dict_processresults,
+            self.dict_evaluated_predictions,
+            self.diffs_dict,
+        )
 
 
 # from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify
