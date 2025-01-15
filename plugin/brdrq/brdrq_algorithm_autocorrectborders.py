@@ -559,6 +559,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 formula=self.ADD_FORMULA,
                 attributes=self.ATTRIBUTES,
             )
+        if "result" not in fcs:
+            feedback.pushInfo("Geen predicties gevonden")
+            feedback.pushInfo("END")
+
+            return {}
 
         feedback.pushInfo("END PROCESSING")
 
@@ -619,22 +624,24 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             )
 
         if self.SHOW_INTERMEDIATE_LAYERS:
-            geojson_to_layer(
-                self.LAYER_RELEVANT_INTERSECTION,
-                fcs["result_relevant_intersection"],
-                QgsStyle.defaultStyle().symbol("gradient green fill"),
-                False,
-                self.GROUP_LAYER,
-                self.WORKFOLDER,
-            )
-            geojson_to_layer(
-                self.LAYER_RELEVANT_DIFFERENCE,
-                fcs["result_relevant_diff"],
-                QgsStyle.defaultStyle().symbol("gradient red fill"),
-                False,
-                self.GROUP_LAYER,
-                self.WORKFOLDER,
-            )
+            if "result_relevant_intersection" in fcs.keys():
+                geojson_to_layer(
+                    self.LAYER_RELEVANT_INTERSECTION,
+                    fcs["result_relevant_intersection"],
+                    QgsStyle.defaultStyle().symbol("gradient green fill"),
+                    False,
+                    self.GROUP_LAYER,
+                    self.WORKFOLDER,
+                )
+            if "result_relevant_diff" in fcs.keys():
+                geojson_to_layer(
+                    self.LAYER_RELEVANT_DIFFERENCE,
+                    fcs["result_relevant_diff"],
+                    QgsStyle.defaultStyle().symbol("gradient red fill"),
+                    False,
+                    self.GROUP_LAYER,
+                    self.WORKFOLDER,
+                )
 
         geojson_to_layer(
             self.LAYER_RESULT_DIFF,
