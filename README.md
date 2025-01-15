@@ -41,10 +41,12 @@ You can install the latest release of `brdrQ` from
 
 ### Installation-steps
 
-At this moment, the QGIS plugin 'brdrQ' has to be installed based on a zip-folder-installation. (In future we want to provide it as as a plugin in the QGIS-plugin-repository)
+At this moment, the QGIS plugin 'brdrQ' has to be installed based on a zip-folder-installation. (In future we want to
+provide it as as a plugin in the QGIS-plugin-repository)
 Follow the steps below to make the plugin available in the QGISToolbar and QGIS Processing Toolbox
+
 1. Download the zip-file from Github and save it on your local machine:
-<https://github.com/OnroerendErfgoed/brdrQ/tree/main/dist/brdrq.zip>
+   <https://github.com/OnroerendErfgoed/brdrQ/tree/main/dist/brdrq.zip>
 
 2. Open the 'Plugins'>>'Manage and install plugins...' from the topbar of QGIS
 
@@ -63,11 +65,13 @@ screen will close automatically after installation.)
 
 <img src="docs/figures/installation-step-2c.png" width="50%" />
 
-3. After a successful installation, check in the 'Installed'-tab if the plugin is activated (red arrow). if not, you have to activate the checkbox
+3. After a successful installation, check in the 'Installed'-tab if the plugin is activated (red arrow). if not, you
+   have to activate the checkbox
 
 <img src="docs/figures/installation-step-2d.png" width="100%" />
 
-4. The plugin 'brdrQ' is now installed and  the brdrQProvider is available in the Processing Toolbox. First open the processing toolbox and look for 'brdrQProvider'
+4. The plugin 'brdrQ' is now installed and the brdrQProvider is available in the Processing Toolbox. First open the
+   processing toolbox and look for 'brdrQProvider'
 
 <img src="docs/figures/installation-step-3a.png" width="50%" />
 <img src="docs/figures/installation-step-3b.png" width="50%" />

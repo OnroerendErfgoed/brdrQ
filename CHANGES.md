@@ -1,3 +1,13 @@
+# v0.9.11
+
+- Optimize and block the calculation of big features when using the feature-by-feature tool, to prevent crashing [#99]
+- Show waiting-icon and progressbar when waiting/calculating when using the feature-by-feature tool [#89]
+- Add settings-parameter to add brdr_formula to the results of the feature-by-feature tool [#88]
+- Add a control-check that a manually chosen working-foldr is writeble, (and use temp-folder if so) [#84]
+- Saving the settings of the feature-by-feature tool when closing and opening tool [#94]
+- Adding extra snapping parameters to the settings (disabled because of slowness on bigger features) [#105]
+- Adding a evaluation-status and prediction-score to the predicted features in the feature-by-feature tool [#90]
+
 # v0.9.10
 
 - Upgrade to brdr version 0.6.0
