@@ -34,6 +34,7 @@ import inspect
 import os
 import sys
 
+import brdr
 import numpy as np
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QListWidgetItem
@@ -121,6 +122,7 @@ class BrdrQPlugin(object):
         self.partial_snapping = None
         self.partial_snapping_strategy = None
         self.snap_max_segment_length = None
+        self.DECIMAL = 1
         self.GROUP_LAYER = "brdrQ_plugin"
         self.LAYER_RESULT = (
             "RESULT"  # parameter that holds the TOC layername of the result
@@ -158,9 +160,9 @@ class BrdrQPlugin(object):
     def initGui(self):
         # print ("initGui")
         self.initProcessing()
-        icon = os.path.join(os.path.join(cmd_folder, "icon.png"))
+        icon = os.path.join(os.path.join(cmd_folder, "icon_featurealigner.png"))
         action_featurepredictor = QAction(
-            QIcon(icon), "brdrQ - GRB actual Parcel Aligner", self.iface.mainWindow()
+            QIcon(icon), "brdrQ - Feature Aligner (predictor)", self.iface.mainWindow()
         )
         action_featurepredictor.triggered.connect(self.openDock)
         self.iface.addPluginToMenu("brdQ", action_featurepredictor)
@@ -171,7 +173,7 @@ class BrdrQPlugin(object):
         )
         action_autocorrectborders = QAction(
             QIcon(icon_autocorrectborders),
-            "Autocorrectborders",
+            "Autocorrectborders (bulk)",
             self.iface.mainWindow(),
         )
         action_autocorrectborders.triggered.connect(self.openAutocorrectbordersscript)
@@ -179,6 +181,34 @@ class BrdrQPlugin(object):
         self.iface.addPluginToMenu("brdQ", action_autocorrectborders)
         self.toolbar.addAction(action_autocorrectborders)
         self.actions.append(action_autocorrectborders)
+
+        icon_autoupdateborders = os.path.join(
+            os.path.join(cmd_folder, "icon_autoupdateborders.png")
+        )
+        action_autoupdateborders = QAction(
+            QIcon(icon_autoupdateborders),
+            "Autoupdateborders (bulk)",
+            self.iface.mainWindow(),
+        )
+        action_autoupdateborders.triggered.connect(self.openAutoupdatebordersscript)
+        # self.iface.addToolBarIcon(action)
+        self.iface.addPluginToMenu("brdQ", action_autoupdateborders)
+        self.toolbar.addAction(action_autoupdateborders)
+        self.actions.append(action_autoupdateborders)
+
+        icon_info = os.path.join(
+            os.path.join(cmd_folder, "icon_info.png")
+        )
+        action_info = QAction(
+            QIcon(icon_info),
+            "info (version)",
+            self.iface.mainWindow(),
+        )
+        action_info.triggered.connect(self.openInfo)
+        # self.iface.addToolBarIcon(action)
+        self.iface.addPluginToMenu("brdQ", action_info)
+        self.toolbar.addAction(action_info)
+        self.actions.append(action_info)
 
         # show the dockwidget
         # self.openDock()
@@ -260,7 +290,7 @@ class BrdrQPlugin(object):
         self.maximum = self.max_rel_dist * 100
 
         self.relevant_distances = [
-            round(k, 1)
+            round(k, self.DECIMAL)
             for k in np.arange(
                 self.minimum, self.maximum + self.step, self.step, dtype=int
             )
@@ -270,7 +300,7 @@ class BrdrQPlugin(object):
             self.dockwidget.doubleSpinBox.setMinimum(self.minimum / 100)
             self.dockwidget.doubleSpinBox.setMaximum(self.maximum / 100)
             self.dockwidget.doubleSpinBox.setSingleStep(self.step / 100)
-            self.dockwidget.doubleSpinBox.setDecimals(1)
+            self.dockwidget.doubleSpinBox.setDecimals(self.DECIMAL)
             self.dockwidget.doubleSpinBox.setValue(0.0)
             self.dockwidget.horizontalSlider.setMinimum(0)
             self.dockwidget.horizontalSlider.setMaximum(
@@ -403,6 +433,21 @@ class BrdrQPlugin(object):
         )
         dialog_autocorrectborders.exec()
 
+    def openInfo(self):
+        msg = f"brdrQ version: {self.version()} - brdr-version: {str(brdr.__version__)}"
+        self.iface.messageBar().pushMessage(msg)
+
+    def version(self):
+        return "0.9.11"
+
+
+    def openAutoupdatebordersscript(self):
+        dialog_autoupdateborders = processing.createAlgorithmDialog(
+            "brdrqprovider:brdrqautoupdateborders"
+        )
+        dialog_autoupdateborders.exec()
+
+
     def remove_brdrq_layers(self):
         tree = QgsProject.instance().layerTreeRoot()
         node_object = tree.findGroup(self.GROUP_LAYER)
@@ -462,7 +507,7 @@ class BrdrQPlugin(object):
             self.dockwidget.pushButton_save.clicked.connect(self.change_geometry)
             self.dockwidget.pushButton_reset.clicked.connect(self.reset_geometry)
             # self.dockwidget.pushButton_select.clicked.connect(self.start_line_edit)
-            self.dockwidget.pushButton_wkt.clicked.connect(self.get_wkt)
+            #self.dockwidget.pushButton_wkt.clicked.connect(self.get_wkt)
             self.dockwidget.mMapLayerComboBox.setFilters(
                 QgsMapLayerProxyModel.PolygonLayer
             )
@@ -495,7 +540,8 @@ class BrdrQPlugin(object):
     #     picker.setDisplayExpression('$id')  # show ids in combobox
 
     def setFeatures(self):
-        self.dockwidget.progressBar.setValue(0)
+        #reset interface by clearing list, progress_bar
+        self._clearUserInterface()
         self.layer = self.dockwidget.mMapLayerComboBox.currentLayer()
         if self.layer is None:
             self.dockwidget.textEdit_output.setText("Please select a layer")
@@ -515,9 +561,6 @@ class BrdrQPlugin(object):
                 "No selected features in this layer, all features returned"
             )
 
-        # Clear the list widget
-        self.dockwidget.listWidget_features.clear()
-
         # Add the selected features to the list widget
         for feature in self.selected_features:
             attributes = feature.attributes()
@@ -530,6 +573,14 @@ class BrdrQPlugin(object):
             f"#Features: {str(len(self.selected_features))}"
         )
         return
+
+    def _clearUserInterface(self):
+        # Clear progressbar
+        self.dockwidget.progressBar.setValue(0)
+        # Clear the featurelist widget
+        self.dockwidget.listWidget_features.clear()
+        # Clear the predictionlist
+        self.dockwidget.listWidget_predictions.clear()
 
     def onFeatureActivated(self, currentItem):
         self.dockwidget.progressBar.setValue(0)
@@ -650,7 +701,8 @@ class BrdrQPlugin(object):
         self.dockwidget.listWidget_predictions.addItems(items_with_name)
         if len(items) > 0:
             self.dockwidget.listWidget_predictions.setCurrentRow(best_index)
-            self.dockwidget.doubleSpinBox.setValue(round(float(items[best_index]), 1))
+            print ("best-index: "+str(items[best_index]))
+            self.dockwidget.doubleSpinBox.setValue(round(float(items[best_index]), self.DECIMAL))
         else:
             self.dockwidget.textEdit_output.setText("No predictions")
 
@@ -666,7 +718,7 @@ class BrdrQPlugin(object):
         print("item activated with rd: " + currentItem.text())
         value = currentItem.text()
         value = value.split(":")[0]
-        value = round(float(value), 1)
+        value = round(float(value), self.DECIMAL)
         print("item activated with rd - value: " + str(value))
         self.dockwidget.doubleSpinBox.setValue(value)
         index = self.relevant_distances.index(value)
@@ -676,11 +728,12 @@ class BrdrQPlugin(object):
     def onSliderChange(self, index):
         print("onSliderChange: index -> " + str(index))
         value = self.relevant_distances[index]
+        value = round(value, self.DECIMAL)
         self.dockwidget.doubleSpinBox.setValue(value)
         return
 
     def onSpinboxChange(self, value):
-        value = round(value, 1)
+        value = round(value, self.DECIMAL)
         index = self.relevant_distances.index(value)
         self.dockwidget.horizontalSlider.setValue(index)
         print("onSpinboxChange: value -> " + str(value))
@@ -699,6 +752,7 @@ class BrdrQPlugin(object):
         get_layer_by_name(self.LAYER_RESULT_DIFF_PLUS).setSubsetString(
             f"brdr_relevant_distance = {value}"
         )
+        self.get_wkt()
         return
 
     # def start_line_edit(self):
@@ -735,7 +789,7 @@ class BrdrQPlugin(object):
         if feat is None:
             return
         key = feat.id()
-        relevant_distance = self.dockwidget.doubleSpinBox.value()
+        relevant_distance = round(self.dockwidget.doubleSpinBox.value(),self.DECIMAL)
         if relevant_distance in self.dict_processresults[key]:
             result = self.dict_processresults[key][relevant_distance]
             resulting_geom = result["result"]
@@ -743,7 +797,7 @@ class BrdrQPlugin(object):
             errormesssage = "Relevant_distance_result not calculated for: " + str(
                 relevant_distance
             )
-            self.iface.messageBar().pushMessage(errormesssage)
+            #self.iface.messageBar().pushMessage(errormesssage)
             print(errormesssage)
             return
         # layer = self.dockwidget.mMapLayerComboBox.currentLayer()
@@ -772,15 +826,25 @@ class BrdrQPlugin(object):
         if feat is None:
             return
         key = feat.id()
-        relevant_distance = self.dockwidget.doubleSpinBox.value()
-        if relevant_distance in self.dict_processresults[key]:
+        print ("key:" + str(key))
+        relevant_distance = round(self.dockwidget.doubleSpinBox.value(),self.DECIMAL)
+        print (str(relevant_distance))
+        if key is None or self.dict_processresults is None or not key in self.dict_processresults.keys():
+            msg = f"Waiting on predictions of WKT of feature {str(key)}..."
+            self.dockwidget.textEdit_output.setText(msg)
+            return
+
+
+        elif relevant_distance in self.dict_processresults[key]:
             result = self.dict_processresults[key][relevant_distance]
             resulting_geom = result["result"]
         else:
-            errormesssage = "Relevant_distance_result not calculated for: " + str(
+            errormesssage = "Relevant_distance_result not calculated for key : " + str(
+                key
+            )+ " at relevant distance-" + str(
                 relevant_distance
             )
-            self.iface.messageBar().pushMessage(errormesssage)
+            #self.iface.messageBar().pushMessage(errormesssage)
             self.dockwidget.textEdit_output.setText(errormesssage)
             return
         wkt = resulting_geom.wkt
@@ -876,7 +940,7 @@ class BrdrQPlugin(object):
             [str(k) for k in self.dict_evaluated_predictions[feat.id()].keys()]
         )
         self.dockwidget.textEdit_output.setText(outputMessage)
-        self.iface.messageBar().pushMessage(outputMessage)
+        #self.iface.messageBar().pushMessage(outputMessage)
         # self.dockwidget.progressBar.setValue(100)
         return (
             self.dict_processresults,

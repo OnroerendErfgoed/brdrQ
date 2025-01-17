@@ -85,7 +85,11 @@ def get_layer_by_name(layer_name):
     Get the layer-object based on the layername
     """
     layers = QgsProject.instance().mapLayersByName(layer_name)
-    return layers[0]
+    if len (layers)>0:
+        return layers[0]
+    else:
+        print (f"Layer not found for layername {str(layer_name)}")
+        return None
 
 
 def move_to_group(thing, group, pos=0, expanded=False):
