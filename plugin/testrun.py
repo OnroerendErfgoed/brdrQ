@@ -4,6 +4,7 @@ from brdrq.brdrq_utils import get_workfolder
 
 def _run():
     from qgis.core import QgsApplication
+
     app = QgsApplication([], True)
     app.initQgis()
     widget = brdrQDockWidget()
@@ -32,7 +33,7 @@ def _run():
     app.exec_()
 
 
-if __name__ == '__main__':
-    workfolder = get_workfolder("notwritable/","testrun",False)
-    print (workfolder)
+if __name__ == "__main__":
+    workfolder = get_workfolder("notwritable/", "testrun", False)
+    print(workfolder)
     # _run()

@@ -27,8 +27,7 @@ import os
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
 
-FORM_CLASS, _ = uic.loadUiType(os.path.join(
-    os.path.dirname(__file__), 'brdrq_help.ui'))
+FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "brdrq_help.ui"))
 
 
 class brdrQHelp(QtWidgets.QDialog, FORM_CLASS):

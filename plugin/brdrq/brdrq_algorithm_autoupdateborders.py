@@ -50,7 +50,7 @@ from qgis.core import QgsProcessingParameterFile
 from qgis.core import QgsProject
 from qgis.core import QgsStyle
 
-from .brdrq_utils import geom_qgis_to_shapely, geojson_to_layer, get_workfolder
+from .brdrq_utils import geojson_to_layer, get_workfolder
 
 
 class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
