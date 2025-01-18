@@ -33,9 +33,9 @@ __revision__ = "$Format:%H$"
 import inspect
 import os
 import sys
-
 import brdr
 import numpy as np
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QListWidgetItem
 from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME
@@ -47,6 +47,7 @@ from qgis.core import QgsMapLayerProxyModel
 from qgis.core import QgsProject
 from qgis.core import QgsSettings
 from qgis.core import QgsStyle
+from qgis.gui import QgsMapToolPan
 from qgis.utils import OverrideCursor
 from shapely.io import from_wkt
 
@@ -92,6 +93,8 @@ class BrdrQPlugin(object):
         self.actions = []
         self.toolbar = self.iface.addToolBar("brdrQ")
         self.toolbar.setObjectName("brdrQ")
+        self.selectTool = None
+        self.formerMapTool = None
         self.max_rel_dist = None
         self.minimum = 0
         self.maximum = 1500
@@ -177,7 +180,6 @@ class BrdrQPlugin(object):
             self.iface.mainWindow(),
         )
         action_autocorrectborders.triggered.connect(self.openAutocorrectbordersscript)
-        # self.iface.addToolBarIcon(action)
         self.iface.addPluginToMenu("brdQ", action_autocorrectborders)
         self.toolbar.addAction(action_autocorrectborders)
         self.actions.append(action_autocorrectborders)
@@ -191,7 +193,6 @@ class BrdrQPlugin(object):
             self.iface.mainWindow(),
         )
         action_autoupdateborders.triggered.connect(self.openAutoupdatebordersscript)
-        # self.iface.addToolBarIcon(action)
         self.iface.addPluginToMenu("brdQ", action_autoupdateborders)
         self.toolbar.addAction(action_autoupdateborders)
         self.actions.append(action_autoupdateborders)
@@ -201,11 +202,10 @@ class BrdrQPlugin(object):
         )
         action_info = QAction(
             QIcon(icon_info),
-            "info (version)",
+            "brdrQ - info (version)",
             self.iface.mainWindow(),
         )
         action_info.triggered.connect(self.openInfo)
-        # self.iface.addToolBarIcon(action)
         self.iface.addPluginToMenu("brdQ", action_info)
         self.toolbar.addAction(action_info)
         self.actions.append(action_info)
@@ -506,12 +506,12 @@ class BrdrQPlugin(object):
             )
             self.dockwidget.pushButton_save.clicked.connect(self.change_geometry)
             self.dockwidget.pushButton_reset.clicked.connect(self.reset_geometry)
-            # self.dockwidget.pushButton_select.clicked.connect(self.start_line_edit)
+            self.dockwidget.pushButton_select.clicked.connect(self.activate_selectTool)
             #self.dockwidget.pushButton_wkt.clicked.connect(self.get_wkt)
             self.dockwidget.mMapLayerComboBox.setFilters(
                 QgsMapLayerProxyModel.PolygonLayer
             )
-            self.dockwidget.mMapLayerComboBox.layerChanged.connect(self.setFeatures)
+            self.dockwidget.mMapLayerComboBox.layerChanged.connect(self.themeLayerChanged)
             self.dockwidget.listWidget_features.itemPressed.connect(
                 self.onFeatureActivated
             )
@@ -539,7 +539,17 @@ class BrdrQPlugin(object):
     #     picker.setLayer(layer)
     #     picker.setDisplayExpression('$id')  # show ids in combobox
 
-    def setFeatures(self):
+    def themeLayerChanged(self):
+        self.deactivateSelectTool()
+        self.listFeatures()
+
+    def deactivateSelectTool(self):
+        mapcanvas =self.iface.mapCanvas()
+        if self.formerMapTool is None:
+            self.formerMapTool = QgsMapToolPan(mapcanvas)
+        mapcanvas.setMapTool(self.formerMapTool)
+
+    def listFeatures(self):
         #reset interface by clearing list, progress_bar
         self._clearUserInterface()
         self.layer = self.dockwidget.mMapLayerComboBox.currentLayer()
@@ -572,6 +582,9 @@ class BrdrQPlugin(object):
         self.dockwidget.textEdit_output.setText(
             f"#Features: {str(len(self.selected_features))}"
         )
+        if len(self.selected_features) == 1:
+            self.onFeatureActivated(self.dockwidget.listWidget_features.item(0))
+
         return
 
     def _clearUserInterface(self):
@@ -583,6 +596,7 @@ class BrdrQPlugin(object):
         self.dockwidget.listWidget_predictions.clear()
 
     def onFeatureActivated(self, currentItem):
+        self.deactivateSelectTool()
         self.dockwidget.progressBar.setValue(0)
         self.dockwidget.listWidget_predictions.clear()
         self.dockwidget.textEdit_output.setText("")
@@ -597,14 +611,10 @@ class BrdrQPlugin(object):
             print("currentItem is none")
             return
         feature_id = currentItem.text().split("*")[1]
-        # print(f"Feature_id is {feature_id}")
         for feat in self.selected_features:
-            # print(str(feat.id()))
             if str(feat.id()) == feature_id:
-                # print("equal - >break")
                 self.feature = feat
                 break
-        # print(self.feature)
         if self.feature is None:
             self.dockwidget.textEdit_output.setText(
                 f"No feature found with ID {feature_id}"
@@ -626,12 +636,12 @@ class BrdrQPlugin(object):
             if area > self.max_area_limit:
                 msg = f"Very big area, {str(area)} m²: The calculation is blocked. Please use the bulk tool for this feature"
                 self.dockwidget.textEdit_output.setText(f"{msg}")
-                # self.iface.messageBar().pushMessage(msg)
+                self.dockwidget.doubleSpinBox.setValue(0)
+                self.dockwidget.listWidget_predictions.clear()
                 return
             else:
                 msg = f"Warning - Big area, {str(area)} m²: the calculation will be adapted/optimized. Only for every meter a calculation will be done"
                 self.dockwidget.textEdit_output.setText(f"{msg}")
-                # self.iface.messageBar().pushMessage(msg)
                 self.step = 100
 
         self._update_settings()
@@ -708,6 +718,7 @@ class BrdrQPlugin(object):
 
     def onListItemActivated(self, currentItem):
         print("onListItemActivated")
+        self.deactivateSelectTool()
         self._listItemActivated(currentItem)
 
     def _listItemActivated(self, currentItem):
@@ -755,10 +766,26 @@ class BrdrQPlugin(object):
         self.get_wkt()
         return
 
-    # def start_line_edit(self):
-    #     print("button pushed")
-    #     self.t = selectTool(self.iface, self.dockwidget.mMapLayerComboBox.currentLayer())
-    #     self.iface.mapCanvas().setMapTool(self.t)
+    def activate_selectTool(self):
+        print("button pushed")
+        self.selectTool = SelectTool(self.iface, self.dockwidget.mMapLayerComboBox.currentLayer())
+        self.formerMapTool = self.iface.mapCanvas().mapTool()
+        self.iface.mapCanvas().setMapTool(self.selectTool)
+        #self.selectTool.featureIdentified.connect(self.callback_select)
+        self.selectTool.featuresIdentified.connect(self.onFeaturesIdentified)
+        print("end activate_selecttool")
+
+    def onFeaturesIdentified(self,identified_features):
+        """Code called when the feature is selected by the user"""
+
+        if len(identified_features)>0:
+            self.layer.removeSelection()
+            self.layer.selectByIds([f.id() for f in identified_features], QgsVectorLayer.AddToSelection)
+            self.listFeatures()
+            self.layer.removeSelection()
+        else:
+            msg =  (f"no features selected in layer {self.layer.name()}")
+            self.dockwidget.textEdit_output.setText(f"{msg}")
 
     def get_graphic(self):
         # feat = self.dockwidget.mFeaturePickerWidget.feature()
@@ -797,7 +824,6 @@ class BrdrQPlugin(object):
             errormesssage = "Relevant_distance_result not calculated for: " + str(
                 relevant_distance
             )
-            #self.iface.messageBar().pushMessage(errormesssage)
             print(errormesssage)
             return
         # layer = self.dockwidget.mMapLayerComboBox.currentLayer()
@@ -844,7 +870,7 @@ class BrdrQPlugin(object):
             )+ " at relevant distance-" + str(
                 relevant_distance
             )
-            #self.iface.messageBar().pushMessage(errormesssage)
+
             self.dockwidget.textEdit_output.setText(errormesssage)
             return
         wkt = resulting_geom.wkt
@@ -914,13 +940,7 @@ class BrdrQPlugin(object):
             self.aligner.dict_reference_source["source"] = "local"
             self.aligner.dict_reference_source["version_date"] = "unknown"
         self.dockwidget.progressBar.setValue(50)
-        # self.dict_series, self.dict_predictions, self.diffs_dict = (
-        #     self.aligner.predictor(
-        #         relevant_distances=self.relevant_distances,
-        #         od_strategy=self.od_strategy,
-        #         threshold_overlap_percentage=self.threshold_overlap_percentage,
-        #     )
-        # )
+
         dict_evaluated, props_dict_evaluated_predictions = self.aligner.evaluate(
             ids_to_evaluate=None,
             base_formula_field=None,
@@ -940,8 +960,6 @@ class BrdrQPlugin(object):
             [str(k) for k in self.dict_evaluated_predictions[feat.id()].keys()]
         )
         self.dockwidget.textEdit_output.setText(outputMessage)
-        #self.iface.messageBar().pushMessage(outputMessage)
-        # self.dockwidget.progressBar.setValue(100)
         return (
             self.dict_processresults,
             self.dict_evaluated_predictions,
@@ -949,29 +967,36 @@ class BrdrQPlugin(object):
         )
 
 
-# from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify
-# from qgis.core import (
-#     Qgis, QgsVectorLayer
-# )
-# class selectTool(QgsMapToolIdentifyFeature):
-#
-#     def __init__(self, iface, layer):
-#         self.iface = iface
-#         self.canvas = self.iface.mapCanvas()
-#         self.layer = layer
-#         QgsMapToolIdentifyFeature.__init__(self, self.canvas, self.layer)
-#         self.iface.currentLayerChanged.connect(self.active_changed)
-#
-#     def active_changed(self, layer):
-#         self.layer.removeSelection()
-#         if isinstance(layer, QgsVectorLayer) and layer.isSpatial():
-#             self.layer = layer
-#             self.setLayer(self.layer)
-#
-#     def canvasPressEvent(self, event):
-#         found_features = self.identify(event.x(), event.y(), [self.layer], QgsMapToolIdentify.TopDownAll)
-#         print(found_features)
-#         self.layer.selectByIds([f.mFeature.id() for f in found_features], QgsVectorLayer.AddToSelection)
-#
-#     def deactivate(self):
-#         self.layer.removeSelection()
+from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify,QgsMapTool
+from qgis.core import (
+    QgsVectorLayer
+)
+class SelectTool(QgsMapToolIdentifyFeature):
+    featuresIdentified = pyqtSignal(object)
+    def __init__(self, iface,layer):
+        self.iface = iface
+        self.canvas = self.iface.mapCanvas()
+        self.layer = layer
+        # self.plugin = brdrQPlugin
+        QgsMapToolIdentifyFeature.__init__(self, self.canvas, self.layer)
+        self.iface.currentLayerChanged.connect(self.active_changed)
+
+
+    def active_changed(self, layer):
+        print ("active_changed")
+        self.layer.removeSelection()
+        if isinstance(layer, QgsVectorLayer) and layer.isSpatial():
+            self.layer = layer
+            self.setLayer(self.layer)
+
+    def canvasPressEvent(self, event):
+        identified_features = self.identify(event.x(), event.y(), [self.layer], QgsMapToolIdentify.TopDownAll)
+        identified_features = [f.mFeature for f in identified_features]
+        self.featuresIdentified.emit(identified_features)
+        #self.deactivate()
+
+    def deactivate(self):
+        self.layer.removeSelection()
+        QgsMapTool.deactivate(self)
+        print("deactivate")
+        #self.iface.mapCanvas().setMapTool(None)
