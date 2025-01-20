@@ -33,6 +33,7 @@ __revision__ = "$Format:%H$"
 import inspect
 import os
 import sys
+
 import brdr
 import numpy as np
 from PyQt5.QtCore import pyqtSignal
@@ -106,7 +107,7 @@ class BrdrQPlugin(object):
             400000  # maximum m² where the calculation will be done for
         )
         self.layer = None
-        self.selected_features = None
+        self.listed_features = None
         self.feature = None
         self.dict_processresults = None
         self.dict_evaluated_predictions = None
@@ -255,6 +256,10 @@ class BrdrQPlugin(object):
             self.settingsDialog.comboBox_snapstrategy.setEnabled(False)
             self.settingsDialog.spinBox_snap_max_segment_length.setEnabled(False)
         return
+
+    # def update_checkBox_only_selected(self, state):
+    #     self.listFeatures()
+    #     return
 
     def updateFields_reference(self):
         layer = self.settingsDialog.mMapLayerComboBox_reference.currentLayer()
@@ -512,6 +517,9 @@ class BrdrQPlugin(object):
                 QgsMapLayerProxyModel.PolygonLayer
             )
             self.dockwidget.mMapLayerComboBox.layerChanged.connect(self.themeLayerChanged)
+            self.dockwidget.checkBox_only_selected.stateChanged.connect(
+                self.themeLayerChanged
+            )
             self.dockwidget.listWidget_features.itemPressed.connect(
                 self.onFeatureActivated
             )
@@ -540,16 +548,7 @@ class BrdrQPlugin(object):
     #     picker.setDisplayExpression('$id')  # show ids in combobox
 
     def themeLayerChanged(self):
-        self.deactivateSelectTool()
-        self.listFeatures()
-
-    def deactivateSelectTool(self):
-        mapcanvas =self.iface.mapCanvas()
-        if self.formerMapTool is None:
-            self.formerMapTool = QgsMapToolPan(mapcanvas)
-        mapcanvas.setMapTool(self.formerMapTool)
-
-    def listFeatures(self):
+        #self.deactivateSelectTool()
         #reset interface by clearing list, progress_bar
         self._clearUserInterface()
         self.layer = self.dockwidget.mMapLayerComboBox.currentLayer()
@@ -564,15 +563,42 @@ class BrdrQPlugin(object):
                 f"Nr of features bigger than {str(self.max_feature_count)}. Please make a smaller selection of features"
             )
             return
-        self.selected_features = [f for f in self.layer.getSelectedFeatures()]
-        if self.layer.selectedFeatureCount() == 0:
-            self.selected_features = [f for f in self.layer.getFeatures()]
-            self.dockwidget.textEdit_output.setText(
-                "No selected features in this layer, all features returned"
-            )
+        # self.listed_features = [f for f in self.layer.getSelectedFeatures()]
+        # if self.layer.selectedFeatureCount() == 0:
+        #     self.listed_features = [f for f in self.layer.getFeatures()]
+        #     self.dockwidget.textEdit_output.setText(
+        #         "No selected features in this layer, all features returned"
+        #     )
+        # elif self.dockwidget.checkBox_only_selected.checkState()==0:
+        #     self.listed_features = [f for f in self.layer.getFeatures()]
+        #     self.dockwidget.textEdit_output.setText(
+        #         "All features in this layer returned"
+        #     )
 
+        if self.dockwidget.checkBox_only_selected.checkState()==2:
+            self.listed_features = [f for f in self.layer.getSelectedFeatures()]
+            self.dockwidget.textEdit_output.setText(
+                "Selected features in this layer returned"
+            )
+        else:
+            self.listed_features = [f for f in self.layer.getFeatures()]
+            self.dockwidget.textEdit_output.setText(
+                "All features in this layer returned"
+            )
+        self.listFeatures()
+
+    def deactivateSelectTool(self):
+        mapcanvas =self.iface.mapCanvas()
+        if self.formerMapTool is None:
+            self.formerMapTool = QgsMapToolPan(mapcanvas)
+        mapcanvas.setMapTool(self.formerMapTool)
+
+    def listFeatures(self):
+        self._clearUserInterface()
         # Add the selected features to the list widget
-        for feature in self.selected_features:
+        print ("list features")
+        print(str(self.listed_features))
+        for feature in self.listed_features:
             attributes = feature.attributes()
             attribute_string = ", ".join(str(attribute) for attribute in attributes)
             item = QListWidgetItem(
@@ -580,9 +606,9 @@ class BrdrQPlugin(object):
             )
             self.dockwidget.listWidget_features.addItem(item)
         self.dockwidget.textEdit_output.setText(
-            f"#Features: {str(len(self.selected_features))}"
+            f"#Features: {str(len(self.listed_features))}"
         )
-        if len(self.selected_features) == 1:
+        if len(self.listed_features) == 1:
             self.onFeatureActivated(self.dockwidget.listWidget_features.item(0))
 
         return
@@ -590,10 +616,14 @@ class BrdrQPlugin(object):
     def _clearUserInterface(self):
         # Clear progressbar
         self.dockwidget.progressBar.setValue(0)
+        self.dockwidget.doubleSpinBox.setValue(0)
         # Clear the featurelist widget
         self.dockwidget.listWidget_features.clear()
         # Clear the predictionlist
         self.dockwidget.listWidget_predictions.clear()
+        self.dockwidget.checkBox_only_selected.setEnabled(True)
+        # if self.layer is not None and self.layer.selectedFeatureCount() == 0:
+        #     self.dockwidget.checkBox_only_selected.setEnabled(False)
 
     def onFeatureActivated(self, currentItem):
         self.deactivateSelectTool()
@@ -611,7 +641,7 @@ class BrdrQPlugin(object):
             print("currentItem is none")
             return
         feature_id = currentItem.text().split("*")[1]
-        for feat in self.selected_features:
+        for feat in self.listed_features:
             if str(feat.id()) == feature_id:
                 self.feature = feat
                 break
@@ -768,6 +798,7 @@ class BrdrQPlugin(object):
 
     def activate_selectTool(self):
         print("button pushed")
+        print ("currentlayer:" + str (self.dockwidget.mMapLayerComboBox.currentLayer()))
         self.selectTool = SelectTool(self.iface, self.dockwidget.mMapLayerComboBox.currentLayer())
         self.formerMapTool = self.iface.mapCanvas().mapTool()
         self.iface.mapCanvas().setMapTool(self.selectTool)
@@ -777,15 +808,17 @@ class BrdrQPlugin(object):
 
     def onFeaturesIdentified(self,identified_features):
         """Code called when the feature is selected by the user"""
-
-        if len(identified_features)>0:
-            self.layer.removeSelection()
-            self.layer.selectByIds([f.id() for f in identified_features], QgsVectorLayer.AddToSelection)
-            self.listFeatures()
-            self.layer.removeSelection()
-        else:
-            msg =  (f"no features selected in layer {self.layer.name()}")
-            self.dockwidget.textEdit_output.setText(f"{msg}")
+        self.listed_features = identified_features
+        self.listFeatures()
+        # if len(identified_features)>0:
+        #     #self.layer.removeSelection()
+        #     #self.layer.selectByIds([f.id() for f in identified_features], QgsVectorLayer.AddToSelection)
+        #     self.listed_features = identified_features
+        #     self.listFeatures()
+        #     #self.layer.removeSelection()
+        # else:
+        #     msg =  (f"no features selected in layer {self.layer.name()}")
+        #     self.dockwidget.textEdit_output.setText(f"{msg}")
 
     def get_graphic(self):
         # feat = self.dockwidget.mFeaturePickerWidget.feature()
@@ -856,7 +889,7 @@ class BrdrQPlugin(object):
         relevant_distance = round(self.dockwidget.doubleSpinBox.value(),self.DECIMAL)
         print (str(relevant_distance))
         if key is None or self.dict_processresults is None or not key in self.dict_processresults.keys():
-            msg = f"Waiting on predictions of WKT of feature {str(key)}..."
+            msg = f"No prediction-WKT of feature {str(key)}..."
             self.dockwidget.textEdit_output.setText(msg)
             return
 
@@ -967,7 +1000,7 @@ class BrdrQPlugin(object):
         )
 
 
-from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify,QgsMapTool
+from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify
 from qgis.core import (
     QgsVectorLayer
 )
@@ -984,7 +1017,7 @@ class SelectTool(QgsMapToolIdentifyFeature):
 
     def active_changed(self, layer):
         print ("active_changed")
-        self.layer.removeSelection()
+        #self.layer.removeSelection()
         if isinstance(layer, QgsVectorLayer) and layer.isSpatial():
             self.layer = layer
             self.setLayer(self.layer)
@@ -996,7 +1029,7 @@ class SelectTool(QgsMapToolIdentifyFeature):
         #self.deactivate()
 
     def deactivate(self):
-        self.layer.removeSelection()
-        QgsMapTool.deactivate(self)
+        #self.layer.removeSelection()
+        #QgsMapTool.deactivate(self)
         print("deactivate")
         #self.iface.mapCanvas().setMapTool(None)
