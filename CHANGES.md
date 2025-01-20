@@ -1,3 +1,11 @@
+# v0.9.12
+
+- selection handling enhancement in plugin [#86]
+- selectTool for selecting feature(s) on map in the plugin [#111]
+- Added buttons in toolbar for version and autoupdateborders to the toolbar/menu [#107]
+- clearing list of features and predictions when choosing a new layer in combobox [#108]
+- warning on spinbox-change fixed (bug)  [#109]
+
 # v0.9.11
 
 - Optimize and block the calculation of big features when using the feature-by-feature tool, to prevent crashing [#99]
