@@ -443,7 +443,7 @@ class BrdrQPlugin(object):
         self.iface.messageBar().pushMessage(msg)
 
     def version(self):
-        return "0.9.11"
+        return "0.9.12"
 
 
     def openAutoupdatebordersscript(self):
