@@ -50,7 +50,11 @@ from qgis.core import QgsProcessingParameterFile
 from qgis.core import QgsProject
 from qgis.core import QgsStyle
 
-from .brdrq_utils import geojson_to_layer, get_workfolder
+from .brdrq_utils import (
+    geom_qgis_to_shapely,
+    geojson_to_layer,
+    get_workfolder,
+)
 
 
 class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -180,7 +184,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterNumber(
             "MAX_RELEVANT_DISTANCE",
-            "MAX-RELEVANT_DISTANCE (meter) - Max distance to try to align on the actual GRB",
+            "MAX_RELEVANT_DISTANCE (meter) - Max distance to try to align on the actual GRB",
             type=QgsProcessingParameterNumber.Double,
             defaultValue=3,
         )
@@ -237,7 +241,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 return {}
 
             id_theme = feature.attribute(self.ID_THEME_FIELDNAME)
-            dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature.geometry())
+            dict_thematic[id_theme] = geom_qgis_to_shapely(feature.geometry())
             # dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
             attributes = feature.attributeMap()
             attributes_dict = {}
@@ -347,7 +351,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         return thematic, thematic_buffered
 
     def prepare_parameters(self, parameters):
-
         wrkfldr = parameters["WORK_FOLDER"]
         if wrkfldr is None or str(wrkfldr) == "" or str(wrkfldr) == "NULL":
             wrkfldr = self.WORKFOLDER
