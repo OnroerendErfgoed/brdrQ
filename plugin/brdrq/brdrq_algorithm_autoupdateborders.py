@@ -31,12 +31,13 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from brdr.aligner import Aligner
 from brdr.constants import BASE_FORMULA_FIELD_NAME
-from brdr.enums import AlignerInputType
+from brdr.enums import AlignerInputType, GRBType
 from brdr.grb import update_to_actual_grb
 from brdr.loader import DictLoader
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QDate, QDateTime
+from qgis._core import QgsProcessingParameterEnum
 from qgis.core import QgsFeatureRequest
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
@@ -53,7 +54,7 @@ from qgis.core import QgsStyle
 from .brdrq_utils import (
     geom_qgis_to_shapely,
     geojson_to_layer,
-    get_workfolder,
+    get_workfolder, GRB_TYPES,
 )
 
 
@@ -70,6 +71,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     INPUT_THEMATIC = "INPUT_THEMATIC"  # reference to the combobox for choosing the thematic input layer
     ID_THEME_FIELDNAME = ""  # parameters that holds the fieldname of the unique theme id
 
+    GRB_TYPE = GRBType.ADP
     # ALIGNER parameters
     CRS = "EPSG:31370"  # default CRS for the aligner,updated by CRS of thematic inputlayer
     OD_STRATEGY = 0  # default OD_STRATEGY for the aligner,updated by user-choice
@@ -172,12 +174,21 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
+        parameter = QgsProcessingParameterEnum(
+            "ENUM_REFERENCE",
+            "Select GRB Type to align to:",
+            options=GRB_TYPES,
+            defaultValue=0,  # Index of the default option (e.g., 'Option A')
+        )
+        parameter.setFlags(parameter.flags())
+        self.addParameter(parameter)
+
         parameter = QgsProcessingParameterField(
             "FORMULA_FIELD",
             "Formula field",  # (if empty, formula will be calculated based on following alignment-date)
             "brdr_formula",
             self.INPUT_THEMATIC,
-            # optional=True
+            optional=True
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
@@ -263,8 +274,11 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             log_info = feedback
         else:
             log_info = None
+
+        print (str(self.FORMULA_FIELDNAME))
         fcs_actualisation = update_to_actual_grb(fc, id_theme_fieldname=self.ID_THEME_FIELDNAME,
                                                  base_formula_field=self.FORMULA_FIELDNAME,
+                                                 grb_type=self.GRB_TYPE,
                                                  max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
                                                  feedback=log_info)
         if fcs_actualisation is None or fcs_actualisation == {}:
@@ -356,6 +370,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             wrkfldr = self.WORKFOLDER
         self.WORKFOLDER = get_workfolder(wrkfldr, name="autoupdateborders", temporary=False)
         self.MAX_DISTANCE_FOR_ACTUALISATION = parameters["MAX_RELEVANT_DISTANCE"]
+        self.GRB_TYPE = GRBType[GRB_TYPES[parameters["ENUM_REFERENCE"]]]
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
         self.FORMULA_FIELDNAME = parameters["FORMULA_FIELD"]
+        if str(self.FORMULA_FIELDNAME)=="NULL":
+            self.FORMULA_FIELDNAME = None
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
