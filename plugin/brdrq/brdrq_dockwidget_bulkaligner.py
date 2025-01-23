@@ -25,7 +25,9 @@
 import os
 
 from qgis.PyQt import QtWidgets, uic
+from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal
+from qgis.core import QgsMapLayerProxyModel
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'brdrq_dockwidget_bulkaligner.ui'))
@@ -34,7 +36,7 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
     closingPlugin = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self,brdrqplugin, parent=None):
         """Constructor."""
         super(brdrQDockWidgetBulkAligner, self).__init__(parent)
         # Set up the user interface from Designer.
@@ -44,13 +46,68 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
         # #widgets-and-dialogs-with-auto-connect
         self.active = False
         self.setupUi(self)
+        self.brdrqplugin=brdrqplugin
 
-    def print_hello(self,msg):
-        print (f"hi {msg}")
+    def clearUserInterface(self):
+        # Clear progressbar
+        self.progressBar.setValue(0)
+        self.doubleSpinBox.setValue(0)
+        # Clear the featurelist widget
+        self.listWidget_features.clear()
+        # Clear the predictionlist
+        self.listWidget_predictions.clear()
+        self.checkBox_only_selected.setEnabled(True)
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
         event.accept()
+
+    def activate(self):
+        self.active = True
+        # connect to provide cleanup on closing of dockwidget
+        self.closingPlugin.connect(self.onClosePlugin)
+        self.pushButton_help.clicked.connect(self.brdrqplugin.show_help_dialog)
+        self.pushButton_settings.clicked.connect(
+            self.brdrqplugin.show_settings_dialog
+        )
+        self.pushButton_grafiek.clicked.connect(self.brdrqplugin.get_graphic)
+        self.pushButton_visualisatie.clicked.connect(
+            self.brdrqplugin.get_visualisation
+        )
+        self.pushButton_save.clicked.connect(self.brdrqplugin.change_geometry)
+        self.pushButton_reset.clicked.connect(self.brdrqplugin.reset_geometry)
+        self.pushButton_select.clicked.connect(self.brdrqplugin.activate_selectTool)
+        self.mMapLayerComboBox.setFilters(
+            QgsMapLayerProxyModel.PolygonLayer
+        )
+        self.mMapLayerComboBox.layerChanged.connect(self.brdrqplugin.themeLayerChanged)
+        self.checkBox_only_selected.stateChanged.connect(
+            self.brdrqplugin.themeLayerChanged
+        )
+        self.listWidget_features.itemPressed.connect(
+            self.brdrqplugin.onFeatureActivated
+        )
+        self.listWidget_predictions.itemPressed.connect(
+            self.brdrqplugin.onListItemActivated
+        )
+        self.horizontalSlider.sliderMoved.connect(self.brdrqplugin.onSliderChange)
+        self.doubleSpinBox.valueChanged.connect(self.brdrqplugin.onSpinboxChange)
+
+        # show the dockwidget
+        self.brdrqplugin.iface.addDockWidget(Qt.RightDockWidgetArea, self)
+        #
+        self.brdrqplugin.layer = self.mMapLayerComboBox.currentLayer()
+        self.brdrqplugin.update_settings()
+        self.show()
+
+    def onClosePlugin(self):
+        """Cleanup necessary items here when plugin dockwidget is closed"""
+        print ("** CLOSING brdrQ")
+        self.brdrqplugin.remove_brdrq_layers()
+        # disconnects
+        print("** disconnect dockwidget")
+        self.closingPlugin.disconnect(self.onClosePlugin)
+        self.active = False
 
 
 def __init__():

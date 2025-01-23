@@ -25,7 +25,12 @@
 import os
 
 from qgis.PyQt import QtWidgets, uic
+from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal
+from qgis.gui import QgsMapToolPan
+from qgis.core import QgsMapLayerProxyModel
+
+from .brdrq_utils import SelectTool
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'brdrq_dockwidget.ui'))
@@ -34,7 +39,7 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 class brdrQDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     closingPlugin = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self,brdrqplugin, parent=None):
         """Constructor."""
         super(brdrQDockWidget, self).__init__(parent)
         # Set up the user interface from Designer.
@@ -44,6 +49,9 @@ class brdrQDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
         self.active=False
+        self.selectTool = None
+        self.formerMapTool = None
+        self.brdrqplugin = brdrqplugin
 
     def clearUserInterface(self):
         # Clear progressbar
@@ -59,6 +67,68 @@ class brdrQDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.closingPlugin.emit()
         event.accept()
 
+    def activate(self):
+        self.active = True
+        # connect to provide cleanup on closing of dockwidget
+        self.closingPlugin.connect(self.onClosePlugin)
+        self.pushButton_help.clicked.connect(self.brdrqplugin.show_help_dialog)
+        self.pushButton_settings.clicked.connect(
+            self.brdrqplugin.show_settings_dialog
+        )
+        self.pushButton_grafiek.clicked.connect(self.brdrqplugin.get_graphic)
+        self.pushButton_visualisatie.clicked.connect(
+            self.brdrqplugin.get_visualisation
+        )
+        self.pushButton_save.clicked.connect(self.brdrqplugin.change_geometry)
+        self.pushButton_reset.clicked.connect(self.brdrqplugin.reset_geometry)
+        self.pushButton_select.clicked.connect(self.activate_selectTool)
+        self.mMapLayerComboBox.setFilters(
+            QgsMapLayerProxyModel.PolygonLayer
+        )
+        self.mMapLayerComboBox.layerChanged.connect(self.brdrqplugin.themeLayerChanged)
+        self.checkBox_only_selected.stateChanged.connect(
+            self.brdrqplugin.themeLayerChanged
+        )
+        self.listWidget_features.itemPressed.connect(
+            self.brdrqplugin.onFeatureActivated
+        )
+        self.listWidget_predictions.itemPressed.connect(
+            self.brdrqplugin.onListItemActivated
+        )
+        self.horizontalSlider.sliderMoved.connect(self.brdrqplugin.onSliderChange)
+        self.doubleSpinBox.valueChanged.connect(self.brdrqplugin.onSpinboxChange)
+
+        # show the dockwidget
+        self.brdrqplugin.iface.addDockWidget(Qt.RightDockWidgetArea, self)
+        #
+        self.brdrqplugin.layer = self.mMapLayerComboBox.currentLayer()
+        self.brdrqplugin.update_settings()
+        self.show()
+
+    def onClosePlugin(self):
+        """Cleanup necessary items here when plugin dockwidget is closed"""
+        print ("** CLOSING brdrQ")
+        self.brdrqplugin.remove_brdrq_layers()
+        # disconnects
+        print("** disconnect dockwidget")
+        self.closingPlugin.disconnect(self.onClosePlugin)
+        self.active = False
+
+    def activate_selectTool(self):
+        print("button pushed")
+        print ("currentlayer:" + str (self.mMapLayerComboBox.currentLayer()))
+        self.selectTool = SelectTool(self.brdrqplugin.iface, self.mMapLayerComboBox.currentLayer())
+        self.formerMapTool = self.brdrqplugin.iface.mapCanvas().mapTool()
+        self.brdrqplugin.iface.mapCanvas().setMapTool(self.selectTool)
+        self.selectTool.featuresIdentified.connect(self.brdrqplugin.onFeaturesIdentified)
+        print("end activate_selecttool")
+
+    def deactivateSelectTool(self):
+        mapcanvas =self.brdrqplugin.iface.mapCanvas()
+        if self.formerMapTool is None:
+            self.formerMapTool = QgsMapToolPan(mapcanvas)
+        mapcanvas.setMapTool(self.formerMapTool)
 
 def __init__():
     pass
+

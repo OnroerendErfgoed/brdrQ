@@ -1,5 +1,6 @@
 import os
 
+from PyQt5.QtCore import pyqtSignal
 from qgis.core import QgsProcessingParameterFolderDestination
 
 try:
@@ -455,3 +456,21 @@ class MplCanvas(FigureCanvasQTAgg):
         fig = Figure(figsize=(width, height), dpi=dpi)
         self.axes = fig.add_subplot(111)
         super(MplCanvas, self).__init__(fig)
+
+from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify
+
+class SelectTool(QgsMapToolIdentifyFeature):
+    featuresIdentified = pyqtSignal(object)
+    def __init__(self, iface,layer):
+        self.iface = iface
+        self.canvas = self.iface.mapCanvas()
+        self.layer = layer
+        QgsMapToolIdentifyFeature.__init__(self, self.canvas, self.layer)
+
+    def canvasPressEvent(self, event):
+        identified_features = self.identify(event.x(), event.y(), [self.layer], QgsMapToolIdentify.TopDownAll)
+        identified_features = [f.mFeature for f in identified_features]
+        self.featuresIdentified.emit(identified_features)
+
+    def deactivate(self):
+        print("deactivate")
