@@ -28,32 +28,25 @@ from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
-    os.path.dirname(__file__), 'brdrq_dockwidget.ui'))
+    os.path.dirname(__file__), 'brdrq_dockwidget_bulkaligner.ui'))
 
 
-class brdrQDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
+class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
     closingPlugin = pyqtSignal()
 
     def __init__(self, parent=None):
         """Constructor."""
-        super(brdrQDockWidget, self).__init__(parent)
+        super(brdrQDockWidgetBulkAligner, self).__init__(parent)
         # Set up the user interface from Designer.
         # After setupUI you can access any designer object by doing
         # self.<objectname>, and you can use autoconnect slots - see
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
+        self.active = False
         self.setupUi(self)
-        self.active=False
 
-    def clearUserInterface(self):
-        # Clear progressbar
-        self.progressBar.setValue(0)
-        self.doubleSpinBox.setValue(0)
-        # Clear the featurelist widget
-        self.listWidget_features.clear()
-        # Clear the predictionlist
-        self.listWidget_predictions.clear()
-        self.checkBox_only_selected.setEnabled(True)
+    def print_hello(self,msg):
+        print (f"hi {msg}")
 
     def closeEvent(self, event):
         self.closingPlugin.emit()

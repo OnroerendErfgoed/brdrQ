@@ -53,6 +53,7 @@ from qgis.utils import OverrideCursor
 from shapely.io import from_wkt
 
 from .brdrq_dockwidget import brdrQDockWidget
+from .brdrq_dockwidget_bulkaligner import brdrQDockWidgetBulkAligner
 from .brdrq_help import brdrQHelp
 from .brdrq_provider import BrdrQProvider
 from .brdrq_settings import brdrQSettings
@@ -90,7 +91,7 @@ class BrdrQPlugin(object):
         self.provider = None
         self.iface = iface
         self.dockwidget = None
-        self.pluginIsActive = False
+        self.dockwidget_bulkaligner = None
         self.actions = []
         self.toolbar = self.iface.addToolBar("brdrQ")
         self.toolbar.setObjectName("brdrQ")
@@ -172,6 +173,17 @@ class BrdrQPlugin(object):
         self.iface.addPluginToMenu("brdQ", action_featurepredictor)
         self.toolbar.addAction(action_featurepredictor)
         self.actions.append(action_featurepredictor)
+
+
+        icon_bulkaligner = os.path.join(os.path.join(cmd_folder, "icon_base.png"))
+        action_bulkaligner = QAction(
+            QIcon(icon_bulkaligner), "brdrQ - Bulk Aligner (predictor)", self.iface.mainWindow()
+        )
+        action_bulkaligner.triggered.connect(self.openDockBulkAligner)
+        self.iface.addPluginToMenu("brdQ", action_bulkaligner)
+        self.toolbar.addAction(action_bulkaligner)
+        self.actions.append(action_bulkaligner)
+
         icon_autocorrectborders = os.path.join(
             os.path.join(cmd_folder, "icon_autocorrectborders.png")
         )
@@ -460,20 +472,21 @@ class BrdrQPlugin(object):
 
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
-        pass
-        # print "** CLOSING brdrQ"
+        print ("** CLOSING brdrQ")
         self.remove_brdrq_layers()
-
         # disconnects
+        print("** disconnect dockwidget")
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
+        self.dockwidget.active = False
 
-        # remove this statement if dockwidget is to remain
-        # for reuse if plugin is reopened
-        # Commented next statement since it causes QGIS crashe
-        # when closing the docked window:
-        # self.dockwidget = None
-
-        self.pluginIsActive = False
+    def onClosePluginBulkAligner(self):
+        """Cleanup necessary items here when plugin dockwidget is closed"""
+        print ("** CLOSING brdrQ-bulkaligner")
+        self.remove_brdrq_layers()
+        # disconnects
+        print("** disconnect PluginBulkAligner")
+        self.dockwidget_bulkaligner.closingPlugin.disconnect(self.onClosePluginBulkAligner)
+        self.dockwidget_bulkaligner.active=False
 
     def unload(self):
         QgsApplication.processingRegistry().removeProvider(self.provider)
@@ -485,20 +498,33 @@ class BrdrQPlugin(object):
         # remove the toolbar
         del self.toolbar
 
+    def openDockBulkAligner(self):
+        print("openDockBulkAligner")
+        print (str(self.dockwidget_bulkaligner))
+        if self.dockwidget_bulkaligner is None:
+            # Create the dockwidget (after translation) and keep reference
+            self.dockwidget_bulkaligner = brdrQDockWidgetBulkAligner()
+            print("brdrQDockWidgetBulkAligner created")
+        print(str(self.dockwidget_bulkaligner.active))
+        if not self.dockwidget_bulkaligner.active:
+            self.dockwidget_bulkaligner.active=True
+            self.dockwidget_bulkaligner.print_hello("new user")
+            print("** connect")
+            self.dockwidget_bulkaligner.closingPlugin.connect(self.onClosePluginBulkAligner)
+            # show the dockwidget
+            self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget_bulkaligner)
+
+        return
+
     def openDock(self):
         print("openDock")
-        if not self.pluginIsActive:
-            self.pluginIsActive = True
-
-            # print "** STARTING brdrQ"
-
-            # dockwidget may not exist if:
-            #    first run of plugin
-            #    removed on close (see self.onClosePlugin method)
-            if self.dockwidget == None:
-                # Create the dockwidget (after translation) and keep reference
-                self.dockwidget = brdrQDockWidget()
-
+        if self.dockwidget is None:
+            # Create the dockwidget (after translation) and keep reference
+            self.dockwidget = brdrQDockWidget()
+            print("brdrQDockWidget created")
+        print(str(self.dockwidget.active))
+        if not self.dockwidget.active:
+            self.dockwidget.active = True
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
             self.dockwidget.pushButton_help.clicked.connect(self.show_help_dialog)
@@ -512,7 +538,6 @@ class BrdrQPlugin(object):
             self.dockwidget.pushButton_save.clicked.connect(self.change_geometry)
             self.dockwidget.pushButton_reset.clicked.connect(self.reset_geometry)
             self.dockwidget.pushButton_select.clicked.connect(self.activate_selectTool)
-            #self.dockwidget.pushButton_wkt.clicked.connect(self.get_wkt)
             self.dockwidget.mMapLayerComboBox.setFilters(
                 QgsMapLayerProxyModel.PolygonLayer
             )
@@ -531,9 +556,10 @@ class BrdrQPlugin(object):
 
             # show the dockwidget
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
-            # self.dockwidget.show()
+            #
             self.layer = self.dockwidget.mMapLayerComboBox.currentLayer()
             self._update_settings()
+            self.dockwidget.show()
 
     def show_help_dialog(self):
         self.helpDialog.show()
@@ -550,7 +576,7 @@ class BrdrQPlugin(object):
     def themeLayerChanged(self):
         #self.deactivateSelectTool()
         #reset interface by clearing list, progress_bar
-        self._clearUserInterface()
+        self.dockwidget.clearUserInterface()
         self.layer = self.dockwidget.mMapLayerComboBox.currentLayer()
         if self.layer is None:
             self.dockwidget.textEdit_output.setText("Please select a layer")
@@ -594,7 +620,7 @@ class BrdrQPlugin(object):
         mapcanvas.setMapTool(self.formerMapTool)
 
     def listFeatures(self):
-        self._clearUserInterface()
+        self.dockwidget.clearUserInterface()
         # Add the selected features to the list widget
         print ("list features")
         print(str(self.listed_features))
@@ -612,18 +638,6 @@ class BrdrQPlugin(object):
             self.onFeatureActivated(self.dockwidget.listWidget_features.item(0))
 
         return
-
-    def _clearUserInterface(self):
-        # Clear progressbar
-        self.dockwidget.progressBar.setValue(0)
-        self.dockwidget.doubleSpinBox.setValue(0)
-        # Clear the featurelist widget
-        self.dockwidget.listWidget_features.clear()
-        # Clear the predictionlist
-        self.dockwidget.listWidget_predictions.clear()
-        self.dockwidget.checkBox_only_selected.setEnabled(True)
-        # if self.layer is not None and self.layer.selectedFeatureCount() == 0:
-        #     self.dockwidget.checkBox_only_selected.setEnabled(False)
 
     def onFeatureActivated(self, currentItem):
         self.deactivateSelectTool()
