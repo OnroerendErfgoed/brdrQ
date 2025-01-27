@@ -1,6 +1,7 @@
 import os
 
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, QVariant
+from qgis._core import QgsField
 from qgis.core import QgsProcessingParameterFolderDestination
 
 try:
@@ -80,6 +81,15 @@ def geom_qgis_to_shapely(geom_qgis):
     geom_shapely = from_wkt(wkt)
     return make_valid(geom_shapely)
 
+def add_field_to_layer(layer, fieldname, fieldtype, default_value):
+    layer.startEditing()
+    if layer.dataProvider().fieldNameIndex(fieldname) == -1:
+        layer.dataProvider().addAttributes([QgsField(fieldname, fieldtype)])
+        layer.updateFields()
+    id_new_col = layer.dataProvider().fieldNameIndex(fieldname)
+    for feature in layer.getFeatures():
+        layer.changeAttributeValue(feature.id(), id_new_col, default_value)
+    layer.commitChanges()
 
 def get_layer_by_name(layer_name):
     """
@@ -91,6 +101,15 @@ def get_layer_by_name(layer_name):
     else:
         print (f"Layer not found for layername {str(layer_name)}")
         return None
+
+def zoom_to_feature(feature, iface):
+    """
+    zoom to feature
+    """
+    box = feature.geometry().boundingBox()
+    iface.mapCanvas().setExtent(box)
+    iface.mapCanvas().refresh()
+    return
 
 
 def move_to_group(thing, group, pos=0, expanded=False):

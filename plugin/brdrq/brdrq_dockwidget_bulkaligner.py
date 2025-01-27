@@ -24,10 +24,23 @@
 
 import os
 
+from PyQt5.QtCore import QVariant
+from PyQt5.QtWidgets import QListWidgetItem
+from brdr.aligner import Aligner
+from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME
+from brdr.enums import GRBType
+from brdr.geometry_utils import geom_from_wkt
+from brdr.grb import GRBActualLoader
+from brdr.loader import DictLoader
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal
+from qgis.core import QgsFeatureRequest, edit
 from qgis.core import QgsMapLayerProxyModel
+from qgis.core import QgsProject
+from qgis.utils import OverrideCursor
+
+from .brdrq_utils import move_to_group, zoom_to_feature, add_field_to_layer
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'brdrq_dockwidget_bulkaligner.ui'))
@@ -47,6 +60,11 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
         self.active = False
         self.setupUi(self)
         self.brdrqplugin=brdrqplugin
+        self.iface = self.brdrqplugin.iface
+        self.workinglayer = None
+        self.workinggroupname = None
+        self.feature = None
+        self.workingfeatures =None
 
     def clearUserInterface(self):
         # Clear progressbar
@@ -56,7 +74,6 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
         self.listWidget_features.clear()
         # Clear the predictionlist
         self.listWidget_predictions.clear()
-        self.checkBox_only_selected.setEnabled(True)
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
@@ -74,31 +91,32 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
         self.pushButton_visualisatie.clicked.connect(
             self.brdrqplugin.get_visualisation
         )
-        self.pushButton_save.clicked.connect(self.brdrqplugin.change_geometry)
-        self.pushButton_reset.clicked.connect(self.brdrqplugin.reset_geometry)
-        self.pushButton_select.clicked.connect(self.brdrqplugin.activate_selectTool)
+        # self.pushButton_save.clicked.connect(self.brdrqplugin.change_geometry)
+        # self.pushButton_reset.clicked.connect(self.brdrqplugin.reset_geometry)
+        self.pushButton_evaluate.clicked.connect(self.evaluate)
+        # self.checkBox_only_selected.stateChanged.connect()
         self.mMapLayerComboBox.setFilters(
             QgsMapLayerProxyModel.PolygonLayer
         )
-        self.mMapLayerComboBox.layerChanged.connect(self.brdrqplugin.themeLayerChanged)
-        self.checkBox_only_selected.stateChanged.connect(
-            self.brdrqplugin.themeLayerChanged
-        )
+        #self.mMapLayerComboBox.layerChanged.connect(self.themeLayerChanged)
+        # self.checkBox_only_selected.stateChanged.connect(
+        #     self.themeLayerChanged
+        # )
         self.listWidget_features.itemPressed.connect(
-            self.brdrqplugin.onFeatureActivated
+            self.onFeatureActivated
         )
-        self.listWidget_predictions.itemPressed.connect(
-            self.brdrqplugin.onListItemActivated
-        )
-        self.horizontalSlider.sliderMoved.connect(self.brdrqplugin.onSliderChange)
-        self.doubleSpinBox.valueChanged.connect(self.brdrqplugin.onSpinboxChange)
-
-        # show the dockwidget
-        self.brdrqplugin.iface.addDockWidget(Qt.RightDockWidgetArea, self)
+        # self.listWidget_predictions.itemPressed.connect(
+        #     self.onListItemActivated
+        # )
+        # self.horizontalSlider.sliderMoved.connect(self.onSliderChange)
+        # self.doubleSpinBox.valueChanged.connect(self.onSpinboxChange)
         #
-        self.brdrqplugin.layer = self.mMapLayerComboBox.currentLayer()
-        self.brdrqplugin.update_settings()
-        self.show()
+        # # show the dockwidget
+        self.iface.addDockWidget(Qt.RightDockWidgetArea, self)
+        # #
+        # self.brdrqplugin.layer = self.mMapLayerComboBox.currentLayer()
+        #self.brdrqplugin.update_settings()
+        #self.show()
 
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
@@ -109,6 +127,175 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
         self.closingPlugin.disconnect(self.onClosePlugin)
         self.active = False
 
+    def evaluate(self):
+        print ("evaluate")
+        #create group-layer with copy of chosen layer
+        with OverrideCursor(Qt.WaitCursor):
+            self.workinglayer,self.workinggroupname = self.create_workinglayer()
+            self.evaluate_layer()
+            self.loadFeatureList()
+
+
+    def create_workinglayer(self):
+        visible = True
+        qinst = QgsProject.instance()
+        root = qinst.layerTreeRoot()
+        layer = self.mMapLayerComboBox.currentLayer()
+        # create a new layer from all features
+        new_layer = layer.materialize(QgsFeatureRequest().setFilterFids(layer.allFeatureIds()))
+
+        #add attribute for automatic/manual correction
+        add_field_to_layer(layer, "brdrq_handling", QVariant.String, "todo")
+
+        # add a new layer to the map
+        QgsProject.instance().addMapLayer(new_layer,False)
+
+        root.insertLayer(0, new_layer)
+
+        node = root.findLayer(new_layer.id())
+        if node:
+            new_state = Qt.Checked if visible else Qt.Unchecked
+            node.setItemVisibilityChecked(new_state)
+        groupname = str(new_layer.name()) + "_brdrQ_evaluation"
+        move_to_group(new_layer, groupname)
+        new_layer.triggerRepaint()
+        self.iface.layerTreeView().refreshLayerSymbology(new_layer.id())
+        return new_layer,groupname
+
+    def evaluate_layer(self):
+        aligner = Aligner()
+        self.workingfeatures = [f for f in self.workinglayer.getFeatures()]
+        dict_to_load = {}
+        for feature in self.workingfeatures:
+            feature_geom = feature.geometry()
+            wkt = feature_geom.asWkt()
+            geom_shapely = geom_from_wkt(wkt)
+            dict_to_load[feature.id()] = geom_shapely
+
+        # Load thematic data
+        aligner.load_thematic_data(DictLoader(dict_to_load))
+        # Load reference data for the on-the fly reference versions
+
+        aligner.load_reference_data(
+            GRBActualLoader(
+                grb_type=GRBType.ADP,
+                partition=1000,
+                aligner=aligner,
+            )
+        )
+        dict_evaluated_predictions, props_dict_evaluated_predictions = aligner.evaluate(
+            ids_to_evaluate=None,
+            base_formula_field=None,
+            all_predictions=True,
+            prefer_full=True,
+        )
+        dict_processresults = aligner.dict_processresults
+        newline=os.linesep
+        outputMessage = ""
+        for key in dict_evaluated_predictions.keys():
+
+            outputMessage = outputMessage + str(key)+": Voorspelde relevante afstanden: " + str(
+                [str(k) for k in dict_evaluated_predictions[key].keys()]
+            )+ newline
+        self.textEdit_output.setText(outputMessage)
+
+        self.dict_processresults = dict_processresults
+        self.dict_evaluated_predictions= dict_evaluated_predictions
+        self.props_dict_evaluated_predictions = props_dict_evaluated_predictions
+
+        return
+
+    def loadFeatureList(self):
+        self.clearUserInterface()
+        # Add the selected features to the list widget
+        print ("list features")
+        feature = None
+
+        for key in self.dict_processresults.keys():
+            #attributes = feature.attributes()
+            #attribute_string = ", ".join(str(attribute) for attribute in attributes)
+            if key in self.props_dict_evaluated_predictions:
+                print(f"keys {str(key)}")
+                predictions = self.props_dict_evaluated_predictions[key]
+                nr_predictions = len(predictions.keys())
+                print ("nr_predictions"+str(nr_predictions)) 
+                if nr_predictions==1:
+                    print(f"auto {str(nr_predictions)}")
+                    attribute_string = "auto"
+                else:
+                    print(f"manual {str(nr_predictions)}")
+                    attribute_string = "manual"
+                for f in self.workingfeatures:
+                    if f.id() == key:
+                        feature = f
+                        break
+                if feature is None:
+                    print(f"no feature found for key {str(key)}")
+                    continue
+                key = feature.id()
+
+            else:
+                attribute_string = "manual_no_evaluation"
+            with edit(self.workinglayer):
+                self.workinglayer.changeAttributeValue(feature.id(),
+                                                       self.workinglayer.fields().indexOf('brdrq_handling'),
+                                                       attribute_string)
+            item = QListWidgetItem(
+                f"ID: *{str(key)}*, Attributes: {attribute_string}"
+            )
+            self.listWidget_features.addItem(item)
+        return
+
+    def onFeatureActivated(self,currentItem):
+        print("_onFeatureChange")
+        # Clear the predictionlist
+        self.listWidget_predictions.clear()
+        if currentItem is None:
+            print("currentItem is none")
+            return
+
+        #get feature
+        self.feature = None
+        key = currentItem.text().split("*")[1]
+        for feat in self.workingfeatures:
+            if str(feat.id()) == key:
+                self.feature = feat
+                break
+        if self.feature is None:
+            self.textEdit_output.setText(
+                f"No feature found with ID {key}"
+            )
+            return
+        key=self.feature.id()
+
+        zoom_to_feature(self.feature, self.iface)
+
+        list_predictions = [k for k in (self.dict_evaluated_predictions[key]).keys()]
+        print(str(list_predictions))
+        items = []
+        items_with_name = []
+        best_index = 0
+        best_score = 0
+        for k in list_predictions:
+            print(str(k))
+            items.append(str(k))
+            score = self.props_dict_evaluated_predictions[key][k][PREDICTION_SCORE]
+            evaluation = self.props_dict_evaluated_predictions[key][k][
+                EVALUATION_FIELD_NAME
+            ]
+            items_with_name.append(f"{str(k)}: {str(evaluation)} (score: {str(score)})")
+            if score > best_score:
+                best_score = score
+                best_index = list_predictions.index(k)
+                print("best index: " + str(best_index))
+        self.listWidget_predictions.setFocus()
+        self.listWidget_predictions.addItems(items_with_name)
+        if len(items) > 0:
+            self.listWidget_predictions.setCurrentRow(best_index)
+            print("best-index: " + str(items[best_index]))
+            self.doubleSpinBox.setValue(round(float(items[best_index]), self.brdrqplugin.DECIMAL))
+        else:
+            self.textEdit_output.setText("No predictions")
 
 def __init__():
     pass
