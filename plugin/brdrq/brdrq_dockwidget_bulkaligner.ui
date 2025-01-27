@@ -129,7 +129,7 @@ p, li { white-space: pre-wrap; }
         <string>start evaluatie</string>
        </property>
       </widget>
-      <widget class="QCheckBox" name="checkBox_only_manual_2">
+      <widget class="QCheckBox" name="checkBox_only_selected">
        <property name="enabled">
         <bool>true</bool>
        </property>

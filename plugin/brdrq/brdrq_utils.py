@@ -1,6 +1,6 @@
 import os
 
-from PyQt5.QtCore import pyqtSignal, QVariant
+from PyQt5.QtCore import pyqtSignal
 from qgis._core import QgsField
 from qgis.core import QgsProcessingParameterFolderDestination
 
@@ -70,6 +70,10 @@ def geom_shapely_to_qgis(geom_shapely):
     geom_qgis = QgsGeometry.fromWkt(wkt)
     return geom_qgis
 
+def remove_group_layer(group_layer_name):
+    tree = QgsProject.instance().layerTreeRoot()
+    node_object = tree.findGroup(group_layer_name)
+    tree.removeChildNode(node_object)
 
 def geom_qgis_to_shapely(geom_qgis):
     """

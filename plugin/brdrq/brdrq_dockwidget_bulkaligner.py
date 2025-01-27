@@ -40,10 +40,17 @@ from qgis.core import QgsMapLayerProxyModel
 from qgis.core import QgsProject
 from qgis.utils import OverrideCursor
 
-from .brdrq_utils import move_to_group, zoom_to_feature, add_field_to_layer
+from .brdrq_help import brdrQHelp
+from .brdrq_settings import brdrQSettings
+from .brdrq_utils import move_to_group, zoom_to_feature, add_field_to_layer, remove_group_layer, plot_series, show_map, \
+    geom_shapely_to_qgis
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'brdrq_dockwidget_bulkaligner.ui'))
+#TODO implementeer only selected
+#TODO visualiseer predictions
+#TODO implementeer saven van geometrie en aanpassen van attribuut
+#TODO implementeer only selected
 
 
 class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
@@ -52,11 +59,6 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
     def __init__(self,brdrqplugin, parent=None):
         """Constructor."""
         super(brdrQDockWidgetBulkAligner, self).__init__(parent)
-        # Set up the user interface from Designer.
-        # After setupUI you can access any designer object by doing
-        # self.<objectname>, and you can use autoconnect slots - see
-        # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
-        # #widgets-and-dialogs-with-auto-connect
         self.active = False
         self.setupUi(self)
         self.brdrqplugin=brdrqplugin
@@ -65,6 +67,8 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
         self.workinggroupname = None
         self.feature = None
         self.workingfeatures =None
+        self.helpDialog = brdrQHelp()
+        self.settingsDialog = brdrQSettings()
 
     def clearUserInterface(self):
         # Clear progressbar
@@ -83,25 +87,22 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
         self.active = True
         # connect to provide cleanup on closing of dockwidget
         self.closingPlugin.connect(self.onClosePlugin)
-        self.pushButton_help.clicked.connect(self.brdrqplugin.show_help_dialog)
+        self.pushButton_help.clicked.connect(self.show_help_dialog)
         self.pushButton_settings.clicked.connect(
-            self.brdrqplugin.show_settings_dialog
+            self.show_settings_dialog
         )
-        self.pushButton_grafiek.clicked.connect(self.brdrqplugin.get_graphic)
-        self.pushButton_visualisatie.clicked.connect(
-            self.brdrqplugin.get_visualisation
-        )
-        # self.pushButton_save.clicked.connect(self.brdrqplugin.change_geometry)
-        # self.pushButton_reset.clicked.connect(self.brdrqplugin.reset_geometry)
+        # self.pushButton_grafiek.clicked.connect(self.get_graphic)
+        # self.pushButton_visualisatie.clicked.connect(
+        #     self.get_visualisation
+        # )
+        # self.pushButton_save.clicked.connect(self.change_geometry)
+        # self.pushButton_reset.clicked.connect(self.reset_geometry)
         self.pushButton_evaluate.clicked.connect(self.evaluate)
-        # self.checkBox_only_selected.stateChanged.connect()
         self.mMapLayerComboBox.setFilters(
             QgsMapLayerProxyModel.PolygonLayer
         )
         #self.mMapLayerComboBox.layerChanged.connect(self.themeLayerChanged)
-        # self.checkBox_only_selected.stateChanged.connect(
-        #     self.themeLayerChanged
-        # )
+
         self.listWidget_features.itemPressed.connect(
             self.onFeatureActivated
         )
@@ -114,14 +115,14 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
         # # show the dockwidget
         self.iface.addDockWidget(Qt.RightDockWidgetArea, self)
         # #
-        # self.brdrqplugin.layer = self.mMapLayerComboBox.currentLayer()
-        #self.brdrqplugin.update_settings()
+        # self.layer = self.mMapLayerComboBox.currentLayer()
+        #self.settingsDialog.update_settings()
         #self.show()
 
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
         print ("** CLOSING brdrQ")
-        self.brdrqplugin.remove_brdrq_layers()
+        remove_group_layer(self.GROUP_LAYER)
         # disconnects
         print("** disconnect dockwidget")
         self.closingPlugin.disconnect(self.onClosePlugin)
@@ -142,8 +143,10 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
         root = qinst.layerTreeRoot()
         layer = self.mMapLayerComboBox.currentLayer()
         # create a new layer from all features
-        new_layer = layer.materialize(QgsFeatureRequest().setFilterFids(layer.allFeatureIds()))
-
+        if self.checkBox_only_selected.checkState():
+            new_layer = layer.materialize(QgsFeatureRequest().setFilterFids(layer.selectedFeatureIds()))
+        else:
+            new_layer = layer.materialize(QgsFeatureRequest().setFilterFids(layer.allFeatureIds()))
         #add attribute for automatic/manual correction
         add_field_to_layer(layer, "brdrq_handling", QVariant.String, "todo")
 
@@ -293,9 +296,95 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
         if len(items) > 0:
             self.listWidget_predictions.setCurrentRow(best_index)
             print("best-index: " + str(items[best_index]))
-            self.doubleSpinBox.setValue(round(float(items[best_index]), self.brdrqplugin.DECIMAL))
+            self.doubleSpinBox.setValue(round(float(items[best_index]), self.settingsDialog.DECIMAL))
         else:
             self.textEdit_output.setText("No predictions")
+
+    def show_help_dialog(self):
+        self.helpDialog.show()
+
+    def show_settings_dialog(self):
+        self.settingsDialog.show()
+
+    def get_graphic(self):
+        feat = self.feature
+        if feat is None:
+            return
+        key = feat.id()
+        plot_series(self.relevant_distances, {key: self.diffs_dict[key]})
+        return
+
+    def get_visualisation(self):
+        feat = self.feature
+        if feat is None:
+            return
+        key = feat.id()
+        show_map(
+            {key: self.dict_evaluated_predictions[key]},
+            {key: self.aligner.dict_thematic[key]},
+            self.aligner.dict_reference,
+        )
+        return
+
+    def change_geometry(self):
+        feat = self.feature
+        if feat is None:
+            return
+        key = feat.id()
+        relevant_distance = round(self.doubleSpinBox.value(),self.settingsDialog.DECIMAL)
+        if relevant_distance in self.dict_processresults[key]:
+            result = self.dict_processresults[key][relevant_distance]
+            resulting_geom = result["result"]
+        else:
+            errormesssage = "Relevant_distance_result not calculated for: " + str(
+                relevant_distance
+            )
+            print(errormesssage)
+            return
+        layer = self.layer
+        layer.startEditing()
+        qgis_geom = geom_shapely_to_qgis(resulting_geom)
+        layer.changeGeometry(feat.id(), qgis_geom)
+        layer.commitChanges()
+        self.iface.messageBar().pushMessage("geometrie aangepast")
+
+    def reset_geometry(self):
+        feat = self.feature
+        if feat is None:
+            return
+        layer = self.layer
+        layer.startEditing()
+        layer.changeGeometry(feat.id(), self.original_geometry)
+        layer.commitChanges()
+        self.iface.messageBar().pushMessage("geometrie gereset")
+
+    def get_wkt(self):
+        feat = self.feature
+        if feat is None:
+            return
+        key = feat.id()
+        print ("key:" + str(key))
+        relevant_distance = round(self.doubleSpinBox.value(),self.settingsDialog.DECIMAL)
+        print (str(relevant_distance))
+        if key is None or self.dict_processresults is None or not key in self.dict_processresults.keys():
+            msg = f"No prediction-WKT of feature {str(key)}..."
+            self.textEdit_output.setText(msg)
+            return
+
+        elif relevant_distance in self.dict_processresults[key]:
+            result = self.dict_processresults[key][relevant_distance]
+            resulting_geom = result["result"]
+        else:
+            errormesssage = "Relevant_distance_result not calculated for key : " + str(
+                key
+            )+ " at relevant distance-" + str(
+                relevant_distance
+            )
+
+            self.textEdit_output.setText(errormesssage)
+            return
+        wkt = resulting_geom.wkt
+        self.textEdit_output.setText(wkt)
 
 def __init__():
     pass

@@ -1,4 +1,4 @@
-from brdrq.brdrq_dockwidget import brdrQDockWidget
+from brdrq.brdrq_dockwidget_featurealigner import brdrQDockWidget
 from brdrq.brdrq_utils import get_workfolder
 from brdrq.brdrq_dockwidget_bulkaligner import brdrQDockWidgetBulkAligner
 
