@@ -422,7 +422,7 @@ def plot_series(
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
-    plt.legend()
+    #plt.legend()
     plt.show()
     return
 

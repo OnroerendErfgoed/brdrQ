@@ -109,7 +109,6 @@ class brdrQDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.LAYER_RESULT_DIFF = (
             "DIFF"  # parameter that holds the TOC layername of the resulting diff
         )
-
         self.LAYER_RESULT_DIFF_PLUS = "DIFF_PLUS"  # parameter that holds the TOC layername of the resulting diff_plus
         self.LAYER_RESULT_DIFF_MIN = "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
 
@@ -370,6 +369,7 @@ class brdrQDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self.doubleSpinBox.setValue(round(float(items[best_index]), self.settingsDialog.DECIMAL))
         else:
             self.textEdit_output.setText("No predictions")
+        return
 
     def onListItemActivated(self, currentItem):
         print("onListItemActivated")
@@ -632,6 +632,9 @@ class brdrQDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             partial_snapping_strategy=self.partial_snapping_strategy,
             snapping_max_segment_length=self.snap_max_segment_length,
         )
+
+        return
+
 def __init__():
     pass
 

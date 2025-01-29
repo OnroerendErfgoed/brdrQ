@@ -170,7 +170,7 @@ p, li { white-space: pre-wrap; }
        <bool>true</bool>
       </property>
       <property name="text">
-       <string>enkel maneel te beslissen features</string>
+       <string>enkel maneel te controleren features</string>
       </property>
      </widget>
     </item>

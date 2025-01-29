@@ -94,12 +94,12 @@ class BrdrQPlugin(object):
             QIcon(icon), "brdrQ - Feature Aligner (predictor)", self.iface.mainWindow()
         )
         action_featurepredictor.triggered.connect(self.openDock)
-        self.iface.addPluginToMenu("brdQ", action_featurepredictor)
+        self.iface.addPluginToMenu("brdrQ", action_featurepredictor)
         self.toolbar.addAction(action_featurepredictor)
         self.actions.append(action_featurepredictor)
 
 
-        icon_bulkaligner = os.path.join(os.path.join(cmd_folder, "icon_base.png"))
+        icon_bulkaligner = os.path.join(os.path.join(cmd_folder, "icon_bulkaligner.png"))
         action_bulkaligner = QAction(
             QIcon(icon_bulkaligner), "brdrQ - Bulk Aligner (predictor)", self.iface.mainWindow()
         )
@@ -148,23 +148,17 @@ class BrdrQPlugin(object):
         self.actions.append(action_info)
 
     def openAutocorrectbordersscript(self):
-        dialog_autocorrectborders = processing.createAlgorithmDialog(
-            "brdrqprovider:brdrqautocorrectborders"
-        )
-        dialog_autocorrectborders.exec()
+        processing.execAlgorithmDialog("brdrqprovider:brdrqautocorrectborders")
 
     def openInfo(self):
         msg = f"brdrQ version: {self.version()} - brdr-version: {str(brdr.__version__)}"
         self.iface.messageBar().pushMessage(msg)
 
     def version(self):
-        return "0.9.12"
+        return "0.9.12-dev"
 
     def openAutoupdatebordersscript(self):
-        dialog_autoupdateborders = processing.createAlgorithmDialog(
-            "brdrqprovider:brdrqautoupdateborders"
-        )
-        dialog_autoupdateborders.exec()
+        processing.execAlgorithmDialog("brdrqprovider:brdrqautoupdateborders")
 
     def unload(self):
         QgsApplication.processingRegistry().removeProvider(self.provider)
