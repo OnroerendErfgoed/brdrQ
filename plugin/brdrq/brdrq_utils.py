@@ -1,5 +1,7 @@
 import os
 
+from PyQt5.QtCore import pyqtSignal
+from qgis._core import QgsField
 from qgis.core import QgsProcessingParameterFolderDestination
 
 try:
@@ -68,6 +70,10 @@ def geom_shapely_to_qgis(geom_shapely):
     geom_qgis = QgsGeometry.fromWkt(wkt)
     return geom_qgis
 
+def remove_group_layer(group_layer_name):
+    tree = QgsProject.instance().layerTreeRoot()
+    node_object = tree.findGroup(group_layer_name)
+    tree.removeChildNode(node_object)
 
 def geom_qgis_to_shapely(geom_qgis):
     """
@@ -79,6 +85,15 @@ def geom_qgis_to_shapely(geom_qgis):
     geom_shapely = from_wkt(wkt)
     return make_valid(geom_shapely)
 
+def add_field_to_layer(layer, fieldname, fieldtype, default_value):
+    layer.startEditing()
+    if layer.dataProvider().fieldNameIndex(fieldname) == -1:
+        layer.dataProvider().addAttributes([QgsField(fieldname, fieldtype)])
+        layer.updateFields()
+    id_new_col = layer.dataProvider().fieldNameIndex(fieldname)
+    for feature in layer.getFeatures():
+        layer.changeAttributeValue(feature.id(), id_new_col, default_value)
+    layer.commitChanges()
 
 def get_layer_by_name(layer_name):
     """
@@ -90,6 +105,15 @@ def get_layer_by_name(layer_name):
     else:
         print (f"Layer not found for layername {str(layer_name)}")
         return None
+
+def zoom_to_feature(feature, iface):
+    """
+    zoom to feature
+    """
+    box = feature.geometry().boundingBox()
+    iface.mapCanvas().setExtent(box)
+    iface.mapCanvas().refresh()
+    return
 
 
 def move_to_group(thing, group, pos=0, expanded=False):
@@ -398,7 +422,7 @@ def plot_series(
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
-    plt.legend()
+    #plt.legend()
     plt.show()
     return
 
@@ -455,3 +479,21 @@ class MplCanvas(FigureCanvasQTAgg):
         fig = Figure(figsize=(width, height), dpi=dpi)
         self.axes = fig.add_subplot(111)
         super(MplCanvas, self).__init__(fig)
+
+from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify
+
+class SelectTool(QgsMapToolIdentifyFeature):
+    featuresIdentified = pyqtSignal(object)
+    def __init__(self, iface,layer):
+        self.iface = iface
+        self.canvas = self.iface.mapCanvas()
+        self.layer = layer
+        QgsMapToolIdentifyFeature.__init__(self, self.canvas, self.layer)
+
+    def canvasPressEvent(self, event):
+        identified_features = self.identify(event.x(), event.y(), [self.layer], QgsMapToolIdentify.TopDownAll)
+        identified_features = [f.mFeature for f in identified_features]
+        self.featuresIdentified.emit(identified_features)
+
+    def deactivate(self):
+        print("deactivate")

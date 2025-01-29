@@ -24,8 +24,13 @@
 
 import os
 
+import numpy as np
+from brdr.enums import OpenbaarDomeinStrategy, SnapStrategy
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
+from qgis.core import QgsSettings
+
+from .brdrq_utils import ENUM_REFERENCE_OPTIONS, ENUM_OD_STRATEGY_OPTIONS, ENUM_SNAP_STRATEGY_OPTIONS
 
 FORM_CLASS, _ = uic.loadUiType(
     os.path.join(os.path.dirname(__file__), "brdrq_settings.ui")
@@ -34,6 +39,7 @@ FORM_CLASS, _ = uic.loadUiType(
 
 class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
     closingPlugin = pyqtSignal()
+    confirmed = pyqtSignal()
 
     def __init__(self, parent=None):
         """Constructor."""
@@ -44,11 +50,217 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        self.minimum = 0
+        self.maximum = 1500
+        self.step = 10
+        self.relevant_distances = None
+        self.threshold_overlap_percentage = None
+        self.od_strategy =None
+        self.reference_choice = None
+        self.reference_id = None
+        self.reference_layer = None
+        self.max_rel_dist = None
+        self.formula = None
+        self.full_parcel = None
+        self.partial_snapping = None
+        self.partial_snapping_strategy = None
+        self.snap_max_segment_length = None
+        self.DECIMAL = 1
+        self.load_settings()
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
         event.accept()
 
+    def load_settings(self):
+        # print("load settings")
+        for r in ENUM_REFERENCE_OPTIONS:
+            self.comboBox_referencelayer.addItem(r)
+        for od in ENUM_OD_STRATEGY_OPTIONS:
+            self.comboBox_odstrategy.addItem(od)
+        for s in ENUM_SNAP_STRATEGY_OPTIONS:
+            self.comboBox_snapstrategy.addItem(s)
+        self.comboBox_referencelayer.currentIndexChanged.connect(
+            self.update_reference_choice
+        )
+        self.checkBox_partial_snapping.stateChanged.connect(
+            self.update_partial_snapping
+        )
+        self.mMapLayerComboBox_reference.layerChanged.connect(
+            self.updateFields_reference
+        )
+        self.buttonBox_settings.accepted.connect(self.push_settings_ok)
+
+        # Load initial settings into tool (same as pushing OK in settings Dialog)
+        self.update_settings()
+        return
+
+    def update_reference_choice(self, index):
+        # print(str(index))
+        if index == 0:
+            self.mMapLayerComboBox_reference.setEnabled(True)
+            self.mFieldComboBox_reference.setEnabled(True)
+        else:
+            self.mMapLayerComboBox_reference.setEnabled(False)
+            self.mFieldComboBox_reference.setEnabled(False)
+        return
+
+    def update_partial_snapping(self, state):
+        if state == 2:
+            self.comboBox_snapstrategy.setEnabled(True)
+            self.spinBox_snap_max_segment_length.setEnabled(True)
+        else:
+            self.comboBox_snapstrategy.setEnabled(False)
+            self.spinBox_snap_max_segment_length.setEnabled(False)
+        return
+
+    def updateFields_reference(self):
+        layer = self.mMapLayerComboBox_reference.currentLayer()
+        self.mFieldComboBox_reference.setLayer(layer)
+
+    def push_settings_ok(self):
+        print("push settings ok")
+        self.update_settings()
+        self.confirmed.emit()
+
+    def update_settings(self):
+        s = QgsSettings()
+        if self.threshold_overlap_percentage is None:
+            self.threshold_overlap_percentage = int(
+                s.value("brdrq/threshold_overlap_percentage", 50)
+            )
+            self.spinBox_threshold.setValue(
+                self.threshold_overlap_percentage
+            )
+        self.threshold_overlap_percentage = (
+            self.spinBox_threshold.value()
+        )
+        if self.max_rel_dist is None:
+            self.max_rel_dist = int(s.value("brdrq/max_rel_dist", 5))
+            self.spinBox_max_relevant_distance.setValue(
+                self.max_rel_dist
+            )
+        self.max_rel_dist = self.spinBox_max_relevant_distance.value()
+        self.maximum = self.max_rel_dist * 100
+
+        self.relevant_distances = [
+            round(k, self.DECIMAL)
+            for k in np.arange(
+                self.minimum, self.maximum + self.step, self.step, dtype=int
+            )
+            / 100
+        ]
+
+        if self.od_strategy is None:
+            self.od_strategy = int(s.value("brdrq/od_strategy", 2))
+            index = self.comboBox_odstrategy.findText(
+                OpenbaarDomeinStrategy(self.od_strategy).name
+            )
+            self.comboBox_odstrategy.setCurrentIndex(index)
+        self.od_strategy = OpenbaarDomeinStrategy[
+            self.comboBox_odstrategy.currentText()
+        ].value
+        if (
+            self.partial_snapping_strategy is None
+            or self.partial_snapping_strategy == ""
+        ):
+            no_pref = SnapStrategy.NO_PREFERENCE.name
+            self.partial_snapping_strategy = s.value(
+                "brdrq/partial_snapping_strategy", no_pref
+            )
+            index = self.comboBox_snapstrategy.findText(
+                self.partial_snapping_strategy
+            )
+            if index == -1:
+                index = 0
+            self.comboBox_snapstrategy.setCurrentIndex(index)
+        self.partial_snapping_strategy = SnapStrategy[
+            self.comboBox_snapstrategy.currentText()
+        ]
+
+        if self.reference_choice is None:
+            self.reference_choice = s.value(
+                "brdrq/reference_choice", ENUM_REFERENCE_OPTIONS[1]
+            )
+            index = self.comboBox_referencelayer.findText(
+                self.reference_choice
+            )
+            self.comboBox_referencelayer.setCurrentIndex(index)
+        self.reference_choice = (
+            self.comboBox_referencelayer.currentText()
+        )
+        current_reference_layer_index = (
+            self.mMapLayerComboBox_reference.currentIndex()
+        )
+        if current_reference_layer_index == -1 or current_reference_layer_index == 0:
+            self.reference_layer = s.value("brdrq/reference_layer", None)
+            self.mMapLayerComboBox_reference.setLayer(
+                self.reference_layer
+            )
+        self.reference_layer = (
+            self.mMapLayerComboBox_reference.currentLayer()
+        )
+
+        current_reference_id_index = (
+            self.mFieldComboBox_reference.currentIndex()
+        )
+        if current_reference_id_index == -1 or current_reference_id_index == 0:
+            self.reference_id = s.value("brdrq/reference_id", None)
+            self.mFieldComboBox_reference.setField(self.reference_id)
+        self.reference_id = self.mFieldComboBox_reference.currentField()
+        if self.full_parcel is None:
+            self.full_parcel = int(s.value("brdrq/full_parcel", 2))
+            self.checkBox_full_parcel.setCheckState(self.full_parcel)
+        self.full_parcel = self.checkBox_full_parcel.checkState()
+
+        if self.formula is None:
+            self.formula = int(s.value("brdrq/formula", 0))
+            self.checkBox_formula.setCheckState(self.formula)
+        self.formula = self.checkBox_formula.checkState()
+
+        self.partial_snapping = 0
+        if self.partial_snapping is None:
+            self.partial_snapping = int(s.value("brdrq/partial_snapping", 0))
+            self.checkBox_partial_snapping.setCheckState(
+                self.partial_snapping
+            )
+        self.partial_snapping = (
+            self.checkBox_partial_snapping.checkState()
+        )
+        self.partial_snapping = 0
+        self.partial_snapping = False #at this moment always set to false as this is not performant and not implemented in brdrQ
+
+        if self.snap_max_segment_length is None:
+            self.snap_max_segment_length = int(
+                s.value("brdrq/snap_max_segment_length", 2)
+            )
+            self.spinBox_snap_max_segment_length.setValue(
+                self.snap_max_segment_length
+            )
+        self.snap_max_segment_length = (
+            self.spinBox_snap_max_segment_length.value()
+        )
+
+        print(
+            f"settings updated: Reference choice={self.reference_choice} - od_strategy={self.od_strategy} - threshold overlap percenatge = {str(self.threshold_overlap_percentage)}"
+        )
+        # write settings
+        s.setValue(
+            "brdrq/threshold_overlap_percentage", self.threshold_overlap_percentage
+        )
+        s.setValue("brdrq/od_strategy", self.od_strategy)
+        s.setValue("brdrq/reference_choice", self.reference_choice)
+        s.setValue("brdrq/reference_id", self.reference_id)
+        s.setValue("brdrq/reference_layer", self.reference_layer)
+        s.setValue("brdrq/max_rel_dist", self.max_rel_dist)
+        s.setValue("brdrq/formula", self.formula)
+        s.setValue("brdrq/full_parcel", self.full_parcel)
+        s.setValue("brdrq/partial_snapping", self.partial_snapping)
+        s.setValue(
+            "brdrq/partial_snapping_strategy", self.partial_snapping_strategy.name
+        )
+        s.setValue("brdrq/snap_max_segment_length", self.snap_max_segment_length)
+        return
 
 def __init__():
     pass
