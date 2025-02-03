@@ -1,8 +1,5 @@
 import os
 
-from PyQt5.QtCore import pyqtSignal
-from qgis._core import QgsField
-from qgis.core import QgsProcessingParameterFolderDestination
 
 try:
     import brdr
@@ -24,7 +21,11 @@ from brdr.enums import GRBType, OpenbaarDomeinStrategy, SnapStrategy
 from brdr.geometry_utils import geojson_polygon_to_multipolygon
 from brdr.typings import ProcessResult
 from brdr.utils import write_geojson
+from PyQt5.QtCore import pyqtSignal
 from qgis.PyQt.QtCore import Qt
+from qgis import processing
+from qgis.core import QgsField, QgsFeatureRequest, QgsProcessing
+from qgis.core import QgsProcessingParameterFolderDestination
 from qgis.core import QgsGeometry
 from qgis.core import QgsProject
 from qgis.core import (
@@ -70,10 +71,12 @@ def geom_shapely_to_qgis(geom_shapely):
     geom_qgis = QgsGeometry.fromWkt(wkt)
     return geom_qgis
 
+
 def remove_group_layer(group_layer_name):
     tree = QgsProject.instance().layerTreeRoot()
     node_object = tree.findGroup(group_layer_name)
     tree.removeChildNode(node_object)
+
 
 def geom_qgis_to_shapely(geom_qgis):
     """
@@ -85,6 +88,7 @@ def geom_qgis_to_shapely(geom_qgis):
     geom_shapely = from_wkt(wkt)
     return make_valid(geom_shapely)
 
+
 def add_field_to_layer(layer, fieldname, fieldtype, default_value):
     layer.startEditing()
     if layer.dataProvider().fieldNameIndex(fieldname) == -1:
@@ -95,16 +99,18 @@ def add_field_to_layer(layer, fieldname, fieldtype, default_value):
         layer.changeAttributeValue(feature.id(), id_new_col, default_value)
     layer.commitChanges()
 
+
 def get_layer_by_name(layer_name):
     """
     Get the layer-object based on the layername
     """
     layers = QgsProject.instance().mapLayersByName(layer_name)
-    if len (layers)>0:
+    if len(layers) > 0:
         return layers[0]
     else:
-        print (f"Layer not found for layername {str(layer_name)}")
+        print(f"Layer not found for layername {str(layer_name)}")
         return None
+
 
 def zoom_to_feature(feature, iface):
     """
@@ -422,7 +428,7 @@ def plot_series(
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
-    #plt.legend()
+    # plt.legend()
     plt.show()
     return
 
@@ -464,6 +470,66 @@ def _processresult_to_dicts(processresult):
     )
 
 
+def thematic_preparation(
+    input_thematic_name,input_thematic_layer, relevant_distance, context, feedback
+):
+    outputs = {}
+    # THEMATIC PREPARATION
+    context.setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck)
+
+    outputs[input_thematic_name + "_fixed"] = processing.run(
+        "native:fixgeometries",
+        {
+            "INPUT": input_thematic_layer,
+            "METHOD": 1,
+            "OUTPUT": QgsProcessing.TEMPORARY_OUTPUT,
+        },
+        context=context,
+        feedback=feedback,
+        is_child_algorithm=True,
+    )
+    thematic = context.getMapLayer(outputs[input_thematic_name + "_fixed"]["OUTPUT"])
+    crs = (
+        thematic.sourceCrs().authid()
+    )  # set CRS for the calculations, based on the THEMATIC input layer
+
+    outputs[input_thematic_name + "_dropMZ"] = processing.run(
+        "native:dropmzvalues",
+        {
+            "INPUT": thematic,
+            "DROP_M_VALUES": True,
+            "DROP_Z_VALUES": True,
+            "OUTPUT": "TEMPORARY_OUTPUT",
+        },
+        context=context,
+        feedback=feedback,
+        is_child_algorithm=True,
+    )
+    thematic = context.getMapLayer(outputs[input_thematic_name + "_dropMZ"]["OUTPUT"])
+    # buffer the thematic layer to select all plots around it that are relevant to
+    # the calculations
+    outputs[input_thematic_name + "_buffered"] = processing.run(
+        "native:buffer",
+        {
+            "INPUT": thematic,
+            "DISTANCE": 1.01 * relevant_distance,
+            "SEGMENTS": 10,
+            "END_CAP_STYLE": 0,
+            "JOIN_STYLE": 1,
+            "MITRE_LIMIT": 10,
+            "DISSOLVE": False,
+            "OUTPUT": "TEMPORARY_OUTPUT",
+        },
+        context=context,
+        feedback=feedback,
+        is_child_algorithm=True,
+    )
+    thematic_buffered = context.getMapLayer(
+        outputs[input_thematic_name + "_buffered"]["OUTPUT"]
+    )
+    return thematic, thematic_buffered, crs
+
+
 # https://www.pythonguis.com/tutorials/plotting-matplotlib/
 import matplotlib
 
@@ -480,18 +546,23 @@ class MplCanvas(FigureCanvasQTAgg):
         self.axes = fig.add_subplot(111)
         super(MplCanvas, self).__init__(fig)
 
+
 from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify
+
 
 class SelectTool(QgsMapToolIdentifyFeature):
     featuresIdentified = pyqtSignal(object)
-    def __init__(self, iface,layer):
+
+    def __init__(self, iface, layer):
         self.iface = iface
         self.canvas = self.iface.mapCanvas()
         self.layer = layer
         QgsMapToolIdentifyFeature.__init__(self, self.canvas, self.layer)
 
     def canvasPressEvent(self, event):
-        identified_features = self.identify(event.x(), event.y(), [self.layer], QgsMapToolIdentify.TopDownAll)
+        identified_features = self.identify(
+            event.x(), event.y(), [self.layer], QgsMapToolIdentify.TopDownAll
+        )
         identified_features = [f.mFeature for f in identified_features]
         self.featuresIdentified.emit(identified_features)
 

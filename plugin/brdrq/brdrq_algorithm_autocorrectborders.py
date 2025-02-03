@@ -38,7 +38,7 @@ from .brdrq_utils import (
     GRB_TYPES,
     geom_qgis_to_shapely,
     geojson_to_layer,
-    get_workfolder,
+    get_workfolder, thematic_preparation,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -415,13 +415,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback = QgsProcessingMultiStepFeedback(feedback_steps, feedback)
         feedback.pushInfo("START")
         feedback.setCurrentStep(1)
-        outputs = {}
 
         self.prepare_parameters(parameters)
 
-        thematic, thematic_buffered = self._thematic_preparation(
-            context, feedback, outputs, parameters
-        )
+
+        thematic, thematic_buffered,self.CRS = thematic_preparation(self.INPUT_THEMATIC, parameters[self.INPUT_THEMATIC], self.RELEVANT_DISTANCE,
+                                                                    context, feedback
+                                                                    )
         if thematic is None:
             raise QgsProcessingException(self.invalidSourceError(parameters, self.test))
 
@@ -470,7 +470,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # REFERENCE PREPARATION
         if self.SELECTED_REFERENCE == 0:
             reference = self._reference_preparation(
-                thematic_buffered, context, feedback, outputs, parameters
+                thematic_buffered, context, feedback, parameters
             )
 
             # Load reference into a shapely_dict:
@@ -697,65 +697,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "OUTPUT_RESULT_DIFF_MIN": result_diff_min,
         }
 
-    def _thematic_preparation(self, context, feedback, outputs, parameters):
-        # THEMATIC PREPARATION
-        context.setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck)
-        outputs[self.INPUT_THEMATIC + "_fixed"] = processing.run(
-            "native:fixgeometries",
-            {
-                "INPUT": parameters[self.INPUT_THEMATIC],
-                "METHOD": 1,
-                "OUTPUT": QgsProcessing.TEMPORARY_OUTPUT,
-            },
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        thematic = context.getMapLayer(
-            outputs[self.INPUT_THEMATIC + "_fixed"]["OUTPUT"]
-        )
-
-        outputs[self.INPUT_THEMATIC + "_dropMZ"] = processing.run(
-            "native:dropmzvalues",
-            {
-                "INPUT": thematic,
-                "DROP_M_VALUES": True,
-                "DROP_Z_VALUES": True,
-                "OUTPUT": "TEMPORARY_OUTPUT",
-            },
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        thematic = context.getMapLayer(
-            outputs[self.INPUT_THEMATIC + "_dropMZ"]["OUTPUT"]
-        )
-        # buffer the thematic layer to select all plots around it that are relevant to
-        # the calculations
-        outputs[self.INPUT_THEMATIC + "_buffered"] = processing.run(
-            "native:buffer",
-            {
-                "INPUT": thematic,
-                "DISTANCE": 1.01 * self.RELEVANT_DISTANCE,
-                "SEGMENTS": 10,
-                "END_CAP_STYLE": 0,
-                "JOIN_STYLE": 1,
-                "MITRE_LIMIT": 10,
-                "DISSOLVE": False,
-                "OUTPUT": "TEMPORARY_OUTPUT",
-            },
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        thematic_buffered = context.getMapLayer(
-            outputs[self.INPUT_THEMATIC + "_buffered"]["OUTPUT"]
-        )
-        return thematic, thematic_buffered
-
     def _reference_preparation(
-        self, thematic_buffered, context, feedback, outputs, parameters
+        self, thematic_buffered, context, feedback, parameters
     ):
+        outputs = {}
         context.setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck)
         outputs[self.INPUT_REFERENCE + "_extract"] = processing.run(
             "native:extractbylocation",

@@ -50,6 +50,7 @@ cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 if cmd_folder not in sys.path:
     sys.path.insert(0, cmd_folder)
 
+pluginname = "brdrQ"
 
 
 class BrdrQPlugin(object):
@@ -61,8 +62,8 @@ class BrdrQPlugin(object):
         self.dockwidget_featurealigner = None
         self.dockwidget_bulkaligner = None
         self.actions = []
-        self.toolbar = self.iface.addToolBar("brdrQ")
-        self.toolbar.setObjectName("brdrQ")
+        self.toolbar = self.iface.addToolBar(pluginname)
+        self.toolbar.setObjectName(pluginname)
 
 
     # noinspection PyMethodMayBeStatic
@@ -78,7 +79,7 @@ class BrdrQPlugin(object):
         :rtype: QString
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate("brdrQ", message)
+        return QCoreApplication.translate(pluginname, message)
 
     def initProcessing(self):
         """Init Processing provider for QGIS >= 3.8."""
@@ -94,7 +95,7 @@ class BrdrQPlugin(object):
             QIcon(icon), "brdrQ - Feature Aligner (predictor)", self.iface.mainWindow()
         )
         action_featurepredictor.triggered.connect(self.openDock)
-        self.iface.addPluginToMenu("brdrQ", action_featurepredictor)
+        self.iface.addPluginToMenu(pluginname, action_featurepredictor)
         self.toolbar.addAction(action_featurepredictor)
         self.actions.append(action_featurepredictor)
 
@@ -104,7 +105,7 @@ class BrdrQPlugin(object):
             QIcon(icon_bulkaligner), "brdrQ - Bulk Aligner (predictor)", self.iface.mainWindow()
         )
         action_bulkaligner.triggered.connect(self.openDockBulkAligner)
-        self.iface.addPluginToMenu("brdQ", action_bulkaligner)
+        self.iface.addPluginToMenu(pluginname, action_bulkaligner)
         self.toolbar.addAction(action_bulkaligner)
         self.actions.append(action_bulkaligner)
 
@@ -117,20 +118,20 @@ class BrdrQPlugin(object):
             self.iface.mainWindow(),
         )
         action_autocorrectborders.triggered.connect(self.openAutocorrectbordersscript)
-        self.iface.addPluginToMenu("brdQ", action_autocorrectborders)
+        self.iface.addPluginToMenu(pluginname, action_autocorrectborders)
         self.toolbar.addAction(action_autocorrectborders)
         self.actions.append(action_autocorrectborders)
 
         icon_autoupdateborders = os.path.join(
-            os.path.join(cmd_folder, "icon_autoupdateborders.png")
+            os.path.join(cmd_folder, "icon_grbupdater.png")
         )
         action_autoupdateborders = QAction(
             QIcon(icon_autoupdateborders),
-            "Autoupdateborders (bulk)",
+            "GRB Updater (bulk)",
             self.iface.mainWindow(),
         )
         action_autoupdateborders.triggered.connect(self.openAutoupdatebordersscript)
-        self.iface.addPluginToMenu("brdQ", action_autoupdateborders)
+        self.iface.addPluginToMenu(pluginname, action_autoupdateborders)
         self.toolbar.addAction(action_autoupdateborders)
         self.actions.append(action_autoupdateborders)
 
@@ -143,7 +144,7 @@ class BrdrQPlugin(object):
             self.iface.mainWindow(),
         )
         action_info.triggered.connect(self.openInfo)
-        self.iface.addPluginToMenu("brdQ", action_info)
+        self.iface.addPluginToMenu(pluginname, action_info)
         self.toolbar.addAction(action_info)
         self.actions.append(action_info)
 
@@ -165,7 +166,7 @@ class BrdrQPlugin(object):
         for action in self.actions:
             self.iface.removeToolBarIcon(action)
             self.toolbar.removeAction(action)
-            self.iface.removePluginMenu("brdQ", action)
+            self.iface.removePluginMenu(pluginname, action)
             del action
         # remove the toolbar
         del self.toolbar
