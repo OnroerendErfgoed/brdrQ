@@ -42,7 +42,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import QgsApplication
 
 from .brdrq_dockwidget_bulkaligner import brdrQDockWidgetBulkAligner
-from .brdrq_dockwidget_featurealigner import brdrQDockWidget
+from .brdrq_dockwidget_featurealigner import brdrQDockWidgetFeatureAligner
 from .brdrq_provider import BrdrQProvider
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -188,7 +188,7 @@ class BrdrQPlugin(object):
         print("openDock")
         if self.dockwidget_featurealigner is None:
             # Create the dockwidget (after translation) and keep reference
-            self.dockwidget_featurealigner = brdrQDockWidget(self)
+            self.dockwidget_featurealigner = brdrQDockWidgetFeatureAligner(self)
             print("brdrQDockWidget created")
         print(str(self.dockwidget_featurealigner.active))
         if not self.dockwidget_featurealigner.active:

@@ -42,77 +42,28 @@ from qgis.core import QgsStyle
 from qgis.gui import QgsMapToolPan
 from qgis.utils import OverrideCursor
 
-from .brdrq_help import brdrQHelp
-from .brdrq_settings import brdrQSettings
-from .brdrq_utils import SelectTool, zoom_to_feature, geojson_to_layer, get_workfolder, get_layer_by_name, GRB_TYPES, \
-    ADPF_VERSIONS, geom_qgis_to_shapely, plot_series, show_map, geom_shapely_to_qgis, remove_group_layer
+from .brdrq_dockwidget_aligner import brdrQDockWidgetAligner
+from .brdrq_utils import SelectTool, zoom_to_feature, geojson_to_layer, GRB_TYPES, \
+    ADPF_VERSIONS, geom_qgis_to_shapely, remove_group_layer
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'brdrq_dockwidget_featurealigner.ui'))
 
 
-class brdrQDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
+class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidgetAligner):
     closingPlugin = pyqtSignal()
 
     def __init__(self,brdrqplugin, parent=None):
         """Constructor."""
-        super(brdrQDockWidget, self).__init__(parent)
+        print ("init brdrQDockWidgetFeatureAligner")
+        brdrQDockWidgetAligner.__init__(self,brdrqplugin)
+        super(brdrQDockWidgetFeatureAligner, self).__init__(parent)
         # Set up the user interface from Designer.
         # After setupUI you can access any designer object by doing
         # self.<objectname>, and you can use autoconnect slots - see
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
-        self.layer =None
-        self.formula = None
-        self.max_feature_count = 5000
-        self.max_area_optimization = 100000
-        self.max_area_limit = (
-            400000  # maximum m² where the calculation will be done for
-        )
-        self.listed_features =None
-        self.feature = None
-        self.active=False
-        self.selectTool = None
-        self.formerMapTool = None
-        self.aligner = None
-        self.brdrqplugin = brdrqplugin
-        self.iface = self.brdrqplugin.iface
-
-        self.minimum = 0
-        self.maximum = 1500
-        self.step = 10
-        self.relevant_distances = None
-        self.threshold_overlap_percentage = None
-        self.od_strategy =None
-        self.reference_choice = None
-        self.reference_id = None
-        self.reference_layer = None
-        self.max_rel_dist = None
-        self.formula = None
-        self.full_parcel = None
-        self.partial_snapping = None
-        self.partial_snapping_strategy = None
-        self.snap_max_segment_length = None
-        self.settingsDialog = brdrQSettings()
-        self.tempfolder = get_workfolder("", "brdrQ", temporary=True)
-
-        self.dict_processresults = None
-        self.dict_evaluated_predictions = None
-        self.props_dict_evaluated_predictions = None
-        self.diffs_dict = None
-
-        self.GROUP_LAYER = "brdrQ_featurealigner"
-        self.LAYER_RESULT = (
-            "RESULT"  # parameter that holds the TOC layername of the result
-        )
-        self.LAYER_RESULT_DIFF = (
-            "DIFF"  # parameter that holds the TOC layername of the resulting diff
-        )
-        self.LAYER_RESULT_DIFF_PLUS = "DIFF_PLUS"  # parameter that holds the TOC layername of the resulting diff_plus
-        self.LAYER_RESULT_DIFF_MIN = "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
-
-        self.helpDialog = brdrQHelp()
 
 
     def clearUserInterface(self):
@@ -128,9 +79,6 @@ class brdrQDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         remove_group_layer(self.GROUP_LAYER)
         self.feature = None
 
-    def closeEvent(self, event):
-        self.closingPlugin.emit()
-        event.accept()
 
     def activate(self):
         self.active = True
@@ -194,7 +142,6 @@ class brdrQDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if self.formerMapTool is None:
             self.formerMapTool = QgsMapToolPan(mapcanvas)
         mapcanvas.setMapTool(self.formerMapTool)
-
 
     def onFeaturesIdentified(self,identified_features):
         """Code called when the feature is selected by the user"""
@@ -376,51 +323,6 @@ class brdrQDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.deactivateSelectTool()
         self._listItemActivated(currentItem)
 
-    def _listItemActivated(self, currentItem):
-
-        if currentItem is None:
-            print("currentitem zero")
-            return
-        print("item activated with rd: " + currentItem.text())
-        value = currentItem.text()
-        value = value.split(":")[0]
-        value = round(float(value), self.settingsDialog.DECIMAL)
-        print("item activated with rd - value: " + str(value))
-        self.doubleSpinBox.setValue(value)
-        index = self.relevant_distances.index(value)
-        self.horizontalSlider.setValue(index)
-        return
-
-    def onSliderChange(self, index):
-        print("onSliderChange: index -> " + str(index))
-        value = self.relevant_distances[index]
-        value = round(value, self.settingsDialog.DECIMAL)
-        self.doubleSpinBox.setValue(value)
-        return
-
-    def onSpinboxChange(self, value):
-        value = round(value, self.settingsDialog.DECIMAL)
-        index = self.relevant_distances.index(value)
-        self.horizontalSlider.setValue(index)
-        print("onSpinboxChange: value -> " + str(value))
-
-        # self.change_geometry()
-        # Filter layers based on relevant distance
-        get_layer_by_name(self.LAYER_RESULT).setSubsetString(
-            f"brdr_relevant_distance = {value}"
-        )
-        get_layer_by_name(self.LAYER_RESULT_DIFF).setSubsetString(
-            f"brdr_relevant_distance = {value}"
-        )
-        get_layer_by_name(self.LAYER_RESULT_DIFF_MIN).setSubsetString(
-            f"brdr_relevant_distance = {value}"
-        )
-        get_layer_by_name(self.LAYER_RESULT_DIFF_PLUS).setSubsetString(
-            f"brdr_relevant_distance = {value}"
-        )
-        self.get_wkt()
-        return
-
     def _align(self):
         feat = self.feature
         selectedFeatures = []
@@ -510,97 +412,15 @@ class brdrQDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self.diffs_dict,
         )
 
-    def show_help_dialog(self):
-        self.helpDialog.show()
-
-    def show_settings_dialog(self):
-        self.settingsDialog.show()
-
-    def get_graphic(self):
-        feat = self.feature
-        if feat is None:
-            return
-        key = feat.id()
-        plot_series(self.relevant_distances, {key: self.diffs_dict[key]})
-        return
-
-    def get_visualisation(self):
-        feat = self.feature
-        if feat is None:
-            return
-        key = feat.id()
-        show_map(
-            {key: self.dict_evaluated_predictions[key]},
-            {key: self.aligner.dict_thematic[key]},
-            self.aligner.dict_reference,
-        )
-        return
-
     def change_geometry(self):
-        feat = self.feature
-        if feat is None:
-            return
-        key = feat.id()
-        relevant_distance = round(self.doubleSpinBox.value(),self.settingsDialog.DECIMAL)
-        if relevant_distance in self.dict_processresults[key]:
-            result = self.dict_processresults[key][relevant_distance]
-            resulting_geom = result["result"]
-        else:
-            errormesssage = "Relevant_distance_result not calculated for: " + str(
-                relevant_distance
-            )
-            print(errormesssage)
-            return
-        layer = self.layer
-        layer.startEditing()
-        qgis_geom = geom_shapely_to_qgis(resulting_geom)
-        layer.changeGeometry(feat.id(), qgis_geom)
-        layer.commitChanges()
-        self.iface.messageBar().pushMessage("geometrie aangepast")
+        self._change_geometry(self.layer)
 
     def reset_geometry(self):
-        feat = self.feature
-        if feat is None:
-            return
-        layer = self.layer
-        layer.startEditing()
-        layer.changeGeometry(feat.id(), self.original_geometry)
-        layer.commitChanges()
-        self.iface.messageBar().pushMessage("geometrie gereset")
-
-    def get_wkt(self):
-        feat = self.feature
-        if feat is None:
-            return
-        key = feat.id()
-        print ("key:" + str(key))
-        relevant_distance = round(self.doubleSpinBox.value(),self.settingsDialog.DECIMAL)
-        print (str(relevant_distance))
-        if key is None or self.dict_processresults is None or not key in self.dict_processresults.keys():
-            msg = f"No prediction-WKT of feature {str(key)}..."
-            self.textEdit_output.setText(msg)
-            return
-
-        elif relevant_distance in self.dict_processresults[key]:
-            result = self.dict_processresults[key][relevant_distance]
-            resulting_geom = result["result"]
-        else:
-            errormesssage = "Relevant_distance_result not calculated for key : " + str(
-                key
-            )+ " at relevant distance-" + str(
-                relevant_distance
-            )
-
-            self.textEdit_output.setText(errormesssage)
-            return
-        wkt = resulting_geom.wkt
-        self.textEdit_output.setText(wkt)
+        self._reset_geometry(self.layer)
 
     def startDock(self):
         self.clearUserInterface()
-
         self.textEdit_output.setText("Please select a feature to align")
-
         self.threshold_overlap_percentage = self.settingsDialog.threshold_overlap_percentage
         self.od_strategy = self.settingsDialog.od_strategy
         self.reference_choice = self.settingsDialog.reference_choice
@@ -632,7 +452,6 @@ class brdrQDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             partial_snapping_strategy=self.partial_snapping_strategy,
             snapping_max_segment_length=self.snap_max_segment_length,
         )
-
         return
 
 def __init__():

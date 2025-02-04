@@ -25,7 +25,6 @@
 import os
 
 from PyQt5.QtCore import QVariant
-from PyQt5.QtWidgets import QDialog, QMessageBox
 from brdr.aligner import Aligner
 from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME
 from brdr.enums import GRBType, AlignerResultType
@@ -41,13 +40,11 @@ from qgis.core import QgsFeatureRequest, edit
 from qgis.core import QgsMapLayerProxyModel
 from qgis.core import QgsProject
 from qgis.core import QgsStyle
-from qgis.core import QgsTask, QgsApplication
 from qgis.utils import OverrideCursor
 
-from .brdrq_help import brdrQHelp
-from .brdrq_settings import brdrQSettings
-from .brdrq_utils import move_to_group, zoom_to_feature, add_field_to_layer, plot_series, show_map, \
-    geom_shapely_to_qgis, get_layer_by_name, geojson_to_layer, get_workfolder, remove_group_layer, geom_qgis_to_shapely, \
+from .brdrq_dockwidget_aligner import brdrQDockWidgetAligner
+from .brdrq_utils import move_to_group, zoom_to_feature, add_field_to_layer, geom_shapely_to_qgis, geojson_to_layer, \
+    remove_group_layer, geom_qgis_to_shapely, \
     GRB_TYPES, ADPF_VERSIONS
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -58,51 +55,19 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 #TODO implementeer only selected
 
 
-class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
+class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidgetAligner):
     closingPlugin = pyqtSignal()
 
     def __init__(self,brdrqplugin, parent=None):
         """Constructor."""
+        print (" init brdrQDockWidgetBulkAligner")
+        brdrQDockWidgetAligner.__init__(self,brdrqplugin)
         super(brdrQDockWidgetBulkAligner, self).__init__(parent)
-        self.active = False
         self.setupUi(self)
-        self.brdrqplugin=brdrqplugin
-        self.iface = self.brdrqplugin.iface
 
-        self.minimum = 0
-        self.maximum = 1500
-        self.step = 10
-        self.relevant_distances = None
-        self.threshold_overlap_percentage = None
-        self.od_strategy =None
-        self.reference_choice = None
-        self.reference_id = None
-        self.reference_layer = None
-        self.max_rel_dist = None
-        self.formula = None
-        self.full_parcel = None
-        self.partial_snapping = None
-        self.partial_snapping_strategy = None
-        self.snap_max_segment_length = None
-
-        self.aligner = None
         self.workinglayer = None
         self.workinggroupname = None
-        self.feature = None
         self.featureItemList = None
-        self.diffs_dict = None
-        self.helpDialog = brdrQHelp()
-        self.settingsDialog = brdrQSettings()
-        self.tempfolder = get_workfolder("", "brdrQ", temporary=True)
-
-        self.LAYER_RESULT = (
-            "RESULT"  # parameter that holds the TOC layername of the result
-        )
-        self.LAYER_RESULT_DIFF = (
-            "DIFF"  # parameter that holds the TOC layername of the resulting diff
-        )
-        self.LAYER_RESULT_DIFF_PLUS = "DIFF_PLUS"  # parameter that holds the TOC layername of the resulting diff_plus
-        self.LAYER_RESULT_DIFF_MIN = "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
 
 
     def clearUserInterface(self):
@@ -114,9 +79,7 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
         # Clear the predictionlist
         self.listWidget_predictions.clear()
 
-    def closeEvent(self, event):
-        self.closingPlugin.emit()
-        event.accept()
+
 
     def activate(self):
         self.active = True
@@ -393,7 +356,7 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
         return
 
     def prepareFeatureList(self):
-        self.clearUserInterface()
+        #self.clearUserInterface()
         # Add the selected features to the list widget
         print ("list features")
         feature = None
@@ -436,7 +399,6 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
 
     def getWorkingFeatures(self):
         return [f for f in self.workinglayer.getFeatures()]
-
 
     def loadFeaturelist(self):
         self.clearUserInterface()
@@ -497,160 +459,17 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
         else:
             self.textEdit_output.setText("No predictions")
 
-    def show_help_dialog(self):
-        self.helpDialog.show()
-
-    def show_settings_dialog(self):
-        self.settingsDialog.show()
-
-    def get_graphic(self):
-        feat = self.feature
-        if feat is None:
-            return
-        key = feat.id()
-        print("graphic_key" + str(key))
-        print("distances" + str(self.relevant_distances))
-        print("distances" + str(self.relevant_distances))
-        print("dict" + str(self.diffs_dict))
-        self.diffs_dict
-        plot_series(self.relevant_distances, {key: self.diffs_dict[key]})
-        return
-
-    def get_visualisation(self):
-        feat = self.feature
-        if feat is None:
-            return
-        key = feat.id()
-        show_map(
-            {key: self.dict_evaluated_predictions[key]},
-            {key: self.aligner.dict_thematic[key]},
-            self.aligner.dict_reference,
-        )
-        return
-
     def change_geometry(self):
-        feat = self.feature
-        if feat is None:
-            return
-        key = feat.id()
-        relevant_distance = round(self.doubleSpinBox.value(),self.settingsDialog.DECIMAL)
-        if relevant_distance in self.dict_processresults[key]:
-            result = self.dict_processresults[key][relevant_distance]
-            resulting_geom = result["result"]
-        else:
-            errormesssage = "Relevant_distance_result not calculated for: " + str(
-                relevant_distance
-            )
-            print(errormesssage)
-            return
-        qgis_geom = geom_shapely_to_qgis(resulting_geom)
-        with edit(self.workinglayer):
-            self.workinglayer.changeGeometry(feat.id(), qgis_geom)
-            self.workinglayer.changeAttributeValue(feat.id(),
-                                                   self.workinglayer.fields().indexOf('brdrq_handling'),
-                                                   "corrected")
-        self.iface.messageBar().pushMessage("geometrie aangepast")
+        self._change_geometry(self.workinglayer)
         self.loadFeaturelist()
 
     def reset_geometry(self):
-        feat = self.feature
-        if feat is None:
-            return
-        key = feat.id()
-        relevant_distance = round(0.0,self.settingsDialog.DECIMAL)
-        if relevant_distance in self.dict_processresults[key]:
-            result = self.dict_processresults[key][relevant_distance]
-            resulting_geom = result["result"]
-        else:
-            errormesssage = f"problem restting for reldist {str(relevant_distance)}"
-            print(errormesssage)
-            return
-        qgis_geom = geom_shapely_to_qgis(resulting_geom)
-        with edit(self.workinglayer):
-            self.workinglayer.changeGeometry(feat.id(), qgis_geom)
-            self.workinglayer.changeAttributeValue(feat.id(),
-                                                   self.workinglayer.fields().indexOf('brdrq_handling'),
-                                                   "to_check_reset")
-        self.iface.messageBar().pushMessage("geometrie gereset")
+        self._reset_geometry(self.workinglayer)
         self.loadFeaturelist()
-
-    def get_wkt(self):
-        feat = self.feature
-        if feat is None:
-            return
-        key = feat.id()
-        print ("key:" + str(key))
-        relevant_distance = round(self.doubleSpinBox.value(),self.settingsDialog.DECIMAL)
-        print (str(relevant_distance))
-        if key is None or self.dict_processresults is None or not key in self.dict_processresults.keys():
-            msg = f"No prediction-WKT of feature {str(key)}..."
-            self.textEdit_output.setText(msg)
-            return
-
-        elif relevant_distance in self.dict_processresults[key]:
-            result = self.dict_processresults[key][relevant_distance]
-            resulting_geom = result["result"]
-        else:
-            errormesssage = "Relevant_distance_result not calculated for key : " + str(
-                key
-            )+ " at relevant distance-" + str(
-                relevant_distance
-            )
-
-            self.textEdit_output.setText(errormesssage)
-            return
-        wkt = resulting_geom.wkt
-        self.textEdit_output.setText(wkt)
-
-
-    def onSliderChange(self, index):
-        print("onSliderChange: index -> " + str(index))
-        value = self.relevant_distances[index]
-        value = round(value, self.settingsDialog.DECIMAL)
-        self.doubleSpinBox.setValue(value)
-        return
-
-    def onSpinboxChange(self, value):
-        value = round(value, self.settingsDialog.DECIMAL)
-        index = self.relevant_distances.index(value)
-        self.horizontalSlider.setValue(index)
-        print("onSpinboxChange: value -> " + str(value))
-
-        # self.change_geometry()
-        # Filter layers based on relevant distance
-        get_layer_by_name(self.LAYER_RESULT).setSubsetString(
-            f"brdr_relevant_distance = {value}"
-        )
-        get_layer_by_name(self.LAYER_RESULT_DIFF).setSubsetString(
-            f"brdr_relevant_distance = {value}"
-        )
-        get_layer_by_name(self.LAYER_RESULT_DIFF_MIN).setSubsetString(
-            f"brdr_relevant_distance = {value}"
-        )
-        get_layer_by_name(self.LAYER_RESULT_DIFF_PLUS).setSubsetString(
-            f"brdr_relevant_distance = {value}"
-        )
-        self.get_wkt()
-        return
 
     def onListItemActivated(self, currentItem):
         print("onListItemActivated")
         self._listItemActivated(currentItem)
-
-    def _listItemActivated(self, currentItem):
-
-        if currentItem is None:
-            print("currentitem zero")
-            return
-        print("item activated with rd: " + currentItem.text())
-        value = currentItem.text()
-        value = value.split(":")[0]
-        value = round(float(value), self.settingsDialog.DECIMAL)
-        print("item activated with rd - value: " + str(value))
-        self.doubleSpinBox.setValue(value)
-        index = self.relevant_distances.index(value)
-        self.horizontalSlider.setValue(index)
-        return
 
     def startDock(self):
         self.clearUserInterface()
@@ -678,7 +497,6 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS):
         )
         self.horizontalSlider.setSingleStep(1)
         return
-
 
 def __init__():
     pass
