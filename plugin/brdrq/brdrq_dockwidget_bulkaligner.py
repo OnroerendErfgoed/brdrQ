@@ -473,29 +473,8 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
 
     def startDock(self):
         self.clearUserInterface()
-        self.threshold_overlap_percentage = self.settingsDialog.threshold_overlap_percentage
-        self.od_strategy = self.settingsDialog.od_strategy
-        self.reference_choice = self.settingsDialog.reference_choice
-        self.reference_id = self.settingsDialog.reference_id
-        self.reference_layer = self.settingsDialog.reference_layer
-        self.max_rel_dist = self.settingsDialog.max_rel_dist
-        self.relevant_distances = self.settingsDialog.relevant_distances
-        self.formula = self.settingsDialog.formula
-        self.full_parcel = self.settingsDialog.full_parcel
-        self.partial_snapping = self.settingsDialog.partial_snapping
-        self.partial_snapping_strategy = self.settingsDialog.partial_snapping_strategy
-        self.snap_max_segment_length = self.settingsDialog.snap_max_segment_length
-
-        self.doubleSpinBox.setMinimum(self.minimum / 100)
-        self.doubleSpinBox.setMaximum(self.maximum / 100)
-        self.doubleSpinBox.setSingleStep(self.step / 100)
-        self.doubleSpinBox.setDecimals(self.settingsDialog.DECIMAL)
-        self.doubleSpinBox.setValue(0.0)
-        self.horizontalSlider.setMinimum(0)
-        self.horizontalSlider.setMaximum(
-            len(self.relevant_distances) - 1
-        )
-        self.horizontalSlider.setSingleStep(1)
+        self.loadSettings()
+        self.setHandles()
         return
 
 def __init__():
