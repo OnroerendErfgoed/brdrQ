@@ -17,7 +17,7 @@ from math import ceil
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
-from brdr.enums import GRBType, OpenbaarDomeinStrategy, SnapStrategy
+from brdr.enums import GRBType, OpenbaarDomeinStrategy, SnapStrategy, Full
 from brdr.geometry_utils import geojson_polygon_to_multipolygon
 from brdr.typings import ProcessResult
 from brdr.utils import write_geojson
@@ -61,6 +61,9 @@ ENUM_OD_STRATEGY_OPTIONS = [
 
 # ENUM for choosing the snap-strategy
 ENUM_SNAP_STRATEGY_OPTIONS = [e.name for e in SnapStrategy]
+
+# ENUM for choosing the full-strategy when evaluating
+ENUM_FULL_STRATEGY_OPTIONS = [e.name for e in Full]
 
 
 def geom_shapely_to_qgis(geom_shapely):

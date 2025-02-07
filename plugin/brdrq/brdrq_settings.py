@@ -25,12 +25,13 @@
 import os
 
 import numpy as np
-from brdr.enums import OpenbaarDomeinStrategy, SnapStrategy
+from brdr.enums import OpenbaarDomeinStrategy, SnapStrategy, Full
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.core import QgsSettings
 
-from .brdrq_utils import ENUM_REFERENCE_OPTIONS, ENUM_OD_STRATEGY_OPTIONS, ENUM_SNAP_STRATEGY_OPTIONS
+from .brdrq_utils import ENUM_REFERENCE_OPTIONS, ENUM_OD_STRATEGY_OPTIONS, ENUM_SNAP_STRATEGY_OPTIONS, \
+    ENUM_FULL_STRATEGY_OPTIONS
 
 FORM_CLASS, _ = uic.loadUiType(
     os.path.join(os.path.dirname(__file__), "brdrq_settings.ui")
@@ -61,7 +62,7 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.reference_layer = None
         self.max_rel_dist = None
         self.formula = None
-        self.full_parcel = None
+        self.full_strategy = None
         self.partial_snapping = None
         self.partial_snapping_strategy = None
         self.snap_max_segment_length = None
@@ -80,6 +81,8 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             self.comboBox_odstrategy.addItem(od)
         for s in ENUM_SNAP_STRATEGY_OPTIONS:
             self.comboBox_snapstrategy.addItem(s)
+        for f in ENUM_FULL_STRATEGY_OPTIONS:
+            self.comboBox_fullstrategy.addItem(f)
         self.comboBox_referencelayer.currentIndexChanged.connect(
             self.update_reference_choice
         )
@@ -178,6 +181,25 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             self.comboBox_snapstrategy.currentText()
         ]
 
+        if (
+            self.full_strategy is None
+            or self.full_strategy == ""
+        ):
+            prefer_full = Full.PREFER_FULL.name
+            self.full_strategy = s.value(
+                "brdrq/full_strategy", prefer_full
+            )
+            index = self.comboBox_fullstrategy.findText(
+                self.full_strategy
+            )
+            if index == -1:
+                index = 0
+            self.comboBox_fullstrategy.setCurrentIndex(index)
+        self.full_strategy = Full[
+            self.comboBox_fullstrategy.currentText()
+        ]
+
+
         if self.reference_choice is None:
             self.reference_choice = s.value(
                 "brdrq/reference_choice", ENUM_REFERENCE_OPTIONS[1]
@@ -208,10 +230,6 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             self.reference_id = s.value("brdrq/reference_id", None)
             self.mFieldComboBox_reference.setField(self.reference_id)
         self.reference_id = self.mFieldComboBox_reference.currentField()
-        if self.full_parcel is None:
-            self.full_parcel = int(s.value("brdrq/full_parcel", 2))
-            self.checkBox_full_parcel.setCheckState(self.full_parcel)
-        self.full_parcel = self.checkBox_full_parcel.checkState()
 
         if self.formula is None:
             self.formula = int(s.value("brdrq/formula", 0))
@@ -254,7 +272,9 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         s.setValue("brdrq/reference_layer", self.reference_layer)
         s.setValue("brdrq/max_rel_dist", self.max_rel_dist)
         s.setValue("brdrq/formula", self.formula)
-        s.setValue("brdrq/full_parcel", self.full_parcel)
+        s.setValue(
+            "brdrq/full_strategy", self.full_strategy.name
+        )
         s.setValue("brdrq/partial_snapping", self.partial_snapping)
         s.setValue(
             "brdrq/partial_snapping_strategy", self.partial_snapping_strategy.name

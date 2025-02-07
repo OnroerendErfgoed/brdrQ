@@ -30,7 +30,7 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from brdr.aligner import Aligner
 from brdr.constants import BASE_FORMULA_FIELD_NAME
-from brdr.enums import AlignerInputType, GRBType
+from brdr.enums import AlignerInputType, GRBType, Full
 from brdr.grb import update_to_actual_grb
 from brdr.loader import DictLoader
 from qgis.PyQt.QtCore import QCoreApplication
@@ -103,6 +103,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     # OTHER parameters
     MAX_DISTANCE_FOR_ACTUALISATION = 3  # maximum relevant distance that is used in the predictor when trying to update to actual GRB
     WORKFOLDER = "brdrQ"
+    BEST_PREDICTION = True
     SHOW_LOG_INFO = True
 
     def flags(self):
@@ -226,6 +227,11 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
+            "BEST_PREDICTION", "Best prediction (when multiple predictions)", defaultValue=self.BEST_PREDICTION
+        )
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterBoolean(
             "SHOW_LOG_INFO", "SHOW_LOG_INFO (brdr-log)", defaultValue=self.SHOW_LOG_INFO
         )
         self.addParameter(parameter)
@@ -293,6 +299,13 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         else:
             log_info = None
 
+        if self.BEST_PREDICTION:
+            max_predictions=1
+            multi_to_best_prediction=True
+        else:
+            max_predictions=-1
+            multi_to_best_prediction=False
+
         print(str(self.FORMULA_FIELDNAME))
         fcs_actualisation = update_to_actual_grb(
             fc,
@@ -301,6 +314,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             grb_type=self.GRB_TYPE,
             max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
             feedback=log_info,
+            max_predictions=max_predictions,
+            full_strategy= Full.NO_FULL,
+            #multi_to_best_prediction = multi_to_best_prediction, #waiting for brdr 0.9.0
         )
         if fcs_actualisation is None or fcs_actualisation == {}:
             feedback.pushInfo(
@@ -368,6 +384,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.MAX_DISTANCE_FOR_ACTUALISATION = parameters["MAX_RELEVANT_DISTANCE"]
         self.GRB_TYPE = GRBType[GRB_TYPES[parameters["ENUM_REFERENCE"]]]
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
+        self.BEST_PREDICTION = parameters["BEST_PREDICTION"]
         self.FORMULA_FIELDNAME = parameters["FORMULA_FIELD"]
         if str(self.FORMULA_FIELDNAME) == "NULL":
             self.FORMULA_FIELDNAME = None

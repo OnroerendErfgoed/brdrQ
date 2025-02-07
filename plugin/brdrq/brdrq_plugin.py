@@ -90,6 +90,8 @@ class BrdrQPlugin(object):
     def initGui(self):
         # print ("initGui")
         self.initProcessing()
+
+        #FEATUREPREDICTOR
         icon = os.path.join(os.path.join(cmd_folder, "icon_featurealigner.png"))
         action_featurepredictor = QAction(
             QIcon(icon), "brdrQ - Feature Aligner (predictor)", self.iface.mainWindow()
@@ -99,16 +101,18 @@ class BrdrQPlugin(object):
         self.toolbar.addAction(action_featurepredictor)
         self.actions.append(action_featurepredictor)
 
+        # #BULKALIGNER
+        # icon_bulkaligner = os.path.join(os.path.join(cmd_folder, "icon_bulkaligner.png"))
+        # action_bulkaligner = QAction(
+        #     QIcon(icon_bulkaligner), "brdrQ - Bulk Aligner (predictor)", self.iface.mainWindow()
+        # )
+        # action_bulkaligner.triggered.connect(self.openDockBulkAligner)
+        # self.iface.addPluginToMenu(pluginname, action_bulkaligner)
+        # self.toolbar.addAction(action_bulkaligner)
+        # self.actions.append(action_bulkaligner)
 
-        icon_bulkaligner = os.path.join(os.path.join(cmd_folder, "icon_bulkaligner.png"))
-        action_bulkaligner = QAction(
-            QIcon(icon_bulkaligner), "brdrQ - Bulk Aligner (predictor)", self.iface.mainWindow()
-        )
-        action_bulkaligner.triggered.connect(self.openDockBulkAligner)
-        self.iface.addPluginToMenu(pluginname, action_bulkaligner)
-        self.toolbar.addAction(action_bulkaligner)
-        self.actions.append(action_bulkaligner)
 
+        #AUTOCORRECTBORDERS
         icon_autocorrectborders = os.path.join(
             os.path.join(cmd_folder, "icon_autocorrectborders.png")
         )
@@ -122,6 +126,8 @@ class BrdrQPlugin(object):
         self.toolbar.addAction(action_autocorrectborders)
         self.actions.append(action_autocorrectborders)
 
+
+        #AUTOUPDATEBORDERS -GRBUPDATER
         icon_autoupdateborders = os.path.join(
             os.path.join(cmd_folder, "icon_grbupdater.png")
         )
