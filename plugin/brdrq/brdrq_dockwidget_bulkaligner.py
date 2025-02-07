@@ -27,7 +27,7 @@ import os
 from PyQt5.QtCore import QVariant
 from brdr.aligner import Aligner
 from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME
-from brdr.enums import GRBType, AlignerResultType
+from brdr.enums import GRBType, AlignerResultType, Full
 from brdr.geometry_utils import geom_from_wkt
 from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader
 from brdr.loader import DictLoader
@@ -261,12 +261,17 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
             self.aligner.dict_reference_source["version_date"] = "unknown"
         self.progressBar.setValue(50)
 
+        if self.full_parcel:
+            full_strategy = Full.PREFER_FULL
+        else:
+            full_strategy = Full.NO_FULL
+
         dict_evaluated_predictions, props_dict_evaluated_predictions = self.aligner.evaluate(
             ids_to_evaluate=None,
             base_formula_field=None,
-            all_predictions=True,
-            prefer_full=True,
-            relevant_distances=self.relevant_distances
+            max_predictions=-1,
+            relevant_distances=self.relevant_distances,
+            full_strategy=full_strategy,
         )
         self.progressBar.setValue(75)
         dict_processresults = self.aligner.dict_processresults

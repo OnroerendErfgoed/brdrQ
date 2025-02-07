@@ -77,7 +77,6 @@ def remove_group_layer(group_layer_name):
     node_object = tree.findGroup(group_layer_name)
     tree.removeChildNode(node_object)
 
-
 def geom_qgis_to_shapely(geom_qgis):
     """
     Method to convert a QGIS-geometry to a Shapely-geometry
