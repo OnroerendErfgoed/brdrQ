@@ -316,7 +316,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             feedback=log_info,
             max_predictions=max_predictions,
             full_strategy= Full.NO_FULL,
-            #multi_to_best_prediction = multi_to_best_prediction, #waiting for brdr 0.9.0
+            multi_to_best_prediction = multi_to_best_prediction,
         )
         if fcs_actualisation is None or fcs_actualisation == {}:
             feedback.pushInfo(
