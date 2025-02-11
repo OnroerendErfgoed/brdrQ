@@ -16,8 +16,9 @@ Quick links:
 
 ## Description
 
-`brdrQ` is a QGIS-processing plugin that searches for overlap relevance between thematic borders and reference borders,
+`brdrQ` is a QGIS-processing plugin that aligns features (polygons) to reference borders: It searches for overlap relevance between thematic borders and reference borders,
 and creates a resulting border based on the overlapping areas that are relevant.
+The algorithm can make (one or more) 'predictions' so the user can compare and choose the right aligned geometry.
 
 The purpose of this plugin is to automatically adjust thematic boundaries (polygons) on a reference layer (polygons)
 based on a 'relevant distance'. This parameter is used in the algorithm to determine where the boundaries are
@@ -27,7 +28,8 @@ boundaries of resulting geometries and original geometries is at most as large a
 ## Installation
 
 You can install the latest release of `brdrQ` from
-[GitHub](https://github.com/OnroerendErfgoed/brdrQ/).
+[GitHub](<https://github.com/OnroerendErfgoed/brdrQ/tree/main/dist/brdrq.zip>) by downloading this zip-distribution that can be manually installed as a plugin. 
+The detailed installation-instructions can be found below.
 
 ### Pre-requisites
 
@@ -45,9 +47,9 @@ At this moment, the QGIS plugin 'brdrQ' has to be installed based on a zip-folde
 provide it as as a plugin in the QGIS-plugin-repository)
 Follow the steps below to make the plugin available in the QGISToolbar and QGIS Processing Toolbox
 
-1. Download the zip-file from Github and save it on your local machine:
+1. Download the zip-file from the following link and save it on your local machine:
    <https://github.com/OnroerendErfgoed/brdrQ/tree/main/dist/brdrq.zip>
-
+<img src="docs/figures/installation-step-download.png" width="100%" />
 2. Open the 'Plugins'>>'Manage and install plugins...' from the topbar of QGIS
 
 <img src="docs/figures/installation-step-1.png" width="100%" />
@@ -65,12 +67,15 @@ screen will close automatically after installation.)
 
 <img src="docs/figures/installation-step-2c.png" width="50%" />
 
-3. After a successful installation, check in the 'Installed'-tab if the plugin is activated (red arrow). if not, you
+Warning: When you have already older versions of brdrQ installed, this zip-install can raise a error due to a older brdr-version-conflict. 
+Please ignore this error and restart QGIS so the newer version of 'brdr' will re-install automatically.
+
+3. After a successful installation/restart, check in the 'Installed'-tab of the QGIS Plugin Manager if the 'brdrQ'-plugin is activated (red arrow). if not, you
    have to activate the checkbox
 
 <img src="docs/figures/installation-step-2d.png" width="100%" />
 
-4. The plugin 'brdrQ' is now installed and the brdrQProvider is available in the Processing Toolbox. First open the
+4. The plugin 'brdrQ' is now installed as a toolbar and the brdrQProvider is also available in the Processing Toolbox. First open the
    processing toolbox and look for 'brdrQProvider'
 
 <img src="docs/figures/installation-step-3a.png" width="50%" />
@@ -80,7 +85,7 @@ screen will close automatically after installation.)
 
  <img src="docs/figures/installation-step-4.png" width="50%" />
 
-6. The brdrQ-plugin also provides an experimental tool to align features to GRB-actual parcels (Flanders-specific)
+6. The brdrQ-plugin also provides a Feature-by-Feature align tool that is available in the toolbar.
 
 <img src="docs/figures/installation-step-5.png" width="50%" />
 
