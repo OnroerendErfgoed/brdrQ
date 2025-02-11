@@ -274,7 +274,9 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         if len(items) > 0:
             self.listWidget_predictions.setCurrentRow(best_index)
             print ("best-index: "+str(items[best_index]))
-            self.doubleSpinBox.setValue(round(float(items[best_index]), self.settingsDialog.DECIMAL))
+            value = round(float(items[best_index]), self.settingsDialog.DECIMAL)
+            self.setFilterOnLayers(value)
+            self.doubleSpinBox.setValue(value)
         else:
             self.textEdit_output.setText("No predictions")
         return
