@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 """
@@ -31,26 +30,33 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from brdr.aligner import Aligner
 from brdr.constants import BASE_FORMULA_FIELD_NAME
-from brdr.enums import AlignerInputType
+from brdr.enums import AlignerInputType, GRBType, Full
 from brdr.grb import update_to_actual_grb
 from brdr.loader import DictLoader
-from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QDate, QDateTime
-from qgis.core import QgsFeatureRequest
+from qgis._core import QgsProcessingParameterEnum
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
 from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingMultiStepFeedback
 from qgis.core import QgsProcessingOutputVectorLayer
 from qgis.core import QgsProcessingParameterBoolean
-from qgis.core import QgsProcessingParameterFeatureSource, QgsProcessingParameterField, \
-    QgsProcessingParameterNumber
+from qgis.core import (
+    QgsProcessingParameterFeatureSource,
+    QgsProcessingParameterField,
+    QgsProcessingParameterNumber,
+)
 from qgis.core import QgsProcessingParameterFile
 from qgis.core import QgsProject
 from qgis.core import QgsStyle
 
-from .brdrq_utils import geojson_to_layer, get_workfolder
+from .brdrq_utils import (
+    geom_qgis_to_shapely,
+    geojson_to_layer,
+    get_workfolder,
+    GRB_TYPES, thematic_preparation,
+)
 
 
 class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -64,25 +70,40 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     # calling from the QGIS console.
 
     INPUT_THEMATIC = "INPUT_THEMATIC"  # reference to the combobox for choosing the thematic input layer
-    ID_THEME_FIELDNAME = ""  # parameters that holds the fieldname of the unique theme id
+    ID_THEME_FIELDNAME = (
+        ""  # parameters that holds the fieldname of the unique theme id
+    )
 
+    GRB_TYPE = GRBType.ADP
     # ALIGNER parameters
     CRS = "EPSG:31370"  # default CRS for the aligner,updated by CRS of thematic inputlayer
     OD_STRATEGY = 0  # default OD_STRATEGY for the aligner,updated by user-choice
     THRESHOLD_OVERLAP_PERCENTAGE = 50  # default THRESHOLD_OVERLAP_PERCENTAGE for the aligner,updated by user-choice
-    RELEVANT_DISTANCE = 1  # default RELEVANT_DISTANCE for the aligner,updated by user-choice
+    RELEVANT_DISTANCE = (
+        1  # default RELEVANT_DISTANCE for the aligner,updated by user-choice
+    )
     CORR_DISTANCE = 0.01  # default CORR_DISTANCE for the aligner
     MULTI_AS_SINGLE_MODUS = True  # default MULTI_AS_SINGLE_MODUS for the aligner
 
     FORMULA_FIELDNAME = BASE_FORMULA_FIELD_NAME
-    LAYER_RESULT = "brdrQ_RESULT"  # parameter that holds the TOC layername of the result
-    LAYER_RESULT_DIFF = "brdrQ_RESULT_DIFF"  # parameter that holds the TOC layername of the resulting diff
-
-    GROUP_LAYER = "BRDRQ_UPDATES"
+    LAYER_RESULT = (
+        "brdrQ_RESULT"  # parameter that holds the TOC layername of the result
+    )
+    LAYER_RESULT_DIFF = (
+        "DIFF"  # parameter that holds the TOC layername of the resulting diff
+    )
+    LAYER_RESULT_DIFF_PLUS = (
+        "DIFF_PLUS"  # parameter that holds the TOC layername of the resulting diff_plus
+    )
+    LAYER_RESULT_DIFF_MIN = (
+        "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
+    )
+    GROUP_LAYER = "BRDRQ_GRB_UPDATE"
 
     # OTHER parameters
     MAX_DISTANCE_FOR_ACTUALISATION = 3  # maximum relevant distance that is used in the predictor when trying to update to actual GRB
     WORKFOLDER = "brdrQ"
+    BEST_PREDICTION = True
     SHOW_LOG_INFO = True
 
     def flags(self):
@@ -113,7 +134,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         Returns the translated algorithm name, which should be used for any
         user-visible display of the algorithm name.
         """
-        return self.tr("brdrQ - AutoUpdateBorders")
+        return self.tr("brdrQ - GRB Updater (bulk)")
 
     def group(self):
         """
@@ -168,19 +189,28 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
+        parameter = QgsProcessingParameterEnum(
+            "ENUM_REFERENCE",
+            "Select GRB Type to align to:",
+            options=GRB_TYPES,
+            defaultValue=0,  # Index of the default option (e.g., 'Option A')
+        )
+        parameter.setFlags(parameter.flags())
+        self.addParameter(parameter)
+
         parameter = QgsProcessingParameterField(
             "FORMULA_FIELD",
             "Formula field",  # (if empty, formula will be calculated based on following alignment-date)
             "brdr_formula",
             self.INPUT_THEMATIC,
-            # optional=True
+            optional=True,
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterNumber(
             "MAX_RELEVANT_DISTANCE",
-            "MAX-RELEVANT_DISTANCE (meter) - Max distance to try to align on the actual GRB",
+            "MAX_RELEVANT_DISTANCE (meter) - Max distance to try to align on the actual GRB",
             type=QgsProcessingParameterNumber.Double,
             defaultValue=3,
         )
@@ -191,8 +221,14 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "WORK_FOLDER",
             self.tr("Working folder"),
             behavior=QgsProcessingParameterFile.Folder,
-            optional=True, )
+            optional=True,
+        )
         parameter.setFlags(parameter.flags())
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterBoolean(
+            "BEST_PREDICTION", "Best prediction (when multiple predictions)", defaultValue=self.BEST_PREDICTION
+        )
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
@@ -216,13 +252,13 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback_steps = 6
         feedback = QgsProcessingMultiStepFeedback(feedback_steps, feedback)
         feedback.pushInfo("START")
-        outputs = {}
+
 
         self.prepare_parameters(parameters)
 
-        thematic, thematic_buffered = self._thematic_preparation(
-            context, feedback, outputs, parameters
-        )
+        thematic, thematic_buffered,self.CRS = thematic_preparation(self.INPUT_THEMATIC, parameters[self.INPUT_THEMATIC], self.RELEVANT_DISTANCE,
+                                                                    context, feedback
+                                                                    )
         if thematic is None:
             raise QgsProcessingException(self.invalidSourceError(parameters, self.test))
 
@@ -231,13 +267,12 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         dict_thematic_properties = {}
         features = thematic.getFeatures()
 
-
         for current, feature in enumerate(features):
             if feedback.isCanceled():
                 return {}
 
             id_theme = feature.attribute(self.ID_THEME_FIELDNAME)
-            dict_thematic[id_theme] = self.geom_qgis_to_shapely(feature.geometry())
+            dict_thematic[id_theme] = geom_qgis_to_shapely(feature.geometry())
             # dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
             attributes = feature.attributeMap()
             attributes_dict = {}
@@ -251,7 +286,11 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             dict_thematic_properties[id_theme] = attributes_dict
 
         aligner = Aligner()
-        aligner.load_thematic_data(DictLoader(data_dict=dict_thematic, data_dict_properties=dict_thematic_properties))
+        aligner.load_thematic_data(
+            DictLoader(
+                data_dict=dict_thematic, data_dict_properties=dict_thematic_properties
+            )
+        )
         fc = aligner.get_input_as_geojson(inputtype=AlignerInputType.THEMATIC)
 
         feedback.pushInfo("START ACTUALISATION")
@@ -259,23 +298,69 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             log_info = feedback
         else:
             log_info = None
-        fcs_actualisation = update_to_actual_grb(fc, id_theme_fieldname=self.ID_THEME_FIELDNAME,
-                                                 base_formula_field=self.FORMULA_FIELDNAME,
-                                                 max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
-                                                 feedback=log_info)
+
+        if self.BEST_PREDICTION:
+            max_predictions=1
+            multi_to_best_prediction=True
+        else:
+            max_predictions=-1
+            multi_to_best_prediction=False
+
+        print(str(self.FORMULA_FIELDNAME))
+        fcs_actualisation = update_to_actual_grb(
+            fc,
+            id_theme_fieldname=self.ID_THEME_FIELDNAME,
+            base_formula_field=self.FORMULA_FIELDNAME,
+            grb_type=self.GRB_TYPE,
+            max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
+            feedback=log_info,
+            max_predictions=max_predictions,
+            full_strategy= Full.NO_FULL,
+            multi_to_best_prediction = multi_to_best_prediction,
+        )
         if fcs_actualisation is None or fcs_actualisation == {}:
-            feedback.pushInfo("Geen wijzigingen gedetecteerd binnen tijdspanne in referentielaag (GRB-percelen)")
+            feedback.pushInfo(
+                "Geen wijzigingen gedetecteerd binnen tijdspanne in referentielaag (GRB-percelen)"
+            )
             feedback.pushInfo("Proces wordt afgesloten")
             return {}
 
         # Add RESULT TO TOC
-        geojson_to_layer(self.LAYER_RESULT, fcs_actualisation["result"],
-                         QgsStyle.defaultStyle().symbol("outline blue"),
-                         True, self.GROUP_LAYER, self.WORKFOLDER)
+        if "result_diff_min" in fcs_actualisation:
+            geojson_to_layer(
+                self.LAYER_RESULT_DIFF_MIN,
+                fcs_actualisation["result_diff_min"],
+                QgsStyle.defaultStyle().symbol("hashed cred /"),
+                True,
+                self.GROUP_LAYER,
+                self.WORKFOLDER,
+            )
+        if "result_diff_plus" in fcs_actualisation:
+            geojson_to_layer(
+                self.LAYER_RESULT_DIFF_PLUS,
+                fcs_actualisation["result_diff_plus"],
+                QgsStyle.defaultStyle().symbol("gradient green fill"),
+                True,
+                self.GROUP_LAYER,
+                self.WORKFOLDER,
+            )
         if "result_diff" in fcs_actualisation:
-            geojson_to_layer(self.LAYER_RESULT_DIFF, fcs_actualisation["result_diff"],
-                             QgsStyle.defaultStyle().symbol("hashed black cblue /"),
-                             False, self.GROUP_LAYER, self.WORKFOLDER)
+            geojson_to_layer(
+                self.LAYER_RESULT_DIFF,
+                fcs_actualisation["result_diff"],
+                QgsStyle.defaultStyle().symbol("hashed black X"),
+                False,
+                self.GROUP_LAYER,
+                self.WORKFOLDER,
+            )
+        geojson_to_layer(
+            self.LAYER_RESULT,
+            fcs_actualisation["result"],
+            QgsStyle.defaultStyle().symbol("outline green"),
+            True,
+            self.GROUP_LAYER,
+            self.WORKFOLDER,
+        )
         feedback.pushInfo("Resulterende geometrie berekend")
         feedback.pushInfo("END ACTUALISATION")
         result = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
@@ -287,72 +372,20 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         feedback.pushInfo("END PROCESSING")
         feedback.pushInfo("EINDE: RESULTAAT BEREKEND")
-        return {
-            "OUTPUT_RESULT": result
-        }
-
-    def _thematic_preparation(self, context, feedback, outputs, parameters):
-        # THEMATIC PREPARATION
-        context.setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck)
-        outputs[self.INPUT_THEMATIC + "_fixed"] = processing.run(
-            "native:fixgeometries",
-            {"INPUT": parameters[self.INPUT_THEMATIC], "METHOD": 1, "OUTPUT": QgsProcessing.TEMPORARY_OUTPUT},
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        thematic = context.getMapLayer(
-            outputs[self.INPUT_THEMATIC + "_fixed"]["OUTPUT"]
-        )
-        self.CRS = (
-            thematic.sourceCrs().authid()
-        )  # set CRS for the calculations, based on the THEMATIC input layer
-
-        outputs[self.INPUT_THEMATIC + "_dropMZ"] = processing.run(
-            "native:dropmzvalues",
-            {
-                "INPUT": thematic,
-                "DROP_M_VALUES": True,
-                "DROP_Z_VALUES": True,
-                "OUTPUT": "TEMPORARY_OUTPUT",
-            },
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        thematic = context.getMapLayer(
-            outputs[self.INPUT_THEMATIC + "_dropMZ"]["OUTPUT"]
-        )
-        # buffer the thematic layer to select all plots around it that are relevant to
-        # the calculations
-        outputs[self.INPUT_THEMATIC + "_buffered"] = processing.run(
-            "native:buffer",
-            {
-                "INPUT": thematic,
-                "DISTANCE": 1.01 * self.RELEVANT_DISTANCE,
-                "SEGMENTS": 10,
-                "END_CAP_STYLE": 0,
-                "JOIN_STYLE": 1,
-                "MITRE_LIMIT": 10,
-                "DISSOLVE": False,
-                "OUTPUT": "TEMPORARY_OUTPUT",
-            },
-            context=context,
-            feedback=feedback,
-            is_child_algorithm=True,
-        )
-        thematic_buffered = context.getMapLayer(
-            outputs[self.INPUT_THEMATIC + "_buffered"]["OUTPUT"]
-        )
-        return thematic, thematic_buffered
+        return {"OUTPUT_RESULT": result}
 
     def prepare_parameters(self, parameters):
-
         wrkfldr = parameters["WORK_FOLDER"]
         if wrkfldr is None or str(wrkfldr) == "" or str(wrkfldr) == "NULL":
             wrkfldr = self.WORKFOLDER
-        self.WORKFOLDER = get_workfolder(wrkfldr, name="autoupdateborders", temporary=False)
+        self.WORKFOLDER = get_workfolder(
+            wrkfldr, name="autoupdateborders", temporary=False
+        )
         self.MAX_DISTANCE_FOR_ACTUALISATION = parameters["MAX_RELEVANT_DISTANCE"]
+        self.GRB_TYPE = GRBType[GRB_TYPES[parameters["ENUM_REFERENCE"]]]
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
+        self.BEST_PREDICTION = parameters["BEST_PREDICTION"]
         self.FORMULA_FIELDNAME = parameters["FORMULA_FIELD"]
+        if str(self.FORMULA_FIELDNAME) == "NULL":
+            self.FORMULA_FIELDNAME = None
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]

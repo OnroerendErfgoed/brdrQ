@@ -296,30 +296,11 @@
      <x>10</x>
      <y>320</y>
      <width>191</width>
-     <height>16</height>
+     <height>21</height>
     </rect>
    </property>
    <property name="text">
-    <string>Prefereer full-parcel-resultaten</string>
-   </property>
-  </widget>
-  <widget class="QCheckBox" name="checkBox_full_parcel">
-   <property name="geometry">
-    <rect>
-     <x>220</x>
-     <y>320</y>
-     <width>81</width>
-     <height>20</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string/>
-   </property>
-   <property name="checked">
-    <bool>false</bool>
-   </property>
-   <property name="tristate">
-    <bool>false</bool>
+    <string>Evaluatiestrategy FULL</string>
    </property>
   </widget>
   <widget class="QCheckBox" name="checkBox_formula">
@@ -352,6 +333,16 @@
    </property>
    <property name="text">
     <string>brdr_formula toevoegen</string>
+   </property>
+  </widget>
+  <widget class="QComboBox" name="comboBox_fullstrategy">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>320</y>
+     <width>201</width>
+     <height>21</height>
+    </rect>
    </property>
   </widget>
  </widget>

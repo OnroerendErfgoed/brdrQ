@@ -1,3 +1,12 @@
+# v0.9.13
+
+- issue when closing plugin (bug) [#120]
+- function _thematic_preparation() to brdrQ_utils (refactoring) [#114]
+- unblock processing screen when open (enhancement) [#118]
+- GRB Updater: added choice of GRB-type and working without brdr_formula (enhancement) [#117]
+- GRB Updater, fixed a non-existing function (bug) [#115]
+
+
 # v0.9.12
 
 - selection handling enhancement in plugin [#86]
