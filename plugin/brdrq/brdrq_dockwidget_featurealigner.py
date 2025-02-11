@@ -194,6 +194,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         return
 
     def onFeatureActivated(self, currentItem):
+        print("onFeatureActivated")
         self.deactivateSelectTool()
         self.progressBar.setValue(0)
         self.listWidget_predictions.clear()
@@ -325,6 +326,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         self._listItemActivated(currentItem)
 
     def _align(self):
+        print ("_align")
         feat = self.feature
         selectedFeatures = []
         if feat is not None:

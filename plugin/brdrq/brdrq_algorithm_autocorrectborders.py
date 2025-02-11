@@ -321,7 +321,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "ENUM_OD_STRATEGY",
             "Select OD-STRATEGY:",
             options=ENUM_OD_STRATEGY_OPTIONS,
-            defaultValue=3,  # Index of the default option (e.g., 'SNAP_FULL_AREA_ALL_SIDE')
+            defaultValue=4,  # Index of the default option (e.g., 'SNAP_ALL_SIDE')
         )
         parameter.setFlags(
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
@@ -375,27 +375,27 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         self.addParameter(parameter)
 
-        parameter = QgsProcessingParameterBoolean(
-            "UPDATE_TO_ACTUAL",
-            "UPDATE_TO_ACTUAL_GRB_ADP_VERSION (adp-parcels only)",
-            defaultValue=self.UPDATE_TO_ACTUAL,
-        )
-        parameter.setFlags(
-            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
-        )
-        self.addParameter(parameter)
+        # parameter = QgsProcessingParameterBoolean(
+        #     "UPDATE_TO_ACTUAL",
+        #     "UPDATE_TO_ACTUAL_GRB_ADP_VERSION (adp-parcels only)",
+        #     defaultValue=self.UPDATE_TO_ACTUAL,
+        # )
+        # parameter.setFlags(
+        #     parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        # )
+        # self.addParameter(parameter)
 
-        parameter = QgsProcessingParameterNumber(
-            "MAX_DISTANCE_FOR_ACTUALISATION",
-            "MAX_DISTANCE_FOR_ACTUALISATION (meter)",
-            type=QgsProcessingParameterNumber.Double,
-            defaultValue=2,
-            optional=True,
-        )
-        parameter.setFlags(
-            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
-        )
-        self.addParameter(parameter)
+        # parameter = QgsProcessingParameterNumber(
+        #     "MAX_DISTANCE_FOR_ACTUALISATION",
+        #     "MAX_DISTANCE_FOR_ACTUALISATION (meter)",
+        #     type=QgsProcessingParameterNumber.Double,
+        #     defaultValue=2,
+        #     optional=True,
+        # )
+        # parameter.setFlags(
+        #     parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        # )
+        # self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
             "SHOW_LOG_INFO", "SHOW_LOG_INFO (brdr-log)", defaultValue=self.SHOW_LOG_INFO
@@ -785,7 +785,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.ATTRIBUTES = parameters["ADD_ATTRIBUTES"]
         self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
         self.PREDICTIONS = parameters["PREDICTIONS"]
-        self.UPDATE_TO_ACTUAL = parameters["UPDATE_TO_ACTUAL"]
+
         if self.PREDICTIONS and self.UPDATE_TO_ACTUAL:
             raise QgsProcessingException(
                 "The PREDICTIONS-checkbox and the UPDATE_TO_ACTUAL_GRB-checkbox cannot be checked simultaneously"
@@ -795,9 +795,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 "The ADD FORMULA-checkbox must be checked when using the UPDATE_TO_ACTUAL_GRB-checkbox"
             )
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
-        self.MAX_DISTANCE_FOR_ACTUALISATION = parameters[
-            "MAX_DISTANCE_FOR_ACTUALISATION"
-        ]
+
+        # self.UPDATE_TO_ACTUAL = parameters["UPDATE_TO_ACTUAL"]
+        # self.MAX_DISTANCE_FOR_ACTUALISATION = parameters[
+        #     "MAX_DISTANCE_FOR_ACTUALISATION"
+        # ]
 
         ref = ENUM_REFERENCE_OPTIONS[parameters["ENUM_REFERENCE"]]
 
