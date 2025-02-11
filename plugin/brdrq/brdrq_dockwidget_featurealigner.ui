@@ -96,7 +96,7 @@
         </rect>
        </property>
        <property name="text">
-        <string>Click feature(s) on map</string>
+        <string>Selecteer feature(s) op kaart</string>
        </property>
       </widget>
      </widget>
