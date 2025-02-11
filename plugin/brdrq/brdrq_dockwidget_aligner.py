@@ -158,18 +158,29 @@ class brdrQDockWidgetAligner(object):
         self.horizontalSlider.setValue(index)
         print("onSpinboxChange: value -> " + str(value))
 
-        # self.change_geometry()
+        layer_result = get_layer_by_name(self.LAYER_RESULT)
+        layer_result_diff = get_layer_by_name(self.LAYER_RESULT_DIFF)
+        layer_result_diff_min = get_layer_by_name(self.LAYER_RESULT_DIFF_MIN)
+        layer_result_diff_plus = get_layer_by_name(self.LAYER_RESULT_DIFF_PLUS)
+
+        if layer_result is None or layer_result_diff is None or layer_result_diff_min is None or layer_result_diff_plus is None:
+            self.add_results_to_grouplayer()
+            layer_result = get_layer_by_name(self.LAYER_RESULT)
+            layer_result_diff = get_layer_by_name(self.LAYER_RESULT_DIFF)
+            layer_result_diff_min = get_layer_by_name(self.LAYER_RESULT_DIFF_MIN)
+            layer_result_diff_plus = get_layer_by_name(self.LAYER_RESULT_DIFF_PLUS)
+
         # Filter layers based on relevant distance
-        get_layer_by_name(self.LAYER_RESULT).setSubsetString(
+        layer_result.setSubsetString(
             f"brdr_relevant_distance = {value}"
         )
-        get_layer_by_name(self.LAYER_RESULT_DIFF).setSubsetString(
+        layer_result_diff.setSubsetString(
             f"brdr_relevant_distance = {value}"
         )
-        get_layer_by_name(self.LAYER_RESULT_DIFF_MIN).setSubsetString(
+        layer_result_diff_min.setSubsetString(
             f"brdr_relevant_distance = {value}"
         )
-        get_layer_by_name(self.LAYER_RESULT_DIFF_PLUS).setSubsetString(
+        layer_result_diff_plus.setSubsetString(
             f"brdr_relevant_distance = {value}"
         )
         self.get_wkt()

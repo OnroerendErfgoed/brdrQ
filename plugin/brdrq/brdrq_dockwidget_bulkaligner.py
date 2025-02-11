@@ -285,7 +285,41 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
         self.diffs_dict = diffs_from_dict_processresults(
             self.dict_processresults, self.aligner.dict_thematic
         )
+        self.add_results_to_grouplayer()
 
+        # set list with predicted values
+        self.listWidget_predictions.clear()
+        # TODO, loop over predictions en voeg toe met boodschap
+        items = []
+        items_with_name = []
+        best_index = 0
+        best_score = 0
+        list_predictions = [k for k in (self.dict_evaluated_predictions[key]).keys()]
+        print(str(list_predictions))
+        for k in list_predictions:
+            print(str(k))
+            items.append(str(k))
+            score = self.props_dict_evaluated_predictions[key][k][PREDICTION_SCORE]
+            evaluation = self.props_dict_evaluated_predictions[key][k][
+                EVALUATION_FIELD_NAME
+            ]
+            items_with_name.append(f"{str(k)}: {str(evaluation)} (score: {str(score)})")
+            if score > best_score:
+                best_score = score
+                best_index = list_predictions.index(k)
+                print("best index: " + str(best_index))
+        self.listWidget_predictions.setFocus()
+        self.listWidget_predictions.addItems(items_with_name)
+        if len(items) > 0:
+            self.listWidget_predictions.setCurrentRow(best_index)
+            print ("best-index: "+str(items[best_index]))
+            self.doubleSpinBox.setValue(round(float(items[best_index]), self.settingsDialog.DECIMAL))
+        else:
+            self.textEdit_output.setText("No predictions")
+        self.progressBar.setValue(100)
+        return
+
+    def add_results_to_grouplayer(self):
         fcs = self.aligner.get_results_as_geojson(
             resulttype=AlignerResultType.PROCESSRESULTS, formula=self.formula
         )
@@ -322,38 +356,8 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
             self.workinggroupname,
             self.tempfolder,
         )
-
-        # set list with predicted values
-        self.listWidget_predictions.clear()
-        # TODO, loop over predictions en voeg toe met boodschap
-        items = []
-        items_with_name = []
-        best_index = 0
-        best_score = 0
-        list_predictions = [k for k in (self.dict_evaluated_predictions[key]).keys()]
-        print(str(list_predictions))
-        for k in list_predictions:
-            print(str(k))
-            items.append(str(k))
-            score = self.props_dict_evaluated_predictions[key][k][PREDICTION_SCORE]
-            evaluation = self.props_dict_evaluated_predictions[key][k][
-                EVALUATION_FIELD_NAME
-            ]
-            items_with_name.append(f"{str(k)}: {str(evaluation)} (score: {str(score)})")
-            if score > best_score:
-                best_score = score
-                best_index = list_predictions.index(k)
-                print("best index: " + str(best_index))
-        self.listWidget_predictions.setFocus()
-        self.listWidget_predictions.addItems(items_with_name)
-        if len(items) > 0:
-            self.listWidget_predictions.setCurrentRow(best_index)
-            print ("best-index: "+str(items[best_index]))
-            self.doubleSpinBox.setValue(round(float(items[best_index]), self.settingsDialog.DECIMAL))
-        else:
-            self.textEdit_output.setText("No predictions")
-        self.progressBar.setValue(100)
         return
+
 
     def prepareFeatureList(self):
         #self.clearUserInterface()
