@@ -63,9 +63,9 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.max_rel_dist = None
         self.formula = None
         self.full_strategy = None
-        self.partial_snapping = None
-        self.partial_snapping_strategy = None
-        self.snap_max_segment_length = None
+        # self.partial_snapping = None
+        # self.partial_snapping_strategy = None
+        # self.snap_max_segment_length = None
         self.DECIMAL = 1
         self.load_settings()
 
@@ -79,16 +79,16 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             self.comboBox_referencelayer.addItem(r)
         for od in ENUM_OD_STRATEGY_OPTIONS:
             self.comboBox_odstrategy.addItem(od)
-        for s in ENUM_SNAP_STRATEGY_OPTIONS:
-            self.comboBox_snapstrategy.addItem(s)
+        # for s in ENUM_SNAP_STRATEGY_OPTIONS:
+        #     self.comboBox_snapstrategy.addItem(s)
         for f in ENUM_FULL_STRATEGY_OPTIONS:
             self.comboBox_fullstrategy.addItem(f)
         self.comboBox_referencelayer.currentIndexChanged.connect(
             self.update_reference_choice
         )
-        self.checkBox_partial_snapping.stateChanged.connect(
-            self.update_partial_snapping
-        )
+        # self.checkBox_partial_snapping.stateChanged.connect(
+        #     self.update_partial_snapping
+        # )
         self.mMapLayerComboBox_reference.layerChanged.connect(
             self.updateFields_reference
         )
@@ -108,14 +108,14 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             self.mFieldComboBox_reference.setEnabled(False)
         return
 
-    def update_partial_snapping(self, state):
-        if state == 2:
-            self.comboBox_snapstrategy.setEnabled(True)
-            self.spinBox_snap_max_segment_length.setEnabled(True)
-        else:
-            self.comboBox_snapstrategy.setEnabled(False)
-            self.spinBox_snap_max_segment_length.setEnabled(False)
-        return
+    # def update_partial_snapping(self, state):
+    #     if state == 2:
+    #         self.comboBox_snapstrategy.setEnabled(True)
+    #         self.spinBox_snap_max_segment_length.setEnabled(True)
+    #     else:
+    #         self.comboBox_snapstrategy.setEnabled(False)
+    #         self.spinBox_snap_max_segment_length.setEnabled(False)
+    #     return
 
     def updateFields_reference(self):
         layer = self.mMapLayerComboBox_reference.currentLayer()
@@ -164,23 +164,23 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.od_strategy = OpenbaarDomeinStrategy[
             self.comboBox_odstrategy.currentText()
         ].value
-        if (
-            self.partial_snapping_strategy is None
-            or self.partial_snapping_strategy == ""
-        ):
-            no_pref = SnapStrategy.NO_PREFERENCE.name
-            self.partial_snapping_strategy = s.value(
-                "brdrq/partial_snapping_strategy", no_pref
-            )
-            index = self.comboBox_snapstrategy.findText(
-                self.partial_snapping_strategy
-            )
-            if index == -1:
-                index = 0
-            self.comboBox_snapstrategy.setCurrentIndex(index)
-        self.partial_snapping_strategy = SnapStrategy[
-            self.comboBox_snapstrategy.currentText()
-        ]
+        # if (
+        #     self.partial_snapping_strategy is None
+        #     or self.partial_snapping_strategy == ""
+        # ):
+        #     no_pref = SnapStrategy.NO_PREFERENCE.name
+        #     self.partial_snapping_strategy = s.value(
+        #         "brdrq/partial_snapping_strategy", no_pref
+        #     )
+        #     index = self.comboBox_snapstrategy.findText(
+        #         self.partial_snapping_strategy
+        #     )
+        #     if index == -1:
+        #         index = 0
+        #     self.comboBox_snapstrategy.setCurrentIndex(index)
+        # self.partial_snapping_strategy = SnapStrategy[
+        #     self.comboBox_snapstrategy.currentText()
+        # ]
 
         if (
             self.full_strategy is None
@@ -237,28 +237,28 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             self.checkBox_formula.setCheckState(self.formula)
         self.formula = self.checkBox_formula.checkState()
 
-        self.partial_snapping = 0
-        if self.partial_snapping is None:
-            self.partial_snapping = int(s.value("brdrq/partial_snapping", 0))
-            self.checkBox_partial_snapping.setCheckState(
-                self.partial_snapping
-            )
-        self.partial_snapping = (
-            self.checkBox_partial_snapping.checkState()
-        )
-        self.partial_snapping = 0
-        self.partial_snapping = False #at this moment always set to false as this is not performant and not implemented in brdrQ
-
-        if self.snap_max_segment_length is None:
-            self.snap_max_segment_length = int(
-                s.value("brdrq/snap_max_segment_length", 2)
-            )
-            self.spinBox_snap_max_segment_length.setValue(
-                self.snap_max_segment_length
-            )
-        self.snap_max_segment_length = (
-            self.spinBox_snap_max_segment_length.value()
-        )
+        # self.partial_snapping = 0
+        # if self.partial_snapping is None:
+        #     self.partial_snapping = int(s.value("brdrq/partial_snapping", 0))
+        #     self.checkBox_partial_snapping.setCheckState(
+        #         self.partial_snapping
+        #     )
+        # self.partial_snapping = (
+        #     self.checkBox_partial_snapping.checkState()
+        # )
+        # self.partial_snapping = 0
+        # self.partial_snapping = False #at this moment always set to false as this is not performant and not implemented in brdrQ
+        #
+        # if self.snap_max_segment_length is None:
+        #     self.snap_max_segment_length = int(
+        #         s.value("brdrq/snap_max_segment_length", 2)
+        #     )
+        #     self.spinBox_snap_max_segment_length.setValue(
+        #         self.snap_max_segment_length
+        #     )
+        # self.snap_max_segment_length = (
+        #     self.spinBox_snap_max_segment_length.value()
+        # )
 
         print(
             f"settings updated: Reference choice={self.reference_choice} - od_strategy={self.od_strategy} - threshold overlap percenatge = {str(self.threshold_overlap_percentage)}"
@@ -276,11 +276,11 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         s.setValue(
             "brdrq/full_strategy", self.full_strategy.name
         )
-        s.setValue("brdrq/partial_snapping", self.partial_snapping)
-        s.setValue(
-            "brdrq/partial_snapping_strategy", self.partial_snapping_strategy.name
-        )
-        s.setValue("brdrq/snap_max_segment_length", self.snap_max_segment_length)
+        # s.setValue("brdrq/partial_snapping", self.partial_snapping)
+        # s.setValue(
+        #     "brdrq/partial_snapping_strategy", self.partial_snapping_strategy.name
+        # )
+        # s.setValue("brdrq/snap_max_segment_length", self.snap_max_segment_length)
         return
 
 def __init__():

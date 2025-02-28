@@ -430,9 +430,9 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         self.aligner = Aligner(
             od_strategy=self.od_strategy,
             threshold_overlap_percentage=self.threshold_overlap_percentage,
-            partial_snapping=self.partial_snapping,
-            partial_snapping_strategy=self.partial_snapping_strategy,
-            snapping_max_segment_length=self.snap_max_segment_length,
+            # partial_snapping=self.partial_snapping,
+            # partial_snapping_strategy=self.partial_snapping_strategy,
+            # snapping_max_segment_length=self.snap_max_segment_length,
         )
         return
 

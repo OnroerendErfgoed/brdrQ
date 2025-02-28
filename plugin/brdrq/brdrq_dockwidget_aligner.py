@@ -58,9 +58,9 @@ class brdrQDockWidgetAligner(object):
         self.max_rel_dist = None
         self.formula = None
         self.full_strategy = None
-        self.partial_snapping = None
-        self.partial_snapping_strategy = None
-        self.snap_max_segment_length = None
+        # self.partial_snapping = None
+        # self.partial_snapping_strategy = None
+        # self.snap_max_segment_length = None
         self.settingsDialog = brdrQSettings()
         self.tempfolder = get_workfolder("", "brdrQ", temporary=True)
 
@@ -284,6 +284,6 @@ class brdrQDockWidgetAligner(object):
         self.relevant_distances = self.settingsDialog.relevant_distances
         self.formula = self.settingsDialog.formula
         self.full_strategy = self.settingsDialog.full_strategy
-        self.partial_snapping = self.settingsDialog.partial_snapping
-        self.partial_snapping_strategy = self.settingsDialog.partial_snapping_strategy
-        self.snap_max_segment_length = self.settingsDialog.snap_max_segment_length
+        # self.partial_snapping = self.settingsDialog.partial_snapping
+        # self.partial_snapping_strategy = self.settingsDialog.partial_snapping_strategy
+        # self.snap_max_segment_length = self.settingsDialog.snap_max_segment_length
