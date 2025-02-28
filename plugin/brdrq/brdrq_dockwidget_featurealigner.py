@@ -96,6 +96,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         self.pushButton_select.clicked.connect(self.activate_selectTool)
         self.mMapLayerComboBox.setFilters(
             QgsMapLayerProxyModel.PolygonLayer
+            #|QgsMapLayerProxyModel.LineLayer
         )
         self.mMapLayerComboBox.layerChanged.connect(self.themeLayerChanged)
         self.checkBox_only_selected.stateChanged.connect(
@@ -227,7 +228,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         # Check feature on area
         # check area of feature and optimize/block calculation
         area = self.original_geometry.area()
-        step = 10
+        step = 20
         if area > self.max_area_optimization:
             if area > self.max_area_limit:
                 msg = f"Very big area, {str(area)} m²: The calculation is blocked. Please use the bulk tool for this feature"
@@ -393,7 +394,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         dict_evaluated, props_dict_evaluated_predictions = self.aligner.evaluate(
             ids_to_evaluate=None,
             base_formula_field=None,
-            max_predictions=-1,
+            max_predictions=4,
             relevant_distances=self.relevant_distances,
             full_strategy=self.full_strategy,
         )

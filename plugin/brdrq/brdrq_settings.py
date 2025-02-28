@@ -53,7 +53,7 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.setupUi(self)
         self.minimum = 0
         self.maximum = 1500
-        self.step = 10
+        self.step = 20
         self.relevant_distances = None
         self.threshold_overlap_percentage = None
         self.od_strategy =None
@@ -153,7 +153,8 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             )
             / 100
         ]
-
+        #self.relevant_distances.extend([round(99.9, self.DECIMAL),round(100.0, self.DECIMAL)])
+        print (self.relevant_distances)
         if self.od_strategy is None:
             self.od_strategy = int(s.value("brdrq/od_strategy", 2))
             index = self.comboBox_odstrategy.findText(
