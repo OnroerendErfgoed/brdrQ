@@ -1,3 +1,9 @@
+# v0.9.14
+
+- Upgrade to brdr version 0.9.0
+- Removed unused parameters for partial snapping
+- Fixed bug when brdr_formula cannot be resolved
+
 # v0.9.13
 
 - Upgrade to brdr version 0.8.1
