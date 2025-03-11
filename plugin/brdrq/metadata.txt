@@ -6,7 +6,7 @@
 name=brdrQ
 qgisMinimumVersion=3.0
 description=brdrQ, a QGIS-plugin for aligning thematic borders to reference borders.
-version=0.1
+version=0.9.14
 author=Karel Dieussaert / Onroerend Erfgoed
 email=karel.dieussaert@vlaanderen.be
 
@@ -27,7 +27,7 @@ tags=python geodatamanagement dataquality
 
 homepage=https://github.com/OnroerendErfgoed/brdrQ
 category=Analysis
-icon=icon.png
+icon=icon_base.png
 # experimental flag
 experimental=False
 
@@ -40,7 +40,7 @@ deprecated=False
 # plugin_dependencies=
 
 Category of the plugin: Raster, Vector, Database or Web
-# category=
+category=Vector
 
 # If the plugin can run on QGIS Server.
 server=False
