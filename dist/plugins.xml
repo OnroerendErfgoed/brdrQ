@@ -6,6 +6,6 @@
         <qgis_minimum_version>3.38</qgis_minimum_version>
         <file_name>brdrq.zip</file_name>
         <author_name>Karel Dieussaert</author_name>
-        <download_url>https://github.com/OnroerendErfgoed/brdrQ/blob/main/dist/brdrq.zip</download_url>
+        <download_url>https://github.com/OnroerendErfgoed/brdrQ/raw/refs/heads/main/dist/brdrq.zip</download_url>
     </pyqgis_plugin>
 </plugins>
