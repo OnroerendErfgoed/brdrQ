@@ -6,7 +6,7 @@
         <homepage>https://github.com/OnroerendErfgoed/brdrQ</homepage>
         <qgis_minimum_version>3.38</qgis_minimum_version>
         <file_name>brdrq.zip</file_name>
-        <author_name>Karel Dieussaert</author_name>
+        <author_name>Karel Dieussaert / Onroerend Erfgoed</author_name>
         <download_url>https://github.com/OnroerendErfgoed/brdrQ/raw/refs/heads/main/dist/brdrq.zip</download_url>
         <experimental>False</experimental>
         <tracker>https://github.com/OnroerendErfgoed/brdrQ/issues</tracker>
