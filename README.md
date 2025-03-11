@@ -48,7 +48,7 @@ provide it as as a plugin in the QGIS-plugin-repository)
 Follow the steps below to make the plugin available in the QGISToolbar and QGIS Processing Toolbox
 
 1. Download the zip-file from the following link and save it on your local machine:
-   <https://github.com/OnroerendErfgoed/brdrQ/tree/main/dist/brdrq.zip>
+   <https://github.com/OnroerendErfgoed/brdrQ/raw/refs/heads/main/dist/brdrq.zip>
 <img src="docs/figures/installation-step-download.png" width="100%" />
 2. Open the 'Plugins'>>'Manage and install plugins...' from the topbar of QGIS
 
