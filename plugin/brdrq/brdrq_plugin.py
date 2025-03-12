@@ -36,7 +36,7 @@ import sys
 
 import brdr
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QAction
+from PyQt5.QtWidgets import QAction, QMenu
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import QgsApplication
@@ -64,6 +64,8 @@ class BrdrQPlugin(object):
         self.actions = []
         self.toolbar = self.iface.addToolBar(pluginname)
         self.toolbar.setObjectName(pluginname)
+        self.brdrq_menu = QMenu(pluginname)
+        self.vector_menu = self.iface.vectorMenu()
 
 
     # noinspection PyMethodMayBeStatic
@@ -91,13 +93,21 @@ class BrdrQPlugin(object):
         # print ("initGui")
         self.initProcessing()
 
+        # Setup menu
+        icon_menu = QIcon(os.path.join(os.path.join(cmd_folder, "icon_base.png")))
+        self.brdrq_menu.setIcon(icon_menu)
+        self.vector_menu.addMenu(self.brdrq_menu)
+
         #FEATUREPREDICTOR
         icon = os.path.join(os.path.join(cmd_folder, "icon_featurealigner.png"))
         action_featurepredictor = QAction(
             QIcon(icon), "brdrQ - Feature Aligner (predictor)", self.iface.mainWindow()
         )
         action_featurepredictor.triggered.connect(self.openDock)
-        self.iface.addPluginToMenu(pluginname, action_featurepredictor)
+        #
+
+        self.brdrq_menu.addAction(action_featurepredictor)
+
         self.toolbar.addAction(action_featurepredictor)
         self.actions.append(action_featurepredictor)
 
@@ -107,7 +117,7 @@ class BrdrQPlugin(object):
         #     QIcon(icon_bulkaligner), "brdrQ - Bulk Aligner (predictor)", self.iface.mainWindow()
         # )
         # action_bulkaligner.triggered.connect(self.openDockBulkAligner)
-        # self.iface.addPluginToMenu(pluginname, action_bulkaligner)
+        # self.brdrq_menu.addAction(action_bulkaligner)
         # self.toolbar.addAction(action_bulkaligner)
         # self.actions.append(action_bulkaligner)
 
@@ -122,7 +132,7 @@ class BrdrQPlugin(object):
             self.iface.mainWindow(),
         )
         action_autocorrectborders.triggered.connect(self.openAutocorrectbordersscript)
-        self.iface.addPluginToMenu(pluginname, action_autocorrectborders)
+        self.brdrq_menu.addAction(action_autocorrectborders)
         self.toolbar.addAction(action_autocorrectborders)
         self.actions.append(action_autocorrectborders)
 
@@ -137,7 +147,7 @@ class BrdrQPlugin(object):
             self.iface.mainWindow(),
         )
         action_autoupdateborders.triggered.connect(self.openAutoupdatebordersscript)
-        self.iface.addPluginToMenu(pluginname, action_autoupdateborders)
+        self.brdrq_menu.addAction(action_autoupdateborders)
         self.toolbar.addAction(action_autoupdateborders)
         self.actions.append(action_autoupdateborders)
 
@@ -150,7 +160,7 @@ class BrdrQPlugin(object):
             self.iface.mainWindow(),
         )
         action_info.triggered.connect(self.openInfo)
-        self.iface.addPluginToMenu(pluginname, action_info)
+        self.brdrq_menu.addAction(action_info)
         self.toolbar.addAction(action_info)
         self.actions.append(action_info)
 
