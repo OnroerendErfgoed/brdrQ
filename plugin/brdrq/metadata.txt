@@ -10,7 +10,7 @@ version=0.9.14
 author=Karel Dieussaert / Onroerend Erfgoed
 email=karel.dieussaert@vlaanderen.be
 
-about=brdrQ is a Python plugin that assists in aligning geometric boundaries to reference boundaries. This is an important task in geographic data management to enhance data quality. In the context of geographic data management, it is important to have accurate and consistent boundaries for a variety of applications such as calculating areas, analyzing spatial relationships, and visualizing and querying geographic information. When creating geographic data, it is often more efficient to derive boundaries from existing reference data rather than collecting new data in the field. brdrQ can be used to align boundaries from new data to reference data, ensuring that the boundaries are accurate and consistent.
+about=brdrQ is a Python plugin that assists in aligning geometric boundaries to reference boundaries. This is an important task in geographic data management to enhance data quality. In the context of geographic data management, it is important to have accurate and consistent boundaries for a variety of applications such as calculating areas, analyzing spatial relationships, and visualizing and querying geographic information. When creating geographic data, it is often more efficient to derive boundaries from existing reference data rather than collecting new data in the field. brdrQ can be used to align boundaries from new data to reference data, ensuring that the boundaries are accurate and consistent. brdrQ uses brdr-python-library for these calculations.
 
 tracker=https://github.com/OnroerendErfgoed/brdrQ/issues
 repository=https://github.com/OnroerendErfgoed/brdrQ
@@ -39,7 +39,7 @@ deprecated=False
 # Check the documentation for more information.
 # plugin_dependencies=
 
-Category of the plugin: Raster, Vector, Database or Web
+# Category of the plugin: Raster, Vector, Database or Web
 # category=Vector
 
 # If the plugin can run on QGIS Server.
