@@ -89,7 +89,11 @@ Please ignore this error and restart QGIS so the newer version of 'brdr' will re
 
 <img src="docs/figures/installation-step-5.png" width="50%" />
 
-[![Watch the video](https://github.com/OnroerendErfgoed/brdrQ/raw/refs/heads/mp/docs/figures/brdrQ.mp4)](https://github.com/OnroerendErfgoed/brdrQ/raw/refs/heads/mp/docs/figures/brdrQ.mp4)
+
+
+
+https://github.com/user-attachments/assets/8a31fbe0-6ef3-4612-bbd1-35985e326d87
+
 
 
 
