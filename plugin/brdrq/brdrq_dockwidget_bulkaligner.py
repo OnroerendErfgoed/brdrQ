@@ -126,43 +126,10 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
         self.closingPlugin.disconnect(self.onClosePlugin)
         self.active = False
 
-    # def evaluate_task(self):
-    #     print("evaluate_task")
-    #     task = QgsTask.fromFunction('evaluate', self.evaluate,
-    #                                 on_finished=self.calculation_finished)
-    #     # task.taskCompleted.connect(self.calculation_finished)
-    #     # print("run task")
-    #     #task.run()
-    #     # print("add to taskmanager")
-    #     taskManager = QgsApplication.taskManager()
-    #     # taskManager.allTasksFinished.connect(self.calculation_finished)
-    #     taskManager.addTask(task)
-    #     task.run()
-    #     # print("run task again")
-    #     # task.run()
-    #     #print("end")
-    #
-    # # def evaluate_test(self,task):
-    # #     print("evaluation_running")
-    # #     print(str(task))
-    # #     return "evaluation is completed: " + str(task)
-    #
-    # def calculation_finished(self,exception =False, value=None):
-    #     print("---finish---")
-    #     if not exception:
-    #         print("finished with value: " + str(value))
-    #     else:
-    #         print(
-    #             str("finished with exception: " + str(exception)))
-    #     return
-
     def evaluate(self,task):
         print ("evaluate")
         self.clearUserInterface()
-        #create group-layer with copy of chosen layer
-        # dlg = QMessageBox(self.iface.mainWindow())
-        # dlg.setText("tijd voor een koffie...")
-        # dlg.open()
+
         with OverrideCursor(Qt.WaitCursor):
             self.workinglayer,self.workinggroupname = self.create_workinglayer()
             self.evaluate_layer()
@@ -230,15 +197,12 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
                     aligner=self.aligner,
                 )
             )
-            print("grbtype")
         elif self.reference_choice in ADPF_VERSIONS:
             year = self.reference_choice.removeprefix("Adpf")
             self.aligner.load_reference_data(
                 GRBFiscalParcelLoader(year=year, aligner=self.aligner, partition=1000)
             )
-            print("adpftype")
         else:
-            print("localtype")
             # Load reference into a shapely_dict:
             dict_reference = {}
             processing.run(
@@ -295,9 +259,7 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
         best_index = 0
         best_score = 0
         list_predictions = [k for k in (self.dict_evaluated_predictions[key]).keys()]
-        print(str(list_predictions))
         for k in list_predictions:
-            print(str(k))
             items.append(str(k))
             score = self.props_dict_evaluated_predictions[key][k][PREDICTION_SCORE]
             evaluation = self.props_dict_evaluated_predictions[key][k][
@@ -307,12 +269,10 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
             if score > best_score:
                 best_score = score
                 best_index = list_predictions.index(k)
-                print("best index: " + str(best_index))
         self.listWidget_predictions.setFocus()
         self.listWidget_predictions.addItems(items_with_name)
         if len(items) > 0:
             self.listWidget_predictions.setCurrentRow(best_index)
-            print ("best-index: "+str(items[best_index]))
             self.doubleSpinBox.setValue(round(float(items[best_index]), self.settingsDialog.DECIMAL))
         else:
             self.textEdit_output.setText("No predictions")
@@ -437,13 +397,12 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
         zoom_to_feature(self.feature, self.iface)
 
         list_predictions = [k for k in (self.dict_evaluated_predictions[key]).keys()]
-        print(str(list_predictions))
+
         items = []
         items_with_name = []
         best_index = 0
         best_score = 0
         for k in list_predictions:
-            print(str(k))
             items.append(str(k))
             score = self.props_dict_evaluated_predictions[key][k][PREDICTION_SCORE]
             evaluation = self.props_dict_evaluated_predictions[key][k][
@@ -453,12 +412,10 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
             if score > best_score:
                 best_score = score
                 best_index = list_predictions.index(k)
-                print("best index: " + str(best_index))
         self.listWidget_predictions.setFocus()
         self.listWidget_predictions.addItems(items_with_name)
         if len(items) > 0:
             self.listWidget_predictions.setCurrentRow(best_index)
-            print("best-index: " + str(items[best_index]))
             self.doubleSpinBox.setValue(round(float(items[best_index]), self.settingsDialog.DECIMAL))
         else:
             self.textEdit_output.setText("No predictions")

@@ -129,7 +129,6 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         self.active = False
 
     def activate_selectTool(self):
-        print("button pushed")
         print ("currentlayer:" + str (self.mMapLayerComboBox.currentLayer()))
         self.selectTool = SelectTool(self.iface, self.mMapLayerComboBox.currentLayer())
         self.formerMapTool = self.iface.mapCanvas().mapTool()
@@ -179,7 +178,6 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         self.clearUserInterface()
         # Add the selected features to the list widget
         print ("list features")
-        print(str(self.listed_features))
         for feature in self.listed_features:
             attributes = feature.attributes()
             attribute_string = ", ".join(str(attribute) for attribute in attributes)
@@ -258,9 +256,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         best_index = 0
         best_score = 0
         list_predictions = [k for k in (self.dict_evaluated_predictions[key]).keys()]
-        print(str(list_predictions))
         for k in list_predictions:
-            print(str(k))
             items.append(str(k))
             score = self.props_dict_evaluated_predictions[key][k][PREDICTION_SCORE]
             evaluation = self.props_dict_evaluated_predictions[key][k][
@@ -270,12 +266,10 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
             if score > best_score:
                 best_score = score
                 best_index = list_predictions.index(k)
-                print("best index: " + str(best_index))
         self.listWidget_predictions.setFocus()
         self.listWidget_predictions.addItems(items_with_name)
         if len(items) > 0:
             self.listWidget_predictions.setCurrentRow(best_index)
-            print ("best-index: "+str(items[best_index]))
             value = round(float(items[best_index]), self.settingsDialog.DECIMAL)
             self.setFilterOnLayers(value)
             self.doubleSpinBox.setValue(value)
@@ -360,15 +354,12 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
                     aligner=self.aligner,
                 )
             )
-            print("grbtype")
         elif self.reference_choice in ADPF_VERSIONS:
             year = self.reference_choice.removeprefix("Adpf")
             self.aligner.load_reference_data(
                 GRBFiscalParcelLoader(year=year, aligner=self.aligner, partition=1000)
             )
-            print("adpftype")
         else:
-            print("localtype")
             # Load reference into a shapely_dict:
             dict_reference = {}
             processing.run(

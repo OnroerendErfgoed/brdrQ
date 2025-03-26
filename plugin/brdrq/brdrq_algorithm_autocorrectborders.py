@@ -31,6 +31,8 @@ import inspect
 import os
 import sys
 
+
+
 from .brdrq_utils import (
     ENUM_REFERENCE_OPTIONS,
     ENUM_OD_STRATEGY_OPTIONS,
@@ -75,8 +77,8 @@ from brdr.enums import (
 )
 from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader, update_to_actual_grb
 from brdr.constants import FORMULA_FIELD_NAME
+from brdr.geometry_utils import safe_unary_union
 
-from shapely import unary_union, make_valid
 
 
 class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -448,7 +450,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                         attributes_dict[key] = value
                 dict_thematic_properties[id_theme] = attributes_dict
 
-        area = make_valid(unary_union(list(dict_thematic.values()))).area
+        area = safe_unary_union(list(dict_thematic.values())).area
         feedback.pushInfo("Area of thematic zone: " + str(area))
         if (
             self.SELECTED_REFERENCE != 0

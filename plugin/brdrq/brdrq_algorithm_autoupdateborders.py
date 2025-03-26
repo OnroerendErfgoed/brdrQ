@@ -28,6 +28,7 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ***************************************************************************
 """
 
+
 from brdr.aligner import Aligner
 from brdr.constants import BASE_FORMULA_FIELD_NAME
 from brdr.enums import AlignerInputType, GRBType, Full
@@ -55,7 +56,8 @@ from .brdrq_utils import (
     geom_qgis_to_shapely,
     geojson_to_layer,
     get_workfolder,
-    GRB_TYPES, thematic_preparation,
+    GRB_TYPES,
+    thematic_preparation,
 )
 
 
@@ -227,7 +229,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
-            "BEST_PREDICTION", "Best prediction (when multiple predictions)", defaultValue=self.BEST_PREDICTION
+            "BEST_PREDICTION",
+            "Best prediction (when multiple predictions)",
+            defaultValue=self.BEST_PREDICTION,
         )
         self.addParameter(parameter)
 
@@ -253,12 +257,15 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback = QgsProcessingMultiStepFeedback(feedback_steps, feedback)
         feedback.pushInfo("START")
 
-
         self.prepare_parameters(parameters)
 
-        thematic, thematic_buffered,self.CRS = thematic_preparation(self.INPUT_THEMATIC, parameters[self.INPUT_THEMATIC], self.RELEVANT_DISTANCE,
-                                                                    context, feedback
-                                                                    )
+        thematic, thematic_buffered, self.CRS = thematic_preparation(
+            self.INPUT_THEMATIC,
+            parameters[self.INPUT_THEMATIC],
+            self.RELEVANT_DISTANCE,
+            context,
+            feedback,
+        )
         if thematic is None:
             raise QgsProcessingException(self.invalidSourceError(parameters, self.test))
 
@@ -300,11 +307,11 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             log_info = None
 
         if self.BEST_PREDICTION:
-            max_predictions=1
-            multi_to_best_prediction=True
+            max_predictions = 1
+            multi_to_best_prediction = True
         else:
-            max_predictions=-1
-            multi_to_best_prediction=False
+            max_predictions = -1
+            multi_to_best_prediction = False
 
         print(str(self.FORMULA_FIELDNAME))
         fcs_actualisation = update_to_actual_grb(
@@ -315,8 +322,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
             feedback=log_info,
             max_predictions=max_predictions,
-            full_strategy= Full.NO_FULL,
-            multi_to_best_prediction = multi_to_best_prediction,
+            full_strategy=Full.NO_FULL,
+            multi_to_best_prediction=multi_to_best_prediction,
         )
         if fcs_actualisation is None or fcs_actualisation == {}:
             feedback.pushInfo(
