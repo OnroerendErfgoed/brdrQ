@@ -89,6 +89,11 @@ Please ignore this error and restart QGIS so the newer version of 'brdr' will re
 
 <img src="docs/figures/installation-step-5.png" width="50%" />
 
+<video src="https://github.com/OnroerendErfgoed/brdrQ/raw/refs/heads/mp/docs/figures/brdrQ.mp4" width=180/>
+
+
+
+
 ## Getting started (Quickstart - Autocorrectborders (Processing toolbox))
 
 <img src="docs/figures/input.png" width="100%" />
