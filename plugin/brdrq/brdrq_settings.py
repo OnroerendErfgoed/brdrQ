@@ -25,7 +25,7 @@
 import os
 
 import numpy as np
-from brdr.enums import OpenbaarDomeinStrategy, SnapStrategy, Full
+from brdr.enums import OpenDomainStrategy, SnapStrategy, FullStrategy
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.core import QgsSettings
@@ -158,10 +158,10 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         if self.od_strategy is None:
             self.od_strategy = int(s.value("brdrq/od_strategy", 2))
             index = self.comboBox_odstrategy.findText(
-                OpenbaarDomeinStrategy(self.od_strategy).name
+                OpenDomainStrategy(self.od_strategy).name
             )
             self.comboBox_odstrategy.setCurrentIndex(index)
-        self.od_strategy = OpenbaarDomeinStrategy[
+        self.od_strategy = OpenDomainStrategy[
             self.comboBox_odstrategy.currentText()
         ].value
         # if (
@@ -186,7 +186,7 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             self.full_strategy is None
             or self.full_strategy == ""
         ):
-            prefer_full = Full.PREFER_FULL.name
+            prefer_full = FullStrategy.PREFER_FULL.name
             self.full_strategy = s.value(
                 "brdrq/full_strategy", prefer_full
             )
@@ -196,7 +196,7 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             if index == -1:
                 index = 0
             self.comboBox_fullstrategy.setCurrentIndex(index)
-        self.full_strategy = Full[
+        self.full_strategy = FullStrategy[
             self.comboBox_fullstrategy.currentText()
         ]
 

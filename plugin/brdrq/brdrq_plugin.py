@@ -39,6 +39,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QMenu
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
+from qgis.gui import QgisInterface
 from qgis.core import QgsApplication
 
 from .brdrq_dockwidget_bulkaligner import brdrQDockWidgetBulkAligner
@@ -51,6 +52,7 @@ if cmd_folder not in sys.path:
     sys.path.insert(0, cmd_folder)
 
 pluginname = "brdrQ"
+
 
 
 class BrdrQPlugin(object):
@@ -172,7 +174,7 @@ class BrdrQPlugin(object):
         self.iface.messageBar().pushMessage(msg)
 
     def version(self):
-        return "0.9.14"
+        return "0.10.0"
 
     def openAutoupdatebordersscript(self):
         processing.execAlgorithmDialog("brdrqprovider:brdrqautoupdateborders")

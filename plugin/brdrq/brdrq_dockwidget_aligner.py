@@ -79,7 +79,6 @@ class brdrQDockWidgetAligner(object):
         self.LAYER_RESULT_DIFF_PLUS = "DIFF_PLUS"  # parameter that holds the TOC layername of the resulting diff_plus
         self.LAYER_RESULT_DIFF_MIN = "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
 
-        # self.helpDialog = brdrQHelp()
         self.helpDialog = brdrQHelp()
 
     def closeEvent(self, event):
@@ -190,7 +189,6 @@ class brdrQDockWidgetAligner(object):
         )
         return
 
-
     def get_wkt(self):
         feat = self.feature
         if feat is None:
@@ -248,9 +246,11 @@ class brdrQDockWidgetAligner(object):
         return
 
     def show_help_dialog(self):
+        print("show help dialog")
         self.helpDialog.show()
 
     def show_settings_dialog(self):
+        print ("show settings")
         self.settingsDialog.show()
 
     def setHandles(self):

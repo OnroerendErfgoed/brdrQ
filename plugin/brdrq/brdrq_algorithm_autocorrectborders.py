@@ -70,7 +70,7 @@ from qgis.core import QgsStyle
 from brdr.aligner import Aligner
 from brdr.loader import DictLoader
 from brdr.enums import (
-    OpenbaarDomeinStrategy,
+    OpenDomainStrategy,
     GRBType,
     AlignerInputType,
     AlignerResultType,
@@ -780,7 +780,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
         self.ID_REFERENCE_FIELDNAME = parameters["COMBOBOX_ID_REFERENCE"]
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
-        self.OD_STRATEGY = OpenbaarDomeinStrategy[
+        self.OD_STRATEGY = OpenDomainStrategy[
             ENUM_OD_STRATEGY_OPTIONS[parameters["ENUM_OD_STRATEGY"]]
         ]
         self.ADD_FORMULA = parameters["ADD_FORMULA"]

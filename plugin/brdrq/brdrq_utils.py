@@ -17,7 +17,7 @@ from math import ceil
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
-from brdr.enums import GRBType, OpenbaarDomeinStrategy, SnapStrategy, Full
+from brdr.enums import GRBType, OpenDomainStrategy, SnapStrategy, FullStrategy
 from brdr.geometry_utils import geojson_polygon_to_multipolygon
 from brdr.typings import ProcessResult
 from brdr.utils import write_geojson
@@ -56,14 +56,14 @@ ENUM_REFERENCE_OPTIONS = (
 
 # ENUM for choosing the OD-strategy
 ENUM_OD_STRATEGY_OPTIONS = [
-    e.name for e in OpenbaarDomeinStrategy
+    e.name for e in OpenDomainStrategy
 ]  # list with od-strategy-options #if e.value<=2
 
 # ENUM for choosing the snap-strategy
 ENUM_SNAP_STRATEGY_OPTIONS = [e.name for e in SnapStrategy]
 
 # ENUM for choosing the full-strategy when evaluating
-ENUM_FULL_STRATEGY_OPTIONS = [e.name for e in Full]
+ENUM_FULL_STRATEGY_OPTIONS = [e.name for e in FullStrategy]
 
 
 def geom_shapely_to_qgis(geom_shapely):
@@ -275,7 +275,7 @@ def get_workfolder(folderpath="", name="", temporary=False):
     date_string = now.strftime("%Y%m%d%H%M%S")
     foldername = os.path.join(folderpath, name, date_string)
     try:
-        test_path_file = os.path.join(foldername, "test.txt")
+        test_path_file = os.path.join(foldername, "tests.txt")
         parent = os.path.dirname(test_path_file)
         os.makedirs(parent, exist_ok=True)
         with open(test_path_file, "w") as f:

@@ -26,6 +26,11 @@ __author__ = "Karel Dieussaert / Onroerend Erfgoed"
 __date__ = "2024-10-11"
 __copyright__ = "(C) 2024 by Karel Dieussaert / Onroerend Erfgoed"
 
+from qgis.PyQt import QtCore
+from qgis._gui import QgsMapCanvas
+
+from .tests.qgis_interface import QgisInterface
+
 
 # noinspection PyPep8Naming
 def classFactory(iface):  # pylint: disable=invalid-name
@@ -36,8 +41,10 @@ def classFactory(iface):  # pylint: disable=invalid-name
     """
     #
     from .brdrq_module_importer import import_modules
-
     import_modules()
     from .brdrq_plugin import BrdrQPlugin
-
+    if iface is None:
+        canvas = QgsMapCanvas(None)
+        canvas.resize(QtCore.QSize(400, 400))
+        iface = QgisInterface(canvas)
     return BrdrQPlugin(iface)

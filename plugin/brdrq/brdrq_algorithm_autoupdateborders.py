@@ -31,7 +31,7 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from brdr.aligner import Aligner
 from brdr.constants import BASE_FORMULA_FIELD_NAME
-from brdr.enums import AlignerInputType, GRBType, Full
+from brdr.enums import AlignerInputType, GRBType, FullStrategy
 from brdr.grb import update_to_actual_grb
 from brdr.loader import DictLoader
 from qgis.PyQt.QtCore import QCoreApplication
@@ -322,7 +322,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
             feedback=log_info,
             max_predictions=max_predictions,
-            full_strategy=Full.NO_FULL,
+            full_strategy=FullStrategy.NO_FULL,
             multi_to_best_prediction=multi_to_best_prediction,
         )
         if fcs_actualisation is None or fcs_actualisation == {}:
