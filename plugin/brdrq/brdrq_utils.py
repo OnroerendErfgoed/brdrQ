@@ -251,7 +251,8 @@ def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
 
     move_to_group(vl, group)
     vl.triggerRepaint()
-    iface.layerTreeView().refreshLayerSymbology(vl.id())
+    if iface is not None:
+        iface.layerTreeView().refreshLayerSymbology(vl.id())
     return vl
 
 
@@ -478,6 +479,13 @@ def thematic_preparation(
     outputs = {}
     # THEMATIC PREPARATION
     context.setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck)
+    #
+    # thematic = context.getMapLayer(outputs[input_thematic_name]["OUTPUT"])
+    # crs = (
+    #     thematic.sourceCrs().authid()
+    # )  # set CRS for the calculations, based on the THEMATIC input layer
+    # thematic_buffered = thematic
+    # return thematic, thematic_buffered, crs
 
     outputs[input_thematic_name + "_fixed"] = processing.run(
         "native:fixgeometries",

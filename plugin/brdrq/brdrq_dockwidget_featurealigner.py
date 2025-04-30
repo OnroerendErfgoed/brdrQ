@@ -147,6 +147,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         self.listed_features = identified_features
         self.listFeatures()
     def themeLayerChanged(self):
+        print ("themelayer changed")
         #reset interface by clearing list, progress_bar
         self.clearUserInterface()
         self.layer = self.mMapLayerComboBox.currentLayer()
@@ -278,6 +279,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         return
 
     def add_results_to_grouplayer(self):
+        print ("adding results")
         fcs = self.aligner.get_results_as_geojson(
             resulttype=AlignerResultType.PROCESSRESULTS, formula=self.formula
         )

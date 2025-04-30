@@ -31,7 +31,7 @@ import inspect
 import os
 import sys
 
-
+from qgis.core import QgsVectorLayer
 
 from .brdrq_utils import (
     ENUM_REFERENCE_OPTIONS,
@@ -769,11 +769,17 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         thematic_layer = parameters[self.INPUT_THEMATIC]
         if not isinstance(thematic_layer, str):
             thematic_layer = thematic_layer.source.toVariant()["val"]
+        # self.CRS = (
+        #     QgsProject.instance()
+        #     .layerTreeRoot()
+        #     .findLayer(thematic_layer)
+        #     .layer()
+        #     .sourceCrs()
+        #     .authid()
+        # )  # set CRS for the calculations, based on the THEMATIC input layer
+
         self.CRS = (
-            QgsProject.instance()
-            .layerTreeRoot()
-            .findLayer(thematic_layer)
-            .layer()
+            QgsProject.instance().mapLayersByName(thematic_layer)[0]
             .sourceCrs()
             .authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer

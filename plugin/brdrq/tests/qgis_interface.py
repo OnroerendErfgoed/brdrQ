@@ -25,10 +25,12 @@ __copyright__ = (
 
 import logging
 from typing import List
+
 from PyQt5.QtCore import QObject, pyqtSlot, pyqtSignal, QSize
 from PyQt5.QtWidgets import QToolBar, QMenu
 from qgis.PyQt.QtWidgets import QDockWidget
 from qgis.core import QgsProject, QgsMapLayer
+from qgis.gui import QgsLayerTreeView
 from qgis.gui import QgsMapCanvas, QgsMessageBar
 
 LOGGER = logging.getLogger("QGIS")
@@ -232,3 +234,9 @@ class QgisInterface(QObject):
         Return the vectorMenu
         """
         return QMenu()
+
+    def layerTreeView(self) -> QgsLayerTreeView:
+        """
+        Return the QgsLayerTreeView
+        """
+        return QgsLayerTreeView()
