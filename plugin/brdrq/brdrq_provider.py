@@ -57,8 +57,6 @@ class BrdrQProvider(QgsProcessingProvider):
         """
         self.addAlgorithm(AutocorrectBordersProcessingAlgorithm())
         self.addAlgorithm(AutoUpdateBordersProcessingAlgorithm())
-        # add additional algorithms here
-        # self.addAlgorithm(MyOtherAlgorithm())
 
     def id(self):
         """

@@ -1,17 +1,17 @@
 # coding=utf-8
 """Tests QGIS plugin init."""
 
+import os
+import unittest
+import logging
+import configparser
+
 __author__ = "Tim Sutton <tim@linfiniti.com>"
 __revision__ = "$Format:%H$"
 __date__ = "17/10/2010"
 __license__ = "GPL"
 __copyright__ = "Copyright 2012, Australia Indonesia Facility for "
 __copyright__ += "Disaster Reduction"
-
-import configparser
-import logging
-import os
-import unittest
 
 LOGGER = logging.getLogger("QGIS")
 
@@ -22,9 +22,7 @@ class TestInit(unittest.TestCase):
     Based heavily on the validator class by Alessandro
     Passoti available here:
 
-    http://github.com/qgis/qgis-django/blob/master/qgis-app/
-             plugins/validator.py
-
+    http://github.com/qgis/qgis-django/blob/master/qgis-app/plugins/validator.py
     """
 
     def test_read_init(self):
@@ -37,6 +35,9 @@ class TestInit(unittest.TestCase):
         required_metadata = [
             "name",
             "description",
+            "about",
+            "tracker",
+            "repository",
             "version",
             "qgisMinimumVersion",
             "email",

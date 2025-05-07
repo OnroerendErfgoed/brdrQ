@@ -31,7 +31,7 @@ import inspect
 import os
 import sys
 
-
+from qgis.core import QgsVectorLayer
 
 from .brdrq_utils import (
     ENUM_REFERENCE_OPTIONS,
@@ -40,7 +40,9 @@ from .brdrq_utils import (
     GRB_TYPES,
     geom_qgis_to_shapely,
     geojson_to_layer,
-    get_workfolder, thematic_preparation,
+    get_workfolder,
+    thematic_preparation,
+    get_layer_by_name,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -70,7 +72,7 @@ from qgis.core import QgsStyle
 from brdr.aligner import Aligner
 from brdr.loader import DictLoader
 from brdr.enums import (
-    OpenbaarDomeinStrategy,
+    OpenDomainStrategy,
     GRBType,
     AlignerInputType,
     AlignerResultType,
@@ -78,7 +80,6 @@ from brdr.enums import (
 from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader, update_to_actual_grb
 from brdr.constants import FORMULA_FIELD_NAME
 from brdr.geometry_utils import safe_unary_union
-
 
 
 class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -767,20 +768,18 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
         thematic_layer = parameters[self.INPUT_THEMATIC]
+        #todo handling van thematic layer type, ook na te kijken bij de reference layer
         if not isinstance(thematic_layer, str):
             thematic_layer = thematic_layer.source.toVariant()["val"]
         self.CRS = (
-            QgsProject.instance()
-            .layerTreeRoot()
-            .findLayer(thematic_layer)
-            .layer()
+            get_layer_by_name(thematic_layer)
             .sourceCrs()
             .authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
         self.ID_REFERENCE_FIELDNAME = parameters["COMBOBOX_ID_REFERENCE"]
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
-        self.OD_STRATEGY = OpenbaarDomeinStrategy[
+        self.OD_STRATEGY = OpenDomainStrategy[
             ENUM_OD_STRATEGY_OPTIONS[parameters["ENUM_OD_STRATEGY"]]
         ]
         self.ADD_FORMULA = parameters["ADD_FORMULA"]

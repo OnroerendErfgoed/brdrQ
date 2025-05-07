@@ -17,8 +17,7 @@ from math import ceil
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
-from brdr.enums import GRBType, OpenbaarDomeinStrategy, SnapStrategy, Full
-from brdr.geometry_utils import geojson_polygon_to_multipolygon
+from brdr.enums import GRBType, OpenDomainStrategy, SnapStrategy, FullStrategy
 from brdr.typings import ProcessResult
 from brdr.utils import write_geojson
 from PyQt5.QtCore import pyqtSignal
@@ -56,14 +55,14 @@ ENUM_REFERENCE_OPTIONS = (
 
 # ENUM for choosing the OD-strategy
 ENUM_OD_STRATEGY_OPTIONS = [
-    e.name for e in OpenbaarDomeinStrategy
+    e.name for e in OpenDomainStrategy
 ]  # list with od-strategy-options #if e.value<=2
 
 # ENUM for choosing the snap-strategy
 ENUM_SNAP_STRATEGY_OPTIONS = [e.name for e in SnapStrategy]
 
 # ENUM for choosing the full-strategy when evaluating
-ENUM_FULL_STRATEGY_OPTIONS = [e.name for e in Full]
+ENUM_FULL_STRATEGY_OPTIONS = [e.name for e in FullStrategy]
 
 
 def geom_shapely_to_qgis(geom_shapely):
@@ -79,6 +78,7 @@ def remove_group_layer(group_layer_name):
     tree = QgsProject.instance().layerTreeRoot()
     node_object = tree.findGroup(group_layer_name)
     tree.removeChildNode(node_object)
+
 
 def geom_qgis_to_shapely(geom_qgis):
     """
@@ -213,6 +213,62 @@ def get_renderer(fill_symbol):
         return QgsSingleSymbolRenderer(fill_symbol.clone()).clone()
     return None
 
+def get_symbol(geojson,resulttype):
+    geojson = geojson_to_multi(geojson)
+    feature_types =  get_geojson_type(geojson)
+    if len(feature_types)>1:
+        raise TypeError("Geojson multiple types detected. Not supported")
+    if len(feature_types)==1:
+        geometrytype = feature_types[0]
+    else:
+        geometrytype = "MultiPolygon"
+
+    if geometrytype == "MultiPolygon":
+        if resulttype =="result_diff":
+            return QgsStyle.defaultStyle().symbol("hashed black X")
+        elif resulttype =="result_diff_plus":
+            return QgsStyle.defaultStyle().symbol("hashed cgreen /")
+        elif resulttype =="result_diff_min":
+            return QgsStyle.defaultStyle().symbol("hashed cred /")
+        elif resulttype =="result":
+            return QgsStyle.defaultStyle().symbol("outline green")
+        else:
+            return QgsStyle.defaultStyle().symbol("outline blue")
+    elif geometrytype == "MultiLineString":
+        if resulttype =="result_diff":
+            return QgsStyle.defaultStyle().symbol("topo railway")
+        elif resulttype =="result_diff_plus":
+            return QgsStyle.defaultStyle().symbol("dash green")
+        elif resulttype =="result_diff_min":
+            return QgsStyle.defaultStyle().symbol("dash red")
+        elif resulttype =="result":
+            return QgsStyle.defaultStyle().symbol("simple green line")
+        else:
+            return QgsStyle.defaultStyle().symbol("simple blue line")
+    elif geometrytype =="MultiPoint":
+        if resulttype =="result_diff":
+            return QgsStyle.defaultStyle().symbol("dot white")
+        elif resulttype =="result_diff_plus":
+            return QgsStyle.defaultStyle().symbol("dot white")
+        elif resulttype =="result_diff_min":
+            return QgsStyle.defaultStyle().symbol("dot white")
+        elif resulttype =="result":
+            return QgsStyle.defaultStyle().symbol("dot green")
+        else:
+            return QgsStyle.defaultStyle().symbol("dot blue")
+    else:
+        raise TypeError("Unknown Type")
+
+
+def get_geojson_type(geojson):
+    if geojson.get("type") == "FeatureCollection":
+        feature_types = []
+        for feature in geojson.get("features", []):
+            if feature["geometry"] is not None:
+                feature_types.append(feature["geometry"]["type"])
+        return list(set(feature_types))
+    return [geojson.get("type", "Unknown")]
+
 
 def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
     """
@@ -229,7 +285,7 @@ def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
     if tempfolder is None or str(tempfolder) == "NULL" or str(tempfolder) == "":
         tempfolder = "tempfolder"
     tempfilename = tempfolder + "/" + name + ".geojson"
-    write_geojson(tempfilename, geojson_polygon_to_multipolygon(geojson))
+    write_geojson(tempfilename, geojson_to_multi(geojson))
 
     vl = QgsVectorLayer(tempfilename, name, "ogr")
     # styling
@@ -251,7 +307,8 @@ def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
 
     move_to_group(vl, group)
     vl.triggerRepaint()
-    iface.layerTreeView().refreshLayerSymbology(vl.id())
+    if iface is not None:
+        iface.layerTreeView().refreshLayerSymbology(vl.id())
     return vl
 
 
@@ -286,6 +343,34 @@ def get_workfolder(folderpath="", name="", temporary=False):
         return get_workfolder(folderpath="", name=name, temporary=True)
     return foldername
 
+
+def geojson_to_multi(geojson):
+    """
+    Transforms a geojson: Checks if there are single-geometry-features and transforms them into Multi-geometries, so all objects are of type 'Multi' (or null-geometry).
+    It is important that geometry-type is consistent in QGIS to show and style the geojson-layer
+    """
+
+    if geojson is None or "features" not in geojson or geojson["features"] is None:
+        return geojson
+    for f in geojson["features"]:
+        if f["geometry"] is None:
+            continue
+        if f["geometry"]["type"] == "Polygon":
+            f["geometry"] = {
+                "type": "MultiPolygon",
+                "coordinates": [f["geometry"]["coordinates"]],
+            }
+        elif f["geometry"]["type"] == "LineString":
+            f["geometry"] = {
+                "type": "MultiLineString",
+                "coordinates": [f["geometry"]["coordinates"]],
+            }
+        elif f["geometry"]["type"] == "Point":
+            f["geometry"] = {
+                "type": "MultiPoint",
+                "coordinates": [f["geometry"]["coordinates"]],
+            }
+    return geojson
 
 def _make_map(ax, processresult, thematic_dict, reference_dict):
     """
@@ -473,11 +558,18 @@ def _processresult_to_dicts(processresult):
 
 
 def thematic_preparation(
-    input_thematic_name,input_thematic_layer, relevant_distance, context, feedback
+    input_thematic_name, input_thematic_layer, relevant_distance, context, feedback
 ):
     outputs = {}
     # THEMATIC PREPARATION
     context.setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck)
+    #
+    # thematic = context.getMapLayer(outputs[input_thematic_name]["OUTPUT"])
+    # crs = (
+    #     thematic.sourceCrs().authid()
+    # )  # set CRS for the calculations, based on the THEMATIC input layer
+    # thematic_buffered = thematic
+    # return thematic, thematic_buffered, crs
 
     outputs[input_thematic_name + "_fixed"] = processing.run(
         "native:fixgeometries",

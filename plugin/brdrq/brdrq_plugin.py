@@ -39,6 +39,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QMenu
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
+from qgis.gui import QgisInterface
 from qgis.core import QgsApplication
 
 from .brdrq_dockwidget_bulkaligner import brdrQDockWidgetBulkAligner
@@ -66,7 +67,6 @@ class BrdrQPlugin(object):
         self.toolbar.setObjectName(pluginname)
         self.brdrq_menu = QMenu(pluginname)
         self.vector_menu = self.iface.vectorMenu()
-
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -98,12 +98,12 @@ class BrdrQPlugin(object):
         self.brdrq_menu.setIcon(icon_menu)
         self.vector_menu.addMenu(self.brdrq_menu)
 
-        #FEATUREPREDICTOR
+        # FEATUREPREDICTOR
         icon = os.path.join(os.path.join(cmd_folder, "icon_featurealigner.png"))
         action_featurepredictor = QAction(
             QIcon(icon), "brdrQ - Feature Aligner (predictor)", self.iface.mainWindow()
         )
-        action_featurepredictor.triggered.connect(self.openDock)
+        action_featurepredictor.triggered.connect(self.openDockFeatureAligner)
         #
 
         self.brdrq_menu.addAction(action_featurepredictor)
@@ -121,8 +121,7 @@ class BrdrQPlugin(object):
         # self.toolbar.addAction(action_bulkaligner)
         # self.actions.append(action_bulkaligner)
 
-
-        #AUTOCORRECTBORDERS
+        # AUTOCORRECTBORDERS
         icon_autocorrectborders = os.path.join(
             os.path.join(cmd_folder, "icon_autocorrectborders.png")
         )
@@ -136,8 +135,7 @@ class BrdrQPlugin(object):
         self.toolbar.addAction(action_autocorrectborders)
         self.actions.append(action_autocorrectborders)
 
-
-        #AUTOUPDATEBORDERS -GRBUPDATER
+        # AUTOUPDATEBORDERS -GRBUPDATER
         icon_autoupdateborders = os.path.join(
             os.path.join(cmd_folder, "icon_grbupdater.png")
         )
@@ -172,7 +170,7 @@ class BrdrQPlugin(object):
         self.iface.messageBar().pushMessage(msg)
 
     def version(self):
-        return "0.9.14"
+        return "0.10.0"
 
     def openAutoupdatebordersscript(self):
         processing.execAlgorithmDialog("brdrqprovider:brdrqautoupdateborders")
@@ -187,7 +185,6 @@ class BrdrQPlugin(object):
         # remove the toolbar
         del self.toolbar
 
-
     def openDockBulkAligner(self):
         print("openDockBulkAligner")
         print (str(self.dockwidget_bulkaligner))
@@ -200,20 +197,13 @@ class BrdrQPlugin(object):
             self.dockwidget_bulkaligner.activate()
         return
 
-    def openDock(self):
-        print("openDock")
+    def openDockFeatureAligner(self):
+        print("openDockFeatureAligner")
         if self.dockwidget_featurealigner is None:
             # Create the dockwidget (after translation) and keep reference
             self.dockwidget_featurealigner = brdrQDockWidgetFeatureAligner(self)
-            print("brdrQDockWidget created")
-        print(str(self.dockwidget_featurealigner.active))
-        if not self.dockwidget_featurealigner.active:
-            self.dockwidget_featurealigner.activate()
+            print("brdrQDockWidgetFeatureAligner created")
+        else:
+            print("brdrQDockWidgetFeatureAligner reused")
+        self.dockwidget_featurealigner.startDock()
         return
-
-
-
-
-
-
-
