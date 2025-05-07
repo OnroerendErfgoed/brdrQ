@@ -42,8 +42,16 @@ from qgis.gui import QgsMapToolPan
 from qgis.utils import OverrideCursor
 
 from .brdrq_dockwidget_aligner import brdrQDockWidgetAligner
-from .brdrq_utils import SelectTool, zoom_to_feature, geojson_to_layer, GRB_TYPES, \
-    ADPF_VERSIONS, geom_qgis_to_shapely, remove_group_layer
+from .brdrq_utils import (
+    SelectTool,
+    zoom_to_feature,
+    geojson_to_layer,
+    GRB_TYPES,
+    ADPF_VERSIONS,
+    geom_qgis_to_shapely,
+    remove_group_layer,
+    get_symbol,
+)
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'brdrq_dockwidget_featurealigner.ui'))
@@ -63,7 +71,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
-
+        self._initialize()
 
     def clearUserInterface(self):
         # Clear progressbar
@@ -78,9 +86,8 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         remove_group_layer(self.GROUP_LAYER)
         self.feature = None
 
-
-    def activate(self):
-        self.active = True
+    def _initialize(self):
+        print("_initialize")
         # connect to provide cleanup on closing of dockwidget
         self.closingPlugin.connect(self.onClosePlugin)
         self.pushButton_help.clicked.connect(self.show_help_dialog)
@@ -96,7 +103,8 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         self.pushButton_select.clicked.connect(self.activate_selectTool)
         self.mMapLayerComboBox.setFilters(
             QgsMapLayerProxyModel.PolygonLayer
-            #|QgsMapLayerProxyModel.LineLayer
+            | QgsMapLayerProxyModel.LineLayer
+            | QgsMapLayerProxyModel.PointLayer
         )
         self.mMapLayerComboBox.layerChanged.connect(self.themeLayerChanged)
         self.checkBox_only_selected.stateChanged.connect(
@@ -116,20 +124,19 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         #
         self.layer = self.mMapLayerComboBox.currentLayer()
         self.settingsDialog.confirmed.connect(self.startDock)
-        self.startDock()
-        self.show()
+        return
 
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
+        print ("onClosePlugin")
         print ("** CLOSING brdrQ")
         remove_group_layer(self.GROUP_LAYER)
         # disconnects
         print("** disconnect dockwidget")
         self.closingPlugin.disconnect(self.onClosePlugin)
-        self.active = False
 
     def activate_selectTool(self):
-        print ("currentlayer:" + str (self.mMapLayerComboBox.currentLayer()))
+        # print ("currentlayer:" + str (self.mMapLayerComboBox.currentLayer()))
         self.selectTool = SelectTool(self.iface, self.mMapLayerComboBox.currentLayer())
         self.formerMapTool = self.iface.mapCanvas().mapTool()
         self.iface.mapCanvas().setMapTool(self.selectTool)
@@ -148,7 +155,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         self.listFeatures()
     def themeLayerChanged(self):
         print ("themelayer changed")
-        #reset interface by clearing list, progress_bar
+        # reset interface by clearing list, progress_bar
         self.clearUserInterface()
         self.layer = self.mMapLayerComboBox.currentLayer()
         if self.layer is None:
@@ -240,7 +247,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
                 self.textEdit_output.setText(f"{msg}")
                 step = 100
 
-        #adapt & reload settings (espacially relevant_distances) before alignment
+        # adapt & reload settings (espacially relevant_distances) before alignment
         self.settingsDialog.step = step
         self.loadSettings()
         self.setHandles()
@@ -251,7 +258,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
 
         # set list with predicted values
         self.listWidget_predictions.clear()
-        # TODO, loop over predictions en voeg toe met boodschap
+        # loop predictions & add prediction score & evaluation
         items = []
         items_with_name = []
         best_index = 0
@@ -283,34 +290,42 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         fcs = self.aligner.get_results_as_geojson(
             resulttype=AlignerResultType.PROCESSRESULTS, formula=self.formula
         )
+        result_diff = "result_diff"
+        geojson_result_diff = fcs[result_diff]
         geojson_to_layer(
             self.LAYER_RESULT_DIFF,
-            fcs["result_diff"],
-            QgsStyle.defaultStyle().symbol("hashed black X"),
+            geojson_result_diff,
+            get_symbol(geojson_result_diff,result_diff),
             False,
             self.GROUP_LAYER,
             self.tempfolder,
         )
+        result_diff_plus = "result_diff_plus"
+        geojson_result_diff_plus = fcs[result_diff_plus]
         geojson_to_layer(
             self.LAYER_RESULT_DIFF_PLUS,
-            fcs["result_diff_plus"],
-            QgsStyle.defaultStyle().symbol("hashed cgreen /"),
+            geojson_result_diff_plus,
+            get_symbol(geojson_result_diff_plus,result_diff_plus),
             True,
             self.GROUP_LAYER,
             self.tempfolder,
         )
+        result_diff_min = "result_diff_min"
+        geojson_result_diff_min = fcs[result_diff_min]
         geojson_to_layer(
             self.LAYER_RESULT_DIFF_MIN,
-            fcs["result_diff_min"],
-            QgsStyle.defaultStyle().symbol("hashed cred /"),
+            geojson_result_diff_min,
+            get_symbol(geojson_result_diff_min,result_diff_min),
             True,
             self.GROUP_LAYER,
             self.tempfolder,
         )
+        result = "result"
+        geojson_result = fcs[result]
         geojson_to_layer(
             self.LAYER_RESULT,
-            fcs["result"],
-            QgsStyle.defaultStyle().symbol("outline green"),
+            geojson_result,
+            get_symbol(geojson_result,result),
             True,
             self.GROUP_LAYER,
             self.tempfolder,
@@ -416,6 +431,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         self._reset_geometry(self.layer)
 
     def startDock(self):
+        print ("start dock")
         self.clearUserInterface()
         self.textEdit_output.setText("Please select a feature to align")
         self.loadSettings()
@@ -427,8 +443,8 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
             # partial_snapping_strategy=self.partial_snapping_strategy,
             # snapping_max_segment_length=self.snap_max_segment_length,
         )
+        self.show()
         return
 
 def __init__():
     pass
-

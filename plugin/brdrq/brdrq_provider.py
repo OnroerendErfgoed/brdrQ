@@ -34,7 +34,6 @@ from qgis.core import QgsProcessingProvider
 
 from .brdrq_algorithm_autocorrectborders import AutocorrectBordersProcessingAlgorithm
 from .brdrq_algorithm_autoupdateborders import AutoUpdateBordersProcessingAlgorithm
-from .brdrq_algorithm_tester import ExampleProcessingAlgorithm
 
 
 class BrdrQProvider(QgsProcessingProvider):
@@ -58,9 +57,6 @@ class BrdrQProvider(QgsProcessingProvider):
         """
         self.addAlgorithm(AutocorrectBordersProcessingAlgorithm())
         self.addAlgorithm(AutoUpdateBordersProcessingAlgorithm())
-        self.addAlgorithm(ExampleProcessingAlgorithm())
-        # add additional algorithms here
-        # self.addAlgorithm(MyOtherAlgorithm())
 
     def id(self):
         """

@@ -26,17 +26,17 @@ def _run_tests(test_suite, package_name):
     """Core function to test a test suite."""
     count = test_suite.countTestCases()
     print("########")
-    print("%s tests has been discovered in %s" % (count, package_name))
+    print("%s test has been discovered in %s" % (count, package_name))
     print("Python GDAL : %s" % gdal.VersionInfo("VERSION_NUM"))
     print("########")
 
     cov = coverage.Coverage(
-        source=["tests/*"],
+        source=["test/*"],
         omit=[
             "*/???.py",
             "*/???.py",
             "*/__init__.py",
-            "*/tests/*",
+            "*/test/*",
             "*/test_suite.py",
         ],
     )

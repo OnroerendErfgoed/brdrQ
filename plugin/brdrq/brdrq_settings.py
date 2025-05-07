@@ -74,7 +74,7 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         event.accept()
 
     def load_settings(self):
-        # print("load settings")
+        print("load settings")
         for r in ENUM_REFERENCE_OPTIONS:
             self.comboBox_referencelayer.addItem(r)
         for od in ENUM_OD_STRATEGY_OPTIONS:
@@ -154,7 +154,7 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             / 100
         ]
         #self.relevant_distances.extend([round(99.9, self.DECIMAL),round(100.0, self.DECIMAL)])
-        print (self.relevant_distances)
+        #print (self.relevant_distances)
         if self.od_strategy is None:
             self.od_strategy = int(s.value("brdrq/od_strategy", 2))
             index = self.comboBox_odstrategy.findText(
