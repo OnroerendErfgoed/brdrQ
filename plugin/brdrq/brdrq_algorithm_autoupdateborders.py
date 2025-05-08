@@ -72,6 +72,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     # calling from the QGIS console.
 
     INPUT_THEMATIC = "INPUT_THEMATIC"  # reference to the combobox for choosing the thematic input layer
+    THEMATIC_LAYER = None #reference to the thematic input QgisVectorLayer
     ID_THEME_FIELDNAME = (
         ""  # parameters that holds the fieldname of the unique theme id
     )
@@ -257,17 +258,16 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback = QgsProcessingMultiStepFeedback(feedback_steps, feedback)
         feedback.pushInfo("START")
 
-        self.prepare_parameters(parameters)
+        self.prepare_parameters(parameters,context)
 
         thematic, thematic_buffered, self.CRS = thematic_preparation(
-            self.INPUT_THEMATIC,
-            parameters[self.INPUT_THEMATIC],
+            self.THEMATIC_LAYER,
             self.RELEVANT_DISTANCE,
             context,
             feedback,
         )
         if thematic is None:
-            raise QgsProcessingException(self.invalidSourceError(parameters, self.test))
+            raise QgsProcessingException(self.invalidSourceError(parameters, "invalid source"))
 
         # Load thematic into a shapely_dict:
         dict_thematic = {}
@@ -381,13 +381,17 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo("EINDE: RESULTAAT BEREKEND")
         return {"OUTPUT_RESULT": result}
 
-    def prepare_parameters(self, parameters):
+    def prepare_parameters(self, parameters,context):
         wrkfldr = parameters["WORK_FOLDER"]
         if wrkfldr is None or str(wrkfldr) == "" or str(wrkfldr) == "NULL":
             wrkfldr = self.WORKFOLDER
         self.WORKFOLDER = get_workfolder(
             wrkfldr, name="autoupdateborders", temporary=False
         )
+        self.THEMATIC_LAYER = self.parameterAsVectorLayer(parameters, self.INPUT_THEMATIC, context)
+        self.CRS = (
+            self.THEMATIC_LAYER.sourceCrs().authid()
+        )  # set CRS for the calculations, based on the THEMATIC input layer
         self.MAX_DISTANCE_FOR_ACTUALISATION = parameters["MAX_RELEVANT_DISTANCE"]
         self.GRB_TYPE = GRBType[GRB_TYPES[parameters["ENUM_REFERENCE"]]]
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]

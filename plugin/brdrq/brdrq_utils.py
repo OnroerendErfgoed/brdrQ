@@ -557,19 +557,12 @@ def _processresult_to_dicts(processresult):
     )
 
 
-def thematic_preparation(
-    input_thematic_name, input_thematic_layer, relevant_distance, context, feedback
+def thematic_preparation( input_thematic_layer, relevant_distance, context, feedback
 ):
+    input_thematic_name = "thematic_preparation"
     outputs = {}
     # THEMATIC PREPARATION
     context.setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck)
-    #
-    # thematic = context.getMapLayer(outputs[input_thematic_name]["OUTPUT"])
-    # crs = (
-    #     thematic.sourceCrs().authid()
-    # )  # set CRS for the calculations, based on the THEMATIC input layer
-    # thematic_buffered = thematic
-    # return thematic, thematic_buffered, crs
 
     outputs[input_thematic_name + "_fixed"] = processing.run(
         "native:fixgeometries",

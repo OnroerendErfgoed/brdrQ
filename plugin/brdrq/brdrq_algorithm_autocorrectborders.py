@@ -31,8 +31,6 @@ import inspect
 import os
 import sys
 
-from qgis.core import QgsVectorLayer
-
 from .brdrq_utils import (
     ENUM_REFERENCE_OPTIONS,
     ENUM_OD_STRATEGY_OPTIONS,
@@ -42,7 +40,6 @@ from .brdrq_utils import (
     geojson_to_layer,
     get_workfolder,
     thematic_preparation,
-    get_layer_by_name,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -98,6 +95,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     ID_THEME_FIELDNAME = (
         ""  # parameters that holds the fieldname of the unique theme id
     )
+    THEMATIC_LAYER = None #reference to the thematic input QgisVectorLayer
 
     # REFERENCE PARAMETERS
     INPUT_REFERENCE = "INPUT_REFERENCE"  # reference to the combobox for choosing the reference input layer
@@ -418,11 +416,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback = QgsProcessingMultiStepFeedback(feedback_steps, feedback)
         feedback.pushInfo("START")
         feedback.setCurrentStep(1)
-
-        self.prepare_parameters(parameters)
-
-
-        thematic, thematic_buffered,self.CRS = thematic_preparation(self.INPUT_THEMATIC, parameters[self.INPUT_THEMATIC], self.RELEVANT_DISTANCE,
+        self.prepare_parameters(parameters,context)
+        thematic, thematic_buffered,self.CRS = thematic_preparation(self.THEMATIC_LAYER, self.RELEVANT_DISTANCE,
                                                                     context, feedback
                                                                     )
         if thematic is None:
@@ -758,7 +753,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             )
         return reference
 
-    def prepare_parameters(self, parameters):
+    def prepare_parameters(self, parameters,context):
         # PARAMETER PREPARATION
         wrkfldr = parameters["WORK_FOLDER"]
         if wrkfldr is None or str(wrkfldr) == "" or str(wrkfldr) == "NULL":
@@ -767,14 +762,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             wrkfldr, name="autocorrectborders", temporary=False
         )
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
-        thematic_layer = parameters[self.INPUT_THEMATIC]
-        #todo handling van thematic layer type, ook na te kijken bij de reference layer
-        if not isinstance(thematic_layer, str):
-            thematic_layer = thematic_layer.source.toVariant()["val"]
+        # todo handling van thematic layer type, ook na te kijken bij de reference layer
+        self.THEMATIC_LAYER = self.parameterAsVectorLayer(parameters, self.INPUT_THEMATIC, context)
         self.CRS = (
-            get_layer_by_name(thematic_layer)
-            .sourceCrs()
-            .authid()
+            self.THEMATIC_LAYER.sourceCrs().authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
         self.ID_REFERENCE_FIELDNAME = parameters["COMBOBOX_ID_REFERENCE"]
