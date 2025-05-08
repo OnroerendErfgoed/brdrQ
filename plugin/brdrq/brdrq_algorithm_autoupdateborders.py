@@ -80,10 +80,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     GRB_TYPE = GRBType.ADP
     # ALIGNER parameters
     CRS = "EPSG:31370"  # default CRS for the aligner,updated by CRS of thematic inputlayer
-    OD_STRATEGY = 0  # default OD_STRATEGY for the aligner,updated by user-choice
+    OD_STRATEGY = 2  # default OD_STRATEGY for the aligner,updated by user-choice
     THRESHOLD_OVERLAP_PERCENTAGE = 50  # default THRESHOLD_OVERLAP_PERCENTAGE for the aligner,updated by user-choice
     RELEVANT_DISTANCE = (
-        1  # default RELEVANT_DISTANCE for the aligner,updated by user-choice
+        2  # default RELEVANT_DISTANCE for the aligner,updated by user-choice
     )
     CORR_DISTANCE = 0.01  # default CORR_DISTANCE for the aligner
     MULTI_AS_SINGLE_MODUS = True  # default MULTI_AS_SINGLE_MODUS for the aligner
@@ -267,7 +267,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             feedback,
         )
         if thematic is None:
-            raise QgsProcessingException(self.invalidSourceError(parameters, "invalid source"))
+            raise QgsProcessingException(self.invalidSourceError(parameters, self.INPUT_THEMATIC))
 
         # Load thematic into a shapely_dict:
         dict_thematic = {}
@@ -292,7 +292,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                     attributes_dict[key] = value
             dict_thematic_properties[id_theme] = attributes_dict
 
-        aligner = Aligner()
+        aligner = Aligner(od_strategy=self.OD_STRATEGY)
         aligner.load_thematic_data(
             DictLoader(
                 data_dict=dict_thematic, data_dict_properties=dict_thematic_properties

@@ -18,7 +18,7 @@ CANVAS: QgsMapCanvas
 QGISAPP, CANVAS, IFACE, PARENT = get_qgis_app()
 Processing.initialize()
 
-class TestAutocorrectBorders(unittest.TestCase):
+class TestAutoCorrectBorders(unittest.TestCase):
     def setUp(self):
         self.provider = BrdrQProvider()
         QGISAPP.processingRegistry().addProvider(self.provider)

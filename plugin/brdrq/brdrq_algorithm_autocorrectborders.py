@@ -95,10 +95,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     ID_THEME_FIELDNAME = (
         ""  # parameters that holds the fieldname of the unique theme id
     )
-    THEMATIC_LAYER = None #reference to the thematic input QgisVectorLayer
+    LAYER_THEMATIC = None #reference to the thematic input QgisVectorLayer
 
     # REFERENCE PARAMETERS
     INPUT_REFERENCE = "INPUT_REFERENCE"  # reference to the combobox for choosing the reference input layer
+    LAYER_REFERENCE = None  # reference to the local reference QgisVectorLayer
     LAYER_REFERENCE_NAME = (
         "LAYER_REFERENCE_NAME"  # Name of the local referencelayer in the TOC
     )
@@ -322,7 +323,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "ENUM_OD_STRATEGY",
             "Select OD-STRATEGY:",
             options=ENUM_OD_STRATEGY_OPTIONS,
-            defaultValue=4,  # Index of the default option (e.g., 'SNAP_ALL_SIDE')
+            defaultValue=3,  # Index of the default option (e.g., 'SNAP_ALL_SIDE')
         )
         parameter.setFlags(
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
@@ -417,7 +418,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo("START")
         feedback.setCurrentStep(1)
         self.prepare_parameters(parameters,context)
-        thematic, thematic_buffered,self.CRS = thematic_preparation(self.THEMATIC_LAYER, self.RELEVANT_DISTANCE,
+        thematic, thematic_buffered,self.CRS = thematic_preparation(self.LAYER_THEMATIC, self.RELEVANT_DISTANCE,
                                                                     context, feedback
                                                                     )
         if thematic is None:
@@ -762,10 +763,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             wrkfldr, name="autocorrectborders", temporary=False
         )
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
-        # todo handling van thematic layer type, ook na te kijken bij de reference layer
-        self.THEMATIC_LAYER = self.parameterAsVectorLayer(parameters, self.INPUT_THEMATIC, context)
+        self.LAYER_THEMATIC = self.parameterAsVectorLayer(parameters, self.INPUT_THEMATIC, context)
         self.CRS = (
-            self.THEMATIC_LAYER.sourceCrs().authid()
+            self.LAYER_THEMATIC.sourceCrs().authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
         self.ID_REFERENCE_FIELDNAME = parameters["COMBOBOX_ID_REFERENCE"]
@@ -788,11 +788,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             )
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
 
-        # self.UPDATE_TO_ACTUAL = parameters["UPDATE_TO_ACTUAL"]
-        # self.MAX_DISTANCE_FOR_ACTUALISATION = parameters[
-        #     "MAX_DISTANCE_FOR_ACTUALISATION"
-        # ]
-
         ref = ENUM_REFERENCE_OPTIONS[parameters["ENUM_REFERENCE"]]
 
         if ref in GRB_TYPES:
@@ -805,24 +800,22 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             ref_suffix = str(ref)
         else:
             self.SELECTED_REFERENCE = 0
+            self.LAYER_REFERENCE = self.parameterAsVectorLayer(
+                parameters, self.INPUT_REFERENCE, context
+            )
 
             if (
-                parameters[self.INPUT_REFERENCE] is None
+                self.LAYER_REFERENCE is None
                 or self.ID_REFERENCE_FIELDNAME == "NULL"
             ):
                 raise QgsProcessingException(
                     "Please choose a REFERENCELAYER from the table of contents, and the associated unique REFERENCE ID"
                 )
-            layer_reference = (
-                QgsProject.instance()
-                .layerTreeRoot()
-                .findLayer(parameters[self.INPUT_REFERENCE])
-                .layer()
-            )
-            self.LAYER_REFERENCE_NAME = layer_reference.name()
+
+            self.LAYER_REFERENCE_NAME = self.LAYER_REFERENCE.name()
             ref_suffix = self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE_NAME
 
-            if layer_reference.sourceCrs().authid() != self.CRS:
+            if self.LAYER_REFERENCE.sourceCrs().authid() != self.CRS:
                 raise QgsProcessingException(
                     "Thematic layer and ReferenceLayer are in a different CRS. "
                     "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"

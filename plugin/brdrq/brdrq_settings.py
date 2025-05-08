@@ -25,13 +25,12 @@
 import os
 
 import numpy as np
-from brdr.enums import OpenDomainStrategy, SnapStrategy, FullStrategy
+from brdr.enums import OpenDomainStrategy, FullStrategy
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.core import QgsSettings
 
-from .brdrq_utils import ENUM_REFERENCE_OPTIONS, ENUM_OD_STRATEGY_OPTIONS, ENUM_SNAP_STRATEGY_OPTIONS, \
-    ENUM_FULL_STRATEGY_OPTIONS
+from .brdrq_utils import ENUM_REFERENCE_OPTIONS, ENUM_OD_STRATEGY_OPTIONS, ENUM_FULL_STRATEGY_OPTIONS
 
 FORM_CLASS, _ = uic.loadUiType(
     os.path.join(os.path.dirname(__file__), "brdrq_settings.ui")
