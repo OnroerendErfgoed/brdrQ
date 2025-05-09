@@ -36,13 +36,13 @@ from brdr.grb import update_to_actual_grb
 from brdr.loader import DictLoader
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QDate, QDateTime
-from qgis._core import QgsProcessingParameterEnum
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
 from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingMultiStepFeedback
 from qgis.core import QgsProcessingOutputVectorLayer
 from qgis.core import QgsProcessingParameterBoolean
+from qgis.core import QgsProcessingParameterEnum, QgsProcessingParameterDefinition
 from qgis.core import (
     QgsProcessingParameterFeatureSource,
     QgsProcessingParameterField,
@@ -58,6 +58,9 @@ from .brdrq_utils import (
     get_workfolder,
     GRB_TYPES,
     thematic_preparation,
+    ENUM_PREDICTION_STRATEGY_OPTIONS,
+    PredictionStrategy,
+    ENUM_FULL_STRATEGY_OPTIONS,
 )
 
 
@@ -106,7 +109,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     # OTHER parameters
     MAX_DISTANCE_FOR_ACTUALISATION = 3  # maximum relevant distance that is used in the predictor when trying to update to actual GRB
     WORKFOLDER = "brdrQ"
-    BEST_PREDICTION = True
+    PREDICTION_STRATEGY = PredictionStrategy.ALL
+    FULL_STRATEGY = FullStrategy.NO_FULL
     SHOW_LOG_INFO = True
 
     def flags(self):
@@ -201,15 +205,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
-        parameter = QgsProcessingParameterField(
-            "FORMULA_FIELD",
-            "Formula field",  # (if empty, formula will be calculated based on following alignment-date)
-            "brdr_formula",
-            self.INPUT_THEMATIC,
-            optional=True,
-        )
-        parameter.setFlags(parameter.flags())
-        self.addParameter(parameter)
+
 
         parameter = QgsProcessingParameterNumber(
             "MAX_RELEVANT_DISTANCE",
@@ -220,26 +216,59 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
+        parameter = QgsProcessingParameterEnum(
+            "PREDICTION_STRATEGY",
+            "Select PREDICTION_STRATEGY:",
+            options=ENUM_PREDICTION_STRATEGY_OPTIONS,
+            defaultValue=1,
+        )
+        parameter.setFlags(parameter.flags())
+        self.addParameter(parameter)
+
+        #ADVANCED INPUT
+        parameter = QgsProcessingParameterEnum(
+            "FULL_STRATEGY",
+            "Select FULL_STRATEGY:",
+            options=ENUM_FULL_STRATEGY_OPTIONS,
+            defaultValue=2,
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterField(
+            "FORMULA_FIELD",
+            "Formula field",  # (if empty, formula will be calculated based on following alignment-date)
+            "brdr_formula",
+            self.INPUT_THEMATIC,
+            optional=True,
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
+
         parameter = QgsProcessingParameterFile(
             "WORK_FOLDER",
             self.tr("Working folder"),
             behavior=QgsProcessingParameterFile.Folder,
             optional=True,
         )
-        parameter.setFlags(parameter.flags())
-        self.addParameter(parameter)
-
-        parameter = QgsProcessingParameterBoolean(
-            "BEST_PREDICTION",
-            "Best prediction (when multiple predictions)",
-            defaultValue=self.BEST_PREDICTION,
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
         )
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
             "SHOW_LOG_INFO", "SHOW_LOG_INFO (brdr-log)", defaultValue=self.SHOW_LOG_INFO
         )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
         self.addParameter(parameter)
+
+        #OUTPUT
 
         self.addOutput(
             QgsProcessingOutputVectorLayer(
@@ -327,14 +356,18 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         else:
             log_info = None
 
-        if self.BEST_PREDICTION:
+        if self.PREDICTION_STRATEGY==PredictionStrategy.BEST:
             max_predictions = 1
             multi_to_best_prediction = True
-        else:
+        elif self.PREDICTION_STRATEGY==PredictionStrategy.ALL:
             max_predictions = -1
             multi_to_best_prediction = False
+        elif self.PREDICTION_STRATEGY==PredictionStrategy.ORIGINAL:
+            max_predictions = 1
+            multi_to_best_prediction = False
+        else:
+            raise Exception("Unknown PREDICTION_STRATEGY")
 
-        print(str(self.FORMULA_FIELDNAME))
         fcs_actualisation = update_to_actual_grb(
             fc,
             id_theme_fieldname=self.ID_THEME_FIELDNAME,
@@ -343,7 +376,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
             feedback=log_info,
             max_predictions=max_predictions,
-            full_strategy=FullStrategy.NO_FULL,
+            full_strategy=self.FULL_STRATEGY,
             multi_to_best_prediction=multi_to_best_prediction,
         )
         if fcs_actualisation is None or fcs_actualisation == {}:
@@ -428,7 +461,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.MAX_DISTANCE_FOR_ACTUALISATION = parameters["MAX_RELEVANT_DISTANCE"]
         self.GRB_TYPE = GRBType[GRB_TYPES[parameters["ENUM_REFERENCE"]]]
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
-        self.BEST_PREDICTION = parameters["BEST_PREDICTION"]
+        self.PREDICTION_STRATEGY = PredictionStrategy[ENUM_PREDICTION_STRATEGY_OPTIONS[parameters["PREDICTION_STRATEGY"]]]
+        self.FULL_STRATEGY = FullStrategy[ENUM_FULL_STRATEGY_OPTIONS[parameters["FULL_STRATEGY"]]]
         self.FORMULA_FIELDNAME = parameters["FORMULA_FIELD"]
         if str(self.FORMULA_FIELDNAME) == "NULL":
             self.FORMULA_FIELDNAME = None

@@ -1,5 +1,5 @@
 import os
-
+from enum import Enum
 
 try:
     import brdr
@@ -40,6 +40,21 @@ from qgis.core import QgsVectorLayer
 from qgis.utils import iface
 from shapely import to_wkt, from_wkt, make_valid
 
+
+class PredictionStrategy(str, Enum):
+    """
+    Enum for prediction strategy when using GRB updater
+
+    ALL = "all"
+    BEST = "best"
+    ORIGINAL = "original"
+    """
+
+    ALL = "all"
+    BEST = "best"
+    ORIGINAL = "original"
+
+
 LOCAL_REFERENCE_LAYER = "LOCAL REFERENCE LAYER (choose LAYER and ID below)"
 
 GRB_TYPES = [
@@ -63,6 +78,9 @@ ENUM_SNAP_STRATEGY_OPTIONS = [e.name for e in SnapStrategy]
 
 # ENUM for choosing the full-strategy when evaluating
 ENUM_FULL_STRATEGY_OPTIONS = [e.name for e in FullStrategy]
+
+# ENUM for choosing the full-strategy when evaluating
+ENUM_PREDICTION_STRATEGY_OPTIONS = [e.name for e in PredictionStrategy]
 
 
 def geom_shapely_to_qgis(geom_shapely):
@@ -213,46 +231,47 @@ def get_renderer(fill_symbol):
         return QgsSingleSymbolRenderer(fill_symbol.clone()).clone()
     return None
 
-def get_symbol(geojson,resulttype):
+
+def get_symbol(geojson, resulttype):
     geojson = geojson_to_multi(geojson)
-    feature_types =  get_geojson_type(geojson)
-    if len(feature_types)>1:
+    feature_types = get_geojson_type(geojson)
+    if len(feature_types) > 1:
         raise TypeError("Geojson multiple types detected. Not supported")
-    if len(feature_types)==1:
+    if len(feature_types) == 1:
         geometrytype = feature_types[0]
     else:
         geometrytype = "MultiPolygon"
 
     if geometrytype == "MultiPolygon":
-        if resulttype =="result_diff":
+        if resulttype == "result_diff":
             return QgsStyle.defaultStyle().symbol("hashed black X")
-        elif resulttype =="result_diff_plus":
+        elif resulttype == "result_diff_plus":
             return QgsStyle.defaultStyle().symbol("hashed cgreen /")
-        elif resulttype =="result_diff_min":
+        elif resulttype == "result_diff_min":
             return QgsStyle.defaultStyle().symbol("hashed cred /")
-        elif resulttype =="result":
+        elif resulttype == "result":
             return QgsStyle.defaultStyle().symbol("outline green")
         else:
             return QgsStyle.defaultStyle().symbol("outline blue")
     elif geometrytype == "MultiLineString":
-        if resulttype =="result_diff":
+        if resulttype == "result_diff":
             return QgsStyle.defaultStyle().symbol("topo railway")
-        elif resulttype =="result_diff_plus":
+        elif resulttype == "result_diff_plus":
             return QgsStyle.defaultStyle().symbol("dash green")
-        elif resulttype =="result_diff_min":
+        elif resulttype == "result_diff_min":
             return QgsStyle.defaultStyle().symbol("dash red")
-        elif resulttype =="result":
+        elif resulttype == "result":
             return QgsStyle.defaultStyle().symbol("simple green line")
         else:
             return QgsStyle.defaultStyle().symbol("simple blue line")
-    elif geometrytype =="MultiPoint":
-        if resulttype =="result_diff":
+    elif geometrytype == "MultiPoint":
+        if resulttype == "result_diff":
             return QgsStyle.defaultStyle().symbol("dot white")
-        elif resulttype =="result_diff_plus":
+        elif resulttype == "result_diff_plus":
             return QgsStyle.defaultStyle().symbol("dot white")
-        elif resulttype =="result_diff_min":
+        elif resulttype == "result_diff_min":
             return QgsStyle.defaultStyle().symbol("dot white")
-        elif resulttype =="result":
+        elif resulttype == "result":
             return QgsStyle.defaultStyle().symbol("dot green")
         else:
             return QgsStyle.defaultStyle().symbol("dot blue")
@@ -371,6 +390,7 @@ def geojson_to_multi(geojson):
                 "coordinates": [f["geometry"]["coordinates"]],
             }
     return geojson
+
 
 def _make_map(ax, processresult, thematic_dict, reference_dict):
     """
@@ -557,8 +577,7 @@ def _processresult_to_dicts(processresult):
     )
 
 
-def thematic_preparation( input_thematic_layer, relevant_distance, context, feedback
-):
+def thematic_preparation(input_thematic_layer, relevant_distance, context, feedback):
     input_thematic_name = "thematic_preparation"
     outputs = {}
     # THEMATIC PREPARATION

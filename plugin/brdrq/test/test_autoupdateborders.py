@@ -34,7 +34,7 @@ class TestAutoUpdateBorders(unittest.TestCase):
         themelayername = "themelayer_test"
         layer_theme = QgsVectorLayer(path, themelayername)
         QgsProject.instance().addMapLayer(layer_theme)
-        output =processing.run(
+        output = processing.run(
             "brdrqprovider:brdrqautoupdateborders",
             {
                 "INPUT_THEMATIC": themelayername,
@@ -43,7 +43,8 @@ class TestAutoUpdateBorders(unittest.TestCase):
                 "FORMULA_FIELD": "",
                 "MAX_RELEVANT_DISTANCE": 5,
                 "WORK_FOLDER": foldername,
-                "BEST_PREDICTION": True,
+                "PREDICTION_STRATEGY": 2,
+                "FULL_STRATEGY": 2,
                 "SHOW_LOG_INFO": True,
             },
         )
@@ -53,4 +54,3 @@ class TestAutoUpdateBorders(unittest.TestCase):
         for o in output.values():
             assert isinstance(o,QgsVectorLayer)
             assert o.featureCount()==featurecount
-
