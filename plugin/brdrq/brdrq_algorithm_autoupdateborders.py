@@ -248,6 +248,27 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 QgsProcessing.TypeVectorPolygon,
             )
         )
+        self.addOutput(
+            QgsProcessingOutputVectorLayer(
+                "OUTPUT_RESULT_DIFF",
+                self.LAYER_RESULT_DIFF,
+                QgsProcessing.TypeVectorPolygon,
+            )
+        )
+        self.addOutput(
+            QgsProcessingOutputVectorLayer(
+                "OUTPUT_RESULT_DIFF_PLUS",
+                self.LAYER_RESULT_DIFF_PLUS,
+                QgsProcessing.TypeVectorPolygon,
+            )
+        )
+        self.addOutput(
+            QgsProcessingOutputVectorLayer(
+                "OUTPUT_RESULT_DIFF_MIN",
+                self.LAYER_RESULT_DIFF_MIN,
+                QgsProcessing.TypeVectorPolygon,
+            )
+        )
 
     def processAlgorithm(self, parameters, context, feedback):
         """
@@ -371,6 +392,13 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo("Resulterende geometrie berekend")
         feedback.pushInfo("END ACTUALISATION")
         result = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
+        result_diff = QgsProject.instance().mapLayersByName(self.LAYER_RESULT_DIFF)[0]
+        result_diff_plus = QgsProject.instance().mapLayersByName(
+            self.LAYER_RESULT_DIFF_PLUS
+        )[0]
+        result_diff_min = QgsProject.instance().mapLayersByName(
+            self.LAYER_RESULT_DIFF_MIN
+        )[0]
         QgsProject.instance().reloadAllLayers()
         feedback.pushInfo("Resulterende geometrie berekend")
         feedback.setCurrentStep(6)
@@ -379,7 +407,12 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         feedback.pushInfo("END PROCESSING")
         feedback.pushInfo("EINDE: RESULTAAT BEREKEND")
-        return {"OUTPUT_RESULT": result}
+        return {
+            "OUTPUT_RESULT": result,
+            "OUTPUT_RESULT_DIFF": result_diff,
+            "OUTPUT_RESULT_DIFF_PLUS": result_diff_plus,
+            "OUTPUT_RESULT_DIFF_MIN": result_diff_min,
+        }
 
     def prepare_parameters(self, parameters,context):
         wrkfldr = parameters["WORK_FOLDER"]

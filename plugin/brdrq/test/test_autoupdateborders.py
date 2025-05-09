@@ -49,7 +49,7 @@ class TestAutoUpdateBorders(unittest.TestCase):
         )
 
         featurecount = layer_theme.featureCount()
-        assert len(output)==1
+        assert len(output)==4
         for o in output.values():
             assert isinstance(o,QgsVectorLayer)
             assert o.featureCount()==featurecount

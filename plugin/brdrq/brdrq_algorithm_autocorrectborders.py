@@ -242,14 +242,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
-        parameter = QgsProcessingParameterNumber(
-            "RELEVANT_DISTANCE",
-            "RELEVANT_DISTANCE (meter)",
-            type=QgsProcessingParameterNumber.Double,
-            defaultValue=2,
-        )
-        parameter.setFlags(parameter.flags())
-        self.addParameter(parameter)
+
 
         parameter = QgsProcessingParameterEnum(
             "ENUM_REFERENCE",
@@ -280,14 +273,16 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
-        parameter = QgsProcessingParameterFile(
-            "WORK_FOLDER",
-            self.tr("Working folder"),
-            behavior=QgsProcessingParameterFile.Folder,
-            optional=True,
+        parameter = QgsProcessingParameterNumber(
+            "RELEVANT_DISTANCE",
+            "RELEVANT_DISTANCE (meter)",
+            type=QgsProcessingParameterNumber.Double,
+            defaultValue=3,
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
+
+
 
         self.addOutput(
             QgsProcessingOutputVectorLayer(
@@ -338,6 +333,17 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         parameter.setFlags(
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterFile(
+            "WORK_FOLDER",
+            self.tr("Working folder"),
+            behavior=QgsProcessingParameterFile.Folder,
+            optional=True,
+        )
+        parameter.setFlags(
+            parameter.flags()| QgsProcessingParameterDefinition.FlagAdvanced
         )
         self.addParameter(parameter)
 
