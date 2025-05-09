@@ -214,7 +214,16 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "This script searches for overlap relevance between thematic borders and "
             "reference borders, and creates a resulting border based on the overlapping "
             "areas that are relevant."
-            "Documentation can be found at: https://github.com/OnroerendErfgoed/brdrQ/ "
+        )
+
+    def helpUrl(self):
+        """
+        Returns a localised short helper string for the algorithm. This string
+        should provide a basic description about what the algorithm does and the
+        parameters and outputs associated with it.
+        """
+        return self.tr(
+            "https://github.com/OnroerendErfgoed/brdrQ/"
         )
 
     def initAlgorithm(self, config=None):

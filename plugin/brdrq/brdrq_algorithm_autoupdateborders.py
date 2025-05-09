@@ -159,8 +159,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         formatting characters.
         """
         return "brdrq"
-
-    def shortHelpString(self):
+    def helpString(self):
         """
         Returns a localised short helper string for the algorithm. This string
         should provide a basic description about what the algorithm does and the
@@ -169,6 +168,26 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         return self.tr(
             "Script to auto-update geometries that are aligned to an old GRB-referencelayer to a newer GRB-referencelayer"
             "Documentation can be found at: https://github.com/OnroerendErfgoed/brdrQ/ "
+        )
+
+    def helpUrl(self):
+        """
+        Returns a localised short helper string for the algorithm. This string
+        should provide a basic description about what the algorithm does and the
+        parameters and outputs associated with it.
+        """
+        return self.tr(
+            "https://github.com/OnroerendErfgoed/brdrQ/"
+        )
+
+    def shortHelpString(self):
+        """
+        Returns a localised short helper string for the algorithm. This string
+        should provide a basic description about what the algorithm does and the
+        parameters and outputs associated with it.
+        """
+        return self.tr(
+            "Script to auto-update geometries to the actual GRB-referencelayer"
         )
 
     def initAlgorithm(self, config=None):
@@ -180,7 +199,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # standard parameters
         parameter = QgsProcessingParameterFeatureSource(
             self.INPUT_THEMATIC,
-            self.tr("THEMATIC LAYER"),
+            "THEMATIC LAYER, with the features to align",
             [QgsProcessing.TypeVectorPolygon],
             defaultValue="themelayer",
         )
@@ -189,23 +208,26 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterField(
             "COMBOBOX_ID_THEME",
-            "Choose thematic ID",
+            "Choose thematic ID (a field with unique identifiers of the thematic layer)",
             "theme_identifier",
             self.INPUT_THEMATIC,
         )
+
+        parameter.setHelp(
+            "Dit is de themalaag die als input zal worden gebruikt voor de verwerking."
+        )
+
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterEnum(
             "ENUM_REFERENCE",
-            "Select GRB Type to align to:",
+            "Select actual GRB Type to align to (ADP=parcels, GBG=buildings, KNW=artwork) :",
             options=GRB_TYPES,
             defaultValue=0,  # Index of the default option (e.g., 'Option A')
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
-
-
 
         parameter = QgsProcessingParameterNumber(
             "MAX_RELEVANT_DISTANCE",
@@ -225,7 +247,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
-        #ADVANCED INPUT
+        # ADVANCED INPUT
         parameter = QgsProcessingParameterEnum(
             "FULL_STRATEGY",
             "Select FULL_STRATEGY:",
@@ -239,7 +261,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterField(
             "FORMULA_FIELD",
-            "Formula field",  # (if empty, formula will be calculated based on following alignment-date)
+            "brdr_formula field (optional; field that holds a brdr_formula, used for a better prediction)",  # (if empty, formula will be calculated based on following alignment-date)
             "brdr_formula",
             self.INPUT_THEMATIC,
             optional=True,
@@ -251,7 +273,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterFile(
             "WORK_FOLDER",
-            self.tr("Working folder"),
+            "Working folder (optional; folder where output will be saved)",
             behavior=QgsProcessingParameterFile.Folder,
             optional=True,
         )
@@ -268,7 +290,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         self.addParameter(parameter)
 
-        #OUTPUT
+        # OUTPUT
 
         self.addOutput(
             QgsProcessingOutputVectorLayer(
