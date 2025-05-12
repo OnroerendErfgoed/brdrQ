@@ -70,7 +70,7 @@ ENUM_REFERENCE_OPTIONS = (
 
 # ENUM for choosing the OD-strategy
 ENUM_OD_STRATEGY_OPTIONS = [
-    e.name for e in OpenDomainStrategy
+    e.name for e in OpenDomainStrategy if e.value <= 2
 ]  # list with od-strategy-options #if e.value<=2
 
 # ENUM for choosing the snap-strategy

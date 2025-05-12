@@ -43,32 +43,42 @@ from qgis.core import QgsStyle
 from qgis.utils import OverrideCursor
 
 from .brdrq_dockwidget_aligner import brdrQDockWidgetAligner
-from .brdrq_utils import move_to_group, zoom_to_feature, add_field_to_layer, geom_shapely_to_qgis, geojson_to_layer, \
-    remove_group_layer, geom_qgis_to_shapely, \
-    GRB_TYPES, ADPF_VERSIONS
+from .brdrq_utils import (
+    move_to_group,
+    zoom_to_feature,
+    add_field_to_layer,
+    geom_shapely_to_qgis,
+    geojson_to_layer,
+    remove_group_layer,
+    geom_qgis_to_shapely,
+    GRB_TYPES,
+    ADPF_VERSIONS,
+)
 
-FORM_CLASS, _ = uic.loadUiType(os.path.join(
-    os.path.dirname(__file__), 'brdrq_dockwidget_bulkaligner.ui'))
-#TODO implementeer only selected
-#TODO visualiseer predictions
-#TODO implementeer saven van geometrie en aanpassen van attribuut
-#TODO implementeer only selected
+FORM_CLASS, _ = uic.loadUiType(
+    os.path.join(os.path.dirname(__file__), "brdrq_dockwidget_bulkaligner.ui")
+)
+# TODO implementeer only selected
+# TODO visualiseer predictions
+# TODO implementeer saven van geometrie en aanpassen van attribuut
+# TODO implementeer only selected
 
 
-class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidgetAligner):
+class brdrQDockWidgetBulkAligner(
+    QtWidgets.QDockWidget, FORM_CLASS, brdrQDockWidgetAligner
+):
     closingPlugin = pyqtSignal()
 
-    def __init__(self,brdrqplugin, parent=None):
+    def __init__(self, brdrqplugin, parent=None):
         """Constructor."""
-        print (" init brdrQDockWidgetBulkAligner")
-        brdrQDockWidgetAligner.__init__(self,brdrqplugin)
+        print(" init brdrQDockWidgetBulkAligner")
+        brdrQDockWidgetAligner.__init__(self, brdrqplugin)
         super(brdrQDockWidgetBulkAligner, self).__init__(parent)
         self.setupUi(self)
 
         self.workinglayer = None
         self.workinggroupname = None
         self.featureItemList = None
-
 
     def clearUserInterface(self):
         # Clear progressbar
@@ -79,35 +89,21 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
         # Clear the predictionlist
         self.listWidget_predictions.clear()
 
-
-
     def activate(self):
         self.active = True
         # connect to provide cleanup on closing of dockwidget
         self.closingPlugin.connect(self.onClosePlugin)
         self.pushButton_help.clicked.connect(self.show_help_dialog)
-        self.pushButton_settings.clicked.connect(
-            self.show_settings_dialog
-        )
+        self.pushButton_settings.clicked.connect(self.show_settings_dialog)
         self.pushButton_grafiek.clicked.connect(self.get_graphic)
-        self.pushButton_visualisatie.clicked.connect(
-            self.get_visualisation
-        )
+        self.pushButton_visualisatie.clicked.connect(self.get_visualisation)
         self.pushButton_save.clicked.connect(self.change_geometry)
         self.pushButton_reset.clicked.connect(self.reset_geometry)
-        self.checkBox_only_manual.stateChanged.connect(
-            self.loadFeaturelist
-        )
+        self.checkBox_only_manual.stateChanged.connect(self.loadFeaturelist)
         self.pushButton_evaluate.clicked.connect(self.evaluate)
-        self.mMapLayerComboBox.setFilters(
-            QgsMapLayerProxyModel.PolygonLayer
-        )
-        self.listWidget_features.itemPressed.connect(
-            self.onFeatureActivated
-        )
-        self.listWidget_predictions.itemPressed.connect(
-            self.onListItemActivated
-        )
+        self.mMapLayerComboBox.setFilters(QgsMapLayerProxyModel.PolygonLayer)
+        self.listWidget_features.itemPressed.connect(self.onFeatureActivated)
+        self.listWidget_predictions.itemPressed.connect(self.onListItemActivated)
         self.horizontalSlider.sliderMoved.connect(self.onSliderChange)
         self.doubleSpinBox.valueChanged.connect(self.onSpinboxChange)
 
@@ -119,19 +115,19 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
 
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
-        print ("** CLOSING brdrQ")
+        print("** CLOSING brdrQ")
         remove_group_layer(self.workinggroupname)
         # disconnects
         print("** disconnect dockwidget")
         self.closingPlugin.disconnect(self.onClosePlugin)
         self.active = False
 
-    def evaluate(self,task):
-        print ("evaluate")
+    def evaluate(self, task):
+        print("evaluate")
         self.clearUserInterface()
 
         with OverrideCursor(Qt.WaitCursor):
-            self.workinglayer,self.workinggroupname = self.create_workinglayer()
+            self.workinglayer, self.workinggroupname = self.create_workinglayer()
             self.evaluate_layer()
             self.prepareFeatureList()
             self.loadFeaturelist()
@@ -146,16 +142,19 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
         layer = self.mMapLayerComboBox.currentLayer()
         # create a new layer from all features
         if self.checkBox_only_selected.checkState():
-            new_layer = layer.materialize(QgsFeatureRequest().setFilterFids(layer.selectedFeatureIds()))
+            new_layer = layer.materialize(
+                QgsFeatureRequest().setFilterFids(layer.selectedFeatureIds())
+            )
         else:
-            new_layer = layer.materialize(QgsFeatureRequest().setFilterFids(layer.allFeatureIds()))
-        #add attribute for automatic/manual correction
-        #new_layer.renderer().setSymbol(QgsStyle.defaultStyle().symbol("hashed clbue /"))
+            new_layer = layer.materialize(
+                QgsFeatureRequest().setFilterFids(layer.allFeatureIds())
+            )
+        # add attribute for automatic/manual correction
+        # new_layer.renderer().setSymbol(QgsStyle.defaultStyle().symbol("hashed clbue /"))
         add_field_to_layer(layer, "brdrq_handling", QVariant.String, "todo")
 
-
         # add a new layer to the map
-        QgsProject.instance().addMapLayer(new_layer,False)
+        QgsProject.instance().addMapLayer(new_layer, False)
 
         root.insertLayer(0, new_layer)
 
@@ -171,8 +170,7 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
             renderer.setSymbol(symbol)
         new_layer.triggerRepaint()
         self.iface.layerTreeView().refreshLayerSymbology(new_layer.id())
-        return new_layer,groupname
-
+        return new_layer, groupname
 
     def evaluate_layer(self):
         self.progressBar.setValue(5)
@@ -225,26 +223,32 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
             self.aligner.dict_reference_source["version_date"] = "unknown"
         self.progressBar.setValue(50)
 
-        dict_evaluated_predictions, props_dict_evaluated_predictions = self.aligner.evaluate(
-            ids_to_evaluate=None,
-            base_formula_field=None,
-            max_predictions=-1,
-            relevant_distances=self.relevant_distances,
-            full_strategy=self.full_strategy,
+        dict_evaluated_predictions, props_dict_evaluated_predictions = (
+            self.aligner.evaluate(
+                ids_to_evaluate=None,
+                base_formula_field=None,
+                max_predictions=-1,
+                relevant_distances=self.relevant_distances,
+                full_strategy=self.full_strategy,
+            )
         )
         self.progressBar.setValue(75)
         dict_processresults = self.aligner.dict_processresults
-        newline=os.linesep
+        newline = os.linesep
         outputMessage = ""
         for key in dict_evaluated_predictions.keys():
 
-            outputMessage = outputMessage + str(key)+": Voorspelde relevante afstanden: " + str(
-                [str(k) for k in dict_evaluated_predictions[key].keys()]
-            )+ newline
+            outputMessage = (
+                outputMessage
+                + str(key)
+                + ": Voorspelde relevante afstanden: "
+                + str([str(k) for k in dict_evaluated_predictions[key].keys()])
+                + newline
+            )
         self.textEdit_output.setText(outputMessage)
 
         self.dict_processresults = dict_processresults
-        self.dict_evaluated_predictions= dict_evaluated_predictions
+        self.dict_evaluated_predictions = dict_evaluated_predictions
         self.props_dict_evaluated_predictions = props_dict_evaluated_predictions
         self.diffs_dict = _diffs_from_dict_processresults(
             self.dict_processresults, self.aligner.dict_thematic
@@ -273,7 +277,9 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
         self.listWidget_predictions.addItems(items_with_name)
         if len(items) > 0:
             self.listWidget_predictions.setCurrentRow(best_index)
-            self.doubleSpinBox.setValue(round(float(items[best_index]), self.settingsDialog.DECIMAL))
+            self.doubleSpinBox.setValue(
+                round(float(items[best_index]), self.settingsDialog.DECIMAL)
+            )
         else:
             self.textEdit_output.setText("No predictions")
         self.progressBar.setValue(100)
@@ -318,13 +324,12 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
         )
         return
 
-
     def prepareFeatureList(self):
-        #self.clearUserInterface()
+        # self.clearUserInterface()
         # Add the selected features to the list widget
-        print ("list features")
+        print("list features")
         feature = None
-        self.featureItemList=[]
+        self.featureItemList = []
 
         for key in self.dict_processresults.keys():
             for f in self.getWorkingFeatures():
@@ -340,11 +345,13 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
                 props_predictions = self.props_dict_evaluated_predictions[key]
                 geom_predictions = self.dict_evaluated_predictions[key]
                 nr_predictions = len(geom_predictions.keys())
-                print ("nr_predictions"+str(nr_predictions)) 
-                if nr_predictions==1:
+                print("nr_predictions" + str(nr_predictions))
+                if nr_predictions == 1:
                     print(f"auto {str(nr_predictions)}")
-                    #update geometry in workinglayer
-                    resulting_geom = geom_predictions[list(geom_predictions.keys())[0]]["result"]
+                    # update geometry in workinglayer
+                    resulting_geom = geom_predictions[list(geom_predictions.keys())[0]][
+                        "result"
+                    ]
                     qgis_geom = geom_shapely_to_qgis(resulting_geom)
                     attribute_string = "auto"
                 else:
@@ -353,9 +360,11 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
             else:
                 attribute_string = "to_check_no_predictions"
             with edit(self.workinglayer):
-                self.workinglayer.changeAttributeValue(feature.id(),
-                                                       self.workinglayer.fields().indexOf('brdrq_handling'),
-                                                       attribute_string)
+                self.workinglayer.changeAttributeValue(
+                    feature.id(),
+                    self.workinglayer.fields().indexOf("brdrq_handling"),
+                    attribute_string,
+                )
                 if not qgis_geom is None:
                     self.workinglayer.changeGeometry(feature.id(), qgis_geom)
 
@@ -368,11 +377,11 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
         self.clearUserInterface()
         for f in self.getWorkingFeatures():
             item = f"ID: *{str(f.id())}*, Attributes: {f['brdrq_handling']}"
-            if self.checkBox_only_manual.checkState()==2 and not "to_check" in item:
+            if self.checkBox_only_manual.checkState() == 2 and not "to_check" in item:
                 continue
             self.listWidget_features.addItem(item)
 
-    def onFeatureActivated(self,currentItem):
+    def onFeatureActivated(self, currentItem):
         print("_onFeatureChange")
         # Clear the predictionlist
         self.listWidget_predictions.clear()
@@ -380,7 +389,7 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
             print("currentItem is none")
             return
 
-        #get feature
+        # get feature
         self.feature = None
         key = currentItem.text().split("*")[1]
         for feat in self.getWorkingFeatures():
@@ -388,11 +397,9 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
                 self.feature = feat
                 break
         if self.feature is None:
-            self.textEdit_output.setText(
-                f"No feature found with ID {key}"
-            )
+            self.textEdit_output.setText(f"No feature found with ID {key}")
             return
-        key=self.feature.id()
+        key = self.feature.id()
 
         zoom_to_feature(self.feature, self.iface)
 
@@ -416,7 +423,9 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
         self.listWidget_predictions.addItems(items_with_name)
         if len(items) > 0:
             self.listWidget_predictions.setCurrentRow(best_index)
-            self.doubleSpinBox.setValue(round(float(items[best_index]), self.settingsDialog.DECIMAL))
+            self.doubleSpinBox.setValue(
+                round(float(items[best_index]), self.settingsDialog.DECIMAL)
+            )
         else:
             self.textEdit_output.setText("No predictions")
 
@@ -437,6 +446,7 @@ class brdrQDockWidgetBulkAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidg
         self.loadSettings()
         self.setHandles()
         return
+
 
 def __init__():
     pass

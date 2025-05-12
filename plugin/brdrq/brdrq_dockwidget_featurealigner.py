@@ -37,7 +37,6 @@ from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.core import QgsMapLayerProxyModel
-from qgis.core import QgsStyle
 from qgis.gui import QgsMapToolPan
 from qgis.utils import OverrideCursor
 

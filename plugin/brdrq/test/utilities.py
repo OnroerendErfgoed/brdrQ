@@ -1,15 +1,17 @@
 # coding=utf-8
 """Common functionality used by regression test."""
 
-import sys
+import atexit
 import logging
 import os
-import atexit
-from qgis.core import QgsApplication
-from qgis.gui import QgsMapCanvas
+import sys
+
 from qgis.PyQt.QtCore import QSize
 from qgis.PyQt.QtWidgets import QWidget
+from qgis.core import QgsApplication
+from qgis.gui import QgsMapCanvas
 from qgis.utils import iface
+
 from .qgis_interface import QgisInterface
 
 LOGGER = logging.getLogger("QGIS")

@@ -95,7 +95,7 @@ class brdrQDockWidgetAligner(object):
         if currentItem is None:
             print("currentitem zero")
             return
-        #print("item activated with rd: " + currentItem.text())
+        # print("item activated with rd: " + currentItem.text())
         value = currentItem.text()
         value = value.split(":")[0]
         value = round(float(value), self.settingsDialog.DECIMAL)

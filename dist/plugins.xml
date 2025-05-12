@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <plugins>
-    <pyqgis_plugin name="brdrQ" version="0.10.0">
+    <pyqgis_plugin name="brdrQ" version="0.10.1">
         <description>brdrQ, a QGIS-plugin for aligning thematic borders to reference borders.</description>
-        <version>0.10.0</version>
+        <version>0.10.1</version>
         <homepage>https://github.com/OnroerendErfgoed/brdrQ</homepage>
         <qgis_minimum_version>3.36</qgis_minimum_version>
         <file_name>brdrq.zip</file_name>

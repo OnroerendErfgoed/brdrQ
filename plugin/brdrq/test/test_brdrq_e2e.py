@@ -30,12 +30,12 @@ class TestFlow(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         print("setup TestClass")
-        #QGISAPP.initQgis()
+        # QGISAPP.initQgis()
 
     @classmethod
     def tearDownClass(cls) -> None:
         print("start tearDown TestClass")
-        #QGISAPP.exitQgis()
+        # QGISAPP.exitQgis()
         print("end tearDown TestClass")
 
     def test_full_success(self):

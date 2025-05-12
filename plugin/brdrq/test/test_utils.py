@@ -1,12 +1,7 @@
 import os
-import shutil
 import unittest
 
 from processing.core.Processing import Processing
-from qgis.core import (
-    QgsProcessingOutputFolder,
-    QgsProcessingParameterFolderDestination,
-)
 from qgis.gui import QgsMapCanvas
 
 from .utilities import get_qgis_app

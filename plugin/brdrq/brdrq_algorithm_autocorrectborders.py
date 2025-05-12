@@ -95,7 +95,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     ID_THEME_FIELDNAME = (
         ""  # parameters that holds the fieldname of the unique theme id
     )
-    LAYER_THEMATIC = None #reference to the thematic input QgisVectorLayer
+    LAYER_THEMATIC = None  # reference to the thematic input QgisVectorLayer
 
     # REFERENCE PARAMETERS
     INPUT_REFERENCE = "INPUT_REFERENCE"  # reference to the combobox for choosing the reference input layer
@@ -251,8 +251,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
-
-
         parameter = QgsProcessingParameterEnum(
             "ENUM_REFERENCE",
             "Select Reference Layer:",
@@ -290,8 +288,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
-
-
 
         self.addOutput(
             QgsProcessingOutputVectorLayer(
@@ -352,7 +348,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             optional=True,
         )
         parameter.setFlags(
-            parameter.flags()| QgsProcessingParameterDefinition.FlagAdvanced
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
         )
         self.addParameter(parameter)
 
@@ -432,10 +428,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback = QgsProcessingMultiStepFeedback(feedback_steps, feedback)
         feedback.pushInfo("START")
         feedback.setCurrentStep(1)
-        self.prepare_parameters(parameters,context)
-        thematic, thematic_buffered,self.CRS = thematic_preparation(self.LAYER_THEMATIC, self.RELEVANT_DISTANCE,
-                                                                    context, feedback
-                                                                    )
+        self.prepare_parameters(parameters, context)
+        thematic, thematic_buffered, self.CRS = thematic_preparation(
+            self.LAYER_THEMATIC, self.RELEVANT_DISTANCE, context, feedback
+        )
         if thematic is None:
             raise QgsProcessingException(self.invalidSourceError(parameters, self.test))
 
@@ -711,9 +707,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "OUTPUT_RESULT_DIFF_MIN": result_diff_min,
         }
 
-    def _reference_preparation(
-        self, thematic_buffered, context, feedback, parameters
-    ):
+    def _reference_preparation(self, thematic_buffered, context, feedback, parameters):
         outputs = {}
         context.setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck)
         outputs[self.INPUT_REFERENCE + "_extract"] = processing.run(
@@ -769,7 +763,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             )
         return reference
 
-    def prepare_parameters(self, parameters,context):
+    def prepare_parameters(self, parameters, context):
         # PARAMETER PREPARATION
         wrkfldr = parameters["WORK_FOLDER"]
         if wrkfldr is None or str(wrkfldr) == "" or str(wrkfldr) == "NULL":
@@ -778,7 +772,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             wrkfldr, name="autocorrectborders", temporary=False
         )
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
-        self.LAYER_THEMATIC = self.parameterAsVectorLayer(parameters, self.INPUT_THEMATIC, context)
+        self.LAYER_THEMATIC = self.parameterAsVectorLayer(
+            parameters, self.INPUT_THEMATIC, context
+        )
         self.CRS = (
             self.LAYER_THEMATIC.sourceCrs().authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer
@@ -819,10 +815,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 parameters, self.INPUT_REFERENCE, context
             )
 
-            if (
-                self.LAYER_REFERENCE is None
-                or self.ID_REFERENCE_FIELDNAME == "NULL"
-            ):
+            if self.LAYER_REFERENCE is None or self.ID_REFERENCE_FIELDNAME == "NULL":
                 raise QgsProcessingException(
                     "Please choose a REFERENCELAYER from the table of contents, and the associated unique REFERENCE ID"
                 )
