@@ -168,7 +168,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         """
         return self.tr(
             "Script to auto-update geometries that are aligned to an old GRB-referencelayer to a newer GRB-referencelayer"
-            "Documentation can be found at: https://github.com/OnroerendErfgoed/brdrQ/ "
         )
 
     def helpUrl(self):
@@ -178,7 +177,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameters and outputs associated with it.
         """
         return self.tr(
-            "https://github.com/OnroerendErfgoed/brdrQ/"
+            "https://github.com/OnroerendErfgoed/brdrQ/blob/development/docs/autocorrectborders.md"
         )
 
     def shortHelpString(self):

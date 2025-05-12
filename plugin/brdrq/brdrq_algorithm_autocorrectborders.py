@@ -223,7 +223,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameters and outputs associated with it.
         """
         return self.tr(
-            "https://github.com/OnroerendErfgoed/brdrQ/"
+            "https://github.com/OnroerendErfgoed/brdrQ/blob/development/docs/autocorrectborders.md"
         )
 
     def initAlgorithm(self, config=None):

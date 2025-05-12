@@ -1,53 +1,101 @@
 
-# AutoUpdateBorders
+# Documentation of QGIS Python Script: AutoUpdateBorders
+<img src="figures/autoupdateborders.png" width="50%" />
 
-`AutoUpdateBorders`: a QGIS-processing algorithm
 
 ## Description
 
-`AutoUpdateBorders` is a QGIS-processing plugin that aligns features (polygons) to reference borders: It searches for overlap relevance between thematic borders and reference borders,
-and creates a resulting border based on the overlapping areas that are relevant.
-The algorithm can make (one or more) 'predictions' so the user can compare and choose the right aligned geometry.
-<img src="figures/input.png" width="100%" />
+`AutoUpdateBorders` is a QGIS-processing Script to auto-update geometries that are aligned to an old GRB-referencelayer to a newer GRB-referencelayer
+    
 ## Parameters
 
 ### Input Parameters
 
-1. **Input Layer (INPUT)**
- - **Type**: Vector Layer
- - **Beschrijving**: De laag die als input zal worden gebruikt voor de verwerking.
- - **Voorbeeld**: `input_layer.shp`
+- **Thematic Layer**: A (MULTI)POLYGON layer with EPSG:31370 or EPSG:3812 coordinates and a unique ID.
+  - **Default**: No default value, must be provided by the user.
+  - **Optional**: No.
 
-2. **Buffer Distance (BUFFER_DISTANCE)**
- - **Type**: Number (Double)
- - **Beschrijving**: De afstand die gebruikt zal worden voor het bufferen van de inputlaag.
- - **Voorbeeld**: `10.0`
- - **Standaardwaarde**: `10.0`
+- **Thematic ID**: Textual or numeric ID of the thematic layer used as a reference to the objects. This must be unique.
+  - **Default**: No default value, must be provided by the user.
+  - **Optional**: No.
 
-3. **Output CRS (OUTPUT_CRS)**
- - **Type**: CRS (Coordinate Reference System)
- - **Beschrijving**: Het coördinatenreferentiesysteem dat gebruikt zal worden voor de outputlaag.
- - **Voorbeeld**: `EPSG:4326`
+- **Reference Layer**: A (MULTI)POLYGON layer with EPSG:31370 or EPSG:3812 coordinates. Combobox to choose which referencelayer will be used. There is a choice between on-the-fly
+  downloadable referencelayers from GRB, or to use your own local REFERENCELAYER. 
+  - The local referencelayer and unique reference ID has to be choosen from the TOC:
+  - The on-the-fly downloads are only
+    possible for smaller areas. 
+
+      - ADP: (on-the-fly download) - Actual administrative parcels from GRB (Grootschalig Referentie Bestand)
+      - GBG: (on-the-fly download) - Actual buildings from GRB
+      - KNW: (on-the-fly download) - Actual artwork from GRB
+      - (Note: the on-the-fly downloads are only possible for a subset or small area of thematic objects as this results
+          in downloading this reference-area. When using brdrQ for bigger areas a local reference layer is necessary)
+
+  - **Default**: ADP (parcels)
+  - **Optional**: no
+
+
+
+- **Max Relevant Distance (meters)**: Positive (decimal) number in meters. This
+  is the maximum distance by which the original boundary is maximally shifted to align with the reference layer when searching for predictions. 
+  - **Default**: 3 (meters)
+  - **Optional**: No.
+
+- **PREDICTION_STRATEGY** : Strategy when multiple predictions are available:
+
+    - ALL: All predictions will be added to the result. It is not guaranteed anymore that the ID is unique anymore in the result.
+    - BEST: Only the prediction with the best prediction_score will be added to the result (ID is unique)
+    - ORIGINAL: When multiple predictions are found, the original geometry will be added to the result . The ID stays unique. This strategy can be usefull in combination with the featurealigner, so the multiple predictions can be handled one-by-one.
+
+  - **Default**: BEST
+  - **Optional**: No.
+
+
+### ADVANCED INPUT PARAMETERS
+
+- **WORKING FOLDER**: Folder to save the resulting geojson-files. By default empty, resulting in saving the geojson-files in
+  a default folder on your machine.
+  - **Default**: By default, the output will be saved in a local folder on your machine.
+  - **Optional**: yes.
+
+- **brdr_formula_field** Attribute-field of the thematic layer with a former brdr_formula.(=metadata of former alignment). When this information is provided it is used to make a better prediction.
+  - **Default**: None
+  - **Optional**: yes.
+
+- **SHOW_LOG_INFO** (default False): When True, the logging of brdr is shown in the feedback-window
+  - **Default**: False
+  - **Optional**: No.
 
 ### Output Parameters
 
-1. **Output Layer (OUTPUT)**
- - **Type**: Vector Layer
- - **Beschrijving**: De gegenereerde outputlaag na verwerking.
- - **Voorbeeld**: `output_layer.shp`
+The script generates several output layers in the layer overview, combined into a group layer:
 
-## Voorbeeld Gebruik
+* brdrQ_RESULT: resulting geometries after alignment
+* brdrQ_DIFF: differences (+ and -) between original and resulting geometry
+* brdrQ_DIFF_PLUS: differences (+) between original and resulting geometry
+* brdrQ_DIFF_MIN: differences (-) between original and resulting geometry
+
+## Example of Usage
+Here is an example of how to use the script in Python:
 
 ```python
-# Voorbeeld van het aanroepen van de tool in een Python script
 
-params = {
- 'INPUT': 'path/to/input_layer.shp',
- 'BUFFER_DISTANCE': 10.0,
- 'OUTPUT_CRS': 'EPSG:4326',
- 'OUTPUT': 'path/to/output_layer.shp'
-}
+output = processing.run(
+    "brdrqprovider:brdrqautoupdateborders",
+    {
+        "INPUT_THEMATIC": themelayername,
+        "COMBOBOX_ID_THEME": "theme_identifier",
+        "ENUM_REFERENCE": 0,
+        "FORMULA_FIELD": "",
+        "MAX_RELEVANT_DISTANCE": 5,
+        "WORK_FOLDER": "",
+        "PREDICTION_STRATEGY": 2,
+        "FULL_STRATEGY": 2,
+        "SHOW_LOG_INFO": True,
+    },
+)
 
-processing.run('example:tool', params)
+
+```
 
 
