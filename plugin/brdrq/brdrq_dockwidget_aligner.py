@@ -25,7 +25,13 @@ from qgis.core import edit
 
 from .brdrq_help import brdrQHelp
 from .brdrq_settings import brdrQSettings
-from .brdrq_utils import plot_series, show_map, get_workfolder, geom_shapely_to_qgis, get_layer_by_name
+from .brdrq_utils import (
+    plot_series,
+    show_map,
+    get_workfolder,
+    geom_shapely_to_qgis,
+    get_layer_by_name,
+)
 
 
 class brdrQDockWidgetAligner(object):
@@ -44,7 +50,6 @@ class brdrQDockWidgetAligner(object):
         )
         self.listed_features = None
         self.feature = None
-        self.active = False
         self.selectTool = None
         self.formerMapTool = None
         self.aligner = None
@@ -79,7 +84,6 @@ class brdrQDockWidgetAligner(object):
         self.LAYER_RESULT_DIFF_PLUS = "DIFF_PLUS"  # parameter that holds the TOC layername of the resulting diff_plus
         self.LAYER_RESULT_DIFF_MIN = "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
 
-        # self.helpDialog = brdrQHelp()
         self.helpDialog = brdrQHelp()
 
     def closeEvent(self, event):
@@ -87,26 +91,28 @@ class brdrQDockWidgetAligner(object):
         event.accept()
 
     def _listItemActivated(self, currentItem):
-
+        print("_listItemActivated")
         if currentItem is None:
             print("currentitem zero")
             return
-        print("item activated with rd: " + currentItem.text())
+        # print("item activated with rd: " + currentItem.text())
         value = currentItem.text()
         value = value.split(":")[0]
         value = round(float(value), self.settingsDialog.DECIMAL)
-        print("item activated with rd - value: " + str(value))
+        # print("item activated with rd - value: " + str(value))
         self.doubleSpinBox.setValue(value)
         index = self.relevant_distances.index(value)
         self.horizontalSlider.setValue(index)
         return
 
-    def _change_geometry(self,layer):
+    def _change_geometry(self, layer):
         feat = self.feature
         if feat is None:
             return
         key = feat.id()
-        relevant_distance = round(self.doubleSpinBox.value(),self.settingsDialog.DECIMAL)
+        relevant_distance = round(
+            self.doubleSpinBox.value(), self.settingsDialog.DECIMAL
+        )
         if relevant_distance in self.dict_processresults[key]:
             result = self.dict_processresults[key][relevant_distance]
             resulting_geom = result["result"]
@@ -117,19 +123,19 @@ class brdrQDockWidgetAligner(object):
             print(errormesssage)
             return
         qgis_geom = geom_shapely_to_qgis(resulting_geom)
-        ix = layer.fields().indexOf('brdrq_handling')
+        ix = layer.fields().indexOf("brdrq_handling")
         with edit(layer):
             layer.changeGeometry(feat.id(), qgis_geom)
-            if ix>=0:
-                layer.changeAttributeValue(feat.id(), ix,"corrected")
+            if ix >= 0:
+                layer.changeAttributeValue(feat.id(), ix, "corrected")
         self.iface.messageBar().pushMessage("geometrie aangepast")
 
-    def _reset_geometry(self,layer):
+    def _reset_geometry(self, layer):
         feat = self.feature
         if feat is None:
             return
         key = feat.id()
-        relevant_distance = round(0.0,self.settingsDialog.DECIMAL)
+        relevant_distance = round(0.0, self.settingsDialog.DECIMAL)
         if relevant_distance in self.dict_processresults[key]:
             result = self.dict_processresults[key][relevant_distance]
             resulting_geom = result["result"]
@@ -138,11 +144,11 @@ class brdrQDockWidgetAligner(object):
             print(errormesssage)
             return
         qgis_geom = geom_shapely_to_qgis(resulting_geom)
-        ix = layer.fields().indexOf('brdrq_handling')
+        ix = layer.fields().indexOf("brdrq_handling")
         with edit(layer):
             layer.changeGeometry(feat.id(), qgis_geom)
-            if ix>=0:
-                layer.changeAttributeValue(feat.id(), ix,  "to_check_reset")
+            if ix >= 0:
+                layer.changeAttributeValue(feat.id(), ix, "to_check_reset")
         self.iface.messageBar().pushMessage("geometrie gereset")
 
     def onSliderChange(self, index):
@@ -162,45 +168,41 @@ class brdrQDockWidgetAligner(object):
         layer_result_diff = get_layer_by_name(self.LAYER_RESULT_DIFF)
         layer_result_diff_min = get_layer_by_name(self.LAYER_RESULT_DIFF_MIN)
         layer_result_diff_plus = get_layer_by_name(self.LAYER_RESULT_DIFF_PLUS)
-        if layer_result is None or layer_result_diff is None or layer_result_diff_min is None or layer_result_diff_plus is None:
+        if (
+            layer_result is None
+            or layer_result_diff is None
+            or layer_result_diff_min is None
+            or layer_result_diff_plus is None
+        ):
             self.add_results_to_grouplayer()
         self.setFilterOnLayers(value)
 
         self.get_wkt()
         return
 
-    def setFilterOnLayers(self,value):
+    def setFilterOnLayers(self, value):
         layer_result = get_layer_by_name(self.LAYER_RESULT)
         layer_result_diff = get_layer_by_name(self.LAYER_RESULT_DIFF)
         layer_result_diff_min = get_layer_by_name(self.LAYER_RESULT_DIFF_MIN)
         layer_result_diff_plus = get_layer_by_name(self.LAYER_RESULT_DIFF_PLUS)
 
         # Filter layers based on relevant distance
-        layer_result.setSubsetString(
-            f"brdr_relevant_distance = {value}"
-        )
-        layer_result_diff.setSubsetString(
-            f"brdr_relevant_distance = {value}"
-        )
-        layer_result_diff_min.setSubsetString(
-            f"brdr_relevant_distance = {value}"
-        )
-        layer_result_diff_plus.setSubsetString(
-            f"brdr_relevant_distance = {value}"
-        )
+        layer_result.setSubsetString(f"brdr_relevant_distance = {value}")
+        layer_result_diff.setSubsetString(f"brdr_relevant_distance = {value}")
+        layer_result_diff_min.setSubsetString(f"brdr_relevant_distance = {value}")
+        layer_result_diff_plus.setSubsetString(f"brdr_relevant_distance = {value}")
         return
-
 
     def get_wkt(self):
         feat = self.feature
         if feat is None:
             return
         key = feat.id()
-        print("key:" + str(key))
+        # print("key:" + str(key))
         relevant_distance = round(
             self.doubleSpinBox.value(), self.settingsDialog.DECIMAL
         )
-        print(str(relevant_distance))
+        # print(str(relevant_distance))
         if (
             key is None
             or self.dict_processresults is None
@@ -248,9 +250,11 @@ class brdrQDockWidgetAligner(object):
         return
 
     def show_help_dialog(self):
+        print("show help dialog")
         self.helpDialog.show()
 
     def show_settings_dialog(self):
+        print("show_settings_dialog")
         self.settingsDialog.show()
 
     def setHandles(self):
@@ -264,15 +268,15 @@ class brdrQDockWidgetAligner(object):
         self.doubleSpinBox.setDecimals(self.settingsDialog.DECIMAL)
         self.doubleSpinBox.setValue(0.0)
         self.horizontalSlider.setMinimum(0)
-        self.horizontalSlider.setMaximum(
-            len(self.relevant_distances) - 1
-        )
+        self.horizontalSlider.setMaximum(len(self.relevant_distances) - 1)
         self.horizontalSlider.setSingleStep(1)
         return
 
     def loadSettings(self):
         self.settingsDialog.update_settings()
-        self.threshold_overlap_percentage = self.settingsDialog.threshold_overlap_percentage
+        self.threshold_overlap_percentage = (
+            self.settingsDialog.threshold_overlap_percentage
+        )
         self.od_strategy = self.settingsDialog.od_strategy
         self.reference_choice = self.settingsDialog.reference_choice
         self.reference_id = self.settingsDialog.reference_id

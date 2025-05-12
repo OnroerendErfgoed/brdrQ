@@ -25,11 +25,8 @@ based on a 'relevant distance'. This parameter is used in the algorithm to deter
 effectively adjusted to the reference layer, or where the original boundary is preserved. Thus, the adjustment of the
 boundaries of resulting geometries and original geometries is at most as large as the 'relevant distance'
 
-## Installation
 
-You can install the latest release of `brdrQ` from
-[GitHub](<https://github.com/OnroerendErfgoed/brdrQ/tree/main/dist/brdrq.zip>) by downloading this zip-distribution that can be manually installed as a plugin. 
-The detailed installation-instructions can be found below.
+## Installation
 
 ### Pre-requisites
 
@@ -41,24 +38,25 @@ The detailed installation-instructions can be found below.
   higher on Windows installations. On Linux and Mac this may not be the case. If the modules are not found, the script
   will attempt to install both 'brdr' and 'shapely' from Pypi.
 
+  
 ### Installation-steps
 
-At this moment, the QGIS plugin 'brdrQ' has to be installed based on a zip-folder-installation. (In future we want to
-provide it as as a plugin in the QGIS-plugin-repository)
-Follow the steps below to make the plugin available in the QGISToolbar and QGIS Processing Toolbox
+You can install the latest release of `brdrQ` by adding a custom plugin-repository-url: https://github.com/OnroerendErfgoed/brdrQ/raw/refs/heads/main/dist/plugins.xml , so brdrQ will become available in the plugin-list. 
 
-1. Download the zip-file from the following link and save it on your local machine:
-   <https://github.com/OnroerendErfgoed/brdrQ/raw/refs/heads/main/dist/brdrq.zip>
-<img src="docs/figures/installation-step-download.png" width="100%" />
-2. Open the 'Plugins'>>'Manage and install plugins...' from the topbar of QGIS
+Please follow the steps below to make the plugin available:
+
+1. Open the 'Plugins'>>'Manage and install plugins...' from the topbar of QGIS
 
 <img src="docs/figures/installation-step-1.png" width="100%" />
 
-3. Choose: 'Install from zip' (see red box) and select the zip-file you downloaded in step 1
+2a. Choose: 'Settings' and use the 'Add'-button to add the following repository: https://github.com/OnroerendErfgoed/brdrQ/raw/refs/heads/main/dist/plugins.xml
 
-<img src="docs/figures/installation-step-2.png" width="100%" />
+<img src="docs/figures/plugin_settings_repo.png" width="50%" />
+<img src="docs/figures/plugin_settings_repo_add.png" width="50%" />
 
-<img src="docs/figures/installation-step-2b.png" width="50%" />
+2b. When the custom repo is succesfully added, 'brdrQ' will appear in the list of available plugins:
+
+<img src="docs/figures/plugin_list.png" width="50%" />
 
 (While adding the script to the toolbox, the necessary python-dependencies will be installed if not yet available on
 your machine.
@@ -89,144 +87,28 @@ Please ignore this error and restart QGIS so the newer version of 'brdr' will re
 
 <img src="docs/figures/installation-step-5.png" width="50%" />
 
-## Getting started (Quickstart - Autocorrectborders (Processing toolbox))
+## The brdrQ - PLUGIN
 
-<img src="docs/figures/input.png" width="100%" />
+The brdrQ-plugin adds a toolbar, a toolmenu (vector) & a brdrQ processing provider (processing toolbox) with several tools. You can find a link to the docs of each tool/script below.
 
-To start the calculation, the following steps are sufficient:
+### brdrQ Tool Menu (vector)
+<img src="docs/figures/toolmenu.png" width="50%" />
 
-- a theme layer ((MULTI)POLYGON - EPSG:31370 or EPSG:3812) with corresponding unique ID
-- a reference layer ((MULTI)POLYGON - EPSG:31370 or EPSG:3812) with corresponding unique ID
-- a RELEVANT_DISTANCE (relevant distance, default 2 meters)
+### brdrQ Toolbar
+<img src="docs/figures/toolbar.png" width="50%" />
 
-==>CLICK 'RUN' : The tool processes the data and the output is created and displayed in the TOC of QGIS
+### brdrQ Processing provider
+<img src="docs/figures/installation-step-3b.png" width="50%" />
 
-## Manual
+### Tools/Scripts
+- A custom tool (feature-by-feature):
+  - **FeatureAligner (predictor)**: Custom tool to align feature-by-feature based on predictions [link to documentation](docs/featurealigner.md)
+- 2 processing algorithm scripts (bulk):
+  - **AutoCorrectBorders**:Processing algorithm to align polygons based on a specific relevant distance [link to documentation](docs/autocorrectborders.md)
+  - **AutoUpdateBorders (GRB Updater)**: Processing algorithm to update/align features based on the actual situation of the GRB [link to documentation](docs/autoupdateborders.md)
+- Plugin version information: overview of the version of brdr and brdrQ
 
-The various INPUT & OUTPUT parameters are explained in more detail below. Here are some useful tips, assumptions and
-limitations when using the script
-
-### STANDARD INPUT PARAMETERS
-
-- THEMATIC LAYER: (MULTI-)POLYGON  (EPSG:31370 or EPSG:3812)
-
-- THEMATIC ID: Textual or numeric ID of the thematic layer used as a reference to the objects. This must be unique.
-
-- RELEVANT DISTANCE (meter): Positive (decimal) number in meters. This
-  is the distance by which the original boundary is maximally shifted to align with the reference layer. The 'Relevant
-  distance' used in the algorithm to
-  determine the relevant intersections and relevant differences between the thematic layer and the reference layer.
-- SELECT REFERENCE LAYER: Combobox to choose which referencelayer will be used. There is a choice between on-the-fly
-  downloadable referencelayers from GRB, or to use your own local REFERENCELAYER. the on-the-fly downloads are only
-  possible for smaller areas.
-    - LOCAL REFERENCE LAYER: The local referencelayer and unique reference ID has to be choosen from the TOC:
-        - REFERENCE LAYER: Local reference layer from the TOC with the geometries you want to use as a reference (e.g.,
-          GRB - administrative
-          parcels)
-        - REFERENCE ID: Textual or numeric ID of the reference layer used as a reference to the objects. This must be
-          unique.
-    - ADP: (on-the-fly download) - Actual administrative parcels from GRB (Grootschalig Referentie Bestand)
-    - GBG: (on-the-fly download) - Actual buildings from GRB
-    - KNW: (on-the-fly download) - Actual artwork from GRB
-    - Adpf20xx: (on-the-fly download) - Fiscal versions of the administrative parcels of GRB
-    - (Note: the on-the-fly downloads are only possible for a subset or small area of thematic objects as this results
-      in downloading this reference-area. When using brdrQ for bigger areas a local reference layer is necessary)
-- WORKING FOLDER: Folder to save the resulting geojson-files. By default empty, resulting in saving the geojson-files in
-  a default folder on your machine.
-
-### ADVANCED INPUT PARAMETERS
-
-- OD_STRATEGY: This parameter determines how the algorithm deals with parts of the geometry that do not lie on the
-  reference layer. (=public domain in the case of parcels as reference layer). There are several strategies:
-    - EXCLUDE: All parts that are not covered by the reference layer are excluded from the resulting geometry
-    - AS IS: All parts that are not covered by the reference layer are added AS IS to the resulting geometry
-    - SNAP_SINGLE_SIDE: Based on the RELEVANT_DISTANCE, an attempt is made to shift the OD-parts of the original
-      boundary inwards so that it lies on the reference layer
-    - SNAP_ALL_SIDE: Based on the RELEVANT_DISTANCE, an attempt is made to shift the OD-parts of the original boundary
-      inwards OR outwards so that it lies on the reference layer
-    - SNAP_FULL_AREA_SINGLE_SIDE: This strategy is particularly interesting for large areas where a high
-      RELEVANT_DISTANCE is required due to rough (inaccurate) drawing. The inside of the area is retained in its
-      entirety and the boundary area is snapped 'single sided' (inwards) to the reference layer based on the
-      RELEVANT_DISTANCE
-    - SNAP_FULL_AREA_ALL_SIDE: This strategy is particularly interesting for large areas where a high RELEVANT_DISTANCE
-      is required due to rough (inaccurate) drawing. The inside of the area is retained in its entirety and the boundary
-      area is snapped 'all sided' (inwards and outwards) to the reference layer based on the RELEVANT_DISTANCE
-    - SNAP_SINGLE_SIDE_VARIANT_1: Implementation variant of od_strategy 'SNAP_SINGLE_SIDE'
-    - SNAP_SINGLE_SIDE_VARIANT_2: Implementation variant of od_strategy 'SNAP_SINGLE_SIDE'
-
-- FULL_OVERLAP_PERCENTAGE % (0-100):  For "Doubtful" parcels where relevant zones are absent: In cases where the
-  algorithm cannot decide based on relevant intersection or relevant difference whether a parcel should be retained, the
-  percentage that they are covered by the original geometry is considered:
-    - BIGGER THAN FULL_OVERLAP_PERCENTAGE: Parcel is retained
-    - SMALLER THAN FULL_OVERLAP_PERCENTAGE: Parcel is excluded
-      for example
-      • 0%: "doubtful" parcels are always retained, since the overlap is always greater than 0
-      • 50% (default): "doubtful" parcels are retained if they are more than half covered by the original geometry
-      • 100%: "doubtful" parcels are always excluded, except if they are 100%(fully) covered
-
-- SHOW_INTERMEDIATE_LAYERS:
-    - True (Default): 2 additional layers are generated as output that visually represent the significant intersections
-      and significant differences
-    - False: The 2 additional layers are not added to the output
-- GET_ALL_PREDICTIONS_FOR_RELEVANT_DISTANCES (Default: False):
-    - When True, the code will use all relevant distances with an interval of 10cm to try to search for 'predictions'.
-      These are results where the output geometry is a stable result that could be the possible wanted result.
-    - The resulting layer will give alle these predicted results together with the relevant distance where this result
-      is found.
-- UPDATE_TO_ACTUAL_GRB_ADP_VERSION (Default: False):
-    - When True, this function will use the brdr_formula and the predictions to search for a actualized version of the
-      geometry based on the actual GRB-parcel borders.
-    - An evaluation is added to the result based on a comparison of the base brdr_formula and the resulting
-      brdr_formula:
-        - When equality is detected this is listed in the evaluation-field
-        - When no_equality is detected, the result has to be checked, and all predictions are listed
-        - MAX_RELEVANT_DISTANCE_FOR_ACTUALISATION: This value is used to define how far an actualisation has to be
-          searched.
-- SHOW_LOG_INFO (default False): When True, the logging of brdr is shown in the feedback-window
-
-### OUTPUT
-
-The script generates several output layers in the layer overview:
-
-* brdrQ_RESULT_X_Y: resulting geometries after alignment
-* brdrQ_DIFF_X_Y: differences (+ and -) between original and resulting geometry
-* brdrQ_DIFF_MIN_X_Y:differences (-) between original and resulting geometry
-* brdrQ_DIFF_PLUS_X_Y:differences (+) between original and resulting geometry
-* (optional) brdrQ_RLVNT_DIFF_X_Y: relevant differences (parts to exclude), used when processing the resulting geometry
-* (optional) brdrQ_RLVNT_ISECT_X_Y: relevant intersection (parts to include), used when processing the resulting
-  geometry
-
-The name includes which 'RELEVANT_DISTANCE (X)' and 'OD-STRATEGY (Y)' is used
-<img src="docs/figures/output.png" width="100%" />
-
-### TIPS, ASSUMPTIONS & LIMITATIONS
-
-- Analyse your thematic dataset and try to gain insight into the 'deviation' (precision and accuracy from the reference
-  layer):
-    - Where does the thematic data come from?
-    - when was it created,
-    - on what reference limits was it drawn at the time,
-    - Which drawing rules have been applied (e.g. accuracy of 0.5m)
-    - …
-
-This allows you to gain insight into the 'deviation' and which RELEVANT_DISTANCE value can best be applied.
-
-- The RELEVANT_DISTANCE must be chosen according to the 'deviation' of the thematic data compared to the reference
-  layer. If the thematic data contains different geometries that show large differences in 'deviation', it is best to
-  split the thematic data and process it separately with an appropriate RELEVANT_DISTANCE so that the RELEVANT_DISTANCE
-  can be kept as small as possible.
-- The current version of the script assumes that both the thematic layer and reference layer are in the same CRS:
-  Lambert72 (EPSG:31370) or Lambert 2008 (EPSG:3812).
-- Thematic boundaries consisting of 1 or a few reference polygons are processed by the script in a few seconds. If the
-  thematic boundaries cover a very large area (~1000 and reference polygons), it may take several minutes for the OUTPUT
-  to be calculated. It's best to let QGIS finish this processing before proceeding
-- In practice, we notice that large thematic demarcations are sometimes drawn more roughly (less precisely or
-  inaccurately), so that a high RELEVANT DISTANCE is required to shift them to the reference file. For large areas that
-  are drawn 'roughly', it is best to use a high RELEVANT_DISTANCE (e.g. >10 meters) and:
-    - OD-strategy EXCLUDE: if you want to completely exclude all public domain
-    - OD-strategy AS_IS: if you want to include all the covered public domain AS IS in the result
-    - OD strategy SNAP_FULL_AREA_x: if you want to keep the public domain within the demarcation, but move the edges to
-      the reference polygons
+(Also note that these processing algorithms can also be used inside the model builder to 'chain' processes)
 
 ## Motivation & citation
 

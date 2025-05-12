@@ -36,7 +36,7 @@ import sys
 
 import brdr
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QAction
+from PyQt5.QtWidgets import QAction, QMenu
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import QgsApplication
@@ -64,7 +64,8 @@ class BrdrQPlugin(object):
         self.actions = []
         self.toolbar = self.iface.addToolBar(pluginname)
         self.toolbar.setObjectName(pluginname)
-
+        self.brdrq_menu = QMenu(pluginname)
+        self.vector_menu = self.iface.vectorMenu()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -91,13 +92,21 @@ class BrdrQPlugin(object):
         # print ("initGui")
         self.initProcessing()
 
-        #FEATUREPREDICTOR
+        # Setup menu
+        icon_menu = QIcon(os.path.join(os.path.join(cmd_folder, "icon_base.png")))
+        self.brdrq_menu.setIcon(icon_menu)
+        self.vector_menu.addMenu(self.brdrq_menu)
+
+        # FEATUREPREDICTOR
         icon = os.path.join(os.path.join(cmd_folder, "icon_featurealigner.png"))
         action_featurepredictor = QAction(
             QIcon(icon), "brdrQ - Feature Aligner (predictor)", self.iface.mainWindow()
         )
-        action_featurepredictor.triggered.connect(self.openDock)
-        self.iface.addPluginToMenu(pluginname, action_featurepredictor)
+        action_featurepredictor.triggered.connect(self.openDockFeatureAligner)
+        #
+
+        self.brdrq_menu.addAction(action_featurepredictor)
+
         self.toolbar.addAction(action_featurepredictor)
         self.actions.append(action_featurepredictor)
 
@@ -107,12 +116,11 @@ class BrdrQPlugin(object):
         #     QIcon(icon_bulkaligner), "brdrQ - Bulk Aligner (predictor)", self.iface.mainWindow()
         # )
         # action_bulkaligner.triggered.connect(self.openDockBulkAligner)
-        # self.iface.addPluginToMenu(pluginname, action_bulkaligner)
+        # self.brdrq_menu.addAction(action_bulkaligner)
         # self.toolbar.addAction(action_bulkaligner)
         # self.actions.append(action_bulkaligner)
 
-
-        #AUTOCORRECTBORDERS
+        # AUTOCORRECTBORDERS
         icon_autocorrectborders = os.path.join(
             os.path.join(cmd_folder, "icon_autocorrectborders.png")
         )
@@ -122,12 +130,11 @@ class BrdrQPlugin(object):
             self.iface.mainWindow(),
         )
         action_autocorrectborders.triggered.connect(self.openAutocorrectbordersscript)
-        self.iface.addPluginToMenu(pluginname, action_autocorrectborders)
+        self.brdrq_menu.addAction(action_autocorrectborders)
         self.toolbar.addAction(action_autocorrectborders)
         self.actions.append(action_autocorrectborders)
 
-
-        #AUTOUPDATEBORDERS -GRBUPDATER
+        # AUTOUPDATEBORDERS -GRBUPDATER
         icon_autoupdateborders = os.path.join(
             os.path.join(cmd_folder, "icon_grbupdater.png")
         )
@@ -137,7 +144,7 @@ class BrdrQPlugin(object):
             self.iface.mainWindow(),
         )
         action_autoupdateborders.triggered.connect(self.openAutoupdatebordersscript)
-        self.iface.addPluginToMenu(pluginname, action_autoupdateborders)
+        self.brdrq_menu.addAction(action_autoupdateborders)
         self.toolbar.addAction(action_autoupdateborders)
         self.actions.append(action_autoupdateborders)
 
@@ -150,7 +157,7 @@ class BrdrQPlugin(object):
             self.iface.mainWindow(),
         )
         action_info.triggered.connect(self.openInfo)
-        self.iface.addPluginToMenu(pluginname, action_info)
+        self.brdrq_menu.addAction(action_info)
         self.toolbar.addAction(action_info)
         self.actions.append(action_info)
 
@@ -162,7 +169,7 @@ class BrdrQPlugin(object):
         self.iface.messageBar().pushMessage(msg)
 
     def version(self):
-        return "0.9.14"
+        return "0.10.0"
 
     def openAutoupdatebordersscript(self):
         processing.execAlgorithmDialog("brdrqprovider:brdrqautoupdateborders")
@@ -177,7 +184,6 @@ class BrdrQPlugin(object):
         # remove the toolbar
         del self.toolbar
 
-
     def openDockBulkAligner(self):
         print("openDockBulkAligner")
         print (str(self.dockwidget_bulkaligner))
@@ -190,20 +196,13 @@ class BrdrQPlugin(object):
             self.dockwidget_bulkaligner.activate()
         return
 
-    def openDock(self):
-        print("openDock")
+    def openDockFeatureAligner(self):
+        print("openDockFeatureAligner")
         if self.dockwidget_featurealigner is None:
             # Create the dockwidget (after translation) and keep reference
             self.dockwidget_featurealigner = brdrQDockWidgetFeatureAligner(self)
-            print("brdrQDockWidget created")
-        print(str(self.dockwidget_featurealigner.active))
-        if not self.dockwidget_featurealigner.active:
-            self.dockwidget_featurealigner.activate()
+            print("brdrQDockWidgetFeatureAligner created")
+        else:
+            print("brdrQDockWidgetFeatureAligner reused")
+        self.dockwidget_featurealigner.startDock()
         return
-
-
-
-
-
-
-

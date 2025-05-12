@@ -38,7 +38,8 @@ from .brdrq_utils import (
     GRB_TYPES,
     geom_qgis_to_shapely,
     geojson_to_layer,
-    get_workfolder, thematic_preparation,
+    get_workfolder,
+    thematic_preparation,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -68,15 +69,14 @@ from qgis.core import QgsStyle
 from brdr.aligner import Aligner
 from brdr.loader import DictLoader
 from brdr.enums import (
-    OpenbaarDomeinStrategy,
+    OpenDomainStrategy,
     GRBType,
     AlignerInputType,
     AlignerResultType,
 )
 from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader, update_to_actual_grb
 from brdr.constants import FORMULA_FIELD_NAME
-
-from shapely import unary_union, make_valid
+from brdr.geometry_utils import safe_unary_union
 
 
 class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -95,9 +95,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     ID_THEME_FIELDNAME = (
         ""  # parameters that holds the fieldname of the unique theme id
     )
+    LAYER_THEMATIC = None  # reference to the thematic input QgisVectorLayer
 
     # REFERENCE PARAMETERS
     INPUT_REFERENCE = "INPUT_REFERENCE"  # reference to the combobox for choosing the reference input layer
+    LAYER_REFERENCE = None  # reference to the local reference QgisVectorLayer
     LAYER_REFERENCE_NAME = (
         "LAYER_REFERENCE_NAME"  # Name of the local referencelayer in the TOC
     )
@@ -212,7 +214,16 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "This script searches for overlap relevance between thematic borders and "
             "reference borders, and creates a resulting border based on the overlapping "
             "areas that are relevant."
-            "Documentation can be found at: https://github.com/OnroerendErfgoed/brdrQ/ "
+        )
+
+    def helpUrl(self):
+        """
+        Returns a localised short helper string for the algorithm. This string
+        should provide a basic description about what the algorithm does and the
+        parameters and outputs associated with it.
+        """
+        return self.tr(
+            "https://github.com/OnroerendErfgoed/brdrQ/blob/development/docs/autocorrectborders.md"
         )
 
     def initAlgorithm(self, config=None):
@@ -236,15 +247,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "Choose thematic ID",
             "theme_identifier",
             self.INPUT_THEMATIC,
-        )
-        parameter.setFlags(parameter.flags())
-        self.addParameter(parameter)
-
-        parameter = QgsProcessingParameterNumber(
-            "RELEVANT_DISTANCE",
-            "RELEVANT_DISTANCE (meter)",
-            type=QgsProcessingParameterNumber.Double,
-            defaultValue=2,
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
@@ -278,11 +280,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
-        parameter = QgsProcessingParameterFile(
-            "WORK_FOLDER",
-            self.tr("Working folder"),
-            behavior=QgsProcessingParameterFile.Folder,
-            optional=True,
+        parameter = QgsProcessingParameterNumber(
+            "RELEVANT_DISTANCE",
+            "RELEVANT_DISTANCE (meter)",
+            type=QgsProcessingParameterNumber.Double,
+            defaultValue=3,
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
@@ -321,7 +323,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "ENUM_OD_STRATEGY",
             "Select OD-STRATEGY:",
             options=ENUM_OD_STRATEGY_OPTIONS,
-            defaultValue=4,  # Index of the default option (e.g., 'SNAP_ALL_SIDE')
+            defaultValue=3,  # Index of the default option (e.g., 'SNAP_ALL_SIDE')
         )
         parameter.setFlags(
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
@@ -333,6 +335,17 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "THRESHOLD_OVERLAP_PERCENTAGE (%)",
             type=QgsProcessingParameterNumber.Double,
             defaultValue=50,
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterFile(
+            "WORK_FOLDER",
+            self.tr("Working folder"),
+            behavior=QgsProcessingParameterFile.Folder,
+            optional=True,
         )
         parameter.setFlags(
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
@@ -415,13 +428,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback = QgsProcessingMultiStepFeedback(feedback_steps, feedback)
         feedback.pushInfo("START")
         feedback.setCurrentStep(1)
-
-        self.prepare_parameters(parameters)
-
-
-        thematic, thematic_buffered,self.CRS = thematic_preparation(self.INPUT_THEMATIC, parameters[self.INPUT_THEMATIC], self.RELEVANT_DISTANCE,
-                                                                    context, feedback
-                                                                    )
+        self.prepare_parameters(parameters, context)
+        thematic, thematic_buffered, self.CRS = thematic_preparation(
+            self.LAYER_THEMATIC, self.RELEVANT_DISTANCE, context, feedback
+        )
         if thematic is None:
             raise QgsProcessingException(self.invalidSourceError(parameters, self.test))
 
@@ -448,7 +458,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                         attributes_dict[key] = value
                 dict_thematic_properties[id_theme] = attributes_dict
 
-        area = make_valid(unary_union(list(dict_thematic.values()))).area
+        area = safe_unary_union(list(dict_thematic.values())).area
         feedback.pushInfo("Area of thematic zone: " + str(area))
         if (
             self.SELECTED_REFERENCE != 0
@@ -697,9 +707,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "OUTPUT_RESULT_DIFF_MIN": result_diff_min,
         }
 
-    def _reference_preparation(
-        self, thematic_buffered, context, feedback, parameters
-    ):
+    def _reference_preparation(self, thematic_buffered, context, feedback, parameters):
         outputs = {}
         context.setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck)
         outputs[self.INPUT_REFERENCE + "_extract"] = processing.run(
@@ -755,7 +763,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             )
         return reference
 
-    def prepare_parameters(self, parameters):
+    def prepare_parameters(self, parameters, context):
         # PARAMETER PREPARATION
         wrkfldr = parameters["WORK_FOLDER"]
         if wrkfldr is None or str(wrkfldr) == "" or str(wrkfldr) == "NULL":
@@ -764,21 +772,16 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             wrkfldr, name="autocorrectborders", temporary=False
         )
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
-        thematic_layer = parameters[self.INPUT_THEMATIC]
-        if not isinstance(thematic_layer, str):
-            thematic_layer = thematic_layer.source.toVariant()["val"]
+        self.LAYER_THEMATIC = self.parameterAsVectorLayer(
+            parameters, self.INPUT_THEMATIC, context
+        )
         self.CRS = (
-            QgsProject.instance()
-            .layerTreeRoot()
-            .findLayer(thematic_layer)
-            .layer()
-            .sourceCrs()
-            .authid()
+            self.LAYER_THEMATIC.sourceCrs().authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
         self.ID_REFERENCE_FIELDNAME = parameters["COMBOBOX_ID_REFERENCE"]
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
-        self.OD_STRATEGY = OpenbaarDomeinStrategy[
+        self.OD_STRATEGY = OpenDomainStrategy[
             ENUM_OD_STRATEGY_OPTIONS[parameters["ENUM_OD_STRATEGY"]]
         ]
         self.ADD_FORMULA = parameters["ADD_FORMULA"]
@@ -796,11 +799,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             )
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
 
-        # self.UPDATE_TO_ACTUAL = parameters["UPDATE_TO_ACTUAL"]
-        # self.MAX_DISTANCE_FOR_ACTUALISATION = parameters[
-        #     "MAX_DISTANCE_FOR_ACTUALISATION"
-        # ]
-
         ref = ENUM_REFERENCE_OPTIONS[parameters["ENUM_REFERENCE"]]
 
         if ref in GRB_TYPES:
@@ -813,24 +811,19 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             ref_suffix = str(ref)
         else:
             self.SELECTED_REFERENCE = 0
+            self.LAYER_REFERENCE = self.parameterAsVectorLayer(
+                parameters, self.INPUT_REFERENCE, context
+            )
 
-            if (
-                parameters[self.INPUT_REFERENCE] is None
-                or self.ID_REFERENCE_FIELDNAME == "NULL"
-            ):
+            if self.LAYER_REFERENCE is None or self.ID_REFERENCE_FIELDNAME == "NULL":
                 raise QgsProcessingException(
                     "Please choose a REFERENCELAYER from the table of contents, and the associated unique REFERENCE ID"
                 )
-            layer_reference = (
-                QgsProject.instance()
-                .layerTreeRoot()
-                .findLayer(parameters[self.INPUT_REFERENCE])
-                .layer()
-            )
-            self.LAYER_REFERENCE_NAME = layer_reference.name()
+
+            self.LAYER_REFERENCE_NAME = self.LAYER_REFERENCE.name()
             ref_suffix = self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE_NAME
 
-            if layer_reference.sourceCrs().authid() != self.CRS:
+            if self.LAYER_REFERENCE.sourceCrs().authid() != self.CRS:
                 raise QgsProcessingException(
                     "Thematic layer and ReferenceLayer are in a different CRS. "
                     "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"

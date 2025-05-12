@@ -36,8 +36,6 @@ def classFactory(iface):  # pylint: disable=invalid-name
     """
     #
     from .brdrq_module_importer import import_modules
-
     import_modules()
     from .brdrq_plugin import BrdrQPlugin
-
     return BrdrQPlugin(iface)

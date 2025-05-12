@@ -1,0 +1,3 @@
+https://github.com/OnroerendErfgoed/brdrQ/blob/main/dist/plugins.xml
+
+https://raw.githubusercontent.com/OnroerendErfgoed/brdrQ/refs/heads/main/dist/plugins.xml
