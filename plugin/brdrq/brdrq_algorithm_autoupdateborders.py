@@ -92,19 +92,20 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     MULTI_AS_SINGLE_MODUS = True  # default MULTI_AS_SINGLE_MODUS for the aligner
 
     FORMULA_FIELDNAME = BASE_FORMULA_FIELD_NAME
+    PREFIX = "brdrQ_"
     LAYER_RESULT = (
-        "brdrQ_RESULT"  # parameter that holds the TOC layername of the result
+        PREFIX + "RESULT"  # parameter that holds the TOC layername of the result
     )
     LAYER_RESULT_DIFF = (
-        "DIFF"  # parameter that holds the TOC layername of the resulting diff
+        PREFIX + "DIFF"  # parameter that holds the TOC layername of the resulting diff
     )
     LAYER_RESULT_DIFF_PLUS = (
-        "DIFF_PLUS"  # parameter that holds the TOC layername of the resulting diff_plus
+        PREFIX + "DIFF_PLUS"  # parameter that holds the TOC layername of the resulting diff_plus
     )
     LAYER_RESULT_DIFF_MIN = (
-        "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
+        PREFIX + "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
     )
-    GROUP_LAYER = "BRDRQ_GRB_UPDATE"
+    GROUP_LAYER = PREFIX + "GRB_UPDATE"
 
     # OTHER parameters
     MAX_DISTANCE_FOR_ACTUALISATION = 3  # maximum relevant distance that is used in the predictor when trying to update to actual GRB

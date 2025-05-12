@@ -11,7 +11,43 @@ The algorithm can make (one or more) 'predictions' so the user can compare and c
 <img src="figures/input.png" width="100%" />
 ## Parameters
 
-### Input
+### Input Parameters
 
-### Output
+1. **Input Layer (INPUT)**
+ - **Type**: Vector Layer
+ - **Beschrijving**: De laag die als input zal worden gebruikt voor de verwerking.
+ - **Voorbeeld**: `input_layer.shp`
+
+2. **Buffer Distance (BUFFER_DISTANCE)**
+ - **Type**: Number (Double)
+ - **Beschrijving**: De afstand die gebruikt zal worden voor het bufferen van de inputlaag.
+ - **Voorbeeld**: `10.0`
+ - **Standaardwaarde**: `10.0`
+
+3. **Output CRS (OUTPUT_CRS)**
+ - **Type**: CRS (Coordinate Reference System)
+ - **Beschrijving**: Het coördinatenreferentiesysteem dat gebruikt zal worden voor de outputlaag.
+ - **Voorbeeld**: `EPSG:4326`
+
+### Output Parameters
+
+1. **Output Layer (OUTPUT)**
+ - **Type**: Vector Layer
+ - **Beschrijving**: De gegenereerde outputlaag na verwerking.
+ - **Voorbeeld**: `output_layer.shp`
+
+## Voorbeeld Gebruik
+
+```python
+# Voorbeeld van het aanroepen van de tool in een Python script
+
+params = {
+ 'INPUT': 'path/to/input_layer.shp',
+ 'BUFFER_DISTANCE': 10.0,
+ 'OUTPUT_CRS': 'EPSG:4326',
+ 'OUTPUT': 'path/to/output_layer.shp'
+}
+
+processing.run('example:tool', params)
+
 
