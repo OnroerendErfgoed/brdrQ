@@ -1,3 +1,11 @@
+# v0.10.0
+
+- Upgrade to brdr version 0.10.0
+- UI adapted
+- Added parameter to autoupdateboders: Prediction-strategy
+- Updated docs
+- Added test structure
+
 # v0.9.14
 
 - Upgrade to brdr version 0.9.0

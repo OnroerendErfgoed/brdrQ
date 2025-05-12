@@ -30,7 +30,11 @@ from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.core import QgsSettings
 
-from .brdrq_utils import ENUM_REFERENCE_OPTIONS, ENUM_OD_STRATEGY_OPTIONS, ENUM_FULL_STRATEGY_OPTIONS
+from .brdrq_utils import (
+    ENUM_REFERENCE_OPTIONS,
+    ENUM_OD_STRATEGY_OPTIONS,
+    ENUM_FULL_STRATEGY_OPTIONS,
+)
 
 FORM_CLASS, _ = uic.loadUiType(
     os.path.join(os.path.dirname(__file__), "brdrq_settings.ui")
@@ -55,7 +59,7 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.step = 20
         self.relevant_distances = None
         self.threshold_overlap_percentage = None
-        self.od_strategy =None
+        self.od_strategy = None
         self.reference_choice = None
         self.reference_id = None
         self.reference_layer = None
@@ -131,17 +135,11 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             self.threshold_overlap_percentage = int(
                 s.value("brdrq/threshold_overlap_percentage", 50)
             )
-            self.spinBox_threshold.setValue(
-                self.threshold_overlap_percentage
-            )
-        self.threshold_overlap_percentage = (
-            self.spinBox_threshold.value()
-        )
+            self.spinBox_threshold.setValue(self.threshold_overlap_percentage)
+        self.threshold_overlap_percentage = self.spinBox_threshold.value()
         if self.max_rel_dist is None:
             self.max_rel_dist = int(s.value("brdrq/max_rel_dist", 5))
-            self.spinBox_max_relevant_distance.setValue(
-                self.max_rel_dist
-            )
+            self.spinBox_max_relevant_distance.setValue(self.max_rel_dist)
         self.max_rel_dist = self.spinBox_max_relevant_distance.value()
         self.maximum = self.max_rel_dist * 100
 
@@ -152,8 +150,8 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             )
             / 100
         ]
-        #self.relevant_distances.extend([round(99.9, self.DECIMAL),round(100.0, self.DECIMAL)])
-        #print (self.relevant_distances)
+        # self.relevant_distances.extend([round(99.9, self.DECIMAL),round(100.0, self.DECIMAL)])
+        # print (self.relevant_distances)
         if self.od_strategy is None:
             self.od_strategy = int(s.value("brdrq/od_strategy", 2))
             index = self.comboBox_odstrategy.findText(
@@ -181,51 +179,29 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         #     self.comboBox_snapstrategy.currentText()
         # ]
 
-        if (
-            self.full_strategy is None
-            or self.full_strategy == ""
-        ):
+        if self.full_strategy is None or self.full_strategy == "":
             prefer_full = FullStrategy.PREFER_FULL.name
-            self.full_strategy = s.value(
-                "brdrq/full_strategy", prefer_full
-            )
-            index = self.comboBox_fullstrategy.findText(
-                self.full_strategy
-            )
+            self.full_strategy = s.value("brdrq/full_strategy", prefer_full)
+            index = self.comboBox_fullstrategy.findText(self.full_strategy)
             if index == -1:
                 index = 0
             self.comboBox_fullstrategy.setCurrentIndex(index)
-        self.full_strategy = FullStrategy[
-            self.comboBox_fullstrategy.currentText()
-        ]
-
+        self.full_strategy = FullStrategy[self.comboBox_fullstrategy.currentText()]
 
         if self.reference_choice is None:
             self.reference_choice = s.value(
                 "brdrq/reference_choice", ENUM_REFERENCE_OPTIONS[1]
             )
-            index = self.comboBox_referencelayer.findText(
-                self.reference_choice
-            )
+            index = self.comboBox_referencelayer.findText(self.reference_choice)
             self.comboBox_referencelayer.setCurrentIndex(index)
-        self.reference_choice = (
-            self.comboBox_referencelayer.currentText()
-        )
-        current_reference_layer_index = (
-            self.mMapLayerComboBox_reference.currentIndex()
-        )
+        self.reference_choice = self.comboBox_referencelayer.currentText()
+        current_reference_layer_index = self.mMapLayerComboBox_reference.currentIndex()
         if current_reference_layer_index == -1 or current_reference_layer_index == 0:
             self.reference_layer = s.value("brdrq/reference_layer", None)
-            self.mMapLayerComboBox_reference.setLayer(
-                self.reference_layer
-            )
-        self.reference_layer = (
-            self.mMapLayerComboBox_reference.currentLayer()
-        )
+            self.mMapLayerComboBox_reference.setLayer(self.reference_layer)
+        self.reference_layer = self.mMapLayerComboBox_reference.currentLayer()
 
-        current_reference_id_index = (
-            self.mFieldComboBox_reference.currentIndex()
-        )
+        current_reference_id_index = self.mFieldComboBox_reference.currentIndex()
         if current_reference_id_index == -1 or current_reference_id_index == 0:
             self.reference_id = s.value("brdrq/reference_id", None)
             self.mFieldComboBox_reference.setField(self.reference_id)
@@ -272,15 +248,14 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         s.setValue("brdrq/reference_layer", self.reference_layer)
         s.setValue("brdrq/max_rel_dist", self.max_rel_dist)
         s.setValue("brdrq/formula", self.formula)
-        s.setValue(
-            "brdrq/full_strategy", self.full_strategy.name
-        )
+        s.setValue("brdrq/full_strategy", self.full_strategy.name)
         # s.setValue("brdrq/partial_snapping", self.partial_snapping)
         # s.setValue(
         #     "brdrq/partial_snapping_strategy", self.partial_snapping_strategy.name
         # )
         # s.setValue("brdrq/snap_max_segment_length", self.snap_max_segment_length)
         return
+
 
 def __init__():
     pass

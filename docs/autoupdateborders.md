@@ -53,6 +53,17 @@
 
 ### ADVANCED INPUT PARAMETERS
 
+
+- **FULL Strategy** Choice that determines the score of the predictions based on a full overlap with reference polygons:
+    - ONLY_FULL: Only predictions with a full reference overlap are shown.
+    - PREFER_FULL: Predictions with a full reference overlap get a higher score, others are still shown.
+    - NO_FULL: No distinction is made between predictions with or without full reference overlap.
+  - **Default**: None
+  - **Optional**: yes.
+
+Evaluation Strategy FULL: Choice that determines the score of the predictions based on a full overlap with reference polygons:
+
+
 - **WORKING FOLDER**: Folder to save the resulting geojson-files. By default empty, resulting in saving the geojson-files in
   a default folder on your machine.
   - **Default**: By default, the output will be saved in a local folder on your machine.

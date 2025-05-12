@@ -39,7 +39,6 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QMenu
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.gui import QgisInterface
 from qgis.core import QgsApplication
 
 from .brdrq_dockwidget_bulkaligner import brdrQDockWidgetBulkAligner

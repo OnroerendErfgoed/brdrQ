@@ -1,10 +1,10 @@
 # coding=utf-8
 """Tests QGIS plugin init."""
 
+import configparser
+import logging
 import os
 import unittest
-import logging
-import configparser
 
 __author__ = "Tim Sutton <tim@linfiniti.com>"
 __revision__ = "$Format:%H$"
