@@ -1,3 +1,6 @@
+# v0.10.1
+- version fix
+
 # v0.10.0
 
 - Upgrade to brdr version 0.10.0
