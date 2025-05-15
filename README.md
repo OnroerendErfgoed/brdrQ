@@ -58,14 +58,14 @@ Please follow the steps below to make the plugin available:
 
 <img src="docs/figures/plugin_list.png" width="50%" />
 
-(While adding the script to the toolbox, the necessary python-dependencies will be installed if not yet available on
+(While adding the plugin to QGIS, the necessary python-dependencies will be installed if not yet available on
 your machine.
 If dependencies need to be installed, a screen like below can pop up. Please wait until installation is finished. The
 screen will close automatically after installation.)
 
 <img src="docs/figures/installation-step-2c.png" width="50%" />
 
-Warning: When you have already older versions of brdrQ installed, this zip-install can raise a error due to a older brdr-version-conflict. 
+Warning: When you have already older versions of brdrQ installed, this zip-install can raise a error due to a version-conflict with an older version of 'brdr'. 
 Please ignore this error and restart QGIS so the newer version of 'brdr' will re-install automatically.
 
 3. After a successful installation/restart, check in the 'Installed'-tab of the QGIS Plugin Manager if the 'brdrQ'-plugin is activated (red arrow). if not, you
