@@ -61,6 +61,45 @@ class TestAutoCorrectBorders(unittest.TestCase):
             assert isinstance(o,QgsVectorLayer)
             assert o.featureCount()==featurecount
 
+    def test_autocorrectborders_local_referencelayer(self):
+        # See https://gis.stackexchange.com/a/276979/4972 for a list of algorithms
+        foldername = QgsProcessingParameterFolderDestination(name="brdrQ").generateTemporaryDestination()
+
+        path = os.path.join(os.path.dirname(__file__), "themelayer_test.geojson")
+        themelayername = "themelayer_test"
+        layer_theme = QgsVectorLayer(path, themelayername)
+        QgsProject.instance().addMapLayer(layer_theme)
+
+        path = os.path.join(os.path.dirname(__file__), "referencelayer_test.geojson")
+        referencelayername = "referencelayer_test"
+        layer_reference = QgsVectorLayer(path, referencelayername)
+        QgsProject.instance().addMapLayer(layer_reference)
+
+        output = processing.run(
+            "brdrqprovider:brdrqautocorrectborders",
+            {
+                "INPUT_THEMATIC": themelayername,
+                "COMBOBOX_ID_THEME": "theme_identifier",
+                "RELEVANT_DISTANCE": 2,
+                "ENUM_REFERENCE": 0,
+                "INPUT_REFERENCE": referencelayername,
+                "COMBOBOX_ID_REFERENCE": "CAPAKEY",
+                "WORK_FOLDER": foldername,
+                "ENUM_OD_STRATEGY": 2,
+                "THRESHOLD_OVERLAP_PERCENTAGE": 50,
+                "ADD_FORMULA": False,
+                "ADD_ATTRIBUTES": True,
+                "SHOW_INTERMEDIATE_LAYERS": True,
+                "PREDICTIONS": False,
+                "SHOW_LOG_INFO": False,
+            },
+        )
+        featurecount = layer_theme.featureCount()
+        assert len(output)==4
+        for o in output.values():
+            assert isinstance(o,QgsVectorLayer)
+            assert o.featureCount()==featurecount
+
     def test_autocorrectborders_predictions(self):
         foldername = QgsProcessingParameterFolderDestination(name="brdrQ").generateTemporaryDestination()
         path = os.path.join(os.path.dirname(__file__), "themelayer_test.geojson")
