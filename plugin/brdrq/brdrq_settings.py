@@ -202,7 +202,7 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.reference_layer = self.mMapLayerComboBox_reference.currentLayer()
 
         current_reference_id_index = self.mFieldComboBox_reference.currentIndex()
-        if current_reference_id_index == -1 or current_reference_id_index == 0:
+        if current_reference_id_index == -1:
             self.reference_id = s.value("brdrq/reference_id", None)
             self.mFieldComboBox_reference.setField(self.reference_id)
         self.reference_id = self.mFieldComboBox_reference.currentField()
