@@ -9,6 +9,11 @@ __pycache__/
 
 # Experimental / research
 experimental/
+/experimental
+
+# workshop
+workshop/
+/workshop
 
 # Distribution / packaging
 .Python
@@ -164,7 +169,7 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 /.idea
-/experimental
+
 
 /plugin/brdrq/zip_build
 /plugin/brdrq/zip_build/
