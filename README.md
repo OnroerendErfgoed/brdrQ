@@ -30,12 +30,12 @@ boundaries of resulting geometries and original geometries is at most as large a
 
 ### Pre-requisites
 
-- Script is tested for QGIS on Linux and Windows. Usage of the script on Mac is not tested, and can give errors or
+- Plugin is tested for QGIS on Linux and Windows. Usage of the plugin on Mac is not tested, and can give errors or
   unexpected behaviour.
-- QGIS >3.34.8: The script has been developed and tested based on QGIS 3.34.8. (In older versions, the script might give
+- QGIS >3.34.8: The plugin has been developed and tested based on QGIS 3.34.8. (In older versions, the plugin might give
   unexpected behaviour)
 - brdr needs Shapely 2.0.2 or higher. This version of Shapely is already available by default in QGIS version 3.34.8 and
-  higher on Windows installations. On Linux and Mac this may not be the case. If the modules are not found, the script
+  higher on Windows installations. On Linux and Mac this may not be the case. If the modules are not found, the plugin
   will attempt to install both 'brdr' and 'shapely' from Pypi.
 
   
@@ -58,15 +58,21 @@ Please follow the steps below to make the plugin available:
 
 <img src="docs/figures/plugin_list.png" width="50%" />
 
+
+2c. The plugin can be installed by clicking: 'Install plugin':
+
+<img src="docs/figures/install_plugin.png" width="50%" />
+
+2d. In some cases a 'ModuleNotFound'-Error like below will popup because the right version of 'brdr' is not yet available in QGIS.  
+When this error occurs, please ignore this error and restart QGIS so the newer version of 'brdr' will re-install automatically and the brdrQ-plugin will become available.
+
+<img src="docs/figures/modulenotfound_error.png" width="50%" />
+
 (While adding the plugin to QGIS, the necessary python-dependencies will be installed if not yet available on
-your machine.
-If dependencies need to be installed, a screen like below can pop up. Please wait until installation is finished. The
+your machine. If dependencies need to be installed, a screen like below can pop up. Please wait until installation is finished. The
 screen will close automatically after installation.)
 
 <img src="docs/figures/installation-step-2c.png" width="50%" />
-
-Warning: When you have already older versions of brdrQ installed, this zip-install can raise a error due to a version-conflict with an older version of 'brdr'. 
-Please ignore this error and restart QGIS so the newer version of 'brdr' will re-install automatically.
 
 3. After a successful installation/restart, check in the 'Installed'-tab of the QGIS Plugin Manager if the 'brdrQ'-plugin is activated (red arrow). if not, you
    have to activate the checkbox
@@ -112,14 +118,14 @@ The brdrQ-plugin adds a toolbar, a toolmenu (vector) & a brdrQ processing provid
 
 ## Motivation & citation
 
-The script uses `brdr`, a python-package to align thematic borders to reference borders.
+The plugin uses `brdr`, a python-package to align thematic borders to reference borders.
 
 - For more information about the conceptual method/algorithm consult:
   <https://github.com/OnroerendErfgoed/brdr>.
 
 ## Development
 
-A released python-package of is automatically installed when installing the brdrQ-script.
+A released python-package of `brdr` is automatically installed when installing the brdrQ-plugin.
 
 A non-released (development-) version of `brdr` can be installed as QGIS-Python-site-package by:
 
