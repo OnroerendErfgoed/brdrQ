@@ -58,6 +58,7 @@ Please follow the steps below to make the plugin available:
 
 <img src="docs/figures/plugin_list.png" width="50%" />
 
+
 2c. The plugin can be installed by clicking: 'Install plugin':
 
 <img src="docs/figures/install_plugin.png" width="50%" />
@@ -67,9 +68,8 @@ When this error occurs, please ignore this error and restart QGIS so the newer v
 
 <img src="docs/figures/modulenotfound_error.png" width="50%" />
 
-(While installing the plugin, the necessary python-dependencies will be installed if not yet available on
-your machine.
-If dependencies need to be installed, a screen like below can pop up. Please wait until installation is finished. The
+(While adding the plugin to QGIS, the necessary python-dependencies will be installed if not yet available on
+your machine. If dependencies need to be installed, a screen like below can pop up. Please wait until installation is finished. The
 screen will close automatically after installation.)
 
 <img src="docs/figures/installation-step-2c.png" width="50%" />

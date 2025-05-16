@@ -1,4 +1,10 @@
+# v0.10.2
+
+- documentation fix
+- fix for ID when using local reference layer
+
 # v0.10.1
+
 - version fix
 
 # v0.10.0
