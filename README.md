@@ -30,7 +30,7 @@ boundaries of resulting geometries and original geometries is at most as large a
 
 ### Pre-requisites
 
-- Plugin is tested for QGIS on Linux and Windows. Usage of the plugin on Mac is not tested, and can give errors or
+- Plugin is tested for QGIS on Windows. Usage of the plugin on Mac and Linux is not tested, and can give errors or
   unexpected behaviour.
 - QGIS >3.34.8: The plugin has been developed and tested based on QGIS 3.34.8. (In older versions, the plugin might give
   unexpected behaviour)
