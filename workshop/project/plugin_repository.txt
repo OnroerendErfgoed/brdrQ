@@ -1,1 +1,0 @@
-https://github.com/OnroerendErfgoed/brdrQ/raw/refs/heads/main/dist/plugins.xml
