@@ -30,7 +30,7 @@ boundaries of resulting geometries and original geometries is at most as large a
 
 ### Pre-requisites
 
-- Plugin is tested for QGIS on Windows. Usage of the plugin on Mac and Linux is not tested, and can give errors or
+- Plugin is tested for QGIS on Windows. For newer versions of Ubuntu(Linux) it could be needed to run QGIS inside a virtual environment. You can use the following script to create a virtual environment and run QGIS before following the installation steps below: [linux_venv_qgis.sh](dist/linux_venv_qgis.sh). Usage of the plugin on Mac is not tested, and can give errors or
   unexpected behaviour.
 - QGIS >3.34.8: The plugin has been developed and tested based on QGIS 3.34.8. (In older versions, the plugin might give
   unexpected behaviour)
