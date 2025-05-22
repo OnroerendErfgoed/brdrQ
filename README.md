@@ -30,8 +30,8 @@ boundaries of resulting geometries and original geometries is at most as large a
 
 ### Pre-requisites
 
-- Plugin is tested for QGIS on Windows. For newer versions of Ubuntu(Linux) it could be needed to run QGIS inside a virtual environment. You can use the following script to create a virtual environment and run QGIS before following the installation steps below: [linux_venv_qgis.sh](dist/linux_venv_qgis.sh). Usage of the plugin on Mac is not tested, and can give errors or
-  unexpected behaviour.
+- Plugin is tested for QGIS on Windows. (For newer versions of Ubuntu/Linux it could be needed to run QGIS inside a virtual environment. You can use the following script to create a virtual environment and run QGIS before following the installation steps below: [linux_venv_qgis.sh](dist/linux_venv_qgis.sh). Usage of the plugin on Mac is not tested, and can give errors or
+  unexpected behaviour.)
 - QGIS >3.34.8: The plugin has been developed and tested based on QGIS 3.34.8. (In older versions, the plugin might give
   unexpected behaviour)
 - brdr needs Shapely 2.0.2 or higher. This version of Shapely is already available by default in QGIS version 3.34.8 and
@@ -51,7 +51,7 @@ Please follow the steps below to make the plugin available:
 
 2a. Choose: 'Settings' and use the 'Add'-button to add the following repository: https://github.com/OnroerendErfgoed/brdrQ/raw/refs/heads/main/dist/plugins.xml
 
-<img src="docs/figures/plugin_settings_repo.png" width="50%" />
+<img src="docs/figures/plugin_settings_repo.png" width="100%" />
 <img src="docs/figures/plugin_settings_repo_add.png" width="50%" />
 
 2b. When the custom repo is succesfully added, 'brdrQ' will appear in the list of available plugins:
@@ -114,7 +114,7 @@ The brdrQ-plugin adds a toolbar, a toolmenu (vector) & a brdrQ processing provid
   - **AutoUpdateBorders (GRB Updater)**: Processing algorithm to update/align features based on the actual situation of the GRB [link to documentation](docs/autoupdateborders.md)
 - Plugin version information: overview of the version of brdr and brdrQ
 
-(Also note that these processing algorithms can also be used inside the model builder to 'chain' processes)
+(Also note that these processing algorithms can also be used inside the QGIS ModelBuilder to 'chain' processes)
 
 ## Motivation & citation
 
