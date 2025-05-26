@@ -42,6 +42,8 @@ class TestAutoUpdateBorders(unittest.TestCase):
                 "ENUM_REFERENCE": 0,
                 "FORMULA_FIELD": "",
                 "MAX_RELEVANT_DISTANCE": 5,
+                "THRESHOLD_OVERLAP_PERCENTAGE": 50,
+                "ENUM_OD_STRATEGY": 2,
                 "WORK_FOLDER": foldername,
                 "PREDICTION_STRATEGY": 2,
                 "FULL_STRATEGY": 2,
