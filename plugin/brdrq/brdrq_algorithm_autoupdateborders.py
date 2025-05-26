@@ -31,7 +31,7 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from brdr.aligner import Aligner
 from brdr.constants import BASE_FORMULA_FIELD_NAME
-from brdr.enums import AlignerInputType, GRBType, FullStrategy
+from brdr.enums import AlignerInputType, GRBType, FullStrategy, OpenDomainStrategy
 from brdr.grb import update_to_actual_grb
 from brdr.loader import DictLoader
 from qgis.PyQt.QtCore import QCoreApplication
@@ -61,6 +61,7 @@ from .brdrq_utils import (
     ENUM_PREDICTION_STRATEGY_OPTIONS,
     PredictionStrategy,
     ENUM_FULL_STRATEGY_OPTIONS,
+    ENUM_OD_STRATEGY_OPTIONS,
 )
 
 
@@ -252,6 +253,28 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         # ADVANCED INPUT
         parameter = QgsProcessingParameterEnum(
+            "ENUM_OD_STRATEGY",
+            "Select OD-STRATEGY:",
+            options=ENUM_OD_STRATEGY_OPTIONS,
+            defaultValue=3,  # Index of the default option (e.g., 'SNAP_ALL_SIDE')
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterNumber(
+            "THRESHOLD_OVERLAP_PERCENTAGE",
+            "THRESHOLD_OVERLAP_PERCENTAGE (%)",
+            type=QgsProcessingParameterNumber.Double,
+            defaultValue=50,
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterEnum(
             "FULL_STRATEGY",
             "Select FULL_STRATEGY:",
             options=ENUM_FULL_STRATEGY_OPTIONS,
@@ -369,7 +392,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                     attributes_dict[key] = value
             dict_thematic_properties[id_theme] = attributes_dict
 
-        aligner = Aligner(od_strategy=self.OD_STRATEGY)
+        aligner = Aligner(od_strategy=self.OD_STRATEGY,threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE)
         aligner.load_thematic_data(
             DictLoader(
                 data_dict=dict_thematic, data_dict_properties=dict_thematic_properties
@@ -488,6 +511,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.THEMATIC_LAYER.sourceCrs().authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer
         self.MAX_DISTANCE_FOR_ACTUALISATION = parameters["MAX_RELEVANT_DISTANCE"]
+        self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
+        self.OD_STRATEGY = OpenDomainStrategy[
+            ENUM_OD_STRATEGY_OPTIONS[parameters["ENUM_OD_STRATEGY"]]
+        ]
         self.GRB_TYPE = GRBType[GRB_TYPES[parameters["ENUM_REFERENCE"]]]
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
         self.PREDICTION_STRATEGY = PredictionStrategy[
