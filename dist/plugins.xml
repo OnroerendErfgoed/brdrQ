@@ -4,7 +4,7 @@
         <description>brdrQ, a QGIS-plugin for aligning thematic borders to reference borders.</description>
         <version>0.10.2</version>
         <homepage>https://github.com/OnroerendErfgoed/brdrQ</homepage>
-        <qgis_minimum_version>3.36</qgis_minimum_version>
+        <qgis_minimum_version>3.34</qgis_minimum_version>
         <file_name>brdrq.zip</file_name>
         <author_name>Karel Dieussaert / Onroerend Erfgoed</author_name>
         <download_url>https://github.com/OnroerendErfgoed/brdrQ/raw/refs/heads/main/dist/brdrq.zip</download_url>
