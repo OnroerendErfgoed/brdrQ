@@ -34,7 +34,7 @@ def import_modules():
         from shapely import Polygon, from_wkt, to_wkt, unary_union, make_valid
         from shapely.geometry import shape
 
-    brdr_version = "0.10.0"
+    brdr_version = "0.10.1"
     try:
         import brdr
 

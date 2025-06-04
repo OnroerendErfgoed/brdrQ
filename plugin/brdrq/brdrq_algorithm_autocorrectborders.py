@@ -40,6 +40,7 @@ from .brdrq_utils import (
     geojson_to_layer,
     get_workfolder,
     thematic_preparation,
+    get_symbol,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -237,7 +238,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter = QgsProcessingParameterFeatureSource(
             self.INPUT_THEMATIC,
             self.tr("THEMATIC LAYER"),
-            [QgsProcessing.TypeVectorPolygon],
+            [QgsProcessing.TypeVectorAnyGeometry],
             defaultValue="themelayer",
         )
         parameter.setFlags(parameter.flags())
@@ -263,8 +264,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter = QgsProcessingParameterFeatureSource(
             self.INPUT_REFERENCE,
             self.tr("REFERENCE LAYER"),
-            [QgsProcessing.TypeVectorPolygon],
-            # defaultValue="referencelayer",
+            [QgsProcessing.TypeVectorAnyGeometry],
             optional=True,
         )
         parameter.setFlags(parameter.flags())
@@ -293,28 +293,28 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingOutputVectorLayer(
                 "OUTPUT_RESULT",
                 self.LAYER_RESULT,
-                QgsProcessing.TypeVectorPolygon,
+                QgsProcessing.TypeVectorAnyGeometry,
             )
         )
         self.addOutput(
             QgsProcessingOutputVectorLayer(
                 "OUTPUT_RESULT_DIFF",
                 self.LAYER_RESULT_DIFF,
-                QgsProcessing.TypeVectorPolygon,
+                QgsProcessing.TypeVectorAnyGeometry,
             )
         )
         self.addOutput(
             QgsProcessingOutputVectorLayer(
                 "OUTPUT_RESULT_DIFF_PLUS",
                 self.LAYER_RESULT_DIFF_PLUS,
-                QgsProcessing.TypeVectorPolygon,
+                QgsProcessing.TypeVectorAnyGeometry,
             )
         )
         self.addOutput(
             QgsProcessingOutputVectorLayer(
                 "OUTPUT_RESULT_DIFF_MIN",
                 self.LAYER_RESULT_DIFF_MIN,
-                QgsProcessing.TypeVectorPolygon,
+                QgsProcessing.TypeVectorAnyGeometry,
             )
         )
         # advanced parameters
@@ -624,10 +624,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         # MAKE TEMPORARY LAYERS
         if self.SELECTED_REFERENCE != 0:
+            reference_geojson = aligner.get_input_as_geojson(inputtype=AlignerInputType.REFERENCE)
             geojson_to_layer(
                 self.LAYER_REFERENCE_NAME,
-                aligner.get_input_as_geojson(inputtype=AlignerInputType.REFERENCE),
-                QgsStyle.defaultStyle().symbol("outline black"),
+                reference_geojson,
+                get_symbol(reference_geojson, "reference"),
                 True,
                 self.GROUP_LAYER,
                 self.WORKFOLDER,
@@ -652,35 +653,42 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                     self.GROUP_LAYER,
                     self.WORKFOLDER,
                 )
-
+        result_diff = "result_diff"
+        geojson_result_diff = fcs[result_diff]
         geojson_to_layer(
             self.LAYER_RESULT_DIFF,
-            fcs["result_diff"],
-            QgsStyle.defaultStyle().symbol("hashed black X"),
+            geojson_result_diff,
+            get_symbol(geojson_result_diff,result_diff),
             False,
             self.GROUP_LAYER,
             self.WORKFOLDER,
         )
+        result_diff_plus = "result_diff_plus"
+        geojson_result_diff_plus = fcs[result_diff_plus]
         geojson_to_layer(
             self.LAYER_RESULT_DIFF_PLUS,
-            fcs["result_diff_plus"],
-            QgsStyle.defaultStyle().symbol("hashed cgreen /"),
+            geojson_result_diff_plus,
+            get_symbol(geojson_result_diff_plus,result_diff_plus),
             False,
             self.GROUP_LAYER,
             self.WORKFOLDER,
         )
+        result_diff_min = "result_diff_min"
+        geojson_result_diff_min = fcs[result_diff_min]
         geojson_to_layer(
             self.LAYER_RESULT_DIFF_MIN,
-            fcs["result_diff_min"],
-            QgsStyle.defaultStyle().symbol("hashed cred /"),
+            geojson_result_diff_min,
+            get_symbol(geojson_result_diff_min,result_diff_min),
             False,
             self.GROUP_LAYER,
             self.WORKFOLDER,
         )
+        result = "result"
+        geojson_result = fcs[result]
         geojson_to_layer(
             self.LAYER_RESULT,
-            fcs["result"],
-            QgsStyle.defaultStyle().symbol("outline green"),
+            geojson_result,
+            get_symbol(geojson_result,result),
             True,
             self.GROUP_LAYER,
             self.WORKFOLDER,
@@ -803,7 +811,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         if ref in GRB_TYPES:
             self.SELECTED_REFERENCE = GRBType[ref]
-            self.LAYER_REFERENCE_NAME = GRBType[ref]
+            self.LAYER_REFERENCE_NAME = GRBType[ref].name
             ref_suffix = str(ref)
         elif ref in ADPF_VERSIONS:
             self.SELECTED_REFERENCE = ref

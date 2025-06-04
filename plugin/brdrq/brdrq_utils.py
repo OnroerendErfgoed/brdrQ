@@ -70,7 +70,7 @@ ENUM_REFERENCE_OPTIONS = (
 
 # ENUM for choosing the OD-strategy
 ENUM_OD_STRATEGY_OPTIONS = [
-    e.name for e in OpenDomainStrategy if e.value <= 2
+    e.name for e in OpenDomainStrategy #if e.value <= 2
 ]  # list with od-strategy-options #if e.value<=2
 
 # ENUM for choosing the snap-strategy
@@ -81,7 +81,6 @@ ENUM_FULL_STRATEGY_OPTIONS = [e.name for e in FullStrategy]
 
 # ENUM for choosing the full-strategy when evaluating
 ENUM_PREDICTION_STRATEGY_OPTIONS = [e.name for e in PredictionStrategy]
-
 
 def geom_shapely_to_qgis(geom_shapely):
     """
@@ -251,6 +250,8 @@ def get_symbol(geojson, resulttype):
             return QgsStyle.defaultStyle().symbol("hashed cred /")
         elif resulttype == "result":
             return QgsStyle.defaultStyle().symbol("outline green")
+        elif resulttype =="reference":
+            return QgsStyle.defaultStyle().symbol("outline black")
         else:
             return QgsStyle.defaultStyle().symbol("outline blue")
     elif geometrytype == "MultiLineString":
@@ -262,6 +263,8 @@ def get_symbol(geojson, resulttype):
             return QgsStyle.defaultStyle().symbol("dash red")
         elif resulttype == "result":
             return QgsStyle.defaultStyle().symbol("simple green line")
+        elif resulttype =="reference":
+            return QgsStyle.defaultStyle().symbol("simple black line")
         else:
             return QgsStyle.defaultStyle().symbol("simple blue line")
     elif geometrytype == "MultiPoint":
@@ -273,6 +276,8 @@ def get_symbol(geojson, resulttype):
             return QgsStyle.defaultStyle().symbol("dot white")
         elif resulttype == "result":
             return QgsStyle.defaultStyle().symbol("dot green")
+        elif resulttype =="reference":
+            return QgsStyle.defaultStyle().symbol("dot black")
         else:
             return QgsStyle.defaultStyle().symbol("dot blue")
     else:

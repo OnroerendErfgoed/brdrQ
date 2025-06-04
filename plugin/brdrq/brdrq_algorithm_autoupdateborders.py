@@ -62,6 +62,7 @@ from .brdrq_utils import (
     PredictionStrategy,
     ENUM_FULL_STRATEGY_OPTIONS,
     ENUM_OD_STRATEGY_OPTIONS,
+    get_symbol,
 )
 
 
@@ -204,7 +205,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter = QgsProcessingParameterFeatureSource(
             self.INPUT_THEMATIC,
             "THEMATIC LAYER, with the features to align",
-            [QgsProcessing.TypeVectorPolygon],
+            [QgsProcessing.TypeVectorAnyGeometry],
             defaultValue="themelayer",
         )
         parameter.setFlags(parameter.flags())
@@ -322,28 +323,28 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingOutputVectorLayer(
                 "OUTPUT_RESULT",
                 self.LAYER_RESULT,
-                QgsProcessing.TypeVectorPolygon,
+                QgsProcessing.TypeVectorAnyGeometry,
             )
         )
         self.addOutput(
             QgsProcessingOutputVectorLayer(
                 "OUTPUT_RESULT_DIFF",
                 self.LAYER_RESULT_DIFF,
-                QgsProcessing.TypeVectorPolygon,
+                QgsProcessing.TypeVectorAnyGeometry,
             )
         )
         self.addOutput(
             QgsProcessingOutputVectorLayer(
                 "OUTPUT_RESULT_DIFF_PLUS",
                 self.LAYER_RESULT_DIFF_PLUS,
-                QgsProcessing.TypeVectorPolygon,
+                QgsProcessing.TypeVectorAnyGeometry,
             )
         )
         self.addOutput(
             QgsProcessingOutputVectorLayer(
                 "OUTPUT_RESULT_DIFF_MIN",
                 self.LAYER_RESULT_DIFF_MIN,
-                QgsProcessing.TypeVectorPolygon,
+                QgsProcessing.TypeVectorAnyGeometry,
             )
         )
 
@@ -438,40 +439,50 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         # Add RESULT TO TOC
         if "result_diff_min" in fcs_actualisation:
+            result_diff_min = "result_diff_min"
+            geojson_result_diff_min = fcs_actualisation[result_diff_min]
             geojson_to_layer(
                 self.LAYER_RESULT_DIFF_MIN,
-                fcs_actualisation["result_diff_min"],
-                QgsStyle.defaultStyle().symbol("hashed cred /"),
+                geojson_result_diff_min,
+                get_symbol(geojson_result_diff_min, result_diff_min),
                 True,
                 self.GROUP_LAYER,
                 self.WORKFOLDER,
             )
         if "result_diff_plus" in fcs_actualisation:
+            result_diff_plus = "result_diff_plus"
+            geojson_result_diff_plus = fcs_actualisation[result_diff_plus]
             geojson_to_layer(
                 self.LAYER_RESULT_DIFF_PLUS,
-                fcs_actualisation["result_diff_plus"],
-                QgsStyle.defaultStyle().symbol("gradient green fill"),
+                geojson_result_diff_plus,
+                get_symbol(geojson_result_diff_plus, result_diff_plus),
                 True,
                 self.GROUP_LAYER,
                 self.WORKFOLDER,
             )
         if "result_diff" in fcs_actualisation:
+            result_diff = "result_diff"
+            geojson_result_diff = fcs_actualisation[result_diff]
             geojson_to_layer(
                 self.LAYER_RESULT_DIFF,
-                fcs_actualisation["result_diff"],
-                QgsStyle.defaultStyle().symbol("hashed black X"),
+                geojson_result_diff,
+                get_symbol(geojson_result_diff, result_diff),
                 False,
                 self.GROUP_LAYER,
                 self.WORKFOLDER,
             )
+
+        result = "result"
+        geojson_result = fcs_actualisation[result]
         geojson_to_layer(
             self.LAYER_RESULT,
-            fcs_actualisation["result"],
-            QgsStyle.defaultStyle().symbol("outline green"),
+            geojson_result,
+            get_symbol(geojson_result,result),
             True,
             self.GROUP_LAYER,
             self.WORKFOLDER,
         )
+
         feedback.pushInfo("Resulterende geometrie berekend")
         feedback.pushInfo("END ACTUALISATION")
         result = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]

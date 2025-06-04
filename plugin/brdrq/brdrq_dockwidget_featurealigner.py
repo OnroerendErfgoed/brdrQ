@@ -102,8 +102,8 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         self.pushButton_select.clicked.connect(self.activate_selectTool)
         self.mMapLayerComboBox.setFilters(
             QgsMapLayerProxyModel.PolygonLayer
-            # | QgsMapLayerProxyModel.LineLayer
-            # | QgsMapLayerProxyModel.PointLayer
+             | QgsMapLayerProxyModel.LineLayer
+             | QgsMapLayerProxyModel.PointLayer
         )
         self.mMapLayerComboBox.layerChanged.connect(self.themeLayerChanged)
         self.checkBox_only_selected.stateChanged.connect(
