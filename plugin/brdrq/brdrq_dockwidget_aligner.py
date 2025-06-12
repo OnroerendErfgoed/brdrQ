@@ -48,6 +48,7 @@ class brdrQDockWidgetAligner(object):
         self.max_area_limit = (
             1000000  # maximum m² where the calculation will be done for
         )
+        self.max_rel_dist_optimization = 500
         self.listed_features = None
         self.feature = None
         self.selectTool = None

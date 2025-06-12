@@ -233,7 +233,8 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         # Check feature on area
         # check area of feature and optimize/block calculation
         area = self.original_geometry.area()
-        step = 20
+        max_rel_dist = self.settingsDialog.max_rel_dist
+        step = self.settingsDialog.small_step
         if area > self.max_area_optimization:
             if area > self.max_area_limit:
                 msg = f"Very big area, {str(area)} m²: The calculation is blocked. Please use the bulk tool for this feature"
@@ -242,9 +243,19 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
                 self.listWidget_predictions.clear()
                 return
             else:
-                msg = f"Warning - Big area, {str(area)} m²: the calculation will be adapted/optimized. Only for every meter a calculation will be done"
+                big_step = self.settingsDialog.big_step
+                msg = f"Warning - Big area, {str(area)} m²: the calculation will be adapted/optimized. Predictions will be based on steps of {str(big_step)}"
                 self.textEdit_output.setText(f"{msg}")
-                step = 100
+                step = big_step
+        if max_rel_dist > 2 * self.max_rel_dist_optimization:
+            big_step = self.settingsDialog.big_step
+            msg = f"Warning - the calculation will be adapted/optimized. Predictions will be based on steps of {str(big_step)}"
+            self.textEdit_output.setText(f"{msg}")
+            step = big_step
+        elif max_rel_dist > self.max_rel_dist_optimization:
+            mid_step = self.settingsDialog.mid_step
+            msg = f"Warning - the calculation will be adapted/optimized. Predictions will be based on steps of {str(mid_step)}"
+            self.textEdit_output.setText(f"{msg}")
 
         # adapt & reload settings (espacially relevant_distances) before alignment
         self.settingsDialog.step = step
