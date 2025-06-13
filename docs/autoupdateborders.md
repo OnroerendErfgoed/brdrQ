@@ -20,8 +20,7 @@
   - **Optional**: No.
 
 - **Reference Layer**: A (MULTI)POLYGON layer with EPSG:31370 or EPSG:3812 coordinates. Combobox to choose which referencelayer will be used. There is a choice between on-the-fly
-  downloadable referencelayers from GRB, or to use your own local REFERENCELAYER. 
-  - The local referencelayer and unique reference ID has to be choosen from the TOC:
+  downloadable referencelayers from GRB: ADP (parcels), GBG (buildings) and KNW ('kunstwerken'). 
   - The on-the-fly downloads are only
     possible for smaller areas. 
 
@@ -37,7 +36,7 @@
 
 
 - **Max Relevant Distance (meters)**: Positive (decimal) number in meters. This
-  is the maximum distance by which the original boundary is maximally shifted to align with the reference layer when searching for predictions. 
+  is the maximum distance by which the original boundary is maximally shifted to align with the reference layer when searching for predictions. The algorithm uses all relevent distances from 0 to 'max' with steps of 10cm in between.
   - **Default**: 3 (meters)
   - **Optional**: No.
 
