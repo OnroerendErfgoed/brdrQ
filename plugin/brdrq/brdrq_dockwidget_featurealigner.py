@@ -244,18 +244,19 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
                 return
             else:
                 big_step = self.settingsDialog.big_step
-                msg = f"Warning - Big area, {str(area)} m²: the calculation will be adapted/optimized. Predictions will be based on steps of {str(big_step)}"
+                msg = f"Warning - Big area, {str(area)} m²: the calculation will be adapted/optimized. Predictions will be based on steps of {str(big_step)} cm"
                 self.textEdit_output.setText(f"{msg}")
                 step = big_step
         if max_rel_dist > 2 * self.max_rel_dist_optimization:
             big_step = self.settingsDialog.big_step
-            msg = f"Warning - the calculation will be adapted/optimized. Predictions will be based on steps of {str(big_step)}"
+            msg = f"Predictions will be based on steps of {str(big_step)} cm"
             self.textEdit_output.setText(f"{msg}")
             step = big_step
         elif max_rel_dist > self.max_rel_dist_optimization:
             mid_step = self.settingsDialog.mid_step
-            msg = f"Warning - the calculation will be adapted/optimized. Predictions will be based on steps of {str(mid_step)}"
+            msg = f"Predictions will be based on steps of {str(mid_step)} cm"
             self.textEdit_output.setText(f"{msg}")
+            step = mid_step
 
         # adapt & reload settings (espacially relevant_distances) before alignment
         self.settingsDialog.step = step
@@ -449,9 +450,11 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         self.aligner = Aligner(
             od_strategy=self.od_strategy,
             threshold_overlap_percentage=self.threshold_overlap_percentage,
-            # partial_snapping=self.partial_snapping,
-            # partial_snapping_strategy=self.partial_snapping_strategy,
-            # snapping_max_segment_length=self.snap_max_segment_length,
+            snap_strategy=self.partial_snapping_strategy,
+            snap_max_segment_length=self.snap_max_segment_length,
+            partial_snapping=self.partial_snapping,
+            partial_snap_strategy=self.partial_snapping_strategy,
+            partial_snap_max_segment_length=self.snap_max_segment_length,
         )
         self.show()
         return
