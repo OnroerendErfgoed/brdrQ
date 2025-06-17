@@ -39,6 +39,7 @@ from qgis.PyQt.QtCore import QDate, QDateTime
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
 from qgis.core import QgsProcessingException
+from qgis.core import QgsProcessingFeatureSourceDefinition
 from qgis.core import QgsProcessingMultiStepFeedback
 from qgis.core import QgsProcessingOutputVectorLayer
 from qgis.core import QgsProcessingParameterBoolean
@@ -50,7 +51,6 @@ from qgis.core import (
 )
 from qgis.core import QgsProcessingParameterFile
 from qgis.core import QgsProject
-from qgis.core import QgsVectorLayer, QgsProcessingFeatureSourceDefinition
 
 from .brdrq_utils import (
     geom_qgis_to_shapely,
@@ -63,6 +63,7 @@ from .brdrq_utils import (
     ENUM_FULL_STRATEGY_OPTIONS,
     ENUM_OD_STRATEGY_OPTIONS,
     get_symbol,
+    get_reference_params,
 )
 
 
@@ -530,7 +531,12 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.OD_STRATEGY = OpenDomainStrategy[
             ENUM_OD_STRATEGY_OPTIONS[parameters["ENUM_OD_STRATEGY"]]
         ]
-        self.GRB_TYPE = GRBType[GRB_TYPES[parameters["ENUM_REFERENCE"]]]
+        ref = GRB_TYPES[parameters["ENUM_REFERENCE"]]
+        self.GRB_TYPE,layer_reference_name, ref_suffix= (
+            get_reference_params(
+                ref, None, None, self.CRS
+            )
+        )
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
         self.PREDICTION_STRATEGY = PredictionStrategy[
             ENUM_PREDICTION_STRATEGY_OPTIONS[parameters["PREDICTION_STRATEGY"]]

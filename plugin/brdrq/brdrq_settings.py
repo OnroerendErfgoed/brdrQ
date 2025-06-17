@@ -141,25 +141,26 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             )
             / 100
         ]
-        if self.od_strategy is None:
-            self.od_strategy = int(s.value("brdrq/od_strategy", 2))
-            index = self.comboBox_odstrategy.findText(
-                OpenDomainStrategy(self.od_strategy).name
-            )
+        if self.od_strategy is None or self.od_strategy not in OpenDomainStrategy:
+            default_od = OpenDomainStrategy.SNAP_ALL_SIDE
+            od_strategy_name = s.value("brdrq/od_strategy", default_od.name)
+            if od_strategy_name not in OpenDomainStrategy.__members__:
+                od_strategy_name = default_od.name
+            index = self.comboBox_odstrategy.findText(OpenDomainStrategy[od_strategy_name].name)
+            if index == -1:
+                index = 0
             self.comboBox_odstrategy.setCurrentIndex(index)
-        self.od_strategy = OpenDomainStrategy[
-            self.comboBox_odstrategy.currentText()
-        ].value
-        if (
-            self.partial_snapping_strategy is None
-            or self.partial_snapping_strategy == ""
-        ):
-            no_pref = SnapStrategy.NO_PREFERENCE.name
-            self.partial_snapping_strategy = s.value(
-                "brdrq/partial_snapping_strategy", no_pref
+        self.od_strategy = OpenDomainStrategy[self.comboBox_odstrategy.currentText()]
+
+        if (self.partial_snapping_strategy is None or self.partial_snapping_strategy not in SnapStrategy):
+            default_partial_snapping_strategy = SnapStrategy.PREFER_VERTICES
+            partial_snapping_strategy_name = s.value(
+                "brdrq/partial_snapping_strategy", default_partial_snapping_strategy.name
             )
+            if partial_snapping_strategy_name not in SnapStrategy.__members__:
+                partial_snapping_strategy_name = default_partial_snapping_strategy.name
             index = self.comboBox_snapstrategy.findText(
-                self.partial_snapping_strategy
+                SnapStrategy[partial_snapping_strategy_name].name
             )
             if index == -1:
                 index = 0
@@ -168,32 +169,43 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             self.comboBox_snapstrategy.currentText()
         ]
 
-        if self.full_strategy is None or self.full_strategy == "":
-            prefer_full = FullStrategy.PREFER_FULL.name
-            self.full_strategy = s.value("brdrq/full_strategy", prefer_full)
-            index = self.comboBox_fullstrategy.findText(self.full_strategy)
+        if self.full_strategy is None or self.full_strategy not in FullStrategy:
+            default_full_strategy = FullStrategy.PREFER_FULL
+            full_strategy_name = s.value("brdrq/full_strategy", default_full_strategy.name)
+            if full_strategy_name not in FullStrategy.__members__:
+                full_strategy_name = default_full_strategy.name
+            index = self.comboBox_fullstrategy.findText( FullStrategy[full_strategy_name].name)
             if index == -1:
                 index = 0
             self.comboBox_fullstrategy.setCurrentIndex(index)
         self.full_strategy = FullStrategy[self.comboBox_fullstrategy.currentText()]
 
-        if self.reference_choice is None:
+        if self.reference_choice is None or self.reference_choice not in ENUM_REFERENCE_OPTIONS:
+            default_reference_choice = ENUM_REFERENCE_OPTIONS[1] #ADP
             self.reference_choice = s.value(
-                "brdrq/reference_choice", ENUM_REFERENCE_OPTIONS[1]
+                "brdrq/reference_choice", default_reference_choice
             )
+            if self.reference_choice not in ENUM_REFERENCE_OPTIONS:
+                self.reference_choice = default_reference_choice
             index = self.comboBox_referencelayer.findText(self.reference_choice)
             self.comboBox_referencelayer.setCurrentIndex(index)
         self.reference_choice = self.comboBox_referencelayer.currentText()
         current_reference_layer_index = self.mMapLayerComboBox_reference.currentIndex()
-        if current_reference_layer_index == -1 or current_reference_layer_index == 0:
-            self.reference_layer = s.value("brdrq/reference_layer", None)
-            self.mMapLayerComboBox_reference.setLayer(self.reference_layer)
+        if current_reference_layer_index == -1: # or current_reference_layer_index == 0:
+            try:
+                self.reference_layer = s.value("brdrq/reference_layer", None)
+                self.mMapLayerComboBox_reference.setLayer(self.reference_layer)
+            except:
+                self.mMapLayerComboBox_reference.setLayer(None)
         self.reference_layer = self.mMapLayerComboBox_reference.currentLayer()
 
         current_reference_id_index = self.mFieldComboBox_reference.currentIndex()
         if current_reference_id_index == -1:
-            self.reference_id = s.value("brdrq/reference_id", None)
-            self.mFieldComboBox_reference.setField(self.reference_id)
+            try:
+                self.reference_id = s.value("brdrq/reference_id", None)
+                self.mFieldComboBox_reference.setField(self.reference_id)
+            except:
+                self.mFieldComboBox_reference.setField(None)
         self.reference_id = self.mFieldComboBox_reference.currentField()
 
         if self.formula is None:
@@ -229,7 +241,7 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         s.setValue(
             "brdrq/threshold_overlap_percentage", self.threshold_overlap_percentage
         )
-        s.setValue("brdrq/od_strategy", self.od_strategy)
+        s.setValue("brdrq/od_strategy", self.od_strategy.name)
         s.setValue("brdrq/reference_choice", self.reference_choice)
         s.setValue("brdrq/reference_id", self.reference_id)
         s.setValue("brdrq/reference_layer", self.reference_layer)

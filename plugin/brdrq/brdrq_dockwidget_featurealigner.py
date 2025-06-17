@@ -50,6 +50,7 @@ from .brdrq_utils import (
     geom_qgis_to_shapely,
     remove_group_layer,
     get_symbol,
+    SPLITTER,
 )
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -375,17 +376,18 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         # Load reference data for the on-the fly reference versions
 
         if self.reference_choice in GRB_TYPES:
+            reference_choice_id = self.reference_choice.split(SPLITTER)[0]
             self.aligner.load_reference_data(
                 GRBActualLoader(
-                    grb_type=GRBType[self.reference_choice],
+                    grb_type=GRBType[reference_choice_id],
                     partition=1000,
                     aligner=self.aligner,
                 )
             )
         elif self.reference_choice in ADPF_VERSIONS:
-            year = self.reference_choice.removeprefix("Adpf")
+            reference_choice_id = self.reference_choice.split(SPLITTER)[0].removeprefix("Adpf")
             self.aligner.load_reference_data(
-                GRBFiscalParcelLoader(year=year, aligner=self.aligner, partition=1000)
+                GRBFiscalParcelLoader(year=reference_choice_id, aligner=self.aligner, partition=1000)
             )
         else:
             # Load reference into a shapely_dict:

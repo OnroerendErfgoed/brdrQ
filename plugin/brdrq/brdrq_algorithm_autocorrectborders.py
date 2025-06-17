@@ -37,12 +37,13 @@ from .brdrq_utils import (
     ENUM_REFERENCE_OPTIONS,
     ENUM_OD_STRATEGY_OPTIONS,
     ADPF_VERSIONS,
-    GRB_TYPES,
     geom_qgis_to_shapely,
     geojson_to_layer,
     get_workfolder,
     thematic_preparation,
     get_symbol,
+    get_reference_params,
+    PREFIX_LOCAL_LAYER,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -133,9 +134,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     LAYER_RESULT_ACTUAL = "RESULT_ACTUAL"  # parameter that holds the TOC layername of the actualised result
     LAYER_RESULT_ACTUAL_DIFF = "RESULT_ACTUAL_DIFF"  # parameter that holds the TOC layername of the actualised resulting diff
-    PREFIX_LOCAL_LAYER = (
-        "LOCREF"  # prefix for the TOC layername, when a local layer is used
-    )
 
     # ALIGNER parameters
     CRS = "EPSG:31370"  # default CRS for the aligner,updated by CRS of thematic inputlayer
@@ -522,7 +520,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             aligner.load_reference_data(DictLoader(dict_reference))
             aligner.name_reference_id = self.ID_REFERENCE_FIELDNAME
             aligner.dict_reference_source["source"] = (
-                self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE_NAME
+                PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE_NAME
             )
             aligner.dict_reference_source["version_date"] = "unknown"
         elif self.SELECTED_REFERENCE in ADPF_VERSIONS:
@@ -813,35 +811,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             )
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
 
+
         ref = ENUM_REFERENCE_OPTIONS[parameters["ENUM_REFERENCE"]]
+        self.LAYER_REFERENCE = self.parameterAsVectorLayer(
+            parameters, self.INPUT_REFERENCE, context
+        )
+        self.SELECTED_REFERENCE,self.LAYER_REFERENCE_NAME, ref_suffix= get_reference_params(ref, self.LAYER_REFERENCE,self.ID_REFERENCE_FIELDNAME,self.CRS)
 
-        if ref in GRB_TYPES:
-            self.SELECTED_REFERENCE = GRBType[ref]
-            self.LAYER_REFERENCE_NAME = GRBType[ref].name
-            ref_suffix = str(ref)
-        elif ref in ADPF_VERSIONS:
-            self.SELECTED_REFERENCE = ref
-            self.LAYER_REFERENCE_NAME = ref
-            ref_suffix = str(ref)
-        else:
-            self.SELECTED_REFERENCE = 0
-            self.LAYER_REFERENCE = self.parameterAsVectorLayer(
-                parameters, self.INPUT_REFERENCE, context
-            )
-
-            if self.LAYER_REFERENCE is None or self.ID_REFERENCE_FIELDNAME == "NULL":
-                raise QgsProcessingException(
-                    "Please choose a REFERENCELAYER from the table of contents, and the associated unique REFERENCE ID"
-                )
-
-            self.LAYER_REFERENCE_NAME = self.LAYER_REFERENCE.name()
-            ref_suffix = self.PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE_NAME
-
-            if self.LAYER_REFERENCE.sourceCrs().authid() != self.CRS:
-                raise QgsProcessingException(
-                    "Thematic layer and ReferenceLayer are in a different CRS. "
-                    "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"
-                )
         self.SUFFIX = "_DIST_" + str(self.RELEVANT_DISTANCE) + "_" + ref_suffix
         if self.PREDICTIONS:
             self.SUFFIX = self.SUFFIX + "_PREDICTIONS"
