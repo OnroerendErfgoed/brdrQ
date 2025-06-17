@@ -624,7 +624,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         # MAKE TEMPORARY LAYERS
         if self.SELECTED_REFERENCE != 0:
-            reference_geojson = aligner.get_input_as_geojson(inputtype=AlignerInputType.REFERENCE)
+            reference_geojson = aligner.get_input_as_geojson(
+                inputtype=AlignerInputType.REFERENCE
+            )
             geojson_to_layer(
                 self.LAYER_REFERENCE_NAME,
                 reference_geojson,
@@ -658,7 +660,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         geojson_to_layer(
             self.LAYER_RESULT_DIFF,
             geojson_result_diff,
-            get_symbol(geojson_result_diff,result_diff),
+            get_symbol(geojson_result_diff, result_diff),
             False,
             self.GROUP_LAYER,
             self.WORKFOLDER,
@@ -668,7 +670,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         geojson_to_layer(
             self.LAYER_RESULT_DIFF_PLUS,
             geojson_result_diff_plus,
-            get_symbol(geojson_result_diff_plus,result_diff_plus),
+            get_symbol(geojson_result_diff_plus, result_diff_plus),
             False,
             self.GROUP_LAYER,
             self.WORKFOLDER,
@@ -678,7 +680,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         geojson_to_layer(
             self.LAYER_RESULT_DIFF_MIN,
             geojson_result_diff_min,
-            get_symbol(geojson_result_diff_min,result_diff_min),
+            get_symbol(geojson_result_diff_min, result_diff_min),
             False,
             self.GROUP_LAYER,
             self.WORKFOLDER,
@@ -688,7 +690,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         geojson_to_layer(
             self.LAYER_RESULT,
             geojson_result,
-            get_symbol(geojson_result,result),
+            get_symbol(geojson_result, result),
             True,
             self.GROUP_LAYER,
             self.WORKFOLDER,
@@ -781,8 +783,12 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
         param_input_thematic = parameters[self.INPUT_THEMATIC]
-        if isinstance(parameters[self.INPUT_THEMATIC],QgsProcessingFeatureSourceDefinition):
-            self.LAYER_THEMATIC = QgsProject.instance().mapLayer(param_input_thematic.toVariant()['source']['val'])
+        if isinstance(
+            parameters[self.INPUT_THEMATIC], QgsProcessingFeatureSourceDefinition
+        ):
+            self.LAYER_THEMATIC = QgsProject.instance().mapLayer(
+                param_input_thematic.toVariant()["source"]["val"]
+            )
         else:
             self.LAYER_THEMATIC = self.parameterAsVectorLayer(
                 parameters, self.INPUT_THEMATIC, context
@@ -811,12 +817,15 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             )
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
 
-
         ref = ENUM_REFERENCE_OPTIONS[parameters["ENUM_REFERENCE"]]
         self.LAYER_REFERENCE = self.parameterAsVectorLayer(
             parameters, self.INPUT_REFERENCE, context
         )
-        self.SELECTED_REFERENCE,self.LAYER_REFERENCE_NAME, ref_suffix= get_reference_params(ref, self.LAYER_REFERENCE,self.ID_REFERENCE_FIELDNAME,self.CRS)
+        self.SELECTED_REFERENCE, self.LAYER_REFERENCE_NAME, ref_suffix = (
+            get_reference_params(
+                ref, self.LAYER_REFERENCE, self.ID_REFERENCE_FIELDNAME, self.CRS
+            )
+        )
 
         self.SUFFIX = "_DIST_" + str(self.RELEVANT_DISTANCE) + "_" + ref_suffix
         if self.PREDICTIONS:

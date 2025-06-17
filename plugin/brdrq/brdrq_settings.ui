@@ -1,268 +1,270 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Dialog</class>
- <widget class="QDialog" name="Dialog">
-  <property name="geometry">
-   <rect>
-    <x>0</x>
-    <y>0</y>
-    <width>497</width>
-    <height>487</height>
-   </rect>
-  </property>
-  <property name="windowTitle">
-   <string>Settings</string>
-  </property>
-  <widget class="QWidget" name="gridLayoutWidget">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>20</y>
-     <width>485</width>
-     <height>451</height>
-    </rect>
-   </property>
-   <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0">
-     <layout class="QFormLayout" name="formLayout_3">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>Referentielaag</string>
+    <class>Dialog</class>
+    <widget class="QDialog" name="Dialog">
+        <property name="geometry">
+            <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>497</width>
+                <height>487</height>
+            </rect>
         </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QComboBox" name="comboBox_referencelayer"/>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>Lokale referentielaag</string>
+        <property name="windowTitle">
+            <string>Settings</string>
         </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QgsMapLayerComboBox" name="mMapLayerComboBox_reference"/>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_3">
-        <property name="text">
-         <string>Lokale referentielaag-ID (uniek)</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QgsFieldComboBox" name="mFieldComboBox_reference"/>
-      </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_4">
-        <property name="text">
-         <string>OpenbaarDomein Strategy</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1">
-       <widget class="QComboBox" name="comboBox_odstrategy"/>
-      </item>
-      <item row="4" column="0">
-       <widget class="QLabel" name="label_6">
-        <property name="text">
-         <string>Maximale relevante afstand (m)</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="1">
-       <widget class="QSpinBox" name="spinBox_max_relevant_distance">
-        <property name="minimum">
-         <number>1</number>
-        </property>
-        <property name="maximum">
-         <number>25</number>
-        </property>
-        <property name="value">
-         <number>5</number>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="0">
-       <widget class="QLabel" name="label_10">
-        <property name="text">
-         <string>Evaluatiestrategy FULL</string>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="1">
-       <widget class="QComboBox" name="comboBox_fullstrategy"/>
-      </item>
-      <item row="6" column="0">
-       <widget class="QLabel" name="label_5">
-        <property name="enabled">
-         <bool>true</bool>
-        </property>
-        <property name="text">
-         <string>Threshold value (%)</string>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="1">
-       <widget class="QSpinBox" name="spinBox_threshold">
-        <property name="enabled">
-         <bool>true</bool>
-        </property>
-        <property name="maximum">
-         <number>100</number>
-        </property>
-        <property name="value">
-         <number>50</number>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="0">
-       <widget class="QLabel" name="label_11">
-        <property name="text">
-         <string>brdr_formula toevoegen</string>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="1">
-       <widget class="QCheckBox" name="checkBox_formula">
-        <property name="text">
-         <string/>
-        </property>
-        <property name="checked">
-         <bool>false</bool>
-        </property>
-        <property name="tristate">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="8" column="0" colspan="2">
-       <widget class="QgsCollapsibleGroupBox" name="collapsibleGroupBox">
-        <property name="title">
-         <string>Snap-opties </string>
-        </property>
-        <property name="checkable">
-         <bool>false</bool>
-        </property>
-        <property name="collapsed">
-         <bool>false</bool>
-        </property>
-        <layout class="QVBoxLayout" name="collapsibleLayout">
-         <item>
-          <layout class="QFormLayout" name="formLayout">
-           <property name="rowWrapPolicy">
-            <enum>QFormLayout::DontWrapRows</enum>
-           </property>
-           <property name="verticalSpacing">
-            <number>6</number>
-           </property>
-           <item row="0" column="0" colspan="2">
-            <widget class="QLabel" name="label_7">
-             <property name="text">
-              <string>van toepassing bij Point- en Line-alignering (experimenteel)</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_13">
-             <property name="text">
-              <string>Snap Strategy</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QComboBox" name="comboBox_snapstrategy"/>
-           </item>
-           <item row="2" column="0">
-            <widget class="QLabel" name="label_12">
-             <property name="text">
-              <string>Segmentering (m)</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="1">
-            <widget class="QSpinBox" name="spinBox_snap_max_segment_length">
-             <property name="minimum">
-              <number>-1</number>
-             </property>
-             <property name="value">
-              <number>2</number>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-        </layout>
-       </widget>
-      </item>
-      <item row="9" column="1">
-       <widget class="QDialogButtonBox" name="buttonBox_settings">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="standardButtons">
-         <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-   </layout>
-  </widget>
- </widget>
- <customwidgets>
-  <customwidget>
-   <class>QgsCollapsibleGroupBox</class>
-   <extends>QGroupBox</extends>
-   <header>qgscollapsiblegroupbox.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>QgsFieldComboBox</class>
-   <extends>QComboBox</extends>
-   <header>qgsfieldcombobox.h</header>
-  </customwidget>
-  <customwidget>
-   <class>QgsMapLayerComboBox</class>
-   <extends>QComboBox</extends>
-   <header>qgsmaplayercombobox.h</header>
-  </customwidget>
- </customwidgets>
- <resources/>
- <connections>
-  <connection>
-   <sender>buttonBox_settings</sender>
-   <signal>accepted()</signal>
-   <receiver>Dialog</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>248</x>
-     <y>254</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>157</x>
-     <y>274</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>buttonBox_settings</sender>
-   <signal>rejected()</signal>
-   <receiver>Dialog</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>316</x>
-     <y>260</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>286</x>
-     <y>274</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+        <widget class="QWidget" name="gridLayoutWidget">
+            <property name="geometry">
+                <rect>
+                    <x>10</x>
+                    <y>20</y>
+                    <width>485</width>
+                    <height>451</height>
+                </rect>
+            </property>
+            <layout class="QGridLayout" name="gridLayout">
+                <item row="0" column="0">
+                    <layout class="QFormLayout" name="formLayout_3">
+                        <item row="0" column="0">
+                            <widget class="QLabel" name="label">
+                                <property name="text">
+                                    <string>Referentielaag</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="0" column="1">
+                            <widget class="QComboBox" name="comboBox_referencelayer"/>
+                        </item>
+                        <item row="1" column="0">
+                            <widget class="QLabel" name="label_2">
+                                <property name="text">
+                                    <string>Lokale referentielaag</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="1" column="1">
+                            <widget class="QgsMapLayerComboBox" name="mMapLayerComboBox_reference"/>
+                        </item>
+                        <item row="2" column="0">
+                            <widget class="QLabel" name="label_3">
+                                <property name="text">
+                                    <string>Lokale referentielaag-ID (uniek)</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="2" column="1">
+                            <widget class="QgsFieldComboBox" name="mFieldComboBox_reference"/>
+                        </item>
+                        <item row="3" column="0">
+                            <widget class="QLabel" name="label_4">
+                                <property name="text">
+                                    <string>OpenbaarDomein Strategy</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="3" column="1">
+                            <widget class="QComboBox" name="comboBox_odstrategy"/>
+                        </item>
+                        <item row="4" column="0">
+                            <widget class="QLabel" name="label_6">
+                                <property name="text">
+                                    <string>Maximale relevante afstand (m)</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="4" column="1">
+                            <widget class="QSpinBox" name="spinBox_max_relevant_distance">
+                                <property name="minimum">
+                                    <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                    <number>25</number>
+                                </property>
+                                <property name="value">
+                                    <number>5</number>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="5" column="0">
+                            <widget class="QLabel" name="label_10">
+                                <property name="text">
+                                    <string>Evaluatiestrategy FULL</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="5" column="1">
+                            <widget class="QComboBox" name="comboBox_fullstrategy"/>
+                        </item>
+                        <item row="6" column="0">
+                            <widget class="QLabel" name="label_5">
+                                <property name="enabled">
+                                    <bool>true</bool>
+                                </property>
+                                <property name="text">
+                                    <string>Threshold value (%)</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="6" column="1">
+                            <widget class="QSpinBox" name="spinBox_threshold">
+                                <property name="enabled">
+                                    <bool>true</bool>
+                                </property>
+                                <property name="maximum">
+                                    <number>100</number>
+                                </property>
+                                <property name="value">
+                                    <number>50</number>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="7" column="0">
+                            <widget class="QLabel" name="label_11">
+                                <property name="text">
+                                    <string>brdr_formula toevoegen</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="7" column="1">
+                            <widget class="QCheckBox" name="checkBox_formula">
+                                <property name="text">
+                                    <string/>
+                                </property>
+                                <property name="checked">
+                                    <bool>false</bool>
+                                </property>
+                                <property name="tristate">
+                                    <bool>false</bool>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="8" column="0" colspan="2">
+                            <widget class="QgsCollapsibleGroupBox" name="collapsibleGroupBox">
+                                <property name="title">
+                                    <string>Snap-opties</string>
+                                </property>
+                                <property name="checkable">
+                                    <bool>false</bool>
+                                </property>
+                                <property name="collapsed">
+                                    <bool>false</bool>
+                                </property>
+                                <layout class="QVBoxLayout" name="collapsibleLayout">
+                                    <item>
+                                        <layout class="QFormLayout" name="formLayout">
+                                            <property name="rowWrapPolicy">
+                                                <enum>QFormLayout::DontWrapRows</enum>
+                                            </property>
+                                            <property name="verticalSpacing">
+                                                <number>6</number>
+                                            </property>
+                                            <item row="0" column="0" colspan="2">
+                                                <widget class="QLabel" name="label_7">
+                                                    <property name="text">
+                                                        <string>van toepassing bij Point- en Line-alignering
+                                                            (experimenteel)
+                                                        </string>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                            <item row="1" column="0">
+                                                <widget class="QLabel" name="label_13">
+                                                    <property name="text">
+                                                        <string>Snap Strategy</string>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                            <item row="1" column="1">
+                                                <widget class="QComboBox" name="comboBox_snapstrategy"/>
+                                            </item>
+                                            <item row="2" column="0">
+                                                <widget class="QLabel" name="label_12">
+                                                    <property name="text">
+                                                        <string>Segmentering (m)</string>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                            <item row="2" column="1">
+                                                <widget class="QSpinBox" name="spinBox_snap_max_segment_length">
+                                                    <property name="minimum">
+                                                        <number>-1</number>
+                                                    </property>
+                                                    <property name="value">
+                                                        <number>2</number>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                        </layout>
+                                    </item>
+                                </layout>
+                            </widget>
+                        </item>
+                        <item row="9" column="1">
+                            <widget class="QDialogButtonBox" name="buttonBox_settings">
+                                <property name="orientation">
+                                    <enum>Qt::Horizontal</enum>
+                                </property>
+                                <property name="standardButtons">
+                                    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+                                </property>
+                            </widget>
+                        </item>
+                    </layout>
+                </item>
+            </layout>
+        </widget>
+    </widget>
+    <customwidgets>
+        <customwidget>
+            <class>QgsCollapsibleGroupBox</class>
+            <extends>QGroupBox</extends>
+            <header>qgscollapsiblegroupbox.h</header>
+            <container>1</container>
+        </customwidget>
+        <customwidget>
+            <class>QgsFieldComboBox</class>
+            <extends>QComboBox</extends>
+            <header>qgsfieldcombobox.h</header>
+        </customwidget>
+        <customwidget>
+            <class>QgsMapLayerComboBox</class>
+            <extends>QComboBox</extends>
+            <header>qgsmaplayercombobox.h</header>
+        </customwidget>
+    </customwidgets>
+    <resources/>
+    <connections>
+        <connection>
+            <sender>buttonBox_settings</sender>
+            <signal>accepted()</signal>
+            <receiver>Dialog</receiver>
+            <slot>accept()</slot>
+            <hints>
+                <hint type="sourcelabel">
+                    <x>248</x>
+                    <y>254</y>
+                </hint>
+                <hint type="destinationlabel">
+                    <x>157</x>
+                    <y>274</y>
+                </hint>
+            </hints>
+        </connection>
+        <connection>
+            <sender>buttonBox_settings</sender>
+            <signal>rejected()</signal>
+            <receiver>Dialog</receiver>
+            <slot>reject()</slot>
+            <hints>
+                <hint type="sourcelabel">
+                    <x>316</x>
+                    <y>260</y>
+                </hint>
+                <hint type="destinationlabel">
+                    <x>286</x>
+                    <y>274</y>
+                </hint>
+            </hints>
+        </connection>
+    </connections>
 </ui>

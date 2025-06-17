@@ -394,7 +394,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                     attributes_dict[key] = value
             dict_thematic_properties[id_theme] = attributes_dict
 
-        aligner = Aligner(od_strategy=self.OD_STRATEGY,threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE)
+        aligner = Aligner(
+            od_strategy=self.OD_STRATEGY,
+            threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
+        )
         aligner.load_thematic_data(
             DictLoader(
                 data_dict=dict_thematic, data_dict_properties=dict_thematic_properties
@@ -478,7 +481,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         geojson_to_layer(
             self.LAYER_RESULT,
             geojson_result,
-            get_symbol(geojson_result,result),
+            get_symbol(geojson_result, result),
             True,
             self.GROUP_LAYER,
             self.WORKFOLDER,
@@ -517,8 +520,12 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             wrkfldr, name="autoupdateborders", temporary=False
         )
         param_input_thematic = parameters[self.INPUT_THEMATIC]
-        if isinstance(parameters[self.INPUT_THEMATIC],QgsProcessingFeatureSourceDefinition):
-            self.THEMATIC_LAYER = QgsProject.instance().mapLayer(param_input_thematic.toVariant()['source']['val'])
+        if isinstance(
+            parameters[self.INPUT_THEMATIC], QgsProcessingFeatureSourceDefinition
+        ):
+            self.THEMATIC_LAYER = QgsProject.instance().mapLayer(
+                param_input_thematic.toVariant()["source"]["val"]
+            )
         else:
             self.THEMATIC_LAYER = self.parameterAsVectorLayer(
                 parameters, self.INPUT_THEMATIC, context
@@ -532,10 +539,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             ENUM_OD_STRATEGY_OPTIONS[parameters["ENUM_OD_STRATEGY"]]
         ]
         ref = GRB_TYPES[parameters["ENUM_REFERENCE"]]
-        self.GRB_TYPE,layer_reference_name, ref_suffix= (
-            get_reference_params(
-                ref, None, None, self.CRS
-            )
+        self.GRB_TYPE, layer_reference_name, ref_suffix = get_reference_params(
+            ref, None, None, self.CRS
         )
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
         self.PREDICTION_STRATEGY = PredictionStrategy[

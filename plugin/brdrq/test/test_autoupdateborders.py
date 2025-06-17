@@ -4,7 +4,7 @@ import unittest
 import processing
 from processing.core.Processing import Processing
 from qgis.core import QgsMapLayer
-from qgis.core import QgsProcessingFeatureSourceDefinition, QgsFeatureRequest
+from qgis.core import QgsProcessingFeatureSourceDefinition
 from qgis.core import QgsProcessingParameterFolderDestination
 from qgis.core import (
     QgsProject,

@@ -146,16 +146,22 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             od_strategy_name = s.value("brdrq/od_strategy", default_od.name)
             if od_strategy_name not in OpenDomainStrategy.__members__:
                 od_strategy_name = default_od.name
-            index = self.comboBox_odstrategy.findText(OpenDomainStrategy[od_strategy_name].name)
+            index = self.comboBox_odstrategy.findText(
+                OpenDomainStrategy[od_strategy_name].name
+            )
             if index == -1:
                 index = 0
             self.comboBox_odstrategy.setCurrentIndex(index)
         self.od_strategy = OpenDomainStrategy[self.comboBox_odstrategy.currentText()]
 
-        if (self.partial_snapping_strategy is None or self.partial_snapping_strategy not in SnapStrategy):
+        if (
+            self.partial_snapping_strategy is None
+            or self.partial_snapping_strategy not in SnapStrategy
+        ):
             default_partial_snapping_strategy = SnapStrategy.PREFER_VERTICES
             partial_snapping_strategy_name = s.value(
-                "brdrq/partial_snapping_strategy", default_partial_snapping_strategy.name
+                "brdrq/partial_snapping_strategy",
+                default_partial_snapping_strategy.name,
             )
             if partial_snapping_strategy_name not in SnapStrategy.__members__:
                 partial_snapping_strategy_name = default_partial_snapping_strategy.name
@@ -171,17 +177,24 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
 
         if self.full_strategy is None or self.full_strategy not in FullStrategy:
             default_full_strategy = FullStrategy.PREFER_FULL
-            full_strategy_name = s.value("brdrq/full_strategy", default_full_strategy.name)
+            full_strategy_name = s.value(
+                "brdrq/full_strategy", default_full_strategy.name
+            )
             if full_strategy_name not in FullStrategy.__members__:
                 full_strategy_name = default_full_strategy.name
-            index = self.comboBox_fullstrategy.findText( FullStrategy[full_strategy_name].name)
+            index = self.comboBox_fullstrategy.findText(
+                FullStrategy[full_strategy_name].name
+            )
             if index == -1:
                 index = 0
             self.comboBox_fullstrategy.setCurrentIndex(index)
         self.full_strategy = FullStrategy[self.comboBox_fullstrategy.currentText()]
 
-        if self.reference_choice is None or self.reference_choice not in ENUM_REFERENCE_OPTIONS:
-            default_reference_choice = ENUM_REFERENCE_OPTIONS[1] #ADP
+        if (
+            self.reference_choice is None
+            or self.reference_choice not in ENUM_REFERENCE_OPTIONS
+        ):
+            default_reference_choice = ENUM_REFERENCE_OPTIONS[1]  # ADP
             self.reference_choice = s.value(
                 "brdrq/reference_choice", default_reference_choice
             )
@@ -191,7 +204,9 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             self.comboBox_referencelayer.setCurrentIndex(index)
         self.reference_choice = self.comboBox_referencelayer.currentText()
         current_reference_layer_index = self.mMapLayerComboBox_reference.currentIndex()
-        if current_reference_layer_index == -1: # or current_reference_layer_index == 0:
+        if (
+            current_reference_layer_index == -1
+        ):  # or current_reference_layer_index == 0:
             try:
                 self.reference_layer = s.value("brdrq/reference_layer", None)
                 self.mMapLayerComboBox_reference.setLayer(self.reference_layer)
@@ -221,18 +236,14 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         # self.partial_snapping = (
         #     self.checkBox_partial_snapping.checkState()
         # )
-        self.partial_snapping = False #at this moment always set to false as this is not performant and not implemented in brdrQ
+        self.partial_snapping = False  # at this moment always set to false as this is not performant and not implemented in brdrQ
 
         if self.snap_max_segment_length is None:
             self.snap_max_segment_length = int(
                 s.value("brdrq/snap_max_segment_length", 2)
             )
-            self.spinBox_snap_max_segment_length.setValue(
-                self.snap_max_segment_length
-            )
-        self.snap_max_segment_length = (
-            self.spinBox_snap_max_segment_length.value()
-        )
+            self.spinBox_snap_max_segment_length.setValue(self.snap_max_segment_length)
+        self.snap_max_segment_length = self.spinBox_snap_max_segment_length.value()
 
         print(
             f"settings updated: Reference choice={self.reference_choice} - od_strategy={self.od_strategy} - threshold overlap percenatge = {str(self.threshold_overlap_percentage)}"

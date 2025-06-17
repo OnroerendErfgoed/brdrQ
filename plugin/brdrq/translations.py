@@ -1,5 +1,7 @@
-from qgis.PyQt.QtCore import QTranslator, QCoreApplication, QLocale
 import os
+
+from qgis.PyQt.QtCore import QTranslator, QCoreApplication, QLocale
+
 
 def load_translation():
     locale = QLocale.system().name()

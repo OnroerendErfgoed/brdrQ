@@ -1,107 +1,150 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Dialog</class>
- <widget class="QDialog" name="Dialog">
-  <property name="geometry">
-   <rect>
-    <x>0</x>
-    <y>0</y>
-    <width>400</width>
-    <height>362</height>
-   </rect>
-  </property>
-  <property name="windowTitle">
-   <string>Help</string>
-  </property>
-  <widget class="QDialogButtonBox" name="buttonBox">
-   <property name="geometry">
-    <rect>
-     <x>310</x>
-     <y>10</y>
-     <width>81</width>
-     <height>81</height>
-    </rect>
-   </property>
-   <property name="orientation">
-    <enum>Qt::Vertical</enum>
-   </property>
-   <property name="standardButtons">
-    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-   </property>
-  </widget>
-  <widget class="QTextEdit" name="textEdit">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>10</y>
-     <width>301</width>
-     <height>341</height>
-    </rect>
-   </property>
-   <property name="html">
-    <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:7.8pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;                    &lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;UITLEG&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;1) Selecteer de themalaag waarin u wil aligneren                     &lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;2) Selecteer een feature in de lijst of via 'Selecteer feature op kaart'                                      &lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;3) Bekijk de predictie(s) voor deze gealigneerde feature               &lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;                     &lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Verder kan u:&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;* Wisselen tussen meerdere predicties (via lijst, slider of spinbox)      &lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;* Een brdr-grafiek opvragen van deze features (relevante afstand (m) vs. verandering (m²))                     &lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;* De voorspelde relevante afstanden visualiseren naast elkaar                           &lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;* De originele geometrie aanpassen naar de gekozen predictie&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;* De originele geometrie resetten (enkel binneen een featuresessie, dus als er geen andere feature gekozen is)&lt;/p&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;SETTINGS:&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;* Keuze van de referentielaag waarop u wil aligneren (default ADP - actuele GRB percelen)&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;* Keuze van 'Openbaar Domein'-Strategie (uitsluiten of meenemen van het Openbaar Domein)&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;* Threshold_overlap_percentage (default 50): terugvalwaarde voor algoritme indien geen relevante gebieden gedetecteerd worden&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;* Maximale relevante afstand: Maximale afstand (in meter) die mag gebruikt worden om predicties te zoeken. (Predictie wijkt maximaal met deze waarde af van het origineel)&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;* brdr_formula toevoegen: Een veld met een formulerende beschrijving van de geometrie wordt toegevoegd aan het resultaat&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;* Evaluatiestrategie FULL: Keuze die de score van de predicties bepaalt op basis van een volledige overlap met referentiepolygonen:&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;	* ONLY_FULL: Enkel predicties met een volledige referentie-overlap worden getoond&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;	* PREFER_FULL: Predicties met een volledige referentie-overlap krijgen een hogere score, anderen worden wel getoond&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;	* NO_FULL: Er wordt geen onderscheid gemaakt tussen predicties met of zonder volledige referentie-overlap&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-   </property>
-  </widget>
- </widget>
- <resources/>
- <connections>
-  <connection>
-   <sender>buttonBox</sender>
-   <signal>rejected()</signal>
-   <receiver>Dialog</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>316</x>
-     <y>260</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>286</x>
-     <y>274</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>buttonBox</sender>
-   <signal>accepted()</signal>
-   <receiver>Dialog</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>248</x>
-     <y>254</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>157</x>
-     <y>274</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+    <class>Dialog</class>
+    <widget class="QDialog" name="Dialog">
+        <property name="geometry">
+            <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>400</width>
+                <height>362</height>
+            </rect>
+        </property>
+        <property name="windowTitle">
+            <string>Help</string>
+        </property>
+        <widget class="QDialogButtonBox" name="buttonBox">
+            <property name="geometry">
+                <rect>
+                    <x>310</x>
+                    <y>10</y>
+                    <width>81</width>
+                    <height>81</height>
+                </rect>
+            </property>
+            <property name="orientation">
+                <enum>Qt::Vertical</enum>
+            </property>
+            <property name="standardButtons">
+                <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+            </property>
+        </widget>
+        <widget class="QTextEdit" name="textEdit">
+            <property name="geometry">
+                <rect>
+                    <x>0</x>
+                    <y>10</y>
+                    <width>301</width>
+                    <height>341</height>
+                </rect>
+            </property>
+            <property name="html">
+                <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+                    &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style
+                    type=&quot;text/css&quot;&gt;
+                    p, li { white-space: pre-wrap; }
+                    &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:7.8pt;
+                    font-weight:400; font-style:normal;&quot;&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt; &lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt;UITLEG&lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt;1) Selecteer de themalaag waarin u wil aligneren &lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt;2) Selecteer een feature in de lijst of via 'Selecteer
+                    feature op kaart' &lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt;3) Bekijk de predictie(s) voor deze gealigneerde
+                    feature &lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt; &lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt;Verder kan u:&lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt;* Wisselen tussen meerdere predicties (via lijst,
+                    slider of spinbox) &lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt;* Een brdr-grafiek opvragen van deze features
+                    (relevante afstand (m) vs. verandering (m²)) &lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt;* De voorspelde relevante afstanden visualiseren naast
+                    elkaar &lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt;* De originele geometrie aanpassen naar de gekozen
+                    predictie&lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt;* De originele geometrie resetten (enkel binneen een
+                    featuresessie, dus als er geen andere feature gekozen is)&lt;/p&gt;
+                    &lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px;
+                    margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt;SETTINGS:&lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt;* Keuze van de referentielaag waarop u wil aligneren
+                    (default ADP - actuele GRB percelen)&lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt;* Keuze van 'Openbaar Domein'-Strategie (uitsluiten of
+                    meenemen van het Openbaar Domein)&lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt;* Threshold_overlap_percentage (default 50):
+                    terugvalwaarde voor algoritme indien geen relevante gebieden gedetecteerd worden&lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt;* Maximale relevante afstand: Maximale afstand (in
+                    meter) die mag gebruikt worden om predicties te zoeken. (Predictie wijkt maximaal met deze waarde af
+                    van het origineel)&lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt;* brdr_formula toevoegen: Een veld met een
+                    formulerende beschrijving van de geometrie wordt toegevoegd aan het resultaat&lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt;* Evaluatiestrategie FULL: Keuze die de score van de
+                    predicties bepaalt op basis van een volledige overlap met referentiepolygonen:&lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt; * ONLY_FULL: Enkel predicties met een volledige
+                    referentie-overlap worden getoond&lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt; * PREFER_FULL: Predicties met een volledige
+                    referentie-overlap krijgen een hogere score, anderen worden wel getoond&lt;/p&gt;
+                    &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px;
+                    -qt-block-indent:0; text-indent:0px;&quot;&gt; * NO_FULL: Er wordt geen onderscheid gemaakt tussen
+                    predicties met of zonder volledige referentie-overlap&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;
+                </string>
+            </property>
+        </widget>
+    </widget>
+    <resources/>
+    <connections>
+        <connection>
+            <sender>buttonBox</sender>
+            <signal>rejected()</signal>
+            <receiver>Dialog</receiver>
+            <slot>reject()</slot>
+            <hints>
+                <hint type="sourcelabel">
+                    <x>316</x>
+                    <y>260</y>
+                </hint>
+                <hint type="destinationlabel">
+                    <x>286</x>
+                    <y>274</y>
+                </hint>
+            </hints>
+        </connection>
+        <connection>
+            <sender>buttonBox</sender>
+            <signal>accepted()</signal>
+            <receiver>Dialog</receiver>
+            <slot>accept()</slot>
+            <hints>
+                <hint type="sourcelabel">
+                    <x>248</x>
+                    <y>254</y>
+                </hint>
+                <hint type="destinationlabel">
+                    <x>157</x>
+                    <y>274</y>
+                </hint>
+            </hints>
+        </connection>
+    </connections>
 </ui>

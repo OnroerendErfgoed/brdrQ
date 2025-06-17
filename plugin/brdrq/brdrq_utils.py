@@ -60,25 +60,32 @@ class PredictionStrategy(str, Enum):
 
 SPLITTER = ":"
 PREFIX_LOCAL_LAYER = (
-    "LOCAL"  # prefix for the TOC layername, when a local layer is used
+    "LOCREF"  # prefix for the TOC layername, when a local layer is used
 )
-LOCAL_REFERENCE_LAYER = PREFIX_LOCAL_LAYER + SPLITTER + " choose LOCAL LAYER and UNIQUE ID below"
-LOCAL = [LOCAL_REFERENCE_LAYER]
-GRB_TYPES = [
-    e.name + SPLITTER + " " + e.value for e in GRBType
-]  # types of actual GRB: parcels, buildings, artwork
-ADPF_VERSIONS = [
-    "Adpf" + str(x) + SPLITTER + " Administratieve fiscale percelen " + str(x)
-    for x in [datetime.datetime.today().year - i for i in range(6)]
-]  # Fiscal parcels of past 5 years
+LOCAL_REFERENCE_LAYER = (
+    PREFIX_LOCAL_LAYER + SPLITTER + " choose LOCAL LAYER and UNIQUE ID below"
+)
 
-ENUM_REFERENCE_OPTIONS = (
-    LOCAL + GRB_TYPES + ADPF_VERSIONS
-)  # Options for downloadable reference layers
+DICT_REFERENCE_OPTIONS = dict()
+DICT_REFERENCE_OPTIONS[LOCAL_REFERENCE_LAYER] = PREFIX_LOCAL_LAYER
+
+DICT_GRB_TYPES = dict()
+for e in GRBType:
+    DICT_GRB_TYPES[e.name + SPLITTER + " GRB " + e.value.split(" - ")[2]] = e.name
+DICT_ADPF_VERSIONS = dict()
+for x in [datetime.datetime.today().year - i for i in range(6)]:
+    DICT_ADPF_VERSIONS["Administratieve fiscale percelen" + SPLITTER + " " + str(x)] = x
+
+DICT_REFERENCE_OPTIONS.update(DICT_GRB_TYPES)
+DICT_REFERENCE_OPTIONS.update(DICT_ADPF_VERSIONS)
+
+GRB_TYPES = list(DICT_GRB_TYPES.keys())
+ADPF_VERSIONS = list(DICT_ADPF_VERSIONS.keys())
+ENUM_REFERENCE_OPTIONS = list(DICT_REFERENCE_OPTIONS.keys())
 
 # ENUM for choosing the OD-strategy
-ENUM_OD_STRATEGY_OPTIONS = [
-    e.name for e in OpenDomainStrategy  # if e.value <= 2
+ENUM_OD_STRATEGY_OPTIONS = [e.name for e in OpenDomainStrategy][
+    :4
 ]  # list with od-strategy-options #if e.value<=2
 
 # ENUM for choosing the snap-strategy
@@ -590,11 +597,10 @@ def _processresult_to_dicts(processresult):
         results_relevant_diff,
     )
 
-def get_reference_params(ref, layer_reference, id_reference_fieldname,thematic_crs):
 
-    ref_id = ref.split(SPLITTER)[0]
-    print (ref)
-    print (ref_id)
+def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_crs):
+
+    ref_id = DICT_REFERENCE_OPTIONS[ref]
     if ref in GRB_TYPES:
         selected_reference = GRBType[ref_id]
         layer_reference_name = GRBType[ref_id].name
@@ -617,7 +623,7 @@ def get_reference_params(ref, layer_reference, id_reference_fieldname,thematic_c
                 "Thematic layer and ReferenceLayer are in a different CRS. "
                 "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"
             )
-    return selected_reference,layer_reference_name, ref_suffix
+    return selected_reference, layer_reference_name, ref_suffix
 
 
 def thematic_preparation(input_thematic_layer, relevant_distance, context, feedback):
