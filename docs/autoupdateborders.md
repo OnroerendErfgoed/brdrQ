@@ -18,6 +18,7 @@ analysis).
     - **Optional**: No.
 
 - **Thematic ID**: Textual or numeric ID of the thematic layer used as a reference to the objects. This must be unique.
+
     - **Default**: No default value, must be provided by the user.
     - **Optional**: No.
 
@@ -32,18 +33,16 @@ analysis).
         - GBG: (on-the-fly download) - Actual buildings from GRB
         - KNW: (on-the-fly download) - Actual artwork from GRB
         - (Note: the on-the-fly downloads are only possible for a subset or small area of thematic objects as this
-          results
-          in downloading this reference-area. When using brdrQ for bigger areas a local reference layer is necessary)
+          results in downloading this reference-area. When using brdrQ for bigger areas a local reference layer is necessary)
 
     - **Default**: ADP (parcels)
     - **Optional**: no
 
 
-- **Max Relevant Distance (meters)**: Positive (decimal) number in meters. This
-  is the maximum distance by which the original boundary is maximally shifted to align with the reference layer when
-  searching for predictions.
-    - **Default**: 3 (meters)
-    - **Optional**: No.
+- **Max Relevant Distance (meters)**: Positive (decimal) number in meters. This is the maximum distance by which the original boundary is maximally shifted to align with the reference layer when searching for predictions. The algorithm uses all relevent distances from 0 to 'max' with steps of 10cm in between.
+  - **Default**: 3 (meters)
+  - **Optional**: No.
+
 
 - **PREDICTION_STRATEGY** : Strategy when multiple predictions are available:
 
