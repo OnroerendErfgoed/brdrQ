@@ -50,7 +50,7 @@ from qgis.core import (
 )
 from qgis.core import QgsProcessingParameterFile
 from qgis.core import QgsProject
-from qgis.core import QgsStyle
+from qgis.core import QgsVectorLayer, QgsProcessingFeatureSourceDefinition
 
 from .brdrq_utils import (
     geom_qgis_to_shapely,
@@ -515,9 +515,13 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.WORKFOLDER = get_workfolder(
             wrkfldr, name="autoupdateborders", temporary=False
         )
-        self.THEMATIC_LAYER = self.parameterAsVectorLayer(
-            parameters, self.INPUT_THEMATIC, context
-        )
+        param_input_thematic = parameters[self.INPUT_THEMATIC]
+        if isinstance(parameters[self.INPUT_THEMATIC],QgsProcessingFeatureSourceDefinition):
+            self.THEMATIC_LAYER = QgsProject.instance().mapLayer(param_input_thematic.toVariant()['source']['val'])
+        else:
+            self.THEMATIC_LAYER = self.parameterAsVectorLayer(
+                parameters, self.INPUT_THEMATIC, context
+            )
         self.CRS = (
             self.THEMATIC_LAYER.sourceCrs().authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer

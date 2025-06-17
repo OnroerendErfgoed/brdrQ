@@ -31,6 +31,8 @@ import inspect
 import os
 import sys
 
+from qgis.core import QgsProcessingFeatureSourceDefinition
+
 from .brdrq_utils import (
     ENUM_REFERENCE_OPTIONS,
     ENUM_OD_STRATEGY_OPTIONS,
@@ -780,9 +782,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             wrkfldr, name="autocorrectborders", temporary=False
         )
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
-        self.LAYER_THEMATIC = self.parameterAsVectorLayer(
-            parameters, self.INPUT_THEMATIC, context
-        )
+        param_input_thematic = parameters[self.INPUT_THEMATIC]
+        if isinstance(parameters[self.INPUT_THEMATIC],QgsProcessingFeatureSourceDefinition):
+            self.LAYER_THEMATIC = QgsProject.instance().mapLayer(param_input_thematic.toVariant()['source']['val'])
+        else:
+            self.LAYER_THEMATIC = self.parameterAsVectorLayer(
+                parameters, self.INPUT_THEMATIC, context
+            )
         self.CRS = (
             self.LAYER_THEMATIC.sourceCrs().authid()
         )  # set CRS for the calculations, based on the THEMATIC input layer
