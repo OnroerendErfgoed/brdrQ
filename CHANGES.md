@@ -1,3 +1,12 @@
+# v0.11.0
+
+- Upgrade to brdr version 0.11.0
+- Added parameter ODStrategy and threshold to the GRB-Updater [#152]
+- bugfix: when using a selection (subset) of a layer the brdrQ-processing tools crashed [#158]
+- bugfix: featurealigner - settings: local reference layer not saved [#155]
+- Added support for lines and points as thematic and reference geometry (experimental - slow)
+- Adding extra snapping parameters to the featurealigner - settings dialog for line-point alignment (experimental) [#105]
+
 # v0.10.2
 
 - documentation fix

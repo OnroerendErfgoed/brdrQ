@@ -11,9 +11,9 @@ Test Suite.
 
 import sys
 import unittest
-import qgis  # noqa: F401
 
 import coverage
+import qgis  # noqa: F401
 from osgeo import gdal
 
 __author__ = ""

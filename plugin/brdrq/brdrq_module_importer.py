@@ -34,7 +34,7 @@ def import_modules():
         from shapely import Polygon, from_wkt, to_wkt, unary_union, make_valid
         from shapely.geometry import shape
 
-    brdr_version = "0.10.0"
+    brdr_version = "0.11.0"
     try:
         import brdr
 
@@ -48,13 +48,3 @@ def import_modules():
         import brdr
 
         print(brdr.__version__)
-
-    # try:
-    #     import matplotlib
-    #
-    # except (ModuleNotFoundError, ValueError):
-    #     subprocess.check_call([python_exe,
-    #                            '-m', 'pip', 'install', 'matplotlib'])
-    #     import matplotlib
-    #
-    #     print(matplotlib.__version__)

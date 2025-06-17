@@ -50,19 +50,24 @@ from .brdrq_utils import (
     geom_qgis_to_shapely,
     remove_group_layer,
     get_symbol,
+    DICT_REFERENCE_OPTIONS,
+    PREFIX_LOCAL_LAYER,
 )
 
-FORM_CLASS, _ = uic.loadUiType(os.path.join(
-    os.path.dirname(__file__), 'brdrq_dockwidget_featurealigner.ui'))
+FORM_CLASS, _ = uic.loadUiType(
+    os.path.join(os.path.dirname(__file__), "brdrq_dockwidget_featurealigner.ui")
+)
 
 
-class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockWidgetAligner):
+class brdrQDockWidgetFeatureAligner(
+    QtWidgets.QDockWidget, FORM_CLASS, brdrQDockWidgetAligner
+):
     closingPlugin = pyqtSignal()
 
-    def __init__(self,brdrqplugin, parent=None):
+    def __init__(self, brdrqplugin, parent=None):
         """Constructor."""
-        print ("init brdrQDockWidgetFeatureAligner")
-        brdrQDockWidgetAligner.__init__(self,brdrqplugin)
+        print("init brdrQDockWidgetFeatureAligner")
+        brdrQDockWidgetAligner.__init__(self, brdrqplugin)
         super(brdrQDockWidgetFeatureAligner, self).__init__(parent)
         # Set up the user interface from Designer.
         # After setupUI you can access any designer object by doing
@@ -90,31 +95,21 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         # connect to provide cleanup on closing of dockwidget
         self.closingPlugin.connect(self.onClosePlugin)
         self.pushButton_help.clicked.connect(self.show_help_dialog)
-        self.pushButton_settings.clicked.connect(
-            self.show_settings_dialog
-        )
+        self.pushButton_settings.clicked.connect(self.show_settings_dialog)
         self.pushButton_grafiek.clicked.connect(self.get_graphic)
-        self.pushButton_visualisatie.clicked.connect(
-            self.get_visualisation
-        )
+        self.pushButton_visualisatie.clicked.connect(self.get_visualisation)
         self.pushButton_save.clicked.connect(self.change_geometry)
         self.pushButton_reset.clicked.connect(self.reset_geometry)
         self.pushButton_select.clicked.connect(self.activate_selectTool)
         self.mMapLayerComboBox.setFilters(
             QgsMapLayerProxyModel.PolygonLayer
-            # | QgsMapLayerProxyModel.LineLayer
-            # | QgsMapLayerProxyModel.PointLayer
+            | QgsMapLayerProxyModel.LineLayer
+            | QgsMapLayerProxyModel.PointLayer
         )
         self.mMapLayerComboBox.layerChanged.connect(self.themeLayerChanged)
-        self.checkBox_only_selected.stateChanged.connect(
-            self.themeLayerChanged
-        )
-        self.listWidget_features.itemPressed.connect(
-            self.onFeatureActivated
-        )
-        self.listWidget_predictions.itemPressed.connect(
-            self.onListItemActivated
-        )
+        self.checkBox_only_selected.stateChanged.connect(self.themeLayerChanged)
+        self.listWidget_features.itemPressed.connect(self.onFeatureActivated)
+        self.listWidget_predictions.itemPressed.connect(self.onListItemActivated)
         self.horizontalSlider.sliderMoved.connect(self.onSliderChange)
         self.doubleSpinBox.valueChanged.connect(self.onSpinboxChange)
 
@@ -127,8 +122,8 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
 
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
-        print ("onClosePlugin")
-        print ("** CLOSING brdrQ")
+        print("onClosePlugin")
+        print("** CLOSING brdrQ")
         remove_group_layer(self.GROUP_LAYER)
         # disconnects
         print("** disconnect dockwidget")
@@ -143,17 +138,18 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         print("end activate_selecttool")
 
     def deactivateSelectTool(self):
-        mapcanvas =self.iface.mapCanvas()
+        mapcanvas = self.iface.mapCanvas()
         if self.formerMapTool is None:
             self.formerMapTool = QgsMapToolPan(mapcanvas)
         mapcanvas.setMapTool(self.formerMapTool)
 
-    def onFeaturesIdentified(self,identified_features):
+    def onFeaturesIdentified(self, identified_features):
         """Code called when the feature is selected by the user"""
         self.listed_features = identified_features
         self.listFeatures()
+
     def themeLayerChanged(self):
-        print ("themelayer changed")
+        print("themelayer changed")
         # reset interface by clearing list, progress_bar
         self.clearUserInterface()
         self.layer = self.mMapLayerComboBox.currentLayer()
@@ -169,22 +165,18 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
             )
             return
 
-        if self.checkBox_only_selected.checkState()==2:
+        if self.checkBox_only_selected.checkState() == 2:
             self.listed_features = [f for f in self.layer.getSelectedFeatures()]
-            self.textEdit_output.setText(
-                "Selected features in this layer returned"
-            )
+            self.textEdit_output.setText("Selected features in this layer returned")
         else:
             self.listed_features = [f for f in self.layer.getFeatures()]
-            self.textEdit_output.setText(
-                "All features in this layer returned"
-            )
+            self.textEdit_output.setText("All features in this layer returned")
         self.listFeatures()
 
     def listFeatures(self):
         self.clearUserInterface()
         # Add the selected features to the list widget
-        print ("list features")
+        print("list features")
         for feature in self.listed_features:
             attributes = feature.attributes()
             attribute_string = ", ".join(str(attribute) for attribute in attributes)
@@ -192,9 +184,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
                 f"ID: *{feature.id()}*, Attributes: {attribute_string}"
             )
             self.listWidget_features.addItem(item)
-        self.textEdit_output.setText(
-            f"#Features: {str(len(self.listed_features))}"
-        )
+        self.textEdit_output.setText(f"#Features: {str(len(self.listed_features))}")
         if len(self.listed_features) == 1:
             self.onFeatureActivated(self.listWidget_features.item(0))
         return
@@ -221,9 +211,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
                 self.feature = feat
                 break
         if self.feature is None:
-            self.textEdit_output.setText(
-                f"No feature found with ID {feature_id}"
-            )
+            self.textEdit_output.setText(f"No feature found with ID {feature_id}")
             return
 
         self.original_geometry = self.feature.geometry()
@@ -233,7 +221,8 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         # Check feature on area
         # check area of feature and optimize/block calculation
         area = self.original_geometry.area()
-        step = 20
+        max_rel_dist = self.settingsDialog.max_rel_dist
+        step = self.settingsDialog.small_step
         if area > self.max_area_optimization:
             if area > self.max_area_limit:
                 msg = f"Very big area, {str(area)} m²: The calculation is blocked. Please use the bulk tool for this feature"
@@ -242,9 +231,20 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
                 self.listWidget_predictions.clear()
                 return
             else:
-                msg = f"Warning - Big area, {str(area)} m²: the calculation will be adapted/optimized. Only for every meter a calculation will be done"
+                big_step = self.settingsDialog.big_step
+                msg = f"Warning - Big area, {str(area)} m²: the calculation will be adapted/optimized. Predictions will be based on steps of {str(big_step)} cm"
                 self.textEdit_output.setText(f"{msg}")
-                step = 100
+                step = big_step
+        if max_rel_dist > 2 * self.max_rel_dist_optimization:
+            big_step = self.settingsDialog.big_step
+            msg = f"Predictions will be based on steps of {str(big_step)} cm"
+            self.textEdit_output.setText(f"{msg}")
+            step = big_step
+        elif max_rel_dist > self.max_rel_dist_optimization:
+            mid_step = self.settingsDialog.mid_step
+            msg = f"Predictions will be based on steps of {str(mid_step)} cm"
+            self.textEdit_output.setText(f"{msg}")
+            step = mid_step
 
         # adapt & reload settings (espacially relevant_distances) before alignment
         self.settingsDialog.step = step
@@ -285,7 +285,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         return
 
     def add_results_to_grouplayer(self):
-        print ("adding results")
+        print("adding results")
         fcs = self.aligner.get_results_as_geojson(
             resulttype=AlignerResultType.PROCESSRESULTS, formula=self.formula
         )
@@ -294,7 +294,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         geojson_to_layer(
             self.LAYER_RESULT_DIFF,
             geojson_result_diff,
-            get_symbol(geojson_result_diff,result_diff),
+            get_symbol(geojson_result_diff, result_diff),
             False,
             self.GROUP_LAYER,
             self.tempfolder,
@@ -304,7 +304,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         geojson_to_layer(
             self.LAYER_RESULT_DIFF_PLUS,
             geojson_result_diff_plus,
-            get_symbol(geojson_result_diff_plus,result_diff_plus),
+            get_symbol(geojson_result_diff_plus, result_diff_plus),
             True,
             self.GROUP_LAYER,
             self.tempfolder,
@@ -314,7 +314,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         geojson_to_layer(
             self.LAYER_RESULT_DIFF_MIN,
             geojson_result_diff_min,
-            get_symbol(geojson_result_diff_min,result_diff_min),
+            get_symbol(geojson_result_diff_min, result_diff_min),
             True,
             self.GROUP_LAYER,
             self.tempfolder,
@@ -324,7 +324,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         geojson_to_layer(
             self.LAYER_RESULT,
             geojson_result,
-            get_symbol(geojson_result,result),
+            get_symbol(geojson_result, result),
             True,
             self.GROUP_LAYER,
             self.tempfolder,
@@ -337,7 +337,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         self._listItemActivated(currentItem)
 
     def _align(self):
-        print ("_align")
+        print("_align")
         feat = self.feature
         selectedFeatures = []
         if feat is not None:
@@ -361,19 +361,20 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         self.aligner.load_thematic_data(DictLoader(dict_to_load))
         self.progressBar.setValue(25)
         # Load reference data for the on-the fly reference versions
-
+        reference_choice_id = DICT_REFERENCE_OPTIONS[self.reference_choice]
         if self.reference_choice in GRB_TYPES:
             self.aligner.load_reference_data(
                 GRBActualLoader(
-                    grb_type=GRBType[self.reference_choice],
+                    grb_type=GRBType[reference_choice_id],
                     partition=1000,
                     aligner=self.aligner,
                 )
             )
         elif self.reference_choice in ADPF_VERSIONS:
-            year = self.reference_choice.removeprefix("Adpf")
             self.aligner.load_reference_data(
-                GRBFiscalParcelLoader(year=year, aligner=self.aligner, partition=1000)
+                GRBFiscalParcelLoader(
+                    year=reference_choice_id, aligner=self.aligner, partition=1000
+                )
             )
         else:
             # Load reference into a shapely_dict:
@@ -394,7 +395,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
             self.reference_layer.removeSelection()
             self.aligner.load_reference_data(DictLoader(dict_reference))
             self.aligner.name_reference_id = self.reference_id
-            self.aligner.dict_reference_source["source"] = "local"
+            self.aligner.dict_reference_source["source"] = PREFIX_LOCAL_LAYER
             self.aligner.dict_reference_source["version_date"] = "unknown"
         self.progressBar.setValue(50)
 
@@ -430,7 +431,7 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         self._reset_geometry(self.layer)
 
     def startDock(self):
-        print ("start dock")
+        print("start dock")
         self.clearUserInterface()
         self.textEdit_output.setText("Please select a feature to align")
         self.loadSettings()
@@ -438,12 +439,15 @@ class brdrQDockWidgetFeatureAligner(QtWidgets.QDockWidget, FORM_CLASS,brdrQDockW
         self.aligner = Aligner(
             od_strategy=self.od_strategy,
             threshold_overlap_percentage=self.threshold_overlap_percentage,
-            # partial_snapping=self.partial_snapping,
-            # partial_snapping_strategy=self.partial_snapping_strategy,
-            # snapping_max_segment_length=self.snap_max_segment_length,
+            snap_strategy=self.partial_snapping_strategy,
+            snap_max_segment_length=self.snap_max_segment_length,
+            partial_snapping=self.partial_snapping,
+            partial_snap_strategy=self.partial_snapping_strategy,
+            partial_snap_max_segment_length=self.snap_max_segment_length,
         )
         self.show()
         return
+
 
 def __init__():
     pass
