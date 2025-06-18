@@ -1,3 +1,4 @@
+import importlib
 import os
 import site
 import subprocess
@@ -8,6 +9,8 @@ import sys
 # path in windows. Based on
 # https://github.com/qgis/QGIS/issues/45646
 
+
+brdr_version = "0.11.0"
 
 def find_python():
     if sys.platform != "win32":
@@ -34,7 +37,6 @@ def import_modules():
         from shapely import Polygon, from_wkt, to_wkt, unary_union, make_valid
         from shapely.geometry import shape
 
-    brdr_version = "0.11.0"
     try:
         import brdr
 
@@ -45,6 +47,19 @@ def import_modules():
         subprocess.check_call(
             [python_exe, "-m", "pip", "install", "brdr==" + brdr_version]
         )
+        #show_new_brdr_dialog()
         import brdr
+        print(f"version of brdr before reload: {brdr.__version__}")
+        importlib.reload(brdr)
+        import brdr
+        print(f"reloaded version of brdr: {brdr.__version__}")
 
-        print(brdr.__version__)
+def show_new_brdr_dialog():
+    from PyQt5.QtWidgets import QMessageBox
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Warning)
+    msg.setWindowTitle("New installation of 'brdr'")
+    msg.setText(f"A new version of 'brdr'({brdr_version}) is installed for the calculations in the brdrQ-plugin: . A restart of QGIS is required to ensure correct functioning of brdrQ")
+    msg.setInformativeText("Please restart QGIS before using brdrQ.")
+    msg.setStandardButtons(QMessageBox.Ok)
+    msg.exec_()

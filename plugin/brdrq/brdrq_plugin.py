@@ -56,7 +56,7 @@ pluginname = "brdrQ"
 class BrdrQPlugin(object):
 
     def __init__(self, iface):
-        print("init plugin")
+        print(f"init plugin {pluginname} with brdr-version {brdr.__version__}")
         self.provider = None
         self.iface = iface
         self.dockwidget_featurealigner = None
