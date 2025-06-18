@@ -71,7 +71,11 @@ DICT_REFERENCE_OPTIONS[LOCAL_REFERENCE_LAYER] = PREFIX_LOCAL_LAYER
 
 DICT_GRB_TYPES = dict()
 for e in GRBType:
-    DICT_GRB_TYPES[e.name + SPLITTER + " GRB " + e.value.split(" - ")[2]] = e.name
+    try:
+        DICT_GRB_TYPES[e.name + SPLITTER + " GRB " + e.value.split(" - ")[2]] = e.name
+
+    except:
+        DICT_GRB_TYPES[e.name + SPLITTER + " " + e.value] = e.name
 DICT_ADPF_VERSIONS = dict()
 for x in [datetime.datetime.today().year - i for i in range(6)]:
     DICT_ADPF_VERSIONS["Administratieve fiscale percelen" + SPLITTER + " " + str(x)] = x

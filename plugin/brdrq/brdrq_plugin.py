@@ -56,7 +56,7 @@ pluginname = "brdrQ"
 class BrdrQPlugin(object):
 
     def __init__(self, iface):
-        print("init plugin")
+        print(f"init plugin {pluginname} with brdr-version {brdr.__version__}")
         self.provider = None
         self.iface = iface
         self.dockwidget_featurealigner = None
@@ -169,7 +169,7 @@ class BrdrQPlugin(object):
         self.iface.messageBar().pushMessage(msg)
 
     def version(self):
-        return "0.11.0"
+        return "0.11.1"
 
     def openAutoupdatebordersscript(self):
         processing.execAlgorithmDialog("brdrqprovider:brdrqautoupdateborders")

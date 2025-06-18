@@ -1,3 +1,7 @@
+# v0.11.1
+
+- Added auto-reload mechanism of brdr when upgrading plugin
+
 # v0.11.0
 
 - Upgrade to brdr version 0.11.0
