@@ -10,7 +10,7 @@ import sys
 # https://github.com/qgis/QGIS/issues/45646
 
 
-brdr_version = "0.11.0"
+brdr_version = "0.11.1"
 
 def find_python():
     if sys.platform != "win32":
@@ -39,7 +39,8 @@ def import_modules():
 
     try:
         import brdr
-
+        importlib.reload(brdr)
+        import brdr
         if brdr.__version__ != brdr_version:
             raise ValueError("Version mismatch")
 
@@ -47,7 +48,7 @@ def import_modules():
         subprocess.check_call(
             [python_exe, "-m", "pip", "install", "brdr==" + brdr_version]
         )
-        #show_new_brdr_dialog()
+        # show_new_brdr_dialog()
         import brdr
         print(f"version of brdr before reload: {brdr.__version__}")
         importlib.reload(brdr)

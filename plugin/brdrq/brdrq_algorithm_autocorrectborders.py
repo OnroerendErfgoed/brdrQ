@@ -137,7 +137,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     # ALIGNER parameters
     CRS = "EPSG:31370"  # default CRS for the aligner,updated by CRS of thematic inputlayer
-    OD_STRATEGY = 0  # default OD_STRATEGY for the aligner,updated by user-choice
+    OD_STRATEGY = OpenDomainStrategy.SNAP_ALL_SIDE  # default OD_STRATEGY for the aligner,updated by user-choice
     THRESHOLD_OVERLAP_PERCENTAGE = 50  # default THRESHOLD_OVERLAP_PERCENTAGE for the aligner,updated by user-choice
     RELEVANT_DISTANCE = (
         0  # default RELEVANT_DISTANCE for the aligner,updated by user-choice
