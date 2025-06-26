@@ -31,7 +31,6 @@ from brdr.enums import GRBType, AlignerResultType
 from brdr.geometry_utils import geom_from_wkt
 from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader
 from brdr.loader import DictLoader
-from brdr.utils import _diffs_from_dict_processresults
 from qgis import processing
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import Qt
@@ -250,7 +249,7 @@ class brdrQDockWidgetBulkAligner(
         self.dict_processresults = dict_processresults
         self.dict_evaluated_predictions = dict_evaluated_predictions
         self.props_dict_evaluated_predictions = props_dict_evaluated_predictions
-        self.diffs_dict = _diffs_from_dict_processresults(
+        self.diffs_dict = self.aligner.get_diff_metrics(
             self.dict_processresults, self.aligner.dict_thematic
         )
         self.add_results_to_grouplayer()
