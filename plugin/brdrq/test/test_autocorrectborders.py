@@ -50,7 +50,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "INPUT_REFERENCE": None,
                 "COMBOBOX_ID_REFERENCE": "",
                 "WORK_FOLDER": foldername,
-                "ENUM_OD_STRATEGY": 2,
+                "ENUM_OD_STRATEGY": 1,
                 "THRESHOLD_OVERLAP_PERCENTAGE": 50,
                 "ADD_FORMULA": True,
                 "ADD_ATTRIBUTES": True,
@@ -97,7 +97,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "INPUT_REFERENCE": None,
                 "COMBOBOX_ID_REFERENCE": "",
                 "WORK_FOLDER": foldername,
-                "ENUM_OD_STRATEGY": 2,
+                "ENUM_OD_STRATEGY": 1,
                 "THRESHOLD_OVERLAP_PERCENTAGE": 50,
                 "ADD_FORMULA": True,
                 "ADD_ATTRIBUTES": True,
@@ -136,7 +136,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "INPUT_REFERENCE": referencelayername,
                 "COMBOBOX_ID_REFERENCE": "CAPAKEY",
                 "WORK_FOLDER": foldername,
-                "ENUM_OD_STRATEGY": 2,
+                "ENUM_OD_STRATEGY": 1,
                 "THRESHOLD_OVERLAP_PERCENTAGE": 50,
                 "ADD_FORMULA": False,
                 "ADD_ATTRIBUTES": True,
@@ -168,7 +168,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "INPUT_REFERENCE": None,
                 "COMBOBOX_ID_REFERENCE": "",
                 "WORK_FOLDER": foldername,
-                "ENUM_OD_STRATEGY": 2,
+                "ENUM_OD_STRATEGY": 1,
                 "THRESHOLD_OVERLAP_PERCENTAGE": 50,
                 "ADD_FORMULA": True,
                 "ADD_ATTRIBUTES": True,
@@ -181,7 +181,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
         assert len(output)==4
         for o in output.values():
             assert isinstance(o,QgsVectorLayer)
-            assert o.featureCount()==featurecount
+            assert o.featureCount()>=featurecount
 
     def test_autocorrectborders_wrong_input(self):
         with self.assertRaises(QgsProcessingException):

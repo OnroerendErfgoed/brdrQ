@@ -1,3 +1,11 @@
+
+# v0.12.0
+
+- Upgrade to brdr version 0.12.0
+- Adaption ENUM OD_STRATEGY
+- update diffMetrics-functions
+- Use op point and line processing by network-algorithm (faster)
+
 # v0.11.1
 
 - Added auto-reload mechanism of brdr when upgrading plugin

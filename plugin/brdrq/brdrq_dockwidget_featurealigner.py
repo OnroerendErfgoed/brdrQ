@@ -31,7 +31,6 @@ from brdr.enums import AlignerResultType, GRBType
 from brdr.geometry_utils import geom_from_wkt
 from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader
 from brdr.loader import DictLoader
-from brdr.utils import _diffs_from_dict_processresults
 from qgis import processing
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import Qt
@@ -410,9 +409,8 @@ class brdrQDockWidgetFeatureAligner(
         self.dict_processresults = self.aligner.dict_processresults
         self.dict_evaluated_predictions = dict_evaluated
         self.props_dict_evaluated_predictions = props_dict_evaluated_predictions
-        self.diffs_dict = _diffs_from_dict_processresults(
-            self.dict_processresults, self.aligner.dict_thematic
-        )
+
+        self.diffs_dict = self.aligner.get_diff_metrics(self.dict_processresults)
 
         outputMessage = "Voorspelde relevante afstanden: " + str(
             [str(k) for k in self.dict_evaluated_predictions[feat.id()].keys()]
