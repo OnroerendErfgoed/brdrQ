@@ -169,7 +169,7 @@ class BrdrQPlugin(object):
         self.iface.messageBar().pushMessage(msg)
 
     def version(self):
-        return "0.12.0"
+        return "0.12.1"
 
     def openAutoupdatebordersscript(self):
         processing.execAlgorithmDialog("brdrqprovider:brdrqautoupdateborders")
