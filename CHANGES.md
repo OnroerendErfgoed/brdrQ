@@ -1,4 +1,8 @@
 
+# v0.12.2
+
+- Bugfix for feature-to-feature aligner
+
 # v0.12.0
 
 - Upgrade to brdr version 0.12.0
