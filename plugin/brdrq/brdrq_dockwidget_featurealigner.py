@@ -356,6 +356,16 @@ class brdrQDockWidgetFeatureAligner(
             geom_shapely = geom_from_wkt(wkt)
             dict_to_load[feature.id()] = geom_shapely
 
+        self.aligner = Aligner(
+            od_strategy=self.od_strategy,
+            threshold_overlap_percentage=self.threshold_overlap_percentage,
+            snap_strategy=self.partial_snapping_strategy,
+            snap_max_segment_length=self.snap_max_segment_length,
+            partial_snapping=self.partial_snapping,
+            partial_snap_strategy=self.partial_snapping_strategy,
+            partial_snap_max_segment_length=self.snap_max_segment_length,
+        )
+
         # Load thematic data
         self.aligner.load_thematic_data(DictLoader(dict_to_load))
         self.progressBar.setValue(25)
@@ -434,15 +444,6 @@ class brdrQDockWidgetFeatureAligner(
         self.textEdit_output.setText("Please select a feature to align")
         self.loadSettings()
         self.setHandles()
-        self.aligner = Aligner(
-            od_strategy=self.od_strategy,
-            threshold_overlap_percentage=self.threshold_overlap_percentage,
-            snap_strategy=self.partial_snapping_strategy,
-            snap_max_segment_length=self.snap_max_segment_length,
-            partial_snapping=self.partial_snapping,
-            partial_snap_strategy=self.partial_snapping_strategy,
-            partial_snap_max_segment_length=self.snap_max_segment_length,
-        )
         self.show()
         return
 
