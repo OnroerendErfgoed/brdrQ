@@ -10,7 +10,7 @@ import sys
 # https://github.com/qgis/QGIS/issues/45646
 
 
-brdr_version = "0.12.0"
+brdr_version = "0.12.1"
 
 def find_python():
     if sys.platform != "win32":

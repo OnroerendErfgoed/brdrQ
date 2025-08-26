@@ -35,11 +35,21 @@ import os
 import sys
 
 import brdr
+
+# #example when upgrading plugin for QGIS4 - compatibility
+# try:
+#     from PyQt6.QtWidgets import QAction, QMenu
+#     from PyQt6.QtGui import QIcon
+# except ImportError:
+#     from PyQt5.QtWidgets import QAction, QMenu
+#     from PyQt5.QtGui import QIcon
+
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QMenu
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import QgsApplication
+from qgis.core import Qgis
 
 from .brdrq_dockwidget_bulkaligner import brdrQDockWidgetBulkAligner
 from .brdrq_dockwidget_featurealigner import brdrQDockWidgetFeatureAligner
@@ -57,6 +67,13 @@ class BrdrQPlugin(object):
 
     def __init__(self, iface):
         print(f"init plugin {pluginname} with brdr-version {brdr.__version__}")
+        qgis_version = Qgis.QGIS_VERSION_INT
+        if Qgis.QGIS_VERSION_INT >= 40000:
+            print(f"Plugin has to be verified for qgis-version {str(qgis_version)}")
+        else:
+            print(
+                f"Plugin compatible with qgis-version {str(qgis_version)}"
+            )
         self.provider = None
         self.iface = iface
         self.dockwidget_featurealigner = None
@@ -89,7 +106,8 @@ class BrdrQPlugin(object):
         QgsApplication.processingRegistry().addProvider(self.provider)
 
     def initGui(self):
-        # print ("initGui")
+
+
         self.initProcessing()
 
         # Setup menu
