@@ -166,7 +166,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         """
         Returns a translatable string with the self.tr() function.
         """
-        return QCoreApplication.translate("Processing", string)
+        return QCoreApplication.translate(__class__.__name__, string)
 
     def createInstance(self):
         return AutocorrectBordersProcessingAlgorithm()

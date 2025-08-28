@@ -9,5 +9,5 @@ here you can find links to the different tools that are currently provided:
 * [Feature aligner](featurealigner.md)
 
 ## 🔗 Notebook bekijken
-Je kunt het notebook direct bekijken via nbviewer:
-[Bekijk het notebook op nbviewer](notebooks/brdr_notebook.ipynb)
+Bekijke de notebook:
+[notebook](notebooks/brdr_notebook.ipynb)
