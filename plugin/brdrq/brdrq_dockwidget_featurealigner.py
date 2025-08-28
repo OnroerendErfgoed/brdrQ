@@ -155,6 +155,11 @@ class brdrQDockWidgetFeatureAligner(
         if self.layer is None:
             self.textEdit_output.setText("Please select a layer")
             return
+        if self._check_warn_edit_modus(self.layer):
+            self.textEdit_output.setText("Please close edit-session of layer")
+            self.layer = None
+            self.mMapLayerComboBox.setLayer(self.layer)
+            return
         if self.layer.selectedFeatureCount() > self.max_feature_count or (
             self.layer.selectedFeatureCount() == 0
             and self.layer.featureCount() > self.max_feature_count

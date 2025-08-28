@@ -106,7 +106,17 @@ class brdrQDockWidgetAligner(object):
         self.horizontalSlider.setValue(index)
         return
 
+    def _check_warn_edit_modus(self,layer):
+        if layer.isEditable():
+            msg = "This layer is in edit-modus. Please close edit-modus before using the feature-aligner"
+            self.iface.messageBar().pushWarning("Warning", msg )
+            return True
+        else:
+            return False
+
     def _change_geometry(self, layer):
+        if self._check_warn_edit_modus(layer):
+            return
         feat = self.feature
         if feat is None:
             return
@@ -132,6 +142,8 @@ class brdrQDockWidgetAligner(object):
         self.iface.messageBar().pushMessage("geometrie aangepast")
 
     def _reset_geometry(self, layer):
+        if self._check_warn_edit_modus(layer):
+            return
         feat = self.feature
         if feat is None:
             return
