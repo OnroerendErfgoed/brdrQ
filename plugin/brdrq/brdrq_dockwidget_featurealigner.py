@@ -35,6 +35,7 @@ from qgis import processing
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal
+from qgis._core import QgsFeature
 from qgis.core import QgsMapLayerProxyModel
 from qgis.gui import QgsMapToolPan
 from qgis.utils import OverrideCursor
@@ -42,7 +43,6 @@ from qgis.utils import OverrideCursor
 from .brdrq_dockwidget_aligner import brdrQDockWidgetAligner
 from .brdrq_utils import (
     SelectTool,
-    zoom_to_feature,
     geojson_to_layer,
     GRB_TYPES,
     ADPF_VERSIONS,
@@ -51,6 +51,8 @@ from .brdrq_utils import (
     get_symbol,
     DICT_REFERENCE_OPTIONS,
     PREFIX_LOCAL_LAYER,
+    geom_shapely_to_qgis,
+    zoom_to_features,
 )
 
 FORM_CLASS, _ = uic.loadUiType(
@@ -155,6 +157,11 @@ class brdrQDockWidgetFeatureAligner(
         if self.layer is None:
             self.textEdit_output.setText("Please select a layer")
             return
+        if self._check_warn_edit_modus(self.layer):
+            self.textEdit_output.setText("Please close edit-session of layer")
+            self.layer = None
+            self.mMapLayerComboBox.setLayer(self.layer)
+            return
         if self.layer.selectedFeatureCount() > self.max_feature_count or (
             self.layer.selectedFeatureCount() == 0
             and self.layer.featureCount() > self.max_feature_count
@@ -214,7 +221,7 @@ class brdrQDockWidgetFeatureAligner(
             return
 
         self.original_geometry = self.feature.geometry()
-        zoom_to_feature(self.feature, self.iface)
+        zoom_to_features([self.feature], self.iface)
         key = self.feature.id()
 
         # Check feature on area
@@ -262,6 +269,12 @@ class brdrQDockWidgetFeatureAligner(
         best_index = 0
         best_score = 0
         list_predictions = [k for k in (self.dict_evaluated_predictions[key]).keys()]
+        list_predictions_features = []
+        for rd in list_predictions:
+            feat = QgsFeature()
+            feat.setGeometry(geom_shapely_to_qgis(self.dict_evaluated_predictions[key][rd]['result']))
+            list_predictions_features.append(feat)
+        zoom_to_features(list_predictions_features, self.iface)
         for k in list_predictions:
             items.append(str(k))
             score = self.props_dict_evaluated_predictions[key][k][PREDICTION_SCORE]

@@ -1,7 +1,7 @@
 import os
-from enum import Enum
 
 from qgis.core import QgsProcessingException
+from qgis.core import QgsRectangle
 
 try:
     import brdr
@@ -19,7 +19,13 @@ from math import ceil
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
-from brdr.enums import GRBType, OpenDomainStrategy, SnapStrategy, FullStrategy
+from brdr.enums import (
+    GRBType,
+    OpenDomainStrategy,
+    SnapStrategy,
+    FullStrategy,
+    PredictionStrategy,
+)
 from brdr.typings import ProcessResult
 from brdr.utils import write_geojson
 from PyQt5.QtCore import pyqtSignal
@@ -41,21 +47,6 @@ from qgis.core import QgsStyle
 from qgis.core import QgsVectorLayer
 from qgis.utils import iface
 from shapely import to_wkt, from_wkt, make_valid
-
-
-# TODO remove enum class when available in brdr (v0.12.0)
-class PredictionStrategy(str, Enum):
-    """
-    Enum for prediction strategy when using GRB updater
-
-    ALL = "all"
-    BEST = "best"
-    ORIGINAL = "original"
-    """
-
-    ALL = "all"
-    BEST = "best"
-    ORIGINAL = "original"
 
 
 SPLITTER = ":"
@@ -150,13 +141,30 @@ def get_layer_by_name(layer_name):
         print(f"Layer not found for layername {str(layer_name)}")
         return None
 
+def zoom_to_features(features, iface, marge_factor=0.1):
+    """
+    Function to zoom to an array of features.
+    Combines the bbox of the features and adds a margin around the feature
+    """
+    # Calculate the combined bounding box
+    if features is None or len(features)==0:
+        return
+    bbox = QgsRectangle()
+    bbox.setMinimal()  # Start met een lege bbox
+    for feat in features:
+        bbox.combineExtentWith(feat.geometry().boundingBox())
 
-def zoom_to_feature(feature, iface):
-    """
-    zoom to feature
-    """
-    box = feature.geometry().boundingBox()
-    iface.mapCanvas().setExtent(box)
+    # Add a margin to the bbox
+    width = bbox.width()
+    height = bbox.height()
+
+    bbox.setXMinimum(bbox.xMinimum() - width * marge_factor)
+    bbox.setXMaximum(bbox.xMaximum() + width * marge_factor)
+    bbox.setYMinimum(bbox.yMinimum() - height * marge_factor)
+    bbox.setYMaximum(bbox.yMaximum() + height * marge_factor)
+
+    # Zoom to bbox
+    iface.mapCanvas().setExtent(bbox)
     iface.mapCanvas().refresh()
     return
 

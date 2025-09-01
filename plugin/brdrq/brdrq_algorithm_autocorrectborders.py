@@ -166,7 +166,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         """
         Returns a translatable string with the self.tr() function.
         """
-        return QCoreApplication.translate("Processing", string)
+        return QCoreApplication.translate(__class__.__name__, string)
 
     def createInstance(self):
         return AutocorrectBordersProcessingAlgorithm()
@@ -555,6 +555,16 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             fcs = aligner.get_results_as_geojson(
                 formula=self.ADD_FORMULA, attributes=self.ATTRIBUTES
             )
+            # #TODO - test to implement 'stability-field' #168
+            # process_result_2 = aligner.process(
+            #     relevant_distance=self.RELEVANT_DISTANCE +0.10,
+            #     od_strategy=self.OD_STRATEGY,
+            #     threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
+            # )
+            # fcs_2 = aligner.get_results_as_geojson(
+            #     formula=self.ADD_FORMULA, attributes=self.ATTRIBUTES
+            # )
+
         else:
             dict_series, dict_predicted, diffs = aligner.predictor(
                 od_strategy=self.OD_STRATEGY,
@@ -704,6 +714,32 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         result_diff_min = QgsProject.instance().mapLayersByName(
             self.LAYER_RESULT_DIFF_MIN
         )[0]
+        # # Zorg dat laag A in bewerkingsmodus staat
+        # result.startEditing()
+        # # Voeg een nieuw veld toe aan laag A
+        # brdr_diff_area = QgsField(
+        #     "brdr_diff_area", QVariant.Double
+        # )  # Pas het type aan indien nodig
+        # result.dataProvider().addAttributes([brdr_diff_area])
+        # result.updateFields()
+        #
+        # # Maak een dictionary van ID naar waarde uit laag B
+        # id_naar_waarde = {}
+        # for feat in result_diff.getFeatures():
+        #     id_naar_waarde[feat[self.ID_THEME_FIELDNAME]] = feat["brdr_area"]
+        #
+        # # Vul het nieuwe veld in laag A op basis van overeenkomstige ID
+        # for feat in result.getFeatures():
+        #     id = feat[self.ID_THEME_FIELDNAME]
+        #     if id in id_naar_waarde:
+        #         result.changeAttributeValue(
+        #             feat.id(),
+        #             result.fields().indexFromName("brdr_diff_area"),
+        #             id_naar_waarde[id],
+        #         )
+        # # Opslaan en bewerkingsmodus afsluiten
+        # result.commitChanges()
+
         QgsProject.instance().reloadAllLayers()
         feedback.pushInfo("Resulterende geometrie berekend")
         if feedback.isCanceled():

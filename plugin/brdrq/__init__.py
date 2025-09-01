@@ -46,12 +46,16 @@ def classFactory(iface):  # pylint: disable=invalid-name
         show_error_dialog()
         raise RuntimeError("Error initializing brdrQ-plugin")
 
+
 def show_error_dialog():
     from PyQt5.QtWidgets import QMessageBox
+
     msg = QMessageBox()
     msg.setIcon(QMessageBox.Critical)
     msg.setWindowTitle("Problem while initializing the brdrQ-plugin")
     msg.setText(f"The brdrQ-plugin could not be loaded correctly.")
-    msg.setInformativeText("Please restart QGIS and retry. If this problem persists, try to upgrade the plugin.")
+    msg.setInformativeText(
+        "Please restart QGIS and retry. If this problem persists, try to upgrade the plugin."
+    )
     msg.setStandardButtons(QMessageBox.Ok)
     msg.exec_()

@@ -31,6 +31,7 @@ from .brdrq_utils import (
     get_workfolder,
     geom_shapely_to_qgis,
     get_layer_by_name,
+    remove_group_layer,
 )
 
 
@@ -106,7 +107,17 @@ class brdrQDockWidgetAligner(object):
         self.horizontalSlider.setValue(index)
         return
 
+    def _check_warn_edit_modus(self,layer):
+        if layer.isEditable():
+            msg = "This layer is in edit-modus. Please close edit-modus before using the feature-aligner"
+            self.iface.messageBar().pushWarning("Warning", msg )
+            return True
+        else:
+            return False
+
     def _change_geometry(self, layer):
+        if self._check_warn_edit_modus(layer):
+            return
         feat = self.feature
         if feat is None:
             return
@@ -129,9 +140,12 @@ class brdrQDockWidgetAligner(object):
             layer.changeGeometry(feat.id(), qgis_geom)
             if ix >= 0:
                 layer.changeAttributeValue(feat.id(), ix, "corrected")
+        remove_group_layer(self.GROUP_LAYER)
         self.iface.messageBar().pushMessage("geometrie aangepast")
 
     def _reset_geometry(self, layer):
+        if self._check_warn_edit_modus(layer):
+            return
         feat = self.feature
         if feat is None:
             return
@@ -150,6 +164,7 @@ class brdrQDockWidgetAligner(object):
             layer.changeGeometry(feat.id(), qgis_geom)
             if ix >= 0:
                 layer.changeAttributeValue(feat.id(), ix, "to_check_reset")
+        remove_group_layer(self.GROUP_LAYER)
         self.iface.messageBar().pushMessage("geometrie gereset")
 
     def onSliderChange(self, index):

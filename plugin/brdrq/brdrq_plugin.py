@@ -38,12 +38,21 @@ import brdr
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QMenu
 from qgis import processing
-from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtCore import QCoreApplication, QLocale, QTranslator, QSettings
+from qgis.core import Qgis
 from qgis.core import QgsApplication
 
 from .brdrq_dockwidget_bulkaligner import brdrQDockWidgetBulkAligner
 from .brdrq_dockwidget_featurealigner import brdrQDockWidgetFeatureAligner
 from .brdrq_provider import BrdrQProvider
+
+# #example when upgrading plugin for QGIS4 - compatibility
+# try:
+#     from PyQt6.QtWidgets import QAction, QMenu
+#     from PyQt6.QtGui import QIcon
+# except ImportError:
+#     from PyQt5.QtWidgets import QAction, QMenu
+#     from PyQt5.QtGui import QIcon
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 
@@ -57,6 +66,12 @@ class BrdrQPlugin(object):
 
     def __init__(self, iface):
         print(f"init plugin {pluginname} with brdr-version {brdr.__version__}")
+        qgis_version = Qgis.QGIS_VERSION_INT
+        if Qgis.QGIS_VERSION_INT >= 40000:
+            print(f"Plugin has to be verified for qgis-version {str(qgis_version)}")
+        else:
+            print(f"Plugin compatible with qgis-version {str(qgis_version)}")
+        self.translator = None
         self.provider = None
         self.iface = iface
         self.dockwidget_featurealigner = None
@@ -80,7 +95,10 @@ class BrdrQPlugin(object):
         :rtype: QString
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate(pluginname, message)
+        print(f"translation of message {message}")
+        print(QCoreApplication.translate(pluginname, message))
+        print(QCoreApplication.translate("BrdrQPlugin", message))
+        return QCoreApplication.translate(self.__class__.__name__, message)
 
     def initProcessing(self):
         """Init Processing provider for QGIS >= 3.8."""
@@ -89,7 +107,7 @@ class BrdrQPlugin(object):
         QgsApplication.processingRegistry().addProvider(self.provider)
 
     def initGui(self):
-        # print ("initGui")
+        self.init_locale()
         self.initProcessing()
 
         # Setup menu
@@ -148,18 +166,40 @@ class BrdrQPlugin(object):
         self.toolbar.addAction(action_autoupdateborders)
         self.actions.append(action_autoupdateborders)
 
-        icon_info = os.path.join(
-            os.path.join(cmd_folder, "icon_info.png")
-        )
+        icon_info = os.path.join(os.path.join(cmd_folder, "icon_info.png"))
         action_info = QAction(
             QIcon(icon_info),
-            "brdrQ - info (version)",
+            self.tr("brdrQ - version"),
             self.iface.mainWindow(),
         )
         action_info.triggered.connect(self.openInfo)
         self.brdrq_menu.addAction(action_info)
         self.toolbar.addAction(action_info)
         self.actions.append(action_info)
+
+    def init_locale(self):
+        settings = QSettings()
+        ignore_user_locale = settings.value("locale/overrideFlag", False, type=bool)
+        if ignore_user_locale:
+            # flag true
+            # print("QGIS uses UI-setting as locale.")
+            locale_code = str(settings.value("locale/userLocale", "en"))
+        else:
+            # print("QGIS uses system locale.")
+            locale_code = QLocale.system().name()
+        if not locale_code or locale_code == "NULL":
+            print("fallback to system locale")
+            locale_code = QLocale.system().name()
+        locale_code = locale_code[:2]
+        print(f"locale {locale_code}")
+        locale_path = os.path.join(os.path.dirname(__file__), "i18n")
+        self.translator = QTranslator()
+        loaded = self.translator.load(f"{pluginname}_{locale_code}.qm", locale_path)
+        if not loaded:
+            locale_code = "en"
+            self.translator.load(f"{pluginname}_{locale_code}.qm", locale_path)
+        QCoreApplication.installTranslator(self.translator)
+        print(f"translator loaded with locale {locale_code}")
 
     def openAutocorrectbordersscript(self):
         processing.execAlgorithmDialog("brdrqprovider:brdrqautocorrectborders")
@@ -169,7 +209,7 @@ class BrdrQPlugin(object):
         self.iface.messageBar().pushMessage(msg)
 
     def version(self):
-        return "0.12.2"
+        return "0.13.0"
 
     def openAutoupdatebordersscript(self):
         processing.execAlgorithmDialog("brdrqprovider:brdrqautoupdateborders")
@@ -186,7 +226,7 @@ class BrdrQPlugin(object):
 
     def openDockBulkAligner(self):
         print("openDockBulkAligner")
-        print (str(self.dockwidget_bulkaligner))
+        print(str(self.dockwidget_bulkaligner))
         if self.dockwidget_bulkaligner is None:
             # Create the dockwidget (after translation) and keep reference
             self.dockwidget_bulkaligner = brdrQDockWidgetBulkAligner(self)
