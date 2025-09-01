@@ -31,8 +31,6 @@ import inspect
 import os
 import sys
 
-from PyQt5.QtCore import QVariant
-from qgis._core import QgsField
 from qgis.core import QgsProcessingFeatureSourceDefinition
 
 from .brdrq_utils import (

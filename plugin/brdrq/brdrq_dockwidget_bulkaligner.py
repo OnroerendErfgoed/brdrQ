@@ -44,7 +44,7 @@ from qgis.utils import OverrideCursor
 from .brdrq_dockwidget_aligner import brdrQDockWidgetAligner
 from .brdrq_utils import (
     move_to_group,
-    zoom_to_feature,
+    zoom_to_features,
     add_field_to_layer,
     geom_shapely_to_qgis,
     geojson_to_layer,
@@ -400,7 +400,7 @@ class brdrQDockWidgetBulkAligner(
             return
         key = self.feature.id()
 
-        zoom_to_feature(self.feature, self.iface)
+        zoom_to_features([self.feature], self.iface)
 
         list_predictions = [k for k in (self.dict_evaluated_predictions[key]).keys()]
 

@@ -12,6 +12,7 @@ import sys
 
 brdr_version = "0.12.1"
 
+
 def find_python():
     if sys.platform != "win32":
         return sys.executable
@@ -39,8 +40,10 @@ def import_modules():
 
     try:
         import brdr
+
         importlib.reload(brdr)
         import brdr
+
         if brdr.__version__ != brdr_version:
             raise ValueError("Version mismatch")
 
@@ -50,17 +53,23 @@ def import_modules():
         )
         # show_new_brdr_dialog()
         import brdr
+
         print(f"version of brdr before reload: {brdr.__version__}")
         importlib.reload(brdr)
         import brdr
+
         print(f"reloaded version of brdr: {brdr.__version__}")
+
 
 def show_new_brdr_dialog():
     from PyQt5.QtWidgets import QMessageBox
+
     msg = QMessageBox()
     msg.setIcon(QMessageBox.Warning)
     msg.setWindowTitle("New installation of 'brdr'")
-    msg.setText(f"A new version of 'brdr'({brdr_version}) is installed for the calculations in the brdrQ-plugin: . A restart of QGIS is required to ensure correct functioning of brdrQ")
+    msg.setText(
+        f"A new version of 'brdr'({brdr_version}) is installed for the calculations in the brdrQ-plugin: . A restart of QGIS is required to ensure correct functioning of brdrQ"
+    )
     msg.setInformativeText("Please restart QGIS before using brdrQ.")
     msg.setStandardButtons(QMessageBox.Ok)
     msg.exec_()
