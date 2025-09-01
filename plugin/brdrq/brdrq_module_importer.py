@@ -10,7 +10,7 @@ import sys
 # https://github.com/qgis/QGIS/issues/45646
 
 
-brdr_version = "0.12.1"
+brdr_version = "0.13.0"
 
 
 def find_python():

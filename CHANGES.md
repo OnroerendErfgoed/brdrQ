@@ -1,4 +1,14 @@
 
+# v0.13.0
+
+- Upgrade to brdr version 0.13.0
+- Improvement: brdrQ-resulting-layer: adding diff-information (area) to the resultlayer [#95]
+- Improvement:  FeatureAligner - deactivate grouplayer after saving geometry [#176]
+- Improvement: FeatureAligner - zoom to predictions [#175]
+- Bugfix: aligning gives result that is not fully correct [#174]
+- Bugfix: FeatureAligner-tool with a layer in edit-modus results in crash [#172]
+- Bugfix: Issue with dataset when using RDs >5meter [#170]
+
 # v0.12.2
 
 - Bugfix for feature-to-feature aligner
