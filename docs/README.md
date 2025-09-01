@@ -8,6 +8,4 @@ here you can find links to the different tools that are currently provided:
 * [Autoupdateborders](autoupdateborders.md)
 * [Feature aligner](featurealigner.md)
 
-## 🔗 Notebook bekijken
-Bekijke de notebook:
-[notebook](notebooks/brdr_notebook.ipynb)
+
