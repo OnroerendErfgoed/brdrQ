@@ -78,8 +78,7 @@ from brdr.enums import (
     AlignerInputType,
     AlignerResultType,
 )
-from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader, update_to_actual_grb
-from brdr.constants import FORMULA_FIELD_NAME
+from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader
 from brdr.geometry_utils import safe_unary_union
 
 
@@ -150,7 +149,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     ADD_FORMULA = True
     ATTRIBUTES = True
     PREDICTIONS = False
-    UPDATE_TO_ACTUAL = False
+    STABILITY = True
+    # UPDATE_TO_ACTUAL = False
     SHOW_LOG_INFO = False
 
     # OTHER parameters
@@ -379,6 +379,16 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
+            "STABILITY",
+            "ADD_STABILITY_INDICATOR",
+            defaultValue=self.STABILITY,
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterBoolean(
             "PREDICTIONS",
             "GET_ALL_PREDICTIONS_FOR_RELEVANT_DISTANCE",
             defaultValue=self.PREDICTIONS,
@@ -546,7 +556,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         if self.RELEVANT_DISTANCE < 0:
             raise QgsProcessingException("Please provide a RELEVANT DISTANCE >=0")
-        elif self.RELEVANT_DISTANCE >= 0 and not self.PREDICTIONS:
+        elif self.RELEVANT_DISTANCE >= 0 and not self.PREDICTIONS and not self.STABILITY:
             process_result = aligner.process(
                 relevant_distance=self.RELEVANT_DISTANCE,
                 od_strategy=self.OD_STRATEGY,
@@ -555,15 +565,16 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             fcs = aligner.get_results_as_geojson(
                 formula=self.ADD_FORMULA, attributes=self.ATTRIBUTES
             )
-            # #TODO - test to implement 'stability-field' #168
-            # process_result_2 = aligner.process(
-            #     relevant_distance=self.RELEVANT_DISTANCE +0.10,
-            #     od_strategy=self.OD_STRATEGY,
-            #     threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
-            # )
-            # fcs_2 = aligner.get_results_as_geojson(
-            #     formula=self.ADD_FORMULA, attributes=self.ATTRIBUTES
-            # )
+        elif self.RELEVANT_DISTANCE >= 0 and not self.PREDICTIONS and self.STABILITY:
+            dict_series, dict_predicted, diffs = aligner.predictor(
+                od_strategy=self.OD_STRATEGY,
+                relevant_distances=[self.RELEVANT_DISTANCE,self.RELEVANT_DISTANCE + 0.1],
+                threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
+            )
+            fcs = aligner.get_results_as_geojson(
+                formula=self.ADD_FORMULA,
+                attributes=self.ATTRIBUTES,
+            )
 
         else:
             dict_series, dict_predicted, diffs = aligner.predictor(
@@ -587,46 +598,46 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         feedback.pushInfo("END PROCESSING")
 
-        if self.UPDATE_TO_ACTUAL:
-            feedback.pushInfo("START ACTUALISATION")
-            fcs_actualisation = update_to_actual_grb(
-                fcs["result"],
-                id_theme_fieldname=self.ID_THEME_FIELDNAME,
-                base_formula_field=FORMULA_FIELD_NAME,
-                max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
-                feedback=log_info,
-                attributes=self.ATTRIBUTES,
-            )
-            if fcs_actualisation is not None and fcs_actualisation != {}:
-                # Add RESULT TO TOC
-                geojson_to_layer(
-                    self.LAYER_RESULT_ACTUAL,
-                    fcs_actualisation["result"],
-                    QgsStyle.defaultStyle().symbol("outline blue"),
-                    True,
-                    self.GROUP_LAYER_ACTUAL,
-                    self.WORKFOLDER,
-                )
-
-                if "result_diff" in fcs_actualisation:
-                    geojson_to_layer(
-                        self.LAYER_RESULT_ACTUAL_DIFF,
-                        fcs_actualisation["result_diff"],
-                        QgsStyle.defaultStyle().symbol("hashed clbue /"),
-                        False,
-                        self.GROUP_LAYER_ACTUAL,
-                        self.WORKFOLDER,
-                    )
-                feedback.pushInfo("Resulterende geometrie berekend")
-            else:
-                feedback.pushInfo(
-                    "Geen wijzigingen gedetecteerd binnen tijdspanne in referentielaag (GRB-percelen)"
-                )
-
-            if feedback.isCanceled():
-                return {}
-
-            feedback.pushInfo("END ACTUALISATION")
+        # if self.UPDATE_TO_ACTUAL:
+        #     feedback.pushInfo("START ACTUALISATION")
+        #     fcs_actualisation = update_to_actual_grb(
+        #         fcs["result"],
+        #         id_theme_fieldname=self.ID_THEME_FIELDNAME,
+        #         base_formula_field=FORMULA_FIELD_NAME,
+        #         max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
+        #         feedback=log_info,
+        #         attributes=self.ATTRIBUTES,
+        #     )
+        #     if fcs_actualisation is not None and fcs_actualisation != {}:
+        #         # Add RESULT TO TOC
+        #         geojson_to_layer(
+        #             self.LAYER_RESULT_ACTUAL,
+        #             fcs_actualisation["result"],
+        #             QgsStyle.defaultStyle().symbol("outline blue"),
+        #             True,
+        #             self.GROUP_LAYER_ACTUAL,
+        #             self.WORKFOLDER,
+        #         )
+        #
+        #         if "result_diff" in fcs_actualisation:
+        #             geojson_to_layer(
+        #                 self.LAYER_RESULT_ACTUAL_DIFF,
+        #                 fcs_actualisation["result_diff"],
+        #                 QgsStyle.defaultStyle().symbol("hashed clbue /"),
+        #                 False,
+        #                 self.GROUP_LAYER_ACTUAL,
+        #                 self.WORKFOLDER,
+        #             )
+        #         feedback.pushInfo("Resulterende geometrie berekend")
+        #     else:
+        #         feedback.pushInfo(
+        #             "Geen wijzigingen gedetecteerd binnen tijdspanne in referentielaag (GRB-percelen)"
+        #         )
+        #
+        #     if feedback.isCanceled():
+        #         return {}
+        #
+        #     feedback.pushInfo("END ACTUALISATION")
 
         # write results to output-layers
         feedback.setCurrentStep(5)
@@ -841,16 +852,17 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.ADD_FORMULA = parameters["ADD_FORMULA"]
         self.ATTRIBUTES = parameters["ADD_ATTRIBUTES"]
         self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
+        self.STABILITY = parameters["STABILITY"]
         self.PREDICTIONS = parameters["PREDICTIONS"]
 
-        if self.PREDICTIONS and self.UPDATE_TO_ACTUAL:
-            raise QgsProcessingException(
-                "The PREDICTIONS-checkbox and the UPDATE_TO_ACTUAL_GRB-checkbox cannot be checked simultaneously"
-            )
-        if not self.ADD_FORMULA and self.UPDATE_TO_ACTUAL:
-            raise QgsProcessingException(
-                "The ADD FORMULA-checkbox must be checked when using the UPDATE_TO_ACTUAL_GRB-checkbox"
-            )
+        # if self.PREDICTIONS and self.UPDATE_TO_ACTUAL:
+        #     raise QgsProcessingException(
+        #         "The PREDICTIONS-checkbox and the UPDATE_TO_ACTUAL_GRB-checkbox cannot be checked simultaneously"
+        #     )
+        # if not self.ADD_FORMULA and self.UPDATE_TO_ACTUAL:
+        #     raise QgsProcessingException(
+        #         "The ADD FORMULA-checkbox must be checked when using the UPDATE_TO_ACTUAL_GRB-checkbox"
+        #     )
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
 
         ref = ENUM_REFERENCE_OPTIONS[parameters["ENUM_REFERENCE"]]
