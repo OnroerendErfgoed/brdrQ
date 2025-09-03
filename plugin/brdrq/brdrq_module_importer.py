@@ -51,14 +51,15 @@ def import_modules():
 
         if "brdr" in sys.modules:
             del sys.modules["brdr"]
-            print ("brdr removed from sys_module")
+            print("brdr removed from sys_module")
 
         subprocess.check_call(
             [python_exe, "-m", "pip", "install", "brdr==" + brdr_version]
         )
         # show_new_brdr_dialog()
         import brdr
-        #print(f"version of brdr before reload: {brdr.__version__}")
+
+        # print(f"version of brdr before reload: {brdr.__version__}")
         importlib.reload(brdr)
         import brdr
 

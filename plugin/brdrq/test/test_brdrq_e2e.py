@@ -76,7 +76,9 @@ class TestFlow(unittest.TestCase):
         widget.show_settings_dialog()
         self.assertTrue(settingsDialog.isVisible())
         # # Click the map button which should close the dialog
-        settings_ok_button: QPushButton = settingsDialog.buttonBox_settings.button(QDialogButtonBox.Ok)
+        settings_ok_button: QPushButton = settingsDialog.buttonBox_settings.button(
+            QDialogButtonBox.Ok
+        )
         QTest.mouseClick(settings_ok_button, Qt.LeftButton)
         self.assertFalse(settingsDialog.isVisible())
 

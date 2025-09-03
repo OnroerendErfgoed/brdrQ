@@ -44,7 +44,7 @@ from .brdrq_utils import (
     get_symbol,
     get_reference_params,
     PREFIX_LOCAL_LAYER,
-    DICT_ADPF_VERSIONS
+    DICT_ADPF_VERSIONS,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -137,7 +137,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     # ALIGNER parameters
     CRS = "EPSG:31370"  # default CRS for the aligner,updated by CRS of thematic inputlayer
-    OD_STRATEGY = OpenDomainStrategy.SNAP_ALL_SIDE  # default OD_STRATEGY for the aligner,updated by user-choice
+    OD_STRATEGY = (
+        OpenDomainStrategy.SNAP_ALL_SIDE
+    )  # default OD_STRATEGY for the aligner,updated by user-choice
     THRESHOLD_OVERLAP_PERCENTAGE = 50  # default THRESHOLD_OVERLAP_PERCENTAGE for the aligner,updated by user-choice
     RELEVANT_DISTANCE = (
         0  # default RELEVANT_DISTANCE for the aligner,updated by user-choice
@@ -557,7 +559,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         if self.RELEVANT_DISTANCE < 0:
             raise QgsProcessingException("Please provide a RELEVANT DISTANCE >=0")
-        elif self.RELEVANT_DISTANCE >= 0 and not self.PREDICTIONS and not self.STABILITY:
+        elif (
+            self.RELEVANT_DISTANCE >= 0 and not self.PREDICTIONS and not self.STABILITY
+        ):
             process_result = aligner.process(
                 relevant_distance=self.RELEVANT_DISTANCE,
                 od_strategy=self.OD_STRATEGY,
@@ -569,7 +573,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         elif self.RELEVANT_DISTANCE >= 0 and not self.PREDICTIONS and self.STABILITY:
             dict_series, dict_predicted, diffs = aligner.predictor(
                 od_strategy=self.OD_STRATEGY,
-                relevant_distances=[self.RELEVANT_DISTANCE,self.RELEVANT_DISTANCE + 0.1],
+                relevant_distances=[
+                    self.RELEVANT_DISTANCE,
+                    self.RELEVANT_DISTANCE + 0.1,
+                ],
                 threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
             )
             fcs = aligner.get_results_as_geojson(

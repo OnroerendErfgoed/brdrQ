@@ -272,7 +272,9 @@ class brdrQDockWidgetFeatureAligner(
         list_predictions_features = []
         for rd in list_predictions:
             feat = QgsFeature()
-            feat.setGeometry(geom_shapely_to_qgis(self.dict_evaluated_predictions[key][rd]['result']))
+            feat.setGeometry(
+                geom_shapely_to_qgis(self.dict_evaluated_predictions[key][rd]["result"])
+            )
             list_predictions_features.append(feat)
         zoom_to_features(list_predictions_features, self.iface)
         for k in list_predictions:
