@@ -539,7 +539,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         elif self.SELECTED_REFERENCE in ADPF_VERSIONS:
             year = DICT_ADPF_VERSIONS[self.SELECTED_REFERENCE]
             aligner.load_reference_data(
-                GRBFiscalParcelLoader(year=year, aligner=aligner, partition=1000)
+                GRBFiscalParcelLoader(year=str(year), aligner=aligner, partition=1000)
             )
         else:
             aligner.load_reference_data(

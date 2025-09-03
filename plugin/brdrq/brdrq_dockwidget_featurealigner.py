@@ -279,8 +279,8 @@ class brdrQDockWidgetFeatureAligner(
         zoom_to_features(list_predictions_features, self.iface)
         for k in list_predictions:
             items.append(str(k))
-            score = self.props_dict_evaluated_predictions[key][k][PREDICTION_SCORE]
-            evaluation = self.props_dict_evaluated_predictions[key][k][
+            score = self.dict_evaluated_predictions[key][k]["properties"][PREDICTION_SCORE]
+            evaluation = self.dict_evaluated_predictions[key][k]["properties"][
                 EVALUATION_FIELD_NAME
             ]
             items_with_name.append(f"{str(k)}: {str(evaluation)} (score: {str(score)})")
@@ -423,7 +423,7 @@ class brdrQDockWidgetFeatureAligner(
             self.aligner.dict_reference_source["version_date"] = "unknown"
         self.progressBar.setValue(50)
 
-        dict_evaluated, props_dict_evaluated_predictions = self.aligner.evaluate(
+        dict_evaluated = self.aligner.evaluate(
             ids_to_evaluate=None,
             base_formula_field=None,
             max_predictions=4,
@@ -433,7 +433,6 @@ class brdrQDockWidgetFeatureAligner(
 
         self.dict_processresults = self.aligner.dict_processresults
         self.dict_evaluated_predictions = dict_evaluated
-        self.props_dict_evaluated_predictions = props_dict_evaluated_predictions
 
         self.diffs_dict = self.aligner.get_diff_metrics(self.dict_processresults)
 
