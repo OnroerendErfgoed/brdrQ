@@ -44,6 +44,7 @@ from .brdrq_utils import (
     get_symbol,
     get_reference_params,
     PREFIX_LOCAL_LAYER,
+    DICT_ADPF_VERSIONS
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -524,7 +525,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             )
             aligner.dict_reference_source["version_date"] = "unknown"
         elif self.SELECTED_REFERENCE in ADPF_VERSIONS:
-            year = self.SELECTED_REFERENCE.removeprefix("Adpf")
+            year = DICT_ADPF_VERSIONS[self.SELECTED_REFERENCE]
             aligner.load_reference_data(
                 GRBFiscalParcelLoader(year=year, aligner=aligner, partition=1000)
             )

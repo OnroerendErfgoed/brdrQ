@@ -619,8 +619,8 @@ def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_
         ref_suffix = str(ref_id)
         print(selected_reference)
     elif ref in ADPF_VERSIONS:
-        selected_reference = ref_id
-        layer_reference_name = ref_id
+        selected_reference = ref
+        layer_reference_name = ref
         ref_suffix = str(ref_id)
     else:
         selected_reference = 0
