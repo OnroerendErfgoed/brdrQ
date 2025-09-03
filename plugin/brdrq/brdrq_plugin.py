@@ -206,10 +206,11 @@ class BrdrQPlugin(object):
 
     def openInfo(self):
         msg = f"brdrQ version: {self.version()} - brdr-version: {str(brdr.__version__)}"
+        #TODO add dialog and logo #180
         self.iface.messageBar().pushMessage(msg)
 
     def version(self):
-        return "0.13.0"
+        return "0.13.1"
 
     def openAutoupdatebordersscript(self):
         processing.execAlgorithmDialog("brdrqprovider:brdrqautoupdateborders")
