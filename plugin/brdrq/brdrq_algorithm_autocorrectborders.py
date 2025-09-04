@@ -31,7 +31,9 @@ import inspect
 import os
 import sys
 
+from brdr.constants import STABILITY, DIFF_PERC_INDEX
 from qgis.core import QgsProcessingFeatureSourceDefinition
+from qgis.core import QgsVectorFileWriter, QgsVectorLayer
 
 from .brdrq_utils import (
     ENUM_REFERENCE_OPTIONS,
@@ -45,6 +47,7 @@ from .brdrq_utils import (
     get_reference_params,
     PREFIX_LOCAL_LAYER,
     DICT_ADPF_VERSIONS,
+    move_to_group,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -562,7 +565,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         elif (
             self.RELEVANT_DISTANCE >= 0 and not self.PREDICTIONS and not self.STABILITY
         ):
-            process_result = aligner.process(
+            aligner.process(
                 relevant_distance=self.RELEVANT_DISTANCE,
                 od_strategy=self.OD_STRATEGY,
                 threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
@@ -571,11 +574,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 formula=self.ADD_FORMULA, attributes=self.ATTRIBUTES
             )
         elif self.RELEVANT_DISTANCE >= 0 and not self.PREDICTIONS and self.STABILITY:
-            dict_series, dict_predicted, diffs = aligner.predictor(
+            aligner.predictor(
                 od_strategy=self.OD_STRATEGY,
                 relevant_distances=[
-                    self.RELEVANT_DISTANCE,
-                    self.RELEVANT_DISTANCE + 0.1,
+                    self.RELEVANT_DISTANCE
                 ],
                 threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
             )
@@ -585,7 +587,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             )
 
         else:
-            dict_series, dict_predicted, diffs = aligner.predictor(
+            aligner.predictor(
                 od_strategy=self.OD_STRATEGY,
                 relevant_distances=np.arange(
                     0, self.RELEVANT_DISTANCE * 100, 10, dtype=int
@@ -605,47 +607,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             return {}
 
         feedback.pushInfo("END PROCESSING")
-
-        # if self.UPDATE_TO_ACTUAL:
-        #     feedback.pushInfo("START ACTUALISATION")
-        #     fcs_actualisation = update_to_actual_grb(
-        #         fcs["result"],
-        #         id_theme_fieldname=self.ID_THEME_FIELDNAME,
-        #         base_formula_field=FORMULA_FIELD_NAME,
-        #         max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
-        #         feedback=log_info,
-        #         attributes=self.ATTRIBUTES,
-        #     )
-        #     if fcs_actualisation is not None and fcs_actualisation != {}:
-        #         # Add RESULT TO TOC
-        #         geojson_to_layer(
-        #             self.LAYER_RESULT_ACTUAL,
-        #             fcs_actualisation["result"],
-        #             QgsStyle.defaultStyle().symbol("outline blue"),
-        #             True,
-        #             self.GROUP_LAYER_ACTUAL,
-        #             self.WORKFOLDER,
-        #         )
-        #
-        #         if "result_diff" in fcs_actualisation:
-        #             geojson_to_layer(
-        #                 self.LAYER_RESULT_ACTUAL_DIFF,
-        #                 fcs_actualisation["result_diff"],
-        #                 QgsStyle.defaultStyle().symbol("hashed clbue /"),
-        #                 False,
-        #                 self.GROUP_LAYER_ACTUAL,
-        #                 self.WORKFOLDER,
-        #             )
-        #         feedback.pushInfo("Resulterende geometrie berekend")
-        #     else:
-        #         feedback.pushInfo(
-        #             "Geen wijzigingen gedetecteerd binnen tijdspanne in referentielaag (GRB-percelen)"
-        #         )
-        #
-        #     if feedback.isCanceled():
-        #         return {}
-        #
-        #     feedback.pushInfo("END ACTUALISATION")
 
         # write results to output-layers
         feedback.setCurrentStep(5)
@@ -758,6 +719,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         #         )
         # # Opslaan en bewerkingsmodus afsluiten
         # result.commitChanges()
+        self.generate_updatelayer(self.LAYER_THEMATIC,result)
 
         QgsProject.instance().reloadAllLayers()
         feedback.pushInfo("Resulterende geometrie berekend")
@@ -771,6 +733,66 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "OUTPUT_RESULT_DIFF_PLUS": result_diff_plus,
             "OUTPUT_RESULT_DIFF_MIN": result_diff_min,
         }
+
+    def generate_updatelayer(self,input,result):
+
+        source_layer = input
+        update_layer = result
+
+        # 2. Duplicate source layer
+        name= source_layer.name()
+        corrected_layer_name = "corrected"
+        corrected_path = os.path.join(self.WORKFOLDER, corrected_layer_name+".gpkg")
+        QgsVectorFileWriter.writeAsVectorFormat(
+            source_layer, corrected_path, "UTF-8", source_layer.crs(), "GPKG"
+        )
+        corrected_layer = QgsVectorLayer(
+            corrected_path + "|layername=" + corrected_layer_name ,"Corrected Layer", "ogr"
+        )
+        QgsProject.instance().addMapLayer(corrected_layer)
+        review_layer_name = "review"
+        review_path = os.path.join(self.WORKFOLDER, review_layer_name+".gpkg")
+        QgsVectorFileWriter.writeAsVectorFormat(
+            source_layer, review_path, "UTF-8", source_layer.crs(), "GPKG"
+        )
+        review_layer = QgsVectorLayer(
+            review_path + "|layername=" + review_layer_name ,"Review Layer", "ogr"
+        )
+
+        QgsProject.instance().addMapLayer(review_layer)
+        move_to_group(corrected_layer,self.GROUP_LAYER)
+        move_to_group(review_layer,self.GROUP_LAYER)
+        QgsProject.instance().reloadAllLayers()
+
+        # 3. Maak een dictionary van ID naar geometrie uit de update-laag
+        id_geom_map = {}
+        ids_to_review = []
+
+        for feat in update_layer.getFeatures():
+            # only add geometries that are valid
+            if feat[STABILITY] and feat[DIFF_PERC_INDEX]<10:
+                id_geom_map[feat[self.ID_THEME_FIELDNAME]] = feat.geometry()
+            else:
+                ids_to_review.append(feat[self.ID_THEME_FIELDNAME])
+
+        # 4. Update geometrieën in de gedupliceerde laag
+        corrected_layer.startEditing()
+        for feat in corrected_layer.getFeatures():
+            fid = feat[self.ID_THEME_FIELDNAME]
+            if fid in id_geom_map:
+                feat.setGeometry(id_geom_map[fid])
+                corrected_layer.updateFeature(feat)
+            else:
+                corrected_layer.deleteFeature(feat.id())
+
+        corrected_layer.commitChanges()
+
+        review_layer.startEditing()
+        for feat in review_layer.getFeatures():
+            fid = feat[self.ID_THEME_FIELDNAME]
+            if fid in id_geom_map:
+                review_layer.deleteFeature(feat.id())
+        review_layer.commitChanges()
 
     def _reference_preparation(self, thematic_buffered, context, feedback, parameters):
         outputs = {}
@@ -863,14 +885,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.STABILITY = parameters["STABILITY"]
         self.PREDICTIONS = parameters["PREDICTIONS"]
 
-        # if self.PREDICTIONS and self.UPDATE_TO_ACTUAL:
-        #     raise QgsProcessingException(
-        #         "The PREDICTIONS-checkbox and the UPDATE_TO_ACTUAL_GRB-checkbox cannot be checked simultaneously"
-        #     )
-        # if not self.ADD_FORMULA and self.UPDATE_TO_ACTUAL:
-        #     raise QgsProcessingException(
-        #         "The ADD FORMULA-checkbox must be checked when using the UPDATE_TO_ACTUAL_GRB-checkbox"
-        #     )
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
 
         ref = ENUM_REFERENCE_OPTIONS[parameters["ENUM_REFERENCE"]]
