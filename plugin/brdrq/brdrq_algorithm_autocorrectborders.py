@@ -32,7 +32,7 @@ import os
 import sys
 
 from brdr.constants import STABILITY, DIFF_PERC_INDEX
-from qgis.core import QgsProcessingFeatureSourceDefinition
+from qgis.core import QgsProcessingFeatureSourceDefinition, edit
 from qgis.core import QgsVectorFileWriter, QgsVectorLayer
 
 from .brdrq_utils import (
@@ -48,6 +48,7 @@ from .brdrq_utils import (
     PREFIX_LOCAL_LAYER,
     DICT_ADPF_VERSIONS,
     move_to_group,
+    remove_group_layer,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -144,6 +145,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         OpenDomainStrategy.SNAP_ALL_SIDE
     )  # default OD_STRATEGY for the aligner,updated by user-choice
     THRESHOLD_OVERLAP_PERCENTAGE = 50  # default THRESHOLD_OVERLAP_PERCENTAGE for the aligner,updated by user-choice
+    REVIEW_PERCENTAGE = 10  #default - features that changes more than this % wil be moved to review lisr
     RELEVANT_DISTANCE = (
         0  # default RELEVANT_DISTANCE for the aligner,updated by user-choice
     )
@@ -358,6 +360,17 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         self.addParameter(parameter)
 
+        parameter = QgsProcessingParameterNumber(
+            "REVIEW_PERCENTAGE",
+            "REVIEW_PERCENTAGE (%) - results with a higher change % move to review-list",
+            type=QgsProcessingParameterNumber.Double,
+            defaultValue=10,
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
+
         parameter = QgsProcessingParameterBoolean(
             "ADD_FORMULA", "ADD_FORMULA", defaultValue=self.ADD_FORMULA
         )
@@ -384,15 +397,15 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         self.addParameter(parameter)
 
-        parameter = QgsProcessingParameterBoolean(
-            "STABILITY",
-            "ADD_STABILITY_INDICATOR",
-            defaultValue=self.STABILITY,
-        )
-        parameter.setFlags(
-            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
-        )
-        self.addParameter(parameter)
+        # parameter = QgsProcessingParameterBoolean(
+        #     "STABILITY",
+        #     "ADD_STABILITY_INDICATOR",
+        #     defaultValue=self.STABILITY,
+        # )
+        # parameter.setFlags(
+        #     parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        # )
+        # self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
             "PREDICTIONS",
@@ -694,32 +707,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         result_diff_min = QgsProject.instance().mapLayersByName(
             self.LAYER_RESULT_DIFF_MIN
         )[0]
-        # # Zorg dat laag A in bewerkingsmodus staat
-        # result.startEditing()
-        # # Voeg een nieuw veld toe aan laag A
-        # brdr_diff_area = QgsField(
-        #     "brdr_diff_area", QVariant.Double
-        # )  # Pas het type aan indien nodig
-        # result.dataProvider().addAttributes([brdr_diff_area])
-        # result.updateFields()
-        #
-        # # Maak een dictionary van ID naar waarde uit laag B
-        # id_naar_waarde = {}
-        # for feat in result_diff.getFeatures():
-        #     id_naar_waarde[feat[self.ID_THEME_FIELDNAME]] = feat["brdr_area"]
-        #
-        # # Vul het nieuwe veld in laag A op basis van overeenkomstige ID
-        # for feat in result.getFeatures():
-        #     id = feat[self.ID_THEME_FIELDNAME]
-        #     if id in id_naar_waarde:
-        #         result.changeAttributeValue(
-        #             feat.id(),
-        #             result.fields().indexFromName("brdr_diff_area"),
-        #             id_naar_waarde[id],
-        #         )
-        # # Opslaan en bewerkingsmodus afsluiten
-        # result.commitChanges()
-        self.generate_updatelayer(self.LAYER_THEMATIC,result)
+        self.generate_outputlayers(self.LAYER_THEMATIC,result)
 
         QgsProject.instance().reloadAllLayers()
         feedback.pushInfo("Resulterende geometrie berekend")
@@ -734,65 +722,75 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "OUTPUT_RESULT_DIFF_MIN": result_diff_min,
         }
 
-    def generate_updatelayer(self,input,result):
+    def generate_outputlayers(self,input,result):
 
         source_layer = input
-        update_layer = result
+        results_layer = result
 
-        # 2. Duplicate source layer
-        name= source_layer.name()
-        corrected_layer_name = "corrected"
-        corrected_path = os.path.join(self.WORKFOLDER, corrected_layer_name+".gpkg")
-        QgsVectorFileWriter.writeAsVectorFormat(
-            source_layer, corrected_path, "UTF-8", source_layer.crs(), "GPKG"
-        )
-        corrected_layer = QgsVectorLayer(
-            corrected_path + "|layername=" + corrected_layer_name ,"Corrected Layer", "ogr"
-        )
-        QgsProject.instance().addMapLayer(corrected_layer)
-        review_layer_name = "review"
-        review_path = os.path.join(self.WORKFOLDER, review_layer_name+".gpkg")
-        QgsVectorFileWriter.writeAsVectorFormat(
-            source_layer, review_path, "UTF-8", source_layer.crs(), "GPKG"
-        )
-        review_layer = QgsVectorLayer(
-            review_path + "|layername=" + review_layer_name ,"Review Layer", "ogr"
-        )
+        # Copy source layer to gpkg-layers
+        corrected_layer = self.generate_gpkg_layer(source_layer, "corrected", "Corrected")
+        toreview_layer = self.generate_gpkg_layer(source_layer, "toreview", "To Review")
+        toalign_layer = self.generate_gpkg_layer(source_layer, "toalign", "To Align")
 
-        QgsProject.instance().addMapLayer(review_layer)
-        move_to_group(corrected_layer,self.GROUP_LAYER)
-        move_to_group(review_layer,self.GROUP_LAYER)
+        # Move layers to a sub-group
+        groupname = "output"
+        #TODO: fix that former layers will be removed
+
+        remove_group_layer(groupname)
+        move_to_group(corrected_layer,groupname)
+        move_to_group(toreview_layer,groupname)
+        move_to_group(toalign_layer,groupname)
+
+        move_to_group(groupname,self.GROUP_LAYER)
+        #TODO: add color to the layers
+
         QgsProject.instance().reloadAllLayers()
 
-        # 3. Maak een dictionary van ID naar geometrie uit de update-laag
+        # Make a dictionary with ID to geometry from the resultslayer
         id_geom_map = {}
         ids_to_review = []
+        ids_to_align=[]
 
-        for feat in update_layer.getFeatures():
-            # only add geometries that are valid
-            if feat[STABILITY] and feat[DIFF_PERC_INDEX]<10:
-                id_geom_map[feat[self.ID_THEME_FIELDNAME]] = feat.geometry()
-            else:
+        #TODO: check that STABILITY is existing or catch when not
+        for feat in results_layer.getFeatures():
+            id_geom_map[feat[self.ID_THEME_FIELDNAME]] = feat.geometry()
+            if not feat[STABILITY]:
+                ids_to_align.append(feat[self.ID_THEME_FIELDNAME])
+            elif feat[DIFF_PERC_INDEX]<self.REVIEW_PERCENTAGE:
                 ids_to_review.append(feat[self.ID_THEME_FIELDNAME])
 
-        # 4. Update geometrieën in de gedupliceerde laag
-        corrected_layer.startEditing()
-        for feat in corrected_layer.getFeatures():
-            fid = feat[self.ID_THEME_FIELDNAME]
-            if fid in id_geom_map:
-                feat.setGeometry(id_geom_map[fid])
-                corrected_layer.updateFeature(feat)
-            else:
-                corrected_layer.deleteFeature(feat.id())
+        # 4. Update geometries in duplicated layers
+        with edit(corrected_layer):
+            for feat in corrected_layer.getFeatures():
+                fid = feat[self.ID_THEME_FIELDNAME]
+                if fid in id_geom_map and fid not in ids_to_align and  fid not in ids_to_review:
+                    feat.setGeometry(id_geom_map[fid])
+                    corrected_layer.updateFeature(feat)
+                else:
+                    corrected_layer.deleteFeature(feat.id())
 
-        corrected_layer.commitChanges()
+        with edit(toreview_layer):
+            for feat in toreview_layer.getFeatures():
+                fid = feat[self.ID_THEME_FIELDNAME]
+                if fid not in ids_to_review:
+                    toreview_layer.deleteFeature(feat.id())
 
-        review_layer.startEditing()
-        for feat in review_layer.getFeatures():
-            fid = feat[self.ID_THEME_FIELDNAME]
-            if fid in id_geom_map:
-                review_layer.deleteFeature(feat.id())
-        review_layer.commitChanges()
+        with edit(toalign_layer):
+            for feat in toalign_layer.getFeatures():
+                fid = feat[self.ID_THEME_FIELDNAME]
+                if fid not in ids_to_align:
+                    toalign_layer.deleteFeature(feat.id())
+
+    def generate_gpkg_layer(self, source_layer, filename, layername) -> QgsVectorLayer:
+        path = os.path.join(self.WORKFOLDER, filename + ".gpkg")
+        QgsVectorFileWriter.writeAsVectorFormat(
+            source_layer, path, "UTF-8", source_layer.crs(), "GPKG"
+        )
+        layer = QgsVectorLayer(
+            path + "|layername=" + filename, layername, "ogr"
+        )
+        QgsProject.instance().addMapLayer(layer)
+        return layer
 
     def _reference_preparation(self, thematic_buffered, context, feedback, parameters):
         outputs = {}
@@ -876,13 +874,14 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
         self.ID_REFERENCE_FIELDNAME = parameters["COMBOBOX_ID_REFERENCE"]
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
+        self.REVIEW_PERCENTAGE = parameters["REVIEW_PERCENTAGE"]
         self.OD_STRATEGY = OpenDomainStrategy[
             ENUM_OD_STRATEGY_OPTIONS[parameters["ENUM_OD_STRATEGY"]]
         ]
         self.ADD_FORMULA = parameters["ADD_FORMULA"]
         self.ATTRIBUTES = parameters["ADD_ATTRIBUTES"]
         self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
-        self.STABILITY = parameters["STABILITY"]
+        # self.STABILITY = parameters["STABILITY"]
         self.PREDICTIONS = parameters["PREDICTIONS"]
 
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
