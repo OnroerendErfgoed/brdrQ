@@ -10,7 +10,7 @@ import sys
 # https://github.com/qgis/QGIS/issues/45646
 
 
-brdr_version = "0.13.0"
+brdr_version = "0.14.0"
 
 
 def find_python():
@@ -48,13 +48,18 @@ def import_modules():
             raise ValueError("Version mismatch")
 
     except (ModuleNotFoundError, ValueError):
+
+        if "brdr" in sys.modules:
+            del sys.modules["brdr"]
+            print("brdr removed from sys_module")
+
         subprocess.check_call(
             [python_exe, "-m", "pip", "install", "brdr==" + brdr_version]
         )
         # show_new_brdr_dialog()
         import brdr
 
-        print(f"version of brdr before reload: {brdr.__version__}")
+        # print(f"version of brdr before reload: {brdr.__version__}")
         importlib.reload(brdr)
         import brdr
 

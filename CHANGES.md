@@ -1,4 +1,12 @@
 
+# v0.14.0
+
+- Upgrade to brdr version 0.14.0
+- Module loader improved
+- Added stability parameter (brdr_stability) to retrieve stable results [#168]
+- Added correction layer as output to AutoCorrectBorders (workflow) [#151][#156]
+- Bugfix for AdpF loader [#181]
+
 # v0.13.0
 
 - Upgrade to brdr version 0.13.0

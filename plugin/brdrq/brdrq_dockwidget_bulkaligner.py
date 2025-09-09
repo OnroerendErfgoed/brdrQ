@@ -52,6 +52,8 @@ from .brdrq_utils import (
     geom_qgis_to_shapely,
     GRB_TYPES,
     ADPF_VERSIONS,
+    BRDRQ_STATE_FIELDNAME,
+    BrdrQState,
 )
 
 FORM_CLASS, _ = uic.loadUiType(
@@ -150,7 +152,7 @@ class brdrQDockWidgetBulkAligner(
             )
         # add attribute for automatic/manual correction
         # new_layer.renderer().setSymbol(QgsStyle.defaultStyle().symbol("hashed clbue /"))
-        add_field_to_layer(layer, "brdrq_handling", QVariant.String, "todo")
+        add_field_to_layer(layer, BRDRQ_STATE_FIELDNAME, QVariant.String, BrdrQState.TO_UPDATE)
 
         # add a new layer to the map
         QgsProject.instance().addMapLayer(new_layer, False)
@@ -222,7 +224,7 @@ class brdrQDockWidgetBulkAligner(
             self.aligner.dict_reference_source["version_date"] = "unknown"
         self.progressBar.setValue(50)
 
-        dict_evaluated_predictions, props_dict_evaluated_predictions = (
+        dict_evaluated_predictions = (
             self.aligner.evaluate(
                 ids_to_evaluate=None,
                 base_formula_field=None,
@@ -248,15 +250,12 @@ class brdrQDockWidgetBulkAligner(
 
         self.dict_processresults = dict_processresults
         self.dict_evaluated_predictions = dict_evaluated_predictions
-        self.props_dict_evaluated_predictions = props_dict_evaluated_predictions
         self.diffs_dict = self.aligner.get_diff_metrics(
             self.dict_processresults, self.aligner.dict_thematic
         )
         self.add_results_to_grouplayer()
-
         # set list with predicted values
         self.listWidget_predictions.clear()
-        # TODO, loop over predictions en voeg toe met boodschap
         items = []
         items_with_name = []
         best_index = 0
@@ -264,8 +263,8 @@ class brdrQDockWidgetBulkAligner(
         list_predictions = [k for k in (self.dict_evaluated_predictions[key]).keys()]
         for k in list_predictions:
             items.append(str(k))
-            score = self.props_dict_evaluated_predictions[key][k][PREDICTION_SCORE]
-            evaluation = self.props_dict_evaluated_predictions[key][k][
+            score = self.dict_evaluated_predictions[key][k]["properties"][PREDICTION_SCORE]
+            evaluation = self.dict_evaluated_predictions[key][k]["properties"][
                 EVALUATION_FIELD_NAME
             ]
             items_with_name.append(f"{str(k)}: {str(evaluation)} (score: {str(score)})")
@@ -339,9 +338,8 @@ class brdrQDockWidgetBulkAligner(
                 print(f"no feature found for key {str(key)}")
                 continue
             qgis_geom = None
-            if key in self.props_dict_evaluated_predictions:
+            if key in self.dict_evaluated_predictions:
                 print(f"keys {str(key)}")
-                props_predictions = self.props_dict_evaluated_predictions[key]
                 geom_predictions = self.dict_evaluated_predictions[key]
                 nr_predictions = len(geom_predictions.keys())
                 print("nr_predictions" + str(nr_predictions))
@@ -361,7 +359,7 @@ class brdrQDockWidgetBulkAligner(
             with edit(self.workinglayer):
                 self.workinglayer.changeAttributeValue(
                     feature.id(),
-                    self.workinglayer.fields().indexOf("brdrq_handling"),
+                    self.workinglayer.fields().indexOf(BRDRQ_STATE_FIELDNAME),
                     attribute_string,
                 )
                 if not qgis_geom is None:
@@ -375,7 +373,7 @@ class brdrQDockWidgetBulkAligner(
     def loadFeaturelist(self):
         self.clearUserInterface()
         for f in self.getWorkingFeatures():
-            item = f"ID: *{str(f.id())}*, Attributes: {f['brdrq_handling']}"
+            item = f"ID: *{str(f.id())}*, Attributes: {f[BRDRQ_STATE_FIELDNAME]}"
             if self.checkBox_only_manual.checkState() == 2 and not "to_check" in item:
                 continue
             self.listWidget_features.addItem(item)
@@ -410,8 +408,8 @@ class brdrQDockWidgetBulkAligner(
         best_score = 0
         for k in list_predictions:
             items.append(str(k))
-            score = self.props_dict_evaluated_predictions[key][k][PREDICTION_SCORE]
-            evaluation = self.props_dict_evaluated_predictions[key][k][
+            score = self.dict_evaluated_predictions[key][k]["properties"][PREDICTION_SCORE]
+            evaluation = self.dict_evaluated_predictions[key][k]["properties"][
                 EVALUATION_FIELD_NAME
             ]
             items_with_name.append(f"{str(k)}: {str(evaluation)} (score: {str(score)})")

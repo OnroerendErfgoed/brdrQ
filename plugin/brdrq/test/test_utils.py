@@ -24,9 +24,9 @@ class TestUtils(unittest.TestCase):
 
     def test_workfolder(self):
         folderpath = os.path.dirname(__file__)
-        foldername= "testfoldername"
-        #workfolder = get_workfolder(folderpath, foldername, temporary =False)
-        workfolder = get_workfolder(folderpath, foldername, temporary =True)
+        foldername = "testfoldername"
+        # workfolder = get_workfolder(folderpath, foldername, temporary =False)
+        workfolder = get_workfolder(folderpath, foldername, temporary=True)
 
         # #folder_to_remove
         # folder_to_remove = os.path.join(folderpath, foldername)
