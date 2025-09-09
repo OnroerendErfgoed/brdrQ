@@ -52,6 +52,8 @@ from .brdrq_utils import (
     geom_qgis_to_shapely,
     GRB_TYPES,
     ADPF_VERSIONS,
+    BRDRQ_STATE_FIELDNAME,
+    BrdrQState,
 )
 
 FORM_CLASS, _ = uic.loadUiType(
@@ -150,7 +152,7 @@ class brdrQDockWidgetBulkAligner(
             )
         # add attribute for automatic/manual correction
         # new_layer.renderer().setSymbol(QgsStyle.defaultStyle().symbol("hashed clbue /"))
-        add_field_to_layer(layer, "brdrq_handling", QVariant.String, "todo")
+        add_field_to_layer(layer, BRDRQ_STATE_FIELDNAME, QVariant.String, BrdrQState.TO_UPDATE)
 
         # add a new layer to the map
         QgsProject.instance().addMapLayer(new_layer, False)
@@ -357,7 +359,7 @@ class brdrQDockWidgetBulkAligner(
             with edit(self.workinglayer):
                 self.workinglayer.changeAttributeValue(
                     feature.id(),
-                    self.workinglayer.fields().indexOf("brdrq_handling"),
+                    self.workinglayer.fields().indexOf(BRDRQ_STATE_FIELDNAME),
                     attribute_string,
                 )
                 if not qgis_geom is None:
@@ -371,7 +373,7 @@ class brdrQDockWidgetBulkAligner(
     def loadFeaturelist(self):
         self.clearUserInterface()
         for f in self.getWorkingFeatures():
-            item = f"ID: *{str(f.id())}*, Attributes: {f['brdrq_handling']}"
+            item = f"ID: *{str(f.id())}*, Attributes: {f[BRDRQ_STATE_FIELDNAME]}"
             if self.checkBox_only_manual.checkState() == 2 and not "to_check" in item:
                 continue
             self.listWidget_features.addItem(item)

@@ -28,7 +28,6 @@ from PyQt5.QtWidgets import QListWidgetItem
 from brdr.aligner import Aligner
 from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME
 from brdr.enums import AlignerResultType, GRBType
-from brdr.geometry_utils import geom_from_wkt
 from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader
 from brdr.loader import DictLoader
 from qgis import processing
@@ -53,6 +52,9 @@ from .brdrq_utils import (
     PREFIX_LOCAL_LAYER,
     geom_shapely_to_qgis,
     zoom_to_features,
+    BRDRQ_ORIGINAL_WKT_FIELDNAME,
+    BRDRQ_STATE_FIELDNAME,
+    get_original_geometry,
 )
 
 FORM_CLASS, _ = uic.loadUiType(
@@ -183,11 +185,16 @@ class brdrQDockWidgetFeatureAligner(
         self.clearUserInterface()
         # Add the selected features to the list widget
         print("list features")
+        ix = self.layer.fields().indexOf(BRDRQ_STATE_FIELDNAME)
         for feature in self.listed_features:
             attributes = feature.attributes()
+            if ix >= 0:
+                state = attributes[ix]
+            else:
+                state = 'none'
             attribute_string = ", ".join(str(attribute) for attribute in attributes)
             item = QListWidgetItem(
-                f"ID: *{feature.id()}*, Attributes: {attribute_string}"
+                f"ID: *{feature.id()}*, STATE: *{state} *, Attributes: {attribute_string}"
             )
             self.listWidget_features.addItem(item)
         self.textEdit_output.setText(f"#Features: {str(len(self.listed_features))}")
@@ -220,13 +227,16 @@ class brdrQDockWidgetFeatureAligner(
             self.textEdit_output.setText(f"No feature found with ID {feature_id}")
             return
 
-        self.original_geometry = self.feature.geometry()
+        original_geometry = get_original_geometry(self.feature, BRDRQ_ORIGINAL_WKT_FIELDNAME)
+        if original_geometry is None:
+            original_geometry = self.feature.geometry()
+
         zoom_to_features([self.feature], self.iface)
         key = self.feature.id()
 
         # Check feature on area
         # check area of feature and optimize/block calculation
-        area = self.original_geometry.area()
+        area = original_geometry.area()
         max_rel_dist = self.settingsDialog.max_rel_dist
         step = self.settingsDialog.small_step
         if area > self.max_area_optimization:
@@ -366,9 +376,14 @@ class brdrQDockWidgetFeatureAligner(
 
         self.progressBar.setValue(0)
         for feature in selectedFeatures:
-            feature_geom = feature.geometry()
-            wkt = feature_geom.asWkt()
-            geom_shapely = geom_from_wkt(wkt)
+            original_geometry = get_original_geometry(feature,BRDRQ_ORIGINAL_WKT_FIELDNAME)
+            if original_geometry is None:
+                original_geometry = feature.geometry()
+            if original_geometry is None:
+                print ("feature without geometry")
+                continue
+            geom_shapely = geom_qgis_to_shapely(original_geometry)
+
             dict_to_load[feature.id()] = geom_shapely
 
         self.aligner = Aligner(
@@ -448,9 +463,11 @@ class brdrQDockWidgetFeatureAligner(
 
     def change_geometry(self):
         self._change_geometry(self.layer)
+        remove_group_layer(self.GROUP_LAYER)
 
     def reset_geometry(self):
         self._reset_geometry(self.layer)
+        remove_group_layer(self.GROUP_LAYER)
 
     def startDock(self):
         print("start dock")

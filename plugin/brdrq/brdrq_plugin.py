@@ -115,6 +115,20 @@ class BrdrQPlugin(object):
         self.brdrq_menu.setIcon(icon_menu)
         self.vector_menu.addMenu(self.brdrq_menu)
 
+        # AUTOCORRECTBORDERS
+        icon_autocorrectborders = os.path.join(
+            os.path.join(cmd_folder, "icon_autocorrectborders.png")
+        )
+        action_autocorrectborders = QAction(
+            QIcon(icon_autocorrectborders),
+            "Autocorrectborders (bulk)",
+            self.iface.mainWindow(),
+        )
+        action_autocorrectborders.triggered.connect(self.openAutocorrectbordersscript)
+        self.brdrq_menu.addAction(action_autocorrectborders)
+        self.toolbar.addAction(action_autocorrectborders)
+        self.actions.append(action_autocorrectborders)
+
         # FEATUREPREDICTOR
         icon = os.path.join(os.path.join(cmd_folder, "icon_featurealigner.png"))
         action_featurepredictor = QAction(
@@ -138,34 +152,23 @@ class BrdrQPlugin(object):
         # self.toolbar.addAction(action_bulkaligner)
         # self.actions.append(action_bulkaligner)
 
-        # AUTOCORRECTBORDERS
-        icon_autocorrectborders = os.path.join(
-            os.path.join(cmd_folder, "icon_autocorrectborders.png")
-        )
-        action_autocorrectborders = QAction(
-            QIcon(icon_autocorrectborders),
-            "Autocorrectborders (bulk)",
-            self.iface.mainWindow(),
-        )
-        action_autocorrectborders.triggered.connect(self.openAutocorrectbordersscript)
-        self.brdrq_menu.addAction(action_autocorrectborders)
-        self.toolbar.addAction(action_autocorrectborders)
-        self.actions.append(action_autocorrectborders)
 
-        # AUTOUPDATEBORDERS -GRBUPDATER
-        icon_autoupdateborders = os.path.join(
-            os.path.join(cmd_folder, "icon_grbupdater.png")
-        )
-        action_autoupdateborders = QAction(
-            QIcon(icon_autoupdateborders),
-            "GRB Updater (bulk)",
-            self.iface.mainWindow(),
-        )
-        action_autoupdateborders.triggered.connect(self.openAutoupdatebordersscript)
-        self.brdrq_menu.addAction(action_autoupdateborders)
-        self.toolbar.addAction(action_autoupdateborders)
-        self.actions.append(action_autoupdateborders)
 
+        # # AUTOUPDATEBORDERS -GRBUPDATER
+        # icon_autoupdateborders = os.path.join(
+        #     os.path.join(cmd_folder, "icon_grbupdater.png")
+        # )
+        # action_autoupdateborders = QAction(
+        #     QIcon(icon_autoupdateborders),
+        #     "GRB Updater (bulk)",
+        #     self.iface.mainWindow(),
+        # )
+        # action_autoupdateborders.triggered.connect(self.openAutoupdatebordersscript)
+        # self.brdrq_menu.addAction(action_autoupdateborders)
+        # self.toolbar.addAction(action_autoupdateborders)
+        # self.actions.append(action_autoupdateborders)
+
+        #INFO - VERSION
         icon_info = os.path.join(os.path.join(cmd_folder, "icon_info.png"))
         action_info = QAction(
             QIcon(icon_info),

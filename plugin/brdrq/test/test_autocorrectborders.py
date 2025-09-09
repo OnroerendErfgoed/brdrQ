@@ -61,7 +61,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
             },
         )
         featurecount = layer_theme.featureCount()
-        assert len(output)==4
+        assert len(output)==5
         for o in output.values():
             assert isinstance(o,QgsVectorLayer)
             assert o.featureCount()==featurecount
@@ -97,7 +97,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
             },
         )
         featurecount = layer_theme.featureCount()
-        assert len(output)==4
+        assert len(output)==5
         for o in output.values():
             assert isinstance(o,QgsVectorLayer)
             assert o.featureCount()==featurecount
@@ -146,7 +146,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
             },
         )
         featurecount = layer_theme.featureCount()
-        assert len(output)==4
+        assert len(output)==5
         for o in output.values():
             assert isinstance(o,QgsVectorLayer)
             assert o.featureCount()==featurecount
@@ -187,7 +187,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
             },
         )
         featurecount = layer_theme.featureCount()
-        assert len(output)==4
+        assert len(output)==5
         for o in output.values():
             assert isinstance(o,QgsVectorLayer)
             assert o.featureCount()==featurecount
@@ -221,7 +221,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
             },
         )
         featurecount = layer_theme.featureCount()
-        assert len(output)==4
+        assert len(output)==5
         for o in output.values():
             assert isinstance(o,QgsVectorLayer)
             assert o.featureCount()>=featurecount

@@ -1,4 +1,5 @@
 import os
+from enum import Enum
 
 from qgis.core import QgsProcessingException
 from qgis.core import QgsRectangle
@@ -34,7 +35,6 @@ from qgis import processing
 from qgis.core import QgsField, QgsFeatureRequest, QgsProcessing
 from qgis.core import QgsProcessingParameterFolderDestination
 from qgis.core import QgsGeometry
-from qgis.core import QgsProject
 from qgis.core import (
     QgsSimpleLineSymbolLayer,
     QgsFillSymbol,
@@ -91,6 +91,19 @@ ENUM_FULL_STRATEGY_OPTIONS = [e.name for e in FullStrategy]
 
 # ENUM for choosing the full-strategy when evaluating
 ENUM_PREDICTION_STRATEGY_OPTIONS = [e.name for e in PredictionStrategy]
+
+BRDRQ_ORIGINAL_WKT_FIELDNAME = "brdrq_original_wkt"
+BRDRQ_STATE_FIELDNAME = "brdrq_state"
+
+class BrdrQState(str, Enum):
+    """
+    Enum for defining the state of a (processed) feature
+    """
+    AUTO_UPDATED = "auto_updated"
+    MANUAL_UPDATED = "manual_updated"
+    TO_REVIEW = "to_review"
+    TO_UPDATE = "to_update"
+    NONE = "none"
 
 
 def geom_shapely_to_qgis(geom_shapely):
@@ -364,6 +377,47 @@ def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
     return vl
 
 
+def set_layer_visibility(layer: QgsMapLayer, visible: bool):
+    """
+    Sets the visibility of a layer in the legend.
+
+    Parameters:
+        layer (QgsMapLayer): The layer whose visibility you want to change.
+        visible (bool): True to make the layer visible, False to hide it.
+    """
+    if not layer:
+        print("No valid layer provided.")
+        return
+
+    layer_tree = QgsProject.instance().layerTreeRoot().findLayer(layer.id())
+    if layer_tree:
+        layer_tree.setItemVisibilityChecked(visible)
+    else:
+        print("Layer not found in the layer tree.")
+
+from qgis.core import QgsProject
+
+def remove_layer_by_name(layer_name):
+    """
+    Removes a layer from the current QGIS project by its name.
+
+    Parameters:
+    layer_name (str): The name of the layer to remove.
+    """
+    project = QgsProject.instance()
+    layers = project.mapLayers().values()
+
+    for layer in layers:
+        if layer.name() == layer_name:
+            project.removeMapLayer(layer.id())
+            return
+
+    print(f"Layer '{layer_name}' not found.")
+
+def is_field_in_layer(fieldname,layer):
+    return fieldname in [field.name() for field in layer.fields()]
+
+
 def get_workfolder(folderpath="", name="", temporary=False):
     """
     Creates a workfolder-path
@@ -608,6 +662,18 @@ def _processresult_to_dicts(processresult):
         results_relevant_intersection,
         results_relevant_diff,
     )
+
+def get_original_geometry(feature, fieldname):
+    """
+    Tries to read the original wkt string form a feature (if exists). Else the feature-geometry is returned
+    """
+    original_geometry =None
+    try:
+        if fieldname in feature.fields().names():
+            original_geometry = QgsGeometry.fromWkt(feature[fieldname])
+    except:
+        original_geometry =None
+    return original_geometry
 
 
 def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_crs):

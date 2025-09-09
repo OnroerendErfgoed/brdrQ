@@ -31,7 +31,10 @@ from .brdrq_utils import (
     get_workfolder,
     geom_shapely_to_qgis,
     get_layer_by_name,
-    remove_group_layer,
+    BRDRQ_ORIGINAL_WKT_FIELDNAME,
+    BRDRQ_STATE_FIELDNAME,
+    BrdrQState,
+    get_original_geometry,
 )
 
 
@@ -135,13 +138,12 @@ class brdrQDockWidgetAligner(object):
             print(errormesssage)
             return
         qgis_geom = geom_shapely_to_qgis(resulting_geom)
-        ix = layer.fields().indexOf("brdrq_handling")
+        ix = layer.fields().indexOf(BRDRQ_STATE_FIELDNAME)
         with edit(layer):
             layer.changeGeometry(feat.id(), qgis_geom)
             if ix >= 0:
-                layer.changeAttributeValue(feat.id(), ix, "corrected")
-        remove_group_layer(self.GROUP_LAYER)
-        self.iface.messageBar().pushMessage("geometrie aangepast")
+                layer.changeAttributeValue(feat.id(), ix, BrdrQState.MANUAL_UPDATED.value)
+        self.iface.messageBar().pushMessage("geometry saved")
 
     def _reset_geometry(self, layer):
         if self._check_warn_edit_modus(layer):
@@ -149,23 +151,27 @@ class brdrQDockWidgetAligner(object):
         feat = self.feature
         if feat is None:
             return
-        key = feat.id()
-        relevant_distance = round(0.0, self.settingsDialog.DECIMAL)
-        if relevant_distance in self.dict_processresults[key]:
-            result = self.dict_processresults[key][relevant_distance]
-            resulting_geom = result["result"]
-        else:
-            errormesssage = f"problem restting for reldist {str(relevant_distance)}"
-            print(errormesssage)
-            return
-        qgis_geom = geom_shapely_to_qgis(resulting_geom)
-        ix = layer.fields().indexOf("brdrq_handling")
+        original_geometry = get_original_geometry(feat ,BRDRQ_ORIGINAL_WKT_FIELDNAME)
+        if original_geometry is None:
+            key = feat.id()
+            relevant_distance = round(0.0, self.settingsDialog.DECIMAL)
+            if relevant_distance in self.dict_processresults[key]:
+                result = self.dict_processresults[key][relevant_distance]
+                original_geometry = geom_shapely_to_qgis(result["result"])
+            else:
+                errormesssage = f"problem resetting for reldist {str(relevant_distance)}"
+                print(errormesssage)
+                return
+
+        ix = layer.fields().indexOf(BRDRQ_STATE_FIELDNAME)
         with edit(layer):
-            layer.changeGeometry(feat.id(), qgis_geom)
+            layer.changeGeometry(feat.id(), original_geometry)
             if ix >= 0:
-                layer.changeAttributeValue(feat.id(), ix, "to_check_reset")
-        remove_group_layer(self.GROUP_LAYER)
-        self.iface.messageBar().pushMessage("geometrie gereset")
+                layer.changeAttributeValue(feat.id(), ix, BrdrQState.TO_UPDATE.value)
+
+        self.iface.messageBar().pushMessage("geometry reset")
+
+
 
     def onSliderChange(self, index):
         print("onSliderChange: index -> " + str(index))
