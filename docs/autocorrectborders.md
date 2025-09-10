@@ -67,6 +67,12 @@ The script requires the following input parameters:
   - **Default**: 50 (%)
   - **Optional**: No.
 
+- **REVIEW_PERCENTAGE % (0-100)**: Results that changed more than this percentage are getting a status 'to_review'
+    - Difference (%) >  REVIEW_PERCENTAGE: brdrQ_state = 'to_review'
+    - Difference (%) < REVIEW_PERCENTAGE: brdrQ_state = 'auto_updated'
+  - **Default**: 10 (%)
+  - **Optional**: No.
+
 - **WORKING FOLDER**: Folder to save the resulting geojson-files. By default empty, resulting in saving the geojson-files in
   a default folder on your machine.
   - **Default**: By default, the output will be saved in a local folder on your machine.
@@ -76,11 +82,11 @@ The script requires the following input parameters:
     - True (Default): 2 additional layers are generated as output that visually represent the significant intersections
       and significant differences
     - False: The 2 additional layers are not added to the output
-- **GET_ALL_PREDICTIONS_FOR_RELEVANT_DISTANCES** (Default: False):
+- **GET_BEST_PREDICTION_FOR_RELEVANT_DISTANCES (!slower!)** (Default: False):
     - When True, the code will use all relevant distances with an interval of 10cm to try to search for 'predictions'.
       These are results where the output geometry is a stable result that could be the possible wanted result.
-    - The resulting layer will give alle these predicted results together with the relevant distance where this result
-      is found.
+    - The resulting layer will use the prediction with the highest prediction score.
+    - Warning : When this option is used, the processing will be much slower, as a multitude of calculations are needed.
   - **Default**: False
   - **Optional**: No.
 
