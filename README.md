@@ -109,9 +109,8 @@ The brdrQ-plugin adds a toolbar, a toolmenu (vector) & a brdrQ processing provid
 ### Tools/Scripts
 - A custom tool (feature-by-feature):
   - **FeatureAligner (predictor)**: Custom tool to align feature-by-feature based on predictions [link to documentation](docs/featurealigner.md)
-- 2 processing algorithm scripts (bulk):
+- a processing algorithm script (bulk):
   - **AutoCorrectBorders**:Processing algorithm to align polygons based on a specific relevant distance [link to documentation](docs/autocorrectborders.md)
-  - **AutoUpdateBorders (GRB Updater)**: Processing algorithm to update/align features based on the actual situation of the GRB [link to documentation](docs/autoupdateborders.md)
 - Plugin version information: overview of the version of brdr and brdrQ
 
 (Also note that these processing algorithms can also be used inside the QGIS ModelBuilder to 'chain' processes)
