@@ -7,7 +7,7 @@ name=brdrQ
 qgisMinimumVersion=3.0
 description=brdrQ, a QGIS-plugin for aligning thematic borders to reference borders, using the brdr-library.
 version=0.14.0
-author=Karel Dieussaert / Onroerend Erfgoed
+author=Karel Dieussaert
 email=karel.dieussaert@vlaanderen.be
 
 about=brdrQ is a Python plugin that assists in aligning geometric boundaries to reference boundaries. This is an important task in geographic data management to enhance data quality. In the context of geographic data management, it is important to have accurate and consistent boundaries for a variety of applications such as calculating areas, analyzing spatial relationships, and visualizing and querying geographic information. When creating geographic data, it is often more efficient to derive boundaries from existing reference data rather than collecting new data in the field. brdrQ can be used to align boundaries from new data to reference data, ensuring that the boundaries are accurate and consistent. brdrQ uses brdr-python-library for these calculations.
