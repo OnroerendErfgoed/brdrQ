@@ -1,3 +1,8 @@
+# v0.14.1
+
+- Updated info - version
+- Bugfix for FeatureAligner to update brdrq_state
+- Reactivated processing tool Autoupdateborders
 
 # v0.14.0
 
