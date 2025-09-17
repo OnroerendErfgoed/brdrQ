@@ -175,7 +175,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameters and outputs associated with it.
         """
         return self.tr(
-            "Script to auto-update geometries that are aligned to an old GRB-referencelayer to a newer GRB-referencelayer"
+            "Script to auto-update geometries that are aligned to an old GRB-referencelayer to a newer GRB-referencelayer. Bulk alignment to latest GRB based on predictions and provenance"
         )
 
     def helpUrl(self):

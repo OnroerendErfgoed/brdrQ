@@ -181,26 +181,33 @@ class brdrQDockWidgetFeatureAligner(
             self.textEdit_output.setText("All features in this layer returned")
         self.listFeatures()
 
+
     def listFeatures(self):
         self.clearUserInterface()
         # Add the selected features to the list widget
-        print("list features")
-        ix = self.layer.fields().indexOf(BRDRQ_STATE_FIELDNAME)
         for feature in self.listed_features:
+            item = QListWidgetItem(str(feature.id()))
+            self.listWidget_features.addItem(item)
+        self.updateTextListWidgetItems()
+        self.textEdit_output.setText(f"#Features: {str(len(self.listed_features))}")
+        if len(self.listed_features) == 1:
+            self.onFeatureActivated(self.listWidget_features.item(0))
+        return
+
+    def updateTextListWidgetItems(self):
+        ix = self.layer.fields().indexOf(BRDRQ_STATE_FIELDNAME)
+        for i in range(self.listWidget_features.count()):
+            item = self.listWidget_features.item(i)
+            feature_id = self.listed_features[i].id()
+            feature = self.layer.getFeature(feature_id)
             attributes = feature.attributes()
             if ix >= 0:
                 state = attributes[ix]
             else:
                 state = 'none'
             attribute_string = ", ".join(str(attribute) for attribute in attributes)
-            item = QListWidgetItem(
-                f"ID: *{feature.id()}*, STATE: *{state} *, Attributes: {attribute_string}"
-            )
-            self.listWidget_features.addItem(item)
-        self.textEdit_output.setText(f"#Features: {str(len(self.listed_features))}")
-        if len(self.listed_features) == 1:
-            self.onFeatureActivated(self.listWidget_features.item(0))
-        return
+            item_text =  f"ID: *{feature.id()}*, STATE: *{state} *, Attributes: {attribute_string}"
+            item.setText(item_text)
 
     def onFeatureActivated(self, currentItem):
         print("onFeatureActivated")
@@ -463,10 +470,12 @@ class brdrQDockWidgetFeatureAligner(
 
     def change_geometry(self):
         self._change_geometry(self.layer)
+        self.updateTextListWidgetItems()
         remove_group_layer(self.GROUP_LAYER)
 
     def reset_geometry(self):
         self._reset_geometry(self.layer)
+        self.updateTextListWidgetItems()
         remove_group_layer(self.GROUP_LAYER)
 
     def startDock(self):

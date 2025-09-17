@@ -154,19 +154,19 @@ class BrdrQPlugin(object):
         # self.toolbar.addAction(action_bulkaligner)
         # self.actions.append(action_bulkaligner)
 
-        # # AUTOUPDATEBORDERS -GRBUPDATER
-        # icon_autoupdateborders = os.path.join(
-        #     os.path.join(cmd_folder, "icon_grbupdater.png")
-        # )
-        # action_autoupdateborders = QAction(
-        #     QIcon(icon_autoupdateborders),
-        #     "GRB Updater (bulk)",
-        #     self.iface.mainWindow(),
-        # )
-        # action_autoupdateborders.triggered.connect(self.openAutoupdatebordersscript)
-        # self.brdrq_menu.addAction(action_autoupdateborders)
-        # self.toolbar.addAction(action_autoupdateborders)
-        # self.actions.append(action_autoupdateborders)
+        # AUTOUPDATEBORDERS -GRBUPDATER
+        icon_autoupdateborders = os.path.join(
+            os.path.join(cmd_folder, "icon_grbupdater.png")
+        )
+        action_autoupdateborders = QAction(
+            QIcon(icon_autoupdateborders),
+            "GRB Updater (bulk)",
+            self.iface.mainWindow(),
+        )
+        action_autoupdateborders.triggered.connect(self.openAutoupdatebordersscript)
+        self.brdrq_menu.addAction(action_autoupdateborders)
+        self.toolbar.addAction(action_autoupdateborders)
+        self.actions.append(action_autoupdateborders)
 
         # INFO - VERSION
         icon_info = os.path.join(os.path.join(cmd_folder, "icon_info.png"))
