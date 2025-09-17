@@ -45,6 +45,7 @@ from qgis.core import QgsApplication
 from .brdrq_dockwidget_bulkaligner import brdrQDockWidgetBulkAligner
 from .brdrq_dockwidget_featurealigner import brdrQDockWidgetFeatureAligner
 from .brdrq_provider import BrdrQProvider
+from .brdrq_version_dialog import VersionInfoDialog
 
 # #example when upgrading plugin for QGIS4 - compatibility
 # try:
@@ -81,6 +82,7 @@ class BrdrQPlugin(object):
         self.toolbar.setObjectName(pluginname)
         self.brdrq_menu = QMenu(pluginname)
         self.vector_menu = self.iface.vectorMenu()
+        self.metadata = self.get_metadata()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -152,23 +154,21 @@ class BrdrQPlugin(object):
         # self.toolbar.addAction(action_bulkaligner)
         # self.actions.append(action_bulkaligner)
 
+        # AUTOUPDATEBORDERS -GRBUPDATER
+        icon_autoupdateborders = os.path.join(
+            os.path.join(cmd_folder, "icon_grbupdater.png")
+        )
+        action_autoupdateborders = QAction(
+            QIcon(icon_autoupdateborders),
+            "GRB Updater (bulk)",
+            self.iface.mainWindow(),
+        )
+        action_autoupdateborders.triggered.connect(self.openAutoupdatebordersscript)
+        self.brdrq_menu.addAction(action_autoupdateborders)
+        self.toolbar.addAction(action_autoupdateborders)
+        self.actions.append(action_autoupdateborders)
 
-
-        # # AUTOUPDATEBORDERS -GRBUPDATER
-        # icon_autoupdateborders = os.path.join(
-        #     os.path.join(cmd_folder, "icon_grbupdater.png")
-        # )
-        # action_autoupdateborders = QAction(
-        #     QIcon(icon_autoupdateborders),
-        #     "GRB Updater (bulk)",
-        #     self.iface.mainWindow(),
-        # )
-        # action_autoupdateborders.triggered.connect(self.openAutoupdatebordersscript)
-        # self.brdrq_menu.addAction(action_autoupdateborders)
-        # self.toolbar.addAction(action_autoupdateborders)
-        # self.actions.append(action_autoupdateborders)
-
-        #INFO - VERSION
+        # INFO - VERSION
         icon_info = os.path.join(os.path.join(cmd_folder, "icon_info.png"))
         action_info = QAction(
             QIcon(icon_info),
@@ -208,12 +208,14 @@ class BrdrQPlugin(object):
         processing.execAlgorithmDialog("brdrqprovider:brdrqautocorrectborders")
 
     def openInfo(self):
-        msg = f"brdrQ version: {self.version()} - brdr-version: {str(brdr.__version__)}"
-        #TODO add dialog and logo #180
-        self.iface.messageBar().pushMessage(msg)
+        self.dialog = VersionInfoDialog("brdrQ Version Info", self.metadata)
+        self.dialog.open()
+    def closeInfo(self):
+        if self.dialog:
+            self.dialog.close()
 
     def version(self):
-        return "0.14.0"
+        return "0.14.1"
 
     def openAutoupdatebordersscript(self):
         processing.execAlgorithmDialog("brdrqprovider:brdrqautoupdateborders")
@@ -250,3 +252,20 @@ class BrdrQPlugin(object):
             print("brdrQDockWidgetFeatureAligner reused")
         self.dockwidget_featurealigner.startDock()
         return
+
+    def get_metadata(self):
+        metadata = {}
+        try:
+            metadata_path = os.path.join(os.path.join(cmd_folder, "metadata.txt"))
+            with open(metadata_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    if "=" in line:
+                        key, value = line.strip().split("=", 1)
+                        metadata[key.strip()] = value.strip()
+        except:
+            metadata = {
+                "version": "N/A",
+                "author": "N/A",
+                "email": "N/A",
+            }
+        return metadata

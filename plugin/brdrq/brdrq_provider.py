@@ -56,7 +56,7 @@ class BrdrQProvider(QgsProcessingProvider):
         Loads all algorithms belonging to this provider.
         """
         self.addAlgorithm(AutocorrectBordersProcessingAlgorithm())
-        #self.addAlgorithm(AutoUpdateBordersProcessingAlgorithm())
+        self.addAlgorithm(AutoUpdateBordersProcessingAlgorithm())
 
     def id(self):
         """
