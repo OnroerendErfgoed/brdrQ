@@ -215,6 +215,7 @@ class BrdrQPlugin(object):
     def openInfo(self):
         self.dialog = VersionInfoDialog("brdrQ Version Info", self.metadata)
         self.dialog.open()
+
     def closeInfo(self):
         if self.dialog:
             self.dialog.close()

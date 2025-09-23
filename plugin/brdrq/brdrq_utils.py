@@ -99,10 +99,12 @@ ENUM_PREDICTION_STRATEGY_OPTIONS = [e.name for e in PredictionStrategy]
 BRDRQ_ORIGINAL_WKT_FIELDNAME = "brdrq_original_wkt"
 BRDRQ_STATE_FIELDNAME = "brdrq_state"
 
+
 class BrdrQState(str, Enum):
     """
     Enum for defining the state of a (processed) feature
     """
+
     NOT_CHANGED = "not_changed"
     AUTO_UPDATED = "auto_updated"
     MANUAL_UPDATED = "manual_updated"
@@ -159,13 +161,14 @@ def get_layer_by_name(layer_name):
         print(f"Layer not found for layername {str(layer_name)}")
         return None
 
+
 def zoom_to_features(features, iface, marge_factor=0.1):
     """
     Function to zoom to an array of features.
     Combines the bbox of the features and adds a margin around the feature
     """
     # Calculate the combined bounding box
-    if features is None or len(features)==0:
+    if features is None or len(features) == 0:
         return
     bbox = QgsRectangle()
     bbox.setMinimal()  # Start met een lege bbox
@@ -400,7 +403,9 @@ def set_layer_visibility(layer: QgsMapLayer, visible: bool):
     else:
         print("Layer not found in the layer tree.")
 
+
 from qgis.core import QgsProject
+
 
 def remove_layer_by_name(layer_name):
     """
@@ -419,7 +424,8 @@ def remove_layer_by_name(layer_name):
 
     print(f"Layer '{layer_name}' not found.")
 
-def is_field_in_layer(fieldname,layer):
+
+def is_field_in_layer(fieldname, layer):
     return fieldname in [field.name() for field in layer.fields()]
 
 
@@ -668,16 +674,17 @@ def _processresult_to_dicts(processresult):
         results_relevant_diff,
     )
 
+
 def get_original_geometry(feature, fieldname):
     """
     Tries to read the original wkt string form a feature (if exists). Else the feature-geometry is returned
     """
-    original_geometry =None
+    original_geometry = None
     try:
         if fieldname in feature.fields().names():
             original_geometry = QgsGeometry.fromWkt(feature[fieldname])
     except:
-        original_geometry =None
+        original_geometry = None
     return original_geometry
 
 
@@ -827,16 +834,19 @@ class PolygonSelectTool(QgsMapTool):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Return and len(self.points) >= 3:
             polygon_geom = QgsGeometry.fromPolygonXY([self.points])
-            self.on_polygon_finished(polygon_geom, self.layer, self.canvas)  # callback aanroepen
+            self.on_polygon_finished(
+                polygon_geom, self.layer, self.canvas
+            )  # callback aanroepen
             self.reset()
 
     def canvasDoubleClickEvent(self, event):
         if len(self.points) >= 3:
             polygon_geom = QgsGeometry.fromPolygonXY([self.points])
-            self.on_polygon_finished(polygon_geom, self.layer, self.canvas)  # callback aanroepen
+            self.on_polygon_finished(
+                polygon_geom, self.layer, self.canvas
+            )  # callback aanroepen
         self.reset()
 
     def reset(self):
         self.points = []
         self.rubber_band.reset(QgsWkbTypes.PolygonGeometry)
-

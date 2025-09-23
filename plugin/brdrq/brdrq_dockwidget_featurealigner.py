@@ -107,7 +107,7 @@ class brdrQDockWidgetFeatureAligner(
         self.pushButton_save.clicked.connect(self.change_geometry)
         self.pushButton_reset.clicked.connect(self.reset_geometry)
         self.pushButton_select.clicked.connect(self.activate_selectTool)
-        #self.pushButton_select_partial.clicked.connect(self.activate_partialSelectTool)
+        # self.pushButton_select_partial.clicked.connect(self.activate_partialSelectTool)
         self.mMapLayerComboBox.setFilters(
             QgsMapLayerProxyModel.PolygonLayer
             | QgsMapLayerProxyModel.LineLayer
@@ -148,7 +148,9 @@ class brdrQDockWidgetFeatureAligner(
         # print ("currentlayer:" + str (self.mMapLayerComboBox.currentLayer()))
         canvas = self.iface.mapCanvas()
         self.formerMapTool = canvas.mapTool()
-        self.partialSelectTool = PolygonSelectTool(canvas,self.layer,self.handlePartialSelection)
+        self.partialSelectTool = PolygonSelectTool(
+            canvas, self.layer, self.handlePartialSelection
+        )
         canvas.setMapTool(self.partialSelectTool)
         print("end activate_partialSelecttool")
 
@@ -163,7 +165,7 @@ class brdrQDockWidgetFeatureAligner(
         self.listed_features = identified_features
         self.listFeatures()
 
-    def handlePartialSelection(self,polygon_geom, layer, canvas):
+    def handlePartialSelection(self, polygon_geom, layer, canvas):
 
         partial_features = []
         for feat in layer.getFeatures():
@@ -244,9 +246,9 @@ class brdrQDockWidgetFeatureAligner(
             if ix >= 0:
                 state = attributes[ix]
             else:
-                state = 'none'
+                state = "none"
             attribute_string = ", ".join(str(attribute) for attribute in attributes)
-            item_text =  f"ID: *{feature.id()}*, STATE: *{state} *, Attributes: {attribute_string}"
+            item_text = f"ID: *{feature.id()}*, STATE: *{state} *, Attributes: {attribute_string}"
             item.setText(item_text)
 
     def onFeatureActivated(self, currentItem):
@@ -274,7 +276,9 @@ class brdrQDockWidgetFeatureAligner(
             self.textEdit_output.setText(f"No feature found with ID {feature_id}")
             return
 
-        original_geometry = get_original_geometry(self.feature, BRDRQ_ORIGINAL_WKT_FIELDNAME)
+        original_geometry = get_original_geometry(
+            self.feature, BRDRQ_ORIGINAL_WKT_FIELDNAME
+        )
         if original_geometry is None:
             original_geometry = self.feature.geometry()
 
@@ -336,7 +340,9 @@ class brdrQDockWidgetFeatureAligner(
         zoom_to_features(list_predictions_features, self.iface)
         for k in list_predictions:
             items.append(str(k))
-            score = self.dict_evaluated_predictions[key][k]["properties"][PREDICTION_SCORE]
+            score = self.dict_evaluated_predictions[key][k]["properties"][
+                PREDICTION_SCORE
+            ]
             evaluation = self.dict_evaluated_predictions[key][k]["properties"][
                 EVALUATION_FIELD_NAME
             ]
@@ -423,11 +429,13 @@ class brdrQDockWidgetFeatureAligner(
 
         self.progressBar.setValue(0)
         for feature in selectedFeatures:
-            original_geometry = get_original_geometry(feature,BRDRQ_ORIGINAL_WKT_FIELDNAME)
+            original_geometry = get_original_geometry(
+                feature, BRDRQ_ORIGINAL_WKT_FIELDNAME
+            )
             if original_geometry is None:
                 original_geometry = feature.geometry()
             if original_geometry is None:
-                print ("feature without geometry")
+                print("feature without geometry")
                 continue
             geom_shapely = geom_qgis_to_shapely(original_geometry)
 

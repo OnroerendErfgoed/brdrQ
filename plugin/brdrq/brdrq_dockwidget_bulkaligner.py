@@ -152,7 +152,9 @@ class brdrQDockWidgetBulkAligner(
             )
         # add attribute for automatic/manual correction
         # new_layer.renderer().setSymbol(QgsStyle.defaultStyle().symbol("hashed clbue /"))
-        add_field_to_layer(layer, BRDRQ_STATE_FIELDNAME, QVariant.String, BrdrQState.TO_UPDATE)
+        add_field_to_layer(
+            layer, BRDRQ_STATE_FIELDNAME, QVariant.String, BrdrQState.TO_UPDATE
+        )
 
         # add a new layer to the map
         QgsProject.instance().addMapLayer(new_layer, False)
@@ -224,14 +226,12 @@ class brdrQDockWidgetBulkAligner(
             self.aligner.dict_reference_source["version_date"] = "unknown"
         self.progressBar.setValue(50)
 
-        dict_evaluated_predictions = (
-            self.aligner.evaluate(
-                ids_to_evaluate=None,
-                base_formula_field=None,
-                max_predictions=-1,
-                relevant_distances=self.relevant_distances,
-                full_strategy=self.full_strategy,
-            )
+        dict_evaluated_predictions = self.aligner.evaluate(
+            ids_to_evaluate=None,
+            base_formula_field=None,
+            max_predictions=-1,
+            relevant_distances=self.relevant_distances,
+            full_strategy=self.full_strategy,
         )
         self.progressBar.setValue(75)
         dict_processresults = self.aligner.dict_processresults
@@ -263,7 +263,9 @@ class brdrQDockWidgetBulkAligner(
         list_predictions = [k for k in (self.dict_evaluated_predictions[key]).keys()]
         for k in list_predictions:
             items.append(str(k))
-            score = self.dict_evaluated_predictions[key][k]["properties"][PREDICTION_SCORE]
+            score = self.dict_evaluated_predictions[key][k]["properties"][
+                PREDICTION_SCORE
+            ]
             evaluation = self.dict_evaluated_predictions[key][k]["properties"][
                 EVALUATION_FIELD_NAME
             ]
@@ -408,7 +410,9 @@ class brdrQDockWidgetBulkAligner(
         best_score = 0
         for k in list_predictions:
             items.append(str(k))
-            score = self.dict_evaluated_predictions[key][k]["properties"][PREDICTION_SCORE]
+            score = self.dict_evaluated_predictions[key][k]["properties"][
+                PREDICTION_SCORE
+            ]
             evaluation = self.dict_evaluated_predictions[key][k]["properties"][
                 EVALUATION_FIELD_NAME
             ]

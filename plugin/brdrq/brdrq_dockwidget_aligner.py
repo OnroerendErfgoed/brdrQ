@@ -172,7 +172,9 @@ class brdrQDockWidgetAligner(object):
         with edit(layer):
             layer.changeGeometry(feat.id(), original_geometry)
             if ix >= 0:
-                layer.changeAttributeValue(feat.id(), ix, str(BrdrQState.TO_UPDATE.value))
+                layer.changeAttributeValue(
+                    feat.id(), ix, str(BrdrQState.TO_UPDATE.value)
+                )
 
         self.iface.messageBar().pushMessage("geometry reset")
 
