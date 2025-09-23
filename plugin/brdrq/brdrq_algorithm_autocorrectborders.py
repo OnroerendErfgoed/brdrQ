@@ -33,12 +33,12 @@ import sys
 
 from PyQt5.QtCore import QVariant
 from brdr.constants import STABILITY, DIFF_PERC_INDEX, DIFF_INDEX
-from qgis._core import QgsField
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
     QgsRendererCategory,
     QgsFillSymbol,
 )
+from qgis.core import QgsField
 from qgis.core import QgsProcessingFeatureSourceDefinition
 from qgis.core import QgsVectorFileWriter, QgsVectorLayer
 
@@ -146,7 +146,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
     )
 
-    LAYER_CORRECTION = "CORRECTION" # parameter that holds the TOC layername of the correction_layer
+    LAYER_CORRECTION = (
+        "CORRECTION"  # parameter that holds the TOC layername of the correction_layer
+    )
     LAYER_RELEVANT_INTERSECTION = "RLVNT_ISECT"  # parameter that holds the TOC layername of the relevant intersection
     LAYER_RELEVANT_DIFFERENCE = "RLVNT_DIFF"  # parameter that holds the TOC layername of the relevant difference
 
@@ -159,7 +161,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         OpenDomainStrategy.SNAP_ALL_SIDE
     )  # default OD_STRATEGY for the aligner,updated by user-choice
     THRESHOLD_OVERLAP_PERCENTAGE = 50  # default THRESHOLD_OVERLAP_PERCENTAGE for the aligner,updated by user-choice
-    REVIEW_PERCENTAGE = 10  #default - features that changes more than this % wil be moved to review lisr
+    REVIEW_PERCENTAGE = 10  # default - features that changes more than this % wil be moved to review lisr
     RELEVANT_DISTANCE = (
         0  # default RELEVANT_DISTANCE for the aligner,updated by user-choice
     )
@@ -244,7 +246,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameters and outputs associated with it.
         """
         return self.tr(
-            "https://github.com/OnroerendErfgoed/brdrQ/blob/development/docs/autocorrectborders.md"
+            "https://github.com/OnroerendErfgoed/brdrQ/blob/main/docs/autocorrectborders.md"
         )
 
     def initAlgorithm(self, config=None):
@@ -563,7 +565,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         if self.RELEVANT_DISTANCE < 0:
             raise QgsProcessingException("Please provide a RELEVANT DISTANCE >=0")
         elif not self.PREDICTIONS:
-            relevant_distances=[self.RELEVANT_DISTANCE]
+            relevant_distances = [self.RELEVANT_DISTANCE]
             aligner.predictor(
                 relevant_distances=relevant_distances,
             )
@@ -573,14 +575,14 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             )
 
         else:
-            relevant_distances=np.arange(
-                0, self.RELEVANT_DISTANCE * 100, 10, dtype=int
-            )/100
+            relevant_distances = (
+                np.arange(0, self.RELEVANT_DISTANCE * 100, 10, dtype=int) / 100
+            )
 
             aligner.evaluate(
                 relevant_distances=relevant_distances,
                 max_predictions=1,
-                multi_to_best_prediction=True
+                multi_to_best_prediction=True,
             )
             fcs = aligner.get_results_as_geojson(
                 resulttype=AlignerResultType.EVALUATED_PREDICTIONS,
@@ -668,7 +670,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.LAYER_RESULT,
             geojson_result,
             get_symbol(geojson_result, result),
-            True,
+            False,
             self.GROUP_LAYER,
             self.WORKFOLDER,
         )
@@ -682,9 +684,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.LAYER_RESULT_DIFF_MIN
         )[0]
         try:
-            correction_layer = self.generate_correction_layer(self.LAYER_THEMATIC, result)
+            correction_layer = self.generate_correction_layer(
+                self.LAYER_THEMATIC, result
+            )
         except:
-            print ("problem generating correction layer")
+            print("problem generating correction layer")
             correction_layer = None
 
         QgsProject.instance().reloadAllLayers()
@@ -707,12 +711,12 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         results_layer = result
 
         # Copy source layer to gpkg-layers
-        correction_layer_name = input.name() + "_CORR" +self.SUFFIX
+        correction_layer_name = input.name() + "_CORR" + self.SUFFIX
         remove_layer_by_name(correction_layer_name)
         correction_layer = self.generate_gpkg_layer(source_layer, correction_layer_name)
 
-        set_layer_visibility(correction_layer, False)
-        move_to_group(correction_layer,self.GROUP_LAYER)
+        set_layer_visibility(correction_layer, True)
+        move_to_group(correction_layer, self.GROUP_LAYER)
         QgsProject.instance().reloadAllLayers()
 
         # Make a dictionary with ID to geometry from the resultslayer
@@ -720,58 +724,76 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         id_diff_index_map = {}
         id_diff_perc_index_map = {}
         ids_to_review = []
-        ids_to_align=[]
-        stability_field_available=False
-        if is_field_in_layer(STABILITY,results_layer):
-            stability_field_available=True
+        ids_to_align = []
+        ids_not_changed = []
+        stability_field_available = False
+        if is_field_in_layer(STABILITY, results_layer):
+            stability_field_available = True
         for feat in results_layer.getFeatures():
             key = feat[self.ID_THEME_FIELDNAME]
             if key in id_geom_map.keys():
-                # when key not unique and multiple predictions, the last prediction is added to the list and the statis is set to review
+                # when key not unique and multiple predictions, the last prediction is added to the list and the status is set to review
                 ids_to_review.append(key)
             id_geom_map[key] = feat.geometry()
             id_diff_index_map[key] = feat[DIFF_INDEX]
             id_diff_perc_index_map[key] = feat[DIFF_PERC_INDEX]
             if stability_field_available and not feat[STABILITY]:
                 ids_to_align.append(key)
-            elif feat[DIFF_PERC_INDEX]>self.REVIEW_PERCENTAGE:
+            elif feat[DIFF_PERC_INDEX] > self.REVIEW_PERCENTAGE:
                 ids_to_review.append(key)
+            elif feat[DIFF_PERC_INDEX] == 0:
+                ids_not_changed.append(key)
 
         # 4. Update geometries in duplicated layer
         correction_layer.startEditing()
         correction_layer.dataProvider().addAttributes(
-            [QgsField(BRDRQ_STATE_FIELDNAME, QVariant.String),
-             QgsField(BRDRQ_ORIGINAL_WKT_FIELDNAME, QVariant.String),
-             QgsField(DIFF_INDEX, QVariant.Double),
-             QgsField(DIFF_PERC_INDEX, QVariant.Double)
-             ]
+            [
+                QgsField(BRDRQ_STATE_FIELDNAME, QVariant.String),
+                QgsField(BRDRQ_ORIGINAL_WKT_FIELDNAME, QVariant.String),
+                QgsField(DIFF_INDEX, QVariant.Double),
+                QgsField(DIFF_PERC_INDEX, QVariant.Double),
+            ]
         )
         correction_layer.updateFields()
         for feat in correction_layer.getFeatures():
             fid = feat[self.ID_THEME_FIELDNAME]
-            feat[DIFF_INDEX]= id_diff_index_map[fid]
-            feat[DIFF_PERC_INDEX]= id_diff_perc_index_map[fid]
+            feat[DIFF_INDEX] = id_diff_index_map[fid]
+            feat[DIFF_PERC_INDEX] = id_diff_perc_index_map[fid]
             feat[BRDRQ_ORIGINAL_WKT_FIELDNAME] = feat.geometry().asWkt()
-            state = BrdrQState.NONE
+            state = str(BrdrQState.NONE.value)
             if fid in id_geom_map and fid not in ids_to_align:
                 feat.setGeometry(id_geom_map[fid])
-                state = BrdrQState.AUTO_UPDATED
+                state = str(BrdrQState.AUTO_UPDATED.value)
+            if fid in ids_not_changed:
+                state = str(BrdrQState.NOT_CHANGED.value)
             if fid in ids_to_review:
-                state= BrdrQState.TO_REVIEW
+                state = str(BrdrQState.TO_REVIEW.value)
             if fid in ids_to_align:
                 feat[DIFF_INDEX] = -1
                 feat[DIFF_PERC_INDEX] = -1
-                state  = BrdrQState.TO_UPDATE
-            feat[BRDRQ_STATE_FIELDNAME]= state
+                state = str(BrdrQState.TO_UPDATE.value)
+            feat[BRDRQ_STATE_FIELDNAME] = state
             correction_layer.updateFeature(feat)
         correction_layer.commitChanges()
 
         self.style_outputlayer(correction_layer, BRDRQ_STATE_FIELDNAME)
         return correction_layer
 
-    def style_outputlayer(self, layer,field_name):
+    def style_outputlayer(self, layer, field_name):
         # Define categories
         categories = []
+
+        # Not changed
+        symbol_not_changed = QgsFillSymbol.createSimple(
+            {
+                "outline_color": "#b2df8a",
+                "outline_style": "solid",
+                "outline_width": "2",
+                "color": "transparent",
+            }
+        )
+        value = str(BrdrQState.NOT_CHANGED.value)
+        categories.append(QgsRendererCategory(value, symbol_not_changed, value))
 
         # Auto-updated
         symbol_auto = QgsFillSymbol.createSimple(
@@ -782,7 +804,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 "color": "transparent",
             }
         )
-        value = BrdrQState.AUTO_UPDATED.value
+        value = str(BrdrQState.AUTO_UPDATED.value)
         categories.append(QgsRendererCategory(value, symbol_auto, value))
         # manual update
         symbol_manual_update = QgsFillSymbol.createSimple(
@@ -793,7 +815,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 "color": "transparent",
             }
         )
-        value = BrdrQState.MANUAL_UPDATED.value
+        value = str(BrdrQState.MANUAL_UPDATED.value)
         categories.append(QgsRendererCategory(value, symbol_manual_update, value))
         # To Review
         symbol_review = QgsFillSymbol.createSimple(
@@ -804,7 +826,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 "color": "transparent",
             }
         )
-        value = BrdrQState.TO_REVIEW.value
+        value = str(BrdrQState.TO_REVIEW.value)
         categories.append(QgsRendererCategory(value, symbol_review, value))
 
         symbol_todo = QgsFillSymbol.createSimple(
@@ -815,7 +837,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 "color": "transparent",
             }
         )
-        value = BrdrQState.TO_UPDATE.value
+        value = str(BrdrQState.TO_UPDATE.value)
         categories.append(QgsRendererCategory(value, symbol_todo, value))
 
         # Set Renderer
@@ -829,9 +851,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         QgsVectorFileWriter.writeAsVectorFormat(
             source_layer, path, "UTF-8", source_layer.crs(), "GPKG"
         )
-        layer = QgsVectorLayer(
-            path + "|layername=" + layername, layername, "ogr"
-        )
+        layer = QgsVectorLayer(path + "|layername=" + layername, layername, "ogr")
         QgsProject.instance().addMapLayer(layer)
         return layer
 
@@ -939,8 +959,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
 
         self.SUFFIX = "_DIST_" + str(self.RELEVANT_DISTANCE) + "_" + ref_suffix
-        self.SUFFIX=self.SUFFIX.replace(".","_")
-        self.SUFFIX=self.SUFFIX.replace(" ","_")
+        self.SUFFIX = self.SUFFIX.replace(".", "_")
+        self.SUFFIX = self.SUFFIX.replace(" ", "_")
         if self.PREDICTIONS:
             self.SUFFIX = self.SUFFIX + "_PREDICTIONS"
         self.LAYER_RELEVANT_INTERSECTION = (

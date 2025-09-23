@@ -1,8 +1,12 @@
 import os
 from enum import Enum
 
+from PyQt5.QtGui import QColor
 from qgis.core import QgsProcessingException
 from qgis.core import QgsRectangle
+from qgis.core import QgsWkbTypes
+from qgis.gui import QgsMapTool
+from qgis.gui import QgsRubberBand
 
 try:
     import brdr
@@ -95,10 +99,13 @@ ENUM_PREDICTION_STRATEGY_OPTIONS = [e.name for e in PredictionStrategy]
 BRDRQ_ORIGINAL_WKT_FIELDNAME = "brdrq_original_wkt"
 BRDRQ_STATE_FIELDNAME = "brdrq_state"
 
+
 class BrdrQState(str, Enum):
     """
     Enum for defining the state of a (processed) feature
     """
+
+    NOT_CHANGED = "not_changed"
     AUTO_UPDATED = "auto_updated"
     MANUAL_UPDATED = "manual_updated"
     TO_REVIEW = "to_review"
@@ -154,13 +161,14 @@ def get_layer_by_name(layer_name):
         print(f"Layer not found for layername {str(layer_name)}")
         return None
 
+
 def zoom_to_features(features, iface, marge_factor=0.1):
     """
     Function to zoom to an array of features.
     Combines the bbox of the features and adds a margin around the feature
     """
     # Calculate the combined bounding box
-    if features is None or len(features)==0:
+    if features is None or len(features) == 0:
         return
     bbox = QgsRectangle()
     bbox.setMinimal()  # Start met een lege bbox
@@ -395,7 +403,9 @@ def set_layer_visibility(layer: QgsMapLayer, visible: bool):
     else:
         print("Layer not found in the layer tree.")
 
+
 from qgis.core import QgsProject
+
 
 def remove_layer_by_name(layer_name):
     """
@@ -414,7 +424,8 @@ def remove_layer_by_name(layer_name):
 
     print(f"Layer '{layer_name}' not found.")
 
-def is_field_in_layer(fieldname,layer):
+
+def is_field_in_layer(fieldname, layer):
     return fieldname in [field.name() for field in layer.fields()]
 
 
@@ -611,8 +622,8 @@ def print_brdr_formula(dict_results, aligner):
 def plot_series(
     series,
     dictionary,
-    xlabel="relevant distance",
-    ylabel="difference",
+    xlabel="relevant distance (m)",
+    ylabel="difference (m²)",
     title="Relevant distance vs difference",
 ):
     for key in dictionary:
@@ -663,16 +674,17 @@ def _processresult_to_dicts(processresult):
         results_relevant_diff,
     )
 
+
 def get_original_geometry(feature, fieldname):
     """
     Tries to read the original wkt string form a feature (if exists). Else the feature-geometry is returned
     """
-    original_geometry =None
+    original_geometry = None
     try:
         if fieldname in feature.fields().names():
             original_geometry = QgsGeometry.fromWkt(feature[fieldname])
     except:
-        original_geometry =None
+        original_geometry = None
     return original_geometry
 
 
@@ -801,3 +813,40 @@ class SelectTool(QgsMapToolIdentifyFeature):
 
     def deactivate(self):
         print("deactivate")
+
+
+class PolygonSelectTool(QgsMapTool):
+    def __init__(self, canvas, layer, on_polygon_finished):
+        super().__init__(canvas)
+        self.canvas = canvas
+        self.layer = layer
+        self.on_polygon_finished = on_polygon_finished  # callback functie
+        self.points = []
+        self.rubber_band = QgsRubberBand(canvas, QgsWkbTypes.PolygonGeometry)
+        self.rubber_band.setColor(QColor(255, 0, 0, 100))
+        self.rubber_band.setWidth(2)
+
+    def canvasPressEvent(self, event):
+        point = self.toMapCoordinates(event.pos())
+        self.points.append(point)
+        self.rubber_band.addPoint(point, True)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Return and len(self.points) >= 3:
+            polygon_geom = QgsGeometry.fromPolygonXY([self.points])
+            self.on_polygon_finished(
+                polygon_geom, self.layer, self.canvas
+            )  # callback aanroepen
+            self.reset()
+
+    def canvasDoubleClickEvent(self, event):
+        if len(self.points) >= 3:
+            polygon_geom = QgsGeometry.fromPolygonXY([self.points])
+            self.on_polygon_finished(
+                polygon_geom, self.layer, self.canvas
+            )  # callback aanroepen
+        self.reset()
+
+    def reset(self):
+        self.points = []
+        self.rubber_band.reset(QgsWkbTypes.PolygonGeometry)

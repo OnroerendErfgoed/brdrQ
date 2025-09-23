@@ -24,6 +24,7 @@
 
 import os
 
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QListWidgetItem
 from brdr.aligner import Aligner
 from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME
@@ -34,9 +35,10 @@ from qgis import processing
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal
-from qgis._core import QgsFeature
+from qgis.core import QgsFeature, QgsWkbTypes, QgsVectorLayer, QgsProject
 from qgis.core import QgsMapLayerProxyModel
 from qgis.gui import QgsMapToolPan
+from qgis.gui import QgsRubberBand
 from qgis.utils import OverrideCursor
 
 from .brdrq_dockwidget_aligner import brdrQDockWidgetAligner
@@ -55,6 +57,7 @@ from .brdrq_utils import (
     BRDRQ_ORIGINAL_WKT_FIELDNAME,
     BRDRQ_STATE_FIELDNAME,
     get_original_geometry,
+    PolygonSelectTool,
 )
 
 FORM_CLASS, _ = uic.loadUiType(
@@ -104,6 +107,7 @@ class brdrQDockWidgetFeatureAligner(
         self.pushButton_save.clicked.connect(self.change_geometry)
         self.pushButton_reset.clicked.connect(self.reset_geometry)
         self.pushButton_select.clicked.connect(self.activate_selectTool)
+        # self.pushButton_select_partial.clicked.connect(self.activate_partialSelectTool)
         self.mMapLayerComboBox.setFilters(
             QgsMapLayerProxyModel.PolygonLayer
             | QgsMapLayerProxyModel.LineLayer
@@ -140,6 +144,16 @@ class brdrQDockWidgetFeatureAligner(
         self.selectTool.featuresIdentified.connect(self.onFeaturesIdentified)
         print("end activate_selecttool")
 
+    def activate_partialSelectTool(self):
+        # print ("currentlayer:" + str (self.mMapLayerComboBox.currentLayer()))
+        canvas = self.iface.mapCanvas()
+        self.formerMapTool = canvas.mapTool()
+        self.partialSelectTool = PolygonSelectTool(
+            canvas, self.layer, self.handlePartialSelection
+        )
+        canvas.setMapTool(self.partialSelectTool)
+        print("end activate_partialSelecttool")
+
     def deactivateSelectTool(self):
         mapcanvas = self.iface.mapCanvas()
         if self.formerMapTool is None:
@@ -149,6 +163,35 @@ class brdrQDockWidgetFeatureAligner(
     def onFeaturesIdentified(self, identified_features):
         """Code called when the feature is selected by the user"""
         self.listed_features = identified_features
+        self.listFeatures()
+
+    def handlePartialSelection(self, polygon_geom, layer, canvas):
+
+        partial_features = []
+        for feat in layer.getFeatures():
+            if feat.geometry().intersects(polygon_geom):
+                clipped = feat.geometry().intersection(polygon_geom)
+
+                if not clipped.isEmpty():
+                    feat.setGeometry(clipped)
+                    partial_features.append(feat)
+
+        for feat in partial_features:
+            geom = feat.geometry()
+            rb = QgsRubberBand(canvas, QgsWkbTypes.PolygonGeometry)
+            rb.setToGeometry(geom, None)
+            rb.setColor(QColor(0, 255, 0, 100))
+            rb.setWidth(2)
+
+        temp_layer = QgsVectorLayer(
+            "Polygon?crs=" + layer.crs().authid(), "cut features", "memory"
+        )
+        prov = temp_layer.dataProvider()
+        prov.addFeatures(partial_features)
+
+        QgsProject.instance().addMapLayer(temp_layer)
+        print(f"{len(partial_features)} -> #partial features.")
+        self.listed_features = partial_features
         self.listFeatures()
 
     def themeLayerChanged(self):
@@ -181,7 +224,6 @@ class brdrQDockWidgetFeatureAligner(
             self.textEdit_output.setText("All features in this layer returned")
         self.listFeatures()
 
-
     def listFeatures(self):
         self.clearUserInterface()
         # Add the selected features to the list widget
@@ -204,9 +246,9 @@ class brdrQDockWidgetFeatureAligner(
             if ix >= 0:
                 state = attributes[ix]
             else:
-                state = 'none'
+                state = "none"
             attribute_string = ", ".join(str(attribute) for attribute in attributes)
-            item_text =  f"ID: *{feature.id()}*, STATE: *{state} *, Attributes: {attribute_string}"
+            item_text = f"ID: *{feature.id()}*, STATE: *{state} *, Attributes: {attribute_string}"
             item.setText(item_text)
 
     def onFeatureActivated(self, currentItem):
@@ -234,7 +276,9 @@ class brdrQDockWidgetFeatureAligner(
             self.textEdit_output.setText(f"No feature found with ID {feature_id}")
             return
 
-        original_geometry = get_original_geometry(self.feature, BRDRQ_ORIGINAL_WKT_FIELDNAME)
+        original_geometry = get_original_geometry(
+            self.feature, BRDRQ_ORIGINAL_WKT_FIELDNAME
+        )
         if original_geometry is None:
             original_geometry = self.feature.geometry()
 
@@ -296,7 +340,9 @@ class brdrQDockWidgetFeatureAligner(
         zoom_to_features(list_predictions_features, self.iface)
         for k in list_predictions:
             items.append(str(k))
-            score = self.dict_evaluated_predictions[key][k]["properties"][PREDICTION_SCORE]
+            score = self.dict_evaluated_predictions[key][k]["properties"][
+                PREDICTION_SCORE
+            ]
             evaluation = self.dict_evaluated_predictions[key][k]["properties"][
                 EVALUATION_FIELD_NAME
             ]
@@ -383,11 +429,13 @@ class brdrQDockWidgetFeatureAligner(
 
         self.progressBar.setValue(0)
         for feature in selectedFeatures:
-            original_geometry = get_original_geometry(feature,BRDRQ_ORIGINAL_WKT_FIELDNAME)
+            original_geometry = get_original_geometry(
+                feature, BRDRQ_ORIGINAL_WKT_FIELDNAME
+            )
             if original_geometry is None:
                 original_geometry = feature.geometry()
             if original_geometry is None:
-                print ("feature without geometry")
+                print("feature without geometry")
                 continue
             geom_shapely = geom_qgis_to_shapely(original_geometry)
 

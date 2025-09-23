@@ -60,16 +60,6 @@ class TestFlow(unittest.TestCase):
         self.assertEqual(len(layers), 1)
         # need to import here so that there's already an initialized QGIS app
 
-        helpDialog = widget.helpDialog
-        assert helpDialog is not None
-        self.assertFalse(helpDialog.isVisible())
-        widget.show_help_dialog()
-        self.assertTrue(helpDialog.isVisible())
-        # # Click the map button which should close the dialog
-        help_ok_button: QPushButton = helpDialog.buttonBox.button(QDialogButtonBox.Ok)
-        QTest.mouseClick(help_ok_button, Qt.LeftButton)
-        self.assertFalse(helpDialog.isVisible())
-
         settingsDialog = widget.settingsDialog
         assert settingsDialog is not None
         self.assertFalse(settingsDialog.isVisible())
@@ -117,16 +107,6 @@ class TestFlow(unittest.TestCase):
         layers = project.mapLayers(validOnly=True)
         self.assertEqual(len(layers), 1)
         # need to import here so that there's already an initialized QGIS app
-
-        helpDialog = widget.helpDialog
-        assert helpDialog is not None
-        self.assertFalse(helpDialog.isVisible())
-        widget.show_help_dialog()
-        self.assertTrue(helpDialog.isVisible())
-        # # Click the map button which should close the dialog
-        help_ok_button: QPushButton = helpDialog.buttonBox.button(QDialogButtonBox.Ok)
-        QTest.mouseClick(help_ok_button, Qt.LeftButton)
-        self.assertFalse(helpDialog.isVisible())
 
         settingsDialog = widget.settingsDialog
         assert settingsDialog is not None

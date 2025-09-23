@@ -126,7 +126,9 @@ class BrdrQPlugin(object):
             "Autocorrectborders (bulk)",
             self.iface.mainWindow(),
         )
+        action_autocorrectborders.setObjectName("brdrq_autocorrectborders")
         action_autocorrectborders.triggered.connect(self.openAutocorrectbordersscript)
+        # self.iface.addToolBarIcon(action_autocorrectborders)
         self.brdrq_menu.addAction(action_autocorrectborders)
         self.toolbar.addAction(action_autocorrectborders)
         self.actions.append(action_autocorrectborders)
@@ -136,6 +138,7 @@ class BrdrQPlugin(object):
         action_featurepredictor = QAction(
             QIcon(icon), "brdrQ - Feature Aligner (predictor)", self.iface.mainWindow()
         )
+        action_featurepredictor.setObjectName("brdrq_featurepredictor")
         action_featurepredictor.triggered.connect(self.openDockFeatureAligner)
         #
 
@@ -163,6 +166,7 @@ class BrdrQPlugin(object):
             "GRB Updater (bulk)",
             self.iface.mainWindow(),
         )
+        action_autoupdateborders.setObjectName("brdrq_autoupdateborders")
         action_autoupdateborders.triggered.connect(self.openAutoupdatebordersscript)
         self.brdrq_menu.addAction(action_autoupdateborders)
         self.toolbar.addAction(action_autoupdateborders)
@@ -175,6 +179,7 @@ class BrdrQPlugin(object):
             self.tr("brdrQ - version"),
             self.iface.mainWindow(),
         )
+        action_info.setObjectName("brdrq_info")
         action_info.triggered.connect(self.openInfo)
         self.brdrq_menu.addAction(action_info)
         self.toolbar.addAction(action_info)
@@ -210,12 +215,13 @@ class BrdrQPlugin(object):
     def openInfo(self):
         self.dialog = VersionInfoDialog("brdrQ Version Info", self.metadata)
         self.dialog.open()
+
     def closeInfo(self):
         if self.dialog:
             self.dialog.close()
 
     def version(self):
-        return "0.14.1"
+        return "0.15.0"
 
     def openAutoupdatebordersscript(self):
         processing.execAlgorithmDialog("brdrqprovider:brdrqautoupdateborders")
