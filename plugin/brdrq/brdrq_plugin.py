@@ -221,7 +221,7 @@ class BrdrQPlugin(object):
             self.dialog.close()
 
     def version(self):
-        return "0.14.1"
+        return "0.15.0"
 
     def openAutoupdatebordersscript(self):
         processing.execAlgorithmDialog("brdrqprovider:brdrqautoupdateborders")

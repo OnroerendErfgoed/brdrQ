@@ -1,3 +1,13 @@
+# v0.15.0
+
+- info - version: added extra information [#180]
+- Added units to the plot of the FeatureAligner [#196]
+- brdrq_state: Added extra category 'not_changed' [#195]
+- Toolbar-buttons customizable by user [#194]
+- UI main language to English
+- Bugfix: brdrq_state not added to attributes in qgis 3.34 [#191]
+- FeatureAligner - Help-button - link to documentation
+
 # v0.14.1
 
 - Updated info - version
