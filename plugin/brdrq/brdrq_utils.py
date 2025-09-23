@@ -103,7 +103,7 @@ class BrdrQState(str, Enum):
     """
     Enum for defining the state of a (processed) feature
     """
-    AUTO_NO_CHANGE = "auto_no_change"
+    NOT_CHANGED = "not_changed"
     AUTO_UPDATED = "auto_updated"
     MANUAL_UPDATED = "manual_updated"
     TO_REVIEW = "to_review"

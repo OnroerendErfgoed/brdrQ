@@ -721,13 +721,14 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         id_diff_perc_index_map = {}
         ids_to_review = []
         ids_to_align=[]
+        ids_not_changed=[]
         stability_field_available=False
         if is_field_in_layer(STABILITY,results_layer):
             stability_field_available=True
         for feat in results_layer.getFeatures():
             key = feat[self.ID_THEME_FIELDNAME]
             if key in id_geom_map.keys():
-                # when key not unique and multiple predictions, the last prediction is added to the list and the statis is set to review
+                # when key not unique and multiple predictions, the last prediction is added to the list and the status is set to review
                 ids_to_review.append(key)
             id_geom_map[key] = feat.geometry()
             id_diff_index_map[key] = feat[DIFF_INDEX]
@@ -736,6 +737,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ids_to_align.append(key)
             elif feat[DIFF_PERC_INDEX]>self.REVIEW_PERCENTAGE:
                 ids_to_review.append(key)
+            elif feat[DIFF_PERC_INDEX]==0:
+                ids_not_changed.append(key)
 
         # 4. Update geometries in duplicated layer
         correction_layer.startEditing()
@@ -756,6 +759,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             if fid in id_geom_map and fid not in ids_to_align:
                 feat.setGeometry(id_geom_map[fid])
                 state = str(BrdrQState.AUTO_UPDATED.value)
+            if fid in ids_not_changed:
+                state= str(BrdrQState.NOT_CHANGED.value)
             if fid in ids_to_review:
                 state= str(BrdrQState.TO_REVIEW.value)
             if fid in ids_to_align:
@@ -772,6 +777,19 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     def style_outputlayer(self, layer,field_name):
         # Define categories
         categories = []
+
+
+        # Not changed
+        symbol_not_changed = QgsFillSymbol.createSimple(
+            {
+                "outline_color": "#b2df8a",
+                "outline_style": "solid",
+                "outline_width": "2",
+                "color": "transparent",
+            }
+        )
+        value = str(BrdrQState.NOT_CHANGED.value)
+        categories.append(QgsRendererCategory(value, symbol_not_changed, value))
 
         # Auto-updated
         symbol_auto = QgsFillSymbol.createSimple(
