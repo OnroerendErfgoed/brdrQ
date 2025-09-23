@@ -56,6 +56,7 @@ class brdrQDockWidgetAligner(object):
         self.listed_features = None
         self.feature = None
         self.selectTool = None
+        self.partialSelectTool = None
         self.formerMapTool = None
         self.aligner = None
 

@@ -1,8 +1,14 @@
 import os
 from enum import Enum
 
+from PyQt5.QtCore import QVariant
+from PyQt5.QtGui import QColor
+from qgis.core import QgsFeature
 from qgis.core import QgsProcessingException
 from qgis.core import QgsRectangle
+from qgis.core import QgsWkbTypes
+from qgis.gui import QgsMapTool
+from qgis.gui import QgsRubberBand
 
 try:
     import brdr
@@ -801,3 +807,37 @@ class SelectTool(QgsMapToolIdentifyFeature):
 
     def deactivate(self):
         print("deactivate")
+
+
+class PolygonSelectTool(QgsMapTool):
+    def __init__(self, canvas, layer, on_polygon_finished):
+        super().__init__(canvas)
+        self.canvas = canvas
+        self.layer = layer
+        self.on_polygon_finished = on_polygon_finished  # callback functie
+        self.points = []
+        self.rubber_band = QgsRubberBand(canvas, QgsWkbTypes.PolygonGeometry)
+        self.rubber_band.setColor(QColor(255, 0, 0, 100))
+        self.rubber_band.setWidth(2)
+
+    def canvasPressEvent(self, event):
+        point = self.toMapCoordinates(event.pos())
+        self.points.append(point)
+        self.rubber_band.addPoint(point, True)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Return and len(self.points) >= 3:
+            polygon_geom = QgsGeometry.fromPolygonXY([self.points])
+            self.on_polygon_finished(polygon_geom, self.layer, self.canvas)  # callback aanroepen
+            self.reset()
+
+    def canvasDoubleClickEvent(self, event):
+        if len(self.points) >= 3:
+            polygon_geom = QgsGeometry.fromPolygonXY([self.points])
+            self.on_polygon_finished(polygon_geom, self.layer, self.canvas)  # callback aanroepen
+        self.reset()
+
+    def reset(self):
+        self.points = []
+        self.rubber_band.reset(QgsWkbTypes.PolygonGeometry)
+
