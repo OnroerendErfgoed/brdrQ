@@ -668,7 +668,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.LAYER_RESULT,
             geojson_result,
             get_symbol(geojson_result, result),
-            True,
+            False,
             self.GROUP_LAYER,
             self.WORKFOLDER,
         )
@@ -711,7 +711,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         remove_layer_by_name(correction_layer_name)
         correction_layer = self.generate_gpkg_layer(source_layer, correction_layer_name)
 
-        set_layer_visibility(correction_layer, False)
+        set_layer_visibility(correction_layer, True)
         move_to_group(correction_layer,self.GROUP_LAYER)
         QgsProject.instance().reloadAllLayers()
 
