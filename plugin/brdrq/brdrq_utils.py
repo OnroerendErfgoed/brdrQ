@@ -616,8 +616,8 @@ def print_brdr_formula(dict_results, aligner):
 def plot_series(
     series,
     dictionary,
-    xlabel="relevant distance",
-    ylabel="difference",
+    xlabel="relevant distance (m)",
+    ylabel="difference (m²)",
     title="Relevant distance vs difference",
 ):
     for key in dictionary:
