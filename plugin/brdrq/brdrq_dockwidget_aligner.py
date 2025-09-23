@@ -21,6 +21,8 @@
  *                                                                         *
  ***************************************************************************/
 """
+import webbrowser
+
 from qgis.core import edit
 
 from .brdrq_help import brdrQHelp
@@ -278,7 +280,9 @@ class brdrQDockWidgetAligner(object):
 
     def show_help_dialog(self):
         print("show help dialog")
-        self.helpDialog.show()
+        # Open link to documentation
+        webbrowser.open("https://github.com/OnroerendErfgoed/brdrQ/blob/main/docs/featurealigner.md")
+        # self.helpDialog.show()
 
     def show_settings_dialog(self):
         print("show_settings_dialog")

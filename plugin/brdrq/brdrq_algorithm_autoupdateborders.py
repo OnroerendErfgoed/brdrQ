@@ -185,7 +185,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameters and outputs associated with it.
         """
         return self.tr(
-            "https://github.com/OnroerendErfgoed/brdrQ/blob/development/docs/autoupdateborders.md"
+            "https://github.com/OnroerendErfgoed/brdrQ/blob/main/docs/autoupdateborders.md"
         )
 
     def shortHelpString(self):
