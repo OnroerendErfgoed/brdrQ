@@ -52,7 +52,7 @@ class brdrQDockWidgetAligner(object):
         self.max_area_limit = (
             1000000  # maximum m² where the calculation will be done for
         )
-        self.max_rel_dist_optimization = 5 #in meters
+        self.max_rel_dist_optimization = 5  # in meters
         self.listed_features = None
         self.feature = None
         self.selectTool = None
@@ -111,10 +111,10 @@ class brdrQDockWidgetAligner(object):
         self.horizontalSlider.setValue(index)
         return
 
-    def _check_warn_edit_modus(self,layer):
+    def _check_warn_edit_modus(self, layer):
         if layer.isEditable():
             msg = "This layer is in edit-modus. Please close edit-modus before using the feature-aligner"
-            self.iface.messageBar().pushWarning("Warning", msg )
+            self.iface.messageBar().pushWarning("Warning", msg)
             return True
         else:
             return False
@@ -143,7 +143,9 @@ class brdrQDockWidgetAligner(object):
         with edit(layer):
             layer.changeGeometry(feat.id(), qgis_geom)
             if ix >= 0:
-                layer.changeAttributeValue(feat.id(), ix, BrdrQState.MANUAL_UPDATED.value)
+                layer.changeAttributeValue(
+                    feat.id(), ix, str(BrdrQState.MANUAL_UPDATED.value)
+                )
         self.iface.messageBar().pushMessage("geometry saved")
 
     def _reset_geometry(self, layer):
@@ -152,7 +154,7 @@ class brdrQDockWidgetAligner(object):
         feat = self.feature
         if feat is None:
             return
-        original_geometry = get_original_geometry(feat ,BRDRQ_ORIGINAL_WKT_FIELDNAME)
+        original_geometry = get_original_geometry(feat, BRDRQ_ORIGINAL_WKT_FIELDNAME)
         if original_geometry is None:
             key = feat.id()
             relevant_distance = round(0.0, self.settingsDialog.DECIMAL)
@@ -160,7 +162,9 @@ class brdrQDockWidgetAligner(object):
                 result = self.dict_processresults[key][relevant_distance]
                 original_geometry = geom_shapely_to_qgis(result["result"])
             else:
-                errormesssage = f"problem resetting for reldist {str(relevant_distance)}"
+                errormesssage = (
+                    f"problem resetting for reldist {str(relevant_distance)}"
+                )
                 print(errormesssage)
                 return
 
@@ -168,11 +172,9 @@ class brdrQDockWidgetAligner(object):
         with edit(layer):
             layer.changeGeometry(feat.id(), original_geometry)
             if ix >= 0:
-                layer.changeAttributeValue(feat.id(), ix, BrdrQState.TO_UPDATE.value)
+                layer.changeAttributeValue(feat.id(), ix, str(BrdrQState.TO_UPDATE.value))
 
         self.iface.messageBar().pushMessage("geometry reset")
-
-
 
     def onSliderChange(self, index):
         print("onSliderChange: index -> " + str(index))

@@ -1,9 +1,7 @@
 import os
 from enum import Enum
 
-from PyQt5.QtCore import QVariant
 from PyQt5.QtGui import QColor
-from qgis.core import QgsFeature
 from qgis.core import QgsProcessingException
 from qgis.core import QgsRectangle
 from qgis.core import QgsWkbTypes
@@ -105,6 +103,7 @@ class BrdrQState(str, Enum):
     """
     Enum for defining the state of a (processed) feature
     """
+    AUTO_NO_CHANGE = "auto_no_change"
     AUTO_UPDATED = "auto_updated"
     MANUAL_UPDATED = "manual_updated"
     TO_REVIEW = "to_review"

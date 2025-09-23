@@ -33,12 +33,12 @@ import sys
 
 from PyQt5.QtCore import QVariant
 from brdr.constants import STABILITY, DIFF_PERC_INDEX, DIFF_INDEX
-from qgis._core import QgsField
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
     QgsRendererCategory,
     QgsFillSymbol,
 )
+from qgis.core import QgsField
 from qgis.core import QgsProcessingFeatureSourceDefinition
 from qgis.core import QgsVectorFileWriter, QgsVectorLayer
 
@@ -752,16 +752,16 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             feat[DIFF_INDEX]= id_diff_index_map[fid]
             feat[DIFF_PERC_INDEX]= id_diff_perc_index_map[fid]
             feat[BRDRQ_ORIGINAL_WKT_FIELDNAME] = feat.geometry().asWkt()
-            state = BrdrQState.NONE
+            state = str(BrdrQState.NONE.value)
             if fid in id_geom_map and fid not in ids_to_align:
                 feat.setGeometry(id_geom_map[fid])
-                state = BrdrQState.AUTO_UPDATED
+                state = str(BrdrQState.AUTO_UPDATED.value)
             if fid in ids_to_review:
-                state= BrdrQState.TO_REVIEW
+                state= str(BrdrQState.TO_REVIEW.value)
             if fid in ids_to_align:
                 feat[DIFF_INDEX] = -1
                 feat[DIFF_PERC_INDEX] = -1
-                state  = BrdrQState.TO_UPDATE
+                state  = str(BrdrQState.TO_UPDATE.value)
             feat[BRDRQ_STATE_FIELDNAME]= state
             correction_layer.updateFeature(feat)
         correction_layer.commitChanges()
@@ -782,7 +782,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 "color": "transparent",
             }
         )
-        value = BrdrQState.AUTO_UPDATED.value
+        value = str(BrdrQState.AUTO_UPDATED.value)
         categories.append(QgsRendererCategory(value, symbol_auto, value))
         # manual update
         symbol_manual_update = QgsFillSymbol.createSimple(
@@ -793,7 +793,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 "color": "transparent",
             }
         )
-        value = BrdrQState.MANUAL_UPDATED.value
+        value = str(BrdrQState.MANUAL_UPDATED.value)
         categories.append(QgsRendererCategory(value, symbol_manual_update, value))
         # To Review
         symbol_review = QgsFillSymbol.createSimple(
@@ -804,7 +804,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 "color": "transparent",
             }
         )
-        value = BrdrQState.TO_REVIEW.value
+        value = str(BrdrQState.TO_REVIEW.value)
         categories.append(QgsRendererCategory(value, symbol_review, value))
 
         symbol_todo = QgsFillSymbol.createSimple(
@@ -815,7 +815,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 "color": "transparent",
             }
         )
-        value = BrdrQState.TO_UPDATE.value
+        value = str(BrdrQState.TO_UPDATE.value)
         categories.append(QgsRendererCategory(value, symbol_todo, value))
 
         # Set Renderer

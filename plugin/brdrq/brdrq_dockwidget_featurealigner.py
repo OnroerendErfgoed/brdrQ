@@ -24,7 +24,6 @@
 
 import os
 
-from PyQt5.QtCore import QVariant
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QListWidgetItem
 from brdr.aligner import Aligner
@@ -36,7 +35,7 @@ from qgis import processing
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal
-from qgis.core import QgsFeature, QgsWkbTypes, QgsVectorLayer, QgsField, QgsProject
+from qgis.core import QgsFeature, QgsWkbTypes, QgsVectorLayer, QgsProject
 from qgis.core import QgsMapLayerProxyModel
 from qgis.gui import QgsMapToolPan
 from qgis.gui import QgsRubberBand
