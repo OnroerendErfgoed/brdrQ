@@ -2,6 +2,7 @@ import os
 from enum import Enum
 
 from PyQt5.QtGui import QColor
+from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
 from qgis.core import QgsProcessingException
 from qgis.core import QgsRectangle
 from qgis.core import QgsWkbTypes
@@ -162,7 +163,7 @@ def get_layer_by_name(layer_name):
         return None
 
 
-def zoom_to_features(features, iface, marge_factor=0.1):
+def zoom_to_features(features, iface, marge_factor=0.1,features_crs=None):
     """
     Function to zoom to an array of features.
     Combines the bbox of the features and adds a margin around the feature
@@ -183,10 +184,20 @@ def zoom_to_features(features, iface, marge_factor=0.1):
     bbox.setXMaximum(bbox.xMaximum() + width * marge_factor)
     bbox.setYMinimum(bbox.yMinimum() - height * marge_factor)
     bbox.setYMaximum(bbox.yMaximum() + height * marge_factor)
+    if not features_crs is None:
+        features_crs = QgsCoordinateReferenceSystem(features_crs)
+    project_crs = QgsProject.instance().crs()
+    if not features_crs is None and not project_crs is None and features_crs!=project_crs:
+        # Transformeer bbox naar project CRS
+        transform = QgsCoordinateTransform(features_crs, project_crs, QgsProject.instance())
+        bbox_transformed = transform.transformBoundingBox(bbox)
+    else:
+        bbox_transformed = bbox
 
-    # Zoom to bbox
-    iface.mapCanvas().setExtent(bbox)
+    # Zoom to (transformed) bbox
+    iface.mapCanvas().setExtent(bbox_transformed)
     iface.mapCanvas().refresh()
+
     return
 
 
@@ -737,7 +748,11 @@ def thematic_preparation(input_thematic_layer, relevant_distance, context, feedb
     crs = (
         thematic.sourceCrs().authid()
     )  # set CRS for the calculations, based on the THEMATIC input layer
-
+    if crs is None or crs =='NULL':
+        raise QgsProcessingException(
+            "Thematic layer does not have a defined CRS attached to it. "
+            "Please define a CRS to the Thematic layer, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"
+        )
     outputs[input_thematic_name + "_dropMZ"] = processing.run(
         "native:dropmzvalues",
         {

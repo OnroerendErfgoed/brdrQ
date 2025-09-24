@@ -48,6 +48,7 @@ class brdrQDockWidgetAligner(object):
         if not brdrqplugin is None:
             self.iface = self.brdrqplugin.iface
         self.layer = None
+        self.crs = None
         self.formula = None
         self.max_feature_count = 5000
         self.max_area_optimization = 100000
