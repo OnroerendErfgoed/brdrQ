@@ -1,3 +1,7 @@
+# v0.15.1
+
+- CRS support for featureAligner
+
 # v0.15.0
 
 - info - version: added extra information [#180]

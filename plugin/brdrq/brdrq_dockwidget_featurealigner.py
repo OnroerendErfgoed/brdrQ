@@ -39,7 +39,7 @@ from qgis.core import QgsFeature, QgsWkbTypes, QgsVectorLayer, QgsProject
 from qgis.core import QgsMapLayerProxyModel
 from qgis.gui import QgsMapToolPan
 from qgis.gui import QgsRubberBand
-from qgis.utils import OverrideCursor
+from qgis.utils import OverrideCursor, iface
 
 from .brdrq_dockwidget_aligner import brdrQDockWidgetAligner
 from .brdrq_utils import (
@@ -202,8 +202,18 @@ class brdrQDockWidgetFeatureAligner(
         if self.layer is None:
             self.textEdit_output.setText("Please select a layer")
             return
+        try:
+            self.crs = self.layer.sourceCrs().authid()
+        except:
+            self.crs = None
+        if self.crs is None or self.crs == 'NULL' or self.crs == '':
+            iface.messageBar().pushWarning(
+                 "CRS", "CRS of the thematic layer is not defined. Please define a CRS to the thematic layer with units in meter")
+            self.layer = None
+            self.mMapLayerComboBox.setLayer(self.layer)
+            return
         if self._check_warn_edit_modus(self.layer):
-            self.textEdit_output.setText("Please close edit-session of layer")
+            iface.messageBar().pushWarning("Edit-session","Please close edit-session of layer")
             self.layer = None
             self.mMapLayerComboBox.setLayer(self.layer)
             return
@@ -282,7 +292,7 @@ class brdrQDockWidgetFeatureAligner(
         if original_geometry is None:
             original_geometry = self.feature.geometry()
 
-        zoom_to_features([self.feature], self.iface)
+        zoom_to_features([self.feature], self.iface,features_crs=self.crs)
         key = self.feature.id()
 
         # Check feature on area
@@ -317,13 +327,17 @@ class brdrQDockWidgetFeatureAligner(
         self.settingsDialog.step = step
         self.loadSettings()
         self.setHandles()
-        # do alignment/prediction
-        self._align()
-
-        self.add_results_to_grouplayer()
 
         # set list with predicted values
         self.listWidget_predictions.clear()
+        # do alignment/prediction
+        align = self._align()
+        if align is None:
+            return
+
+        self.add_results_to_grouplayer()
+
+
         # loop predictions & add prediction score & evaluation
         items = []
         items_with_name = []
@@ -337,7 +351,7 @@ class brdrQDockWidgetFeatureAligner(
                 geom_shapely_to_qgis(self.dict_evaluated_predictions[key][rd]["result"])
             )
             list_predictions_features.append(feat)
-        zoom_to_features(list_predictions_features, self.iface)
+        zoom_to_features(list_predictions_features, self.iface,features_crs=self.crs)
         for k in list_predictions:
             items.append(str(k))
             score = self.dict_evaluated_predictions[key][k]["properties"][
@@ -423,7 +437,7 @@ class brdrQDockWidgetFeatureAligner(
             self.textEdit_output.setText(
                 "Geen features geselecteerd. Gelieve een feature te selecteren uit de actieve laag"
             )
-            return
+            return None
 
         dict_to_load = {}
 
@@ -442,6 +456,7 @@ class brdrQDockWidgetFeatureAligner(
             dict_to_load[feature.id()] = geom_shapely
 
         self.aligner = Aligner(
+            crs=self.crs,
             od_strategy=self.od_strategy,
             threshold_overlap_percentage=self.threshold_overlap_percentage,
             snap_strategy=self.partial_snapping_strategy,
@@ -471,7 +486,24 @@ class brdrQDockWidgetFeatureAligner(
                 )
             )
         else:
-            # Load reference into a shapely_dict:
+            # Load local referencelayer
+            # check the CRS of the local layer
+            try:
+                reference_crs = self.reference_layer.sourceCrs().authid()
+            except:
+                reference_crs = None
+            if reference_crs is None or reference_crs == "NULL"  or reference_crs == '':
+                iface.messageBar().pushWarning("CRS",
+                    "CRS of the local Reference Layer is not defined. Please define a CRS to the REFERENCE Layer with units in meter"
+                )
+                return None
+            elif reference_crs != self.crs:
+                iface.messageBar().pushWarning("CRS",
+                    "Thematic layer and ReferenceLayer are in a different CRS. "
+                    "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"
+                )
+                return None
+            # Load reference-layer into a shapely_dict:
             dict_reference = {}
             processing.run(
                 "native:selectwithindistance",

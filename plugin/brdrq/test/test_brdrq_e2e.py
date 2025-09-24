@@ -134,4 +134,29 @@ class TestFlow(unittest.TestCase):
         project.removeAllMapLayers()
         widget.close()
 
-
+    # def test_full_error_crs(self):
+    #     """Test the full workflow from opening the dialog to align features"""
+    #     project = QgsProject.instance()
+    #     CRS = QgsCoordinateReferenceSystem.fromEpsgId(31370)
+    #     # CANVAS.setExtent(QgsRectangle(1469703, 6870031, 1506178, 6907693))
+    #     CANVAS.setDestinationCrs(CRS)
+    #     path = os.path.join(os.path.dirname(__file__), "themelayer_e2e_brdrq_params.geojson")
+    #     themelayername = "themelayer_e2e"
+    #     layer_theme = QgsVectorLayer(path, themelayername)
+    #     undefined_crs = QgsCoordinateReferenceSystem(0)
+    #     layer_theme.setCrs(undefined_crs)
+    #     project.addMapLayer(layer_theme)
+    #
+    #     # Create and open the dialog
+    #     brdrqplugin = BrdrQPlugin(IFACE)
+    #     widget = brdrQDockWidgetFeatureAligner(brdrqplugin, None)
+    #     widget._initialize()
+    #     widget.startDock()
+    #     layer_theme = get_layer_by_name(themelayername)
+    #     assert layer_theme.name() == themelayername
+    #     layers = project.mapLayers(validOnly=True)
+    #     self.assertEqual(len(layers), 1)
+    #     # kies themelayer in widget
+    #     widget.mMapLayerComboBox.setLayer(None)
+    #     widget.mMapLayerComboBox.setLayer(layer_theme)
+    #     widget.close()

@@ -400,7 +400,7 @@ class brdrQDockWidgetBulkAligner(
             return
         key = self.feature.id()
 
-        zoom_to_features([self.feature], self.iface)
+        zoom_to_features([self.feature], self.iface,features_crs=self.crs)
 
         list_predictions = [k for k in (self.dict_evaluated_predictions[key]).keys()]
 
