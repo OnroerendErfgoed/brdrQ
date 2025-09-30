@@ -27,71 +27,22 @@ boundaries of resulting geometries and original geometries is at most as large a
 
 
 ## Installation
+* Windows-users: Use the QGIS PluginManager to install brdrQ (v0.15.1) from the official QGIS-repo:
+<img src="docs/figures/plugin_list.png" width="50%" />
+
+* Ubuntu/Linux: For newer versions of Ubuntu/Linux it could be needed to run QGIS inside a virtual environment. You can use the following script to create a virtual environment and run QGIS before following the installation steps below: [linux_venv_qgis.sh](dist/linux_venv_qgis.sh).
+
+* Mac: Usage of the plugin on Mac is not tested, and can give errors or unexpected behaviour.)
+
 
 ### Pre-requisites
 
-- Plugin is tested for QGIS on Windows. (For newer versions of Ubuntu/Linux it could be needed to run QGIS inside a virtual environment. You can use the following script to create a virtual environment and run QGIS before following the installation steps below: [linux_venv_qgis.sh](dist/linux_venv_qgis.sh). Usage of the plugin on Mac is not tested, and can give errors or
-  unexpected behaviour.)
 - QGIS >3.34.8: The plugin has been developed and tested based on QGIS 3.34.8. (In older versions, the plugin might give
   unexpected behaviour)
 - brdr needs Shapely 2.0.2 or higher. This version of Shapely is already available by default in QGIS version 3.34.8 and
   higher on Windows installations. On Linux and Mac this may not be the case. If the modules are not found, the plugin
   will attempt to install both 'brdr' and 'shapely' from Pypi.
 
-  
-### Installation-steps
-
-You can install the latest release of `brdrQ` by adding a custom plugin-repository-url: https://github.com/OnroerendErfgoed/brdrQ/raw/refs/heads/main/dist/plugins.xml , so brdrQ will become available in the plugin-list. 
-
-Please follow the steps below to make the plugin available:
-
-1. Open the 'Plugins'>>'Manage and install plugins...' from the topbar of QGIS
-
-<img src="docs/figures/installation-step-1.png" width="100%" />
-
-2a. Choose: 'Settings' and use the 'Add'-button to add the following repository: https://github.com/OnroerendErfgoed/brdrQ/raw/refs/heads/main/dist/plugins.xml
-
-<img src="docs/figures/plugin_settings_repo.png" width="100%" />
-<img src="docs/figures/plugin_settings_repo_add.png" width="50%" />
-
-2b. When the custom repo is succesfully added, 'brdrQ' will appear in the list of available plugins:
-
-<img src="docs/figures/plugin_list.png" width="50%" />
-
-
-2c. The plugin can be installed by clicking: 'Install plugin':
-
-<img src="docs/figures/install_plugin.png" width="50%" />
-
-2d. In some cases a 'ModuleNotFound'-Error like below will popup because the right version of 'brdr' is not yet available in QGIS.  
-When this error occurs, please ignore this error and restart QGIS so the newer version of 'brdr' will re-install automatically and the brdrQ-plugin will become available.
-
-<img src="docs/figures/modulenotfound_error.png" width="50%" />
-
-(While adding the plugin to QGIS, the necessary python-dependencies will be installed if not yet available on
-your machine. If dependencies need to be installed, a screen like below can pop up. Please wait until installation is finished. The
-screen will close automatically after installation.)
-
-<img src="docs/figures/installation-step-2c.png" width="50%" />
-
-3. After a successful installation/restart, check in the 'Installed'-tab of the QGIS Plugin Manager if the 'brdrQ'-plugin is activated (red arrow). if not, you
-   have to activate the checkbox
-
-<img src="docs/figures/installation-step-2d.png" width="100%" />
-
-4. The plugin 'brdrQ' is now installed as a toolbar and the brdrQProvider is also available in the Processing Toolbox. First open the
-   processing toolbox and look for 'brdrQProvider'
-
-<img src="docs/figures/installation-step-3a.png" width="50%" />
-<img src="docs/figures/installation-step-3b.png" width="50%" />
-
-5. Double-click on the 'Autocorrectborders' tool, and the tool opens:
-
- <img src="docs/figures/installation-step-4.png" width="50%" />
-
-6. The brdrQ-plugin also provides a Feature-by-Feature align tool that is available in the toolbar.
-
-<img src="docs/figures/installation-step-5.png" width="50%" />
 
 ## The brdrQ - PLUGIN
 
