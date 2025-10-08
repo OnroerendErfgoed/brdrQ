@@ -58,6 +58,7 @@ from .brdrq_utils import (
     BRDRQ_STATE_FIELDNAME,
     get_original_geometry,
     PolygonSelectTool,
+    BrdrQState,
 )
 
 FORM_CLASS, _ = uic.loadUiType(
@@ -91,7 +92,6 @@ class brdrQDockWidgetFeatureAligner(
         self.listWidget_features.clear()
         # Clear the predictionlist
         self.listWidget_predictions.clear()
-        self.checkBox_only_selected.setEnabled(True)
 
         remove_group_layer(self.GROUP_LAYER)
         self.feature = None
@@ -99,6 +99,7 @@ class brdrQDockWidgetFeatureAligner(
     def _initialize(self):
         print("_initialize")
         # connect to provide cleanup on closing of dockwidget
+        self._initializeSelectFeatures()
         self.closingPlugin.connect(self.onClosePlugin)
         self.pushButton_help.clicked.connect(self.show_help_dialog)
         self.pushButton_settings.clicked.connect(self.show_settings_dialog)
@@ -114,7 +115,6 @@ class brdrQDockWidgetFeatureAligner(
             | QgsMapLayerProxyModel.PointLayer
         )
         self.mMapLayerComboBox.layerChanged.connect(self.themeLayerChanged)
-        self.checkBox_only_selected.stateChanged.connect(self.themeLayerChanged)
         self.listWidget_features.itemPressed.connect(self.onFeatureActivated)
         self.listWidget_predictions.itemPressed.connect(self.onListItemActivated)
         self.horizontalSlider.sliderMoved.connect(self.onSliderChange)
@@ -126,6 +126,19 @@ class brdrQDockWidgetFeatureAligner(
         self.layer = self.mMapLayerComboBox.currentLayer()
         self.settingsDialog.confirmed.connect(self.startDock)
         return
+
+    def _initializeSelectFeatures(self):
+        self.comboBox_selectfeatures.addItem("ALL FEATURES",userData="ALL")
+        self.comboBox_selectfeatures.addItem("SELECTED FEATURES",userData="SELECTED")
+        for x in BrdrQState:
+            self.comboBox_selectfeatures.addItem("STATE: "+str(x.value),userData = str(x.value))
+
+        self.comboBox_selectfeatures.currentIndexChanged.connect(self.on_selectfeatures_changed)
+
+    def on_selectfeatures_changed(self,index):
+        data = self.comboBox_selectfeatures.itemData(index)
+        print("Selected data:", data)
+        self.listFeatures(selection=data)
 
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
@@ -162,8 +175,7 @@ class brdrQDockWidgetFeatureAligner(
 
     def onFeaturesIdentified(self, identified_features):
         """Code called when the feature is selected by the user"""
-        self.listed_features = identified_features
-        self.listFeatures()
+        self.listFeatures(features=identified_features)
 
     def handlePartialSelection(self, polygon_geom, layer, canvas):
 
@@ -191,8 +203,7 @@ class brdrQDockWidgetFeatureAligner(
 
         QgsProject.instance().addMapLayer(temp_layer)
         print(f"{len(partial_features)} -> #partial features.")
-        self.listed_features = partial_features
-        self.listFeatures()
+        self.listFeatures(features=partial_features)
 
     def themeLayerChanged(self):
         print("themelayer changed")
@@ -226,16 +237,39 @@ class brdrQDockWidgetFeatureAligner(
             )
             return
 
-        if self.checkBox_only_selected.checkState() == 2:
-            self.listed_features = [f for f in self.layer.getSelectedFeatures()]
-            self.textEdit_output.setText("Selected features in this layer returned")
-        else:
+        index = self.comboBox_selectfeatures.currentIndex()
+        data = self.comboBox_selectfeatures.itemData(index)
+        self.listFeatures(selection=data)
+
+    def listFeatures(self,selection=None,features=None):
+        self.clearUserInterface()
+        if not features is None:
+            self.listed_features = features
+        elif selection is None or selection == "ALL":
             self.listed_features = [f for f in self.layer.getFeatures()]
             self.textEdit_output.setText("All features in this layer returned")
-        self.listFeatures()
+        elif selection == "SELECTED":
+            ix = self.layer.fields().indexOf(BRDRQ_STATE_FIELDNAME)
+            self.listed_features = [f for f in self.layer.getSelectedFeatures()]
+            self.textEdit_output.setText("Selected features in this layer returned")
+        elif selection in [str(e.value) for e in BrdrQState]:
+            listed_features = []
+            ix = self.layer.fields().indexOf(BRDRQ_STATE_FIELDNAME)
+            for f in self.layer.getFeatures():
+                attributes = f.attributes()
+                if ix >= 0 and attributes[ix] == selection:
+                    listed_features.append(f)
+            self.listed_features = listed_features
+            self.textEdit_output.setText(
+                f"Features filtered by brdrq_STATE = {str(selection)}"
+            )
 
-    def listFeatures(self):
-        self.clearUserInterface()
+        if len(self.listed_features) > self.max_feature_count:
+            self.textEdit_output.setText(
+                f"Nr of features bigger than {str(self.max_feature_count)}. Please make a smaller selection of features"
+            )
+            return
+
         # Add the selected features to the list widget
         for feature in self.listed_features:
             item = QListWidgetItem(str(feature.id()))
@@ -256,7 +290,7 @@ class brdrQDockWidgetFeatureAligner(
             if ix >= 0:
                 state = attributes[ix]
             else:
-                state = "none"
+                state = str(BrdrQState.NONE.value)
             attribute_string = ", ".join(str(attribute) for attribute in attributes)
             item_text = f"ID: *{feature.id()}*, STATE: *{state} *, Attributes: {attribute_string}"
             item.setText(item_text)
@@ -337,7 +371,6 @@ class brdrQDockWidgetFeatureAligner(
 
         self.add_results_to_grouplayer()
 
-
         # loop predictions & add prediction score & evaluation
         items = []
         items_with_name = []
@@ -377,6 +410,8 @@ class brdrQDockWidgetFeatureAligner(
 
     def add_results_to_grouplayer(self):
         print("adding results")
+        if self.aligner is None:
+            return
         fcs = self.aligner.get_results_as_geojson(
             resulttype=AlignerResultType.PROCESSRESULTS, formula=self.formula
         )
@@ -435,7 +470,7 @@ class brdrQDockWidgetFeatureAligner(
             selectedFeatures.append(feat)
         if len(selectedFeatures) == 0:
             self.textEdit_output.setText(
-                "Geen features geselecteerd. Gelieve een feature te selecteren uit de actieve laag"
+                "No features selected. Please select a feature from the active layer."
             )
             return None
 
@@ -538,7 +573,7 @@ class brdrQDockWidgetFeatureAligner(
 
         self.diffs_dict = self.aligner.get_diff_metrics(self.dict_processresults)
 
-        outputMessage = "Voorspelde relevante afstanden: " + str(
+        outputMessage = "PREDICTIONS (@ relevant distances): " + str(
             [str(k) for k in self.dict_evaluated_predictions[feat.id()].keys()]
         )
         self.textEdit_output.setText(outputMessage)
