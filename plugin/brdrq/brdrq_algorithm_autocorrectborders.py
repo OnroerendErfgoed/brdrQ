@@ -32,7 +32,7 @@ import os
 import sys
 
 from PyQt5.QtCore import QVariant
-from brdr.constants import STABILITY, DIFF_PERC_INDEX, DIFF_INDEX
+from brdr.constants import STABILITY, DIFF_PERC_INDEX, DIFF_INDEX, FORMULA_FIELD_NAME
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
     QgsRendererCategory,
@@ -723,6 +723,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         id_geom_map = {}
         id_diff_index_map = {}
         id_diff_perc_index_map = {}
+        id_formula_map = {}
         ids_to_review = []
         ids_to_align = []
         ids_not_changed = []
@@ -735,6 +736,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 # when key not unique and multiple predictions, the last prediction is added to the list and the status is set to review
                 ids_to_review.append(key)
             id_geom_map[key] = feat.geometry()
+            if self.ADD_FORMULA:
+                id_formula_map[key] = feat[FORMULA_FIELD_NAME]
             id_diff_index_map[key] = feat[DIFF_INDEX]
             id_diff_perc_index_map[key] = feat[DIFF_PERC_INDEX]
             if stability_field_available and not feat[STABILITY]:
@@ -748,6 +751,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         correction_layer.startEditing()
         correction_layer.dataProvider().addAttributes(
             [
+                QgsField(FORMULA_FIELD_NAME, QVariant.String),
                 QgsField(BRDRQ_STATE_FIELDNAME, QVariant.String),
                 QgsField(BRDRQ_ORIGINAL_WKT_FIELDNAME, QVariant.String),
                 QgsField(DIFF_INDEX, QVariant.Double),
@@ -757,6 +761,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         correction_layer.updateFields()
         for feat in correction_layer.getFeatures():
             fid = feat[self.ID_THEME_FIELDNAME]
+            if self.ADD_FORMULA:
+                feat[FORMULA_FIELD_NAME] = id_formula_map[fid]
             feat[DIFF_INDEX] = id_diff_index_map[fid]
             feat[DIFF_PERC_INDEX] = id_diff_perc_index_map[fid]
             feat[BRDRQ_ORIGINAL_WKT_FIELDNAME] = feat.geometry().asWkt()
