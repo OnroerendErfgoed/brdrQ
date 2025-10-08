@@ -27,6 +27,6 @@ class TestAutocorrectBorders(unittest.TestCase):
     def test_brdrQDockWidgetFeatureAligner(self):
         brdrqplugin = BrdrQPlugin(IFACE)
         widget = brdrQDockWidgetFeatureAligner(brdrqplugin, None)
-        widget.get_graphic()
+        #widget.get_wkt()
 
 

@@ -42,7 +42,6 @@ from qgis.PyQt.QtCore import QCoreApplication, QLocale, QTranslator, QSettings
 from qgis.core import Qgis
 from qgis.core import QgsApplication
 
-from .brdrq_dockwidget_bulkaligner import brdrQDockWidgetBulkAligner
 from .brdrq_dockwidget_featurealigner import brdrQDockWidgetFeatureAligner
 from .brdrq_provider import BrdrQProvider
 from .brdrq_version_dialog import VersionInfoDialog
@@ -147,16 +146,6 @@ class BrdrQPlugin(object):
         self.toolbar.addAction(action_featurepredictor)
         self.actions.append(action_featurepredictor)
 
-        # #BULKALIGNER
-        # icon_bulkaligner = os.path.join(os.path.join(cmd_folder, "icon_bulkaligner.png"))
-        # action_bulkaligner = QAction(
-        #     QIcon(icon_bulkaligner), "brdrQ - Bulk Aligner (predictor)", self.iface.mainWindow()
-        # )
-        # action_bulkaligner.triggered.connect(self.openDockBulkAligner)
-        # self.brdrq_menu.addAction(action_bulkaligner)
-        # self.toolbar.addAction(action_bulkaligner)
-        # self.actions.append(action_bulkaligner)
-
         # AUTOUPDATEBORDERS -GRBUPDATER
         icon_autoupdateborders = os.path.join(
             os.path.join(cmd_folder, "icon_grbupdater.png")
@@ -232,18 +221,6 @@ class BrdrQPlugin(object):
             del action
         # remove the toolbar
         del self.toolbar
-
-    def openDockBulkAligner(self):
-        print("openDockBulkAligner")
-        print(str(self.dockwidget_bulkaligner))
-        if self.dockwidget_bulkaligner is None:
-            # Create the dockwidget (after translation) and keep reference
-            self.dockwidget_bulkaligner = brdrQDockWidgetBulkAligner(self)
-            print("brdrQDockWidgetBulkAligner created")
-        print(str(self.dockwidget_bulkaligner.active))
-        if not self.dockwidget_bulkaligner.active:
-            self.dockwidget_bulkaligner.activate()
-        return
 
     def openDockFeatureAligner(self):
         print("openDockFeatureAligner")

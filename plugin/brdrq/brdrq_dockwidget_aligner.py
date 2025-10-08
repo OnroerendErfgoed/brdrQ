@@ -23,12 +23,12 @@
 """
 import webbrowser
 
+from PyQt5.QtWidgets import QMessageBox
 from qgis.core import edit
 
 from .brdrq_help import brdrQHelp
 from .brdrq_settings import brdrQSettings
 from .brdrq_utils import (
-    plot_series,
     show_map,
     get_workfolder,
     geom_shapely_to_qgis,
@@ -109,9 +109,7 @@ class brdrQDockWidgetAligner(object):
         value = value.split(":")[0]
         value = round(float(value), self.settingsDialog.DECIMAL)
         # print("item activated with rd - value: " + str(value))
-        self.doubleSpinBox.setValue(value)
-        index = self.relevant_distances.index(value)
-        self.horizontalSlider.setValue(index)
+        self.plot_widget.spinbox.setValue(value)
         return
 
     def _check_warn_edit_modus(self, layer):
@@ -130,7 +128,7 @@ class brdrQDockWidgetAligner(object):
             return
         key = feat.id()
         relevant_distance = round(
-            self.doubleSpinBox.value(), self.settingsDialog.DECIMAL
+            self.plot_widget.spinbox.value(), self.settingsDialog.DECIMAL
         )
         if relevant_distance in self.dict_processresults[key]:
             result = self.dict_processresults[key][relevant_distance]
@@ -166,7 +164,7 @@ class brdrQDockWidgetAligner(object):
                 original_geometry = geom_shapely_to_qgis(result["result"])
             else:
                 errormesssage = (
-                    f"problem resetting for reldist {str(relevant_distance)}"
+                    f"Problem resetting for relevant distance {str(relevant_distance)}"
                 )
                 print(errormesssage)
                 return
@@ -181,18 +179,8 @@ class brdrQDockWidgetAligner(object):
 
         self.iface.messageBar().pushMessage("geometry reset")
 
-    def onSliderChange(self, index):
-        print("onSliderChange: index -> " + str(index))
-        value = self.relevant_distances[index]
-        value = round(value, self.settingsDialog.DECIMAL)
-        self.doubleSpinBox.setValue(value)
-        return
-
     def onSpinboxChange(self, value):
         value = round(value, self.settingsDialog.DECIMAL)
-        index = self.relevant_distances.index(value)
-        self.horizontalSlider.setValue(index)
-        print("onSpinboxChange: value -> " + str(value))
 
         layer_result = get_layer_by_name(self.LAYER_RESULT)
         layer_result_diff = get_layer_by_name(self.LAYER_RESULT_DIFF)
@@ -206,40 +194,41 @@ class brdrQDockWidgetAligner(object):
         ):
             self.add_results_to_grouplayer()
         self.setFilterOnLayers(value)
-
-        self.get_wkt()
         return
 
     def setFilterOnLayers(self, value):
-        layer_result = get_layer_by_name(self.LAYER_RESULT)
-        layer_result_diff = get_layer_by_name(self.LAYER_RESULT_DIFF)
-        layer_result_diff_min = get_layer_by_name(self.LAYER_RESULT_DIFF_MIN)
-        layer_result_diff_plus = get_layer_by_name(self.LAYER_RESULT_DIFF_PLUS)
+        print("setfiltersonlayer")
+        filter = f"brdr_relevant_distance = {value}"
+        self._setFilterOnLayer(self.LAYER_RESULT,filter)
+        self._setFilterOnLayer(self.LAYER_RESULT_DIFF,filter)
+        self._setFilterOnLayer(self.LAYER_RESULT_DIFF_MIN,filter)
+        self._setFilterOnLayer(self.LAYER_RESULT_DIFF_PLUS,filter)
+        return
 
-        # Filter layers based on relevant distance
-        layer_result.setSubsetString(f"brdr_relevant_distance = {value}")
-        layer_result_diff.setSubsetString(f"brdr_relevant_distance = {value}")
-        layer_result_diff_min.setSubsetString(f"brdr_relevant_distance = {value}")
-        layer_result_diff_plus.setSubsetString(f"brdr_relevant_distance = {value}")
+    def _setFilterOnLayer(self, layername,filter):
+        layer = get_layer_by_name(layername)
+        if not layer is None:
+            layer.setSubsetString(filter)
         return
 
     def get_wkt(self):
         feat = self.feature
         if feat is None:
+            QMessageBox.information(self, "WKT", "No geometry selected. WKT not available")
             return
         key = feat.id()
-        # print("key:" + str(key))
         relevant_distance = round(
-            self.doubleSpinBox.value(), self.settingsDialog.DECIMAL
+            self.plot_widget.get_value(), self.settingsDialog.DECIMAL
         )
-        # print(str(relevant_distance))
+
         if (
             key is None
             or self.dict_processresults is None
             or not key in self.dict_processresults.keys()
         ):
             msg = f"No prediction-WKT of feature {str(key)}..."
-            self.textEdit_output.setText(msg)
+            # self.textEdit_output.setText(msg)
+            QMessageBox.information(self, "WKT", msg)
             return
 
         elif relevant_distance in self.dict_processresults[key]:
@@ -247,16 +236,18 @@ class brdrQDockWidgetAligner(object):
             resulting_geom = result["result"]
         else:
             errormesssage = (
-                "Relevant_distance_result not calculated for key : "
+                "Relevant_distance_result not calculated for key: "
                 + str(key)
                 + " at relevant distance-"
                 + str(relevant_distance)
             )
 
-            self.textEdit_output.setText(errormesssage)
+            # self.textEdit_output.setText(errormesssage)
+            QMessageBox.warning(self, "WKT", errormesssage)
             return
         wkt = resulting_geom.wkt
-        self.textEdit_output.setText(wkt)
+        # self.textEdit_output.setText(wkt)
+        QMessageBox.information(self, "WKT", wkt)
 
     def get_visualisation(self):
         feat = self.feature
@@ -270,14 +261,14 @@ class brdrQDockWidgetAligner(object):
         )
         return
 
-    def get_graphic(self):
-        feat = self.feature
-        if feat is None:
-            print("no feature")
-            return
-        key = feat.id()
-        plot_series(self.relevant_distances, {key: self.diffs_dict[key]})
-        return
+    # def get_graphic(self):
+    #     feat = self.feature
+    #     if feat is None:
+    #         print("no feature")
+    #         return
+    #     key = feat.id()
+    #     plot_series(self.relevant_distances, {key: self.diffs_dict[key]})
+    #     return
 
     def show_help_dialog(self):
         print("show help dialog")
@@ -294,14 +285,12 @@ class brdrQDockWidgetAligner(object):
         self.maximum = self.settingsDialog.maximum
         self.step = self.settingsDialog.step
 
-        self.doubleSpinBox.setMinimum(self.minimum / 100)
-        self.doubleSpinBox.setMaximum(self.maximum / 100)
-        self.doubleSpinBox.setSingleStep(self.step / 100)
-        self.doubleSpinBox.setDecimals(self.settingsDialog.DECIMAL)
-        self.doubleSpinBox.setValue(0.0)
-        self.horizontalSlider.setMinimum(0)
-        self.horizontalSlider.setMaximum(len(self.relevant_distances) - 1)
-        self.horizontalSlider.setSingleStep(1)
+        self.plot_widget.spinbox.setMinimum(self.minimum / 100)
+        self.plot_widget.spinbox.setMaximum(self.maximum / 100)
+        self.plot_widget.spinbox.setSingleStep(self.step / 100)
+        self.plot_widget.spinbox.setDecimals(self.settingsDialog.DECIMAL)
+        self.plot_widget.spinbox.setValue(0.0)
+        self.plot_widget.reset_plot(self.maximum / 100)
         return
 
     def loadSettings(self):
