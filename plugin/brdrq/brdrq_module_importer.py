@@ -28,10 +28,25 @@ def find_python():
 
     raise Exception("Python executable not found")
 
+# def pipinstall_by_subprocess2(python_exe,package):
+#     plugin_dir = os.path.dirname(__file__)
+#     libs_dir = os.path.join(plugin_dir, "libs")
+#
+#     # Voeg libs toe aan sys.path
+#     if libs_dir not in sys.path:
+#         sys.path.append(libs_dir)
+#
+#     subprocess.check_call(
+#                 [python_exe, "-m", "pip", "install", package,"--target",libs_dir]
+#             )
+
 def pipinstall_by_subprocess(python_exe,package):
     if sys.platform != "win32":
         user_profile_name = iface.userProfileManager().userProfile().name()
         target_dir="~/.local/share/QGIS/QGIS3/profiles/" + user_profile_name + "/python"
+        # Add target_dir to sys.path
+        if target_dir not in sys.path:
+            sys.path.append(target_dir)
         try:
             subprocess.check_call(
                 [python_exe, "-m", "pip", "install", package,"--target",target_dir]
