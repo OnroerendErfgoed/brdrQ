@@ -4,6 +4,8 @@ import site
 import subprocess
 import sys
 
+from PyQt5.QtWidgets import QMessageBox
+from qgis.utils import iface
 
 # helper function to find embedded python
 # path in windows. Based on
@@ -15,14 +17,45 @@ brdr_version = "0.14.0"
 
 def find_python():
     if sys.platform != "win32":
+        print (sys.platform)
         return sys.executable
 
     for path in sys.path:
         assumed_path = os.path.join(path, "python.exe")
         if os.path.isfile(assumed_path):
+            print(f"assumed path: {assumed_path}")
             return assumed_path
 
     raise Exception("Python executable not found")
+
+def pipinstall_by_subprocess(python_exe,package):
+    if sys.platform != "win32":
+        user_profile_name = iface.userProfileManager().userProfile().name()
+        target_dir="~/.local/share/QGIS/QGIS3/profiles/" + user_profile_name + "/python"
+        try:
+            subprocess.check_call(
+                [python_exe, "-m", "pip", "install", package,"--target",target_dir]
+            )
+        except:
+            QMessageBox.error(None, "Error", f"This plugin needs external dependency '{package}', automatically installed for Windows. For Linux/Mac, the correct version ({package}) has to be installed manually")
+    else:
+        subprocess.check_call(
+            [python_exe, "-m", "pip", "install", package]
+        )
+
+def install_brdr(python_exe):
+    if "brdr" in sys.modules:
+        del sys.modules["brdr"]
+        print("brdr removed from sys_module")
+    pipinstall_by_subprocess(python_exe,"brdr==" + brdr_version)
+    import brdr
+    importlib.reload(brdr)
+    import brdr
+    print(f"reloaded version of brdr: {brdr.__version__}")
+
+def install_shapely(python_exe):
+    print("Module shapely not found. Installing from PyPi.")
+    pipinstall_by_subprocess(python_exe,"shapely")
 
 
 def import_modules():
@@ -33,14 +66,10 @@ def import_modules():
         from shapely import Polygon, from_wkt, to_wkt, unary_union, make_valid
         from shapely.geometry import shape
     except ModuleNotFoundError:
-        print("Module shapely not found. Installing from PyPi.")
-        subprocess.check_call([python_exe, "-m", "pip", "install", "shapely"])
-        from shapely import Polygon, from_wkt, to_wkt, unary_union, make_valid
-        from shapely.geometry import shape
+        install_shapely(python_exe)
 
     try:
         import brdr
-
         importlib.reload(brdr)
         import brdr
 
@@ -48,22 +77,7 @@ def import_modules():
             raise ValueError("Version mismatch")
 
     except (ModuleNotFoundError, ValueError):
-
-        if "brdr" in sys.modules:
-            del sys.modules["brdr"]
-            print("brdr removed from sys_module")
-
-        subprocess.check_call(
-            [python_exe, "-m", "pip", "install", "brdr==" + brdr_version]
-        )
-        # show_new_brdr_dialog()
-        import brdr
-
-        # print(f"version of brdr before reload: {brdr.__version__}")
-        importlib.reload(brdr)
-        import brdr
-
-        print(f"reloaded version of brdr: {brdr.__version__}")
+        install_brdr(python_exe)
 
 
 def show_new_brdr_dialog():

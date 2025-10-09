@@ -1,3 +1,10 @@
+# v0.15.2
+
+- Added logic for automatic non-Windows install of 'brdr' [#206]
+- Added brdrQState-filter functionality to Feature Aligner [#198]
+- Make plugin compatible with other CRS than 31370 en 3812 [#201]
+- Bugfix: Using slider without Aligner [#209]
+
 # v0.15.1
 
 - CRS support for featureAligner
