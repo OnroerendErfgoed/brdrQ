@@ -30,6 +30,7 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 import inspect
 import os
 import sys
+from datetime import datetime
 
 from PyQt5.QtCore import QVariant
 from brdr.constants import STABILITY, DIFF_PERC_INDEX, DIFF_INDEX, FORMULA_FIELD_NAME
@@ -963,8 +964,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ref, self.LAYER_REFERENCE, self.ID_REFERENCE_FIELDNAME, self.CRS
             )
         )
-
-        self.SUFFIX = "_DIST_" + str(self.RELEVANT_DISTANCE) + "_" + ref_suffix
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        self.SUFFIX = "_DIST_" + str(self.RELEVANT_DISTANCE) + "_" + ref_suffix + "_" +timestamp
         self.SUFFIX = self.SUFFIX.replace(".", "_")
         self.SUFFIX = self.SUFFIX.replace(" ", "_")
         if self.PREDICTIONS:
@@ -979,3 +980,4 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.LAYER_RESULT_DIFF_MIN = self.LAYER_RESULT_DIFF_MIN + self.SUFFIX
         self.GROUP_LAYER = self.GROUP_LAYER + self.SUFFIX
         self.GROUP_LAYER_ACTUAL = self.GROUP_LAYER_ACTUAL + self.SUFFIX
+        self.LAYER_REFERENCE_NAME = self.LAYER_REFERENCE_NAME + self.SUFFIX

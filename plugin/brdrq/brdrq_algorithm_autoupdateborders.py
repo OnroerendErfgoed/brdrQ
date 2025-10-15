@@ -27,7 +27,7 @@ CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFT
 THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ***************************************************************************
 """
-
+from datetime import datetime
 
 from brdr.aligner import Aligner
 from brdr.constants import BASE_FORMULA_FIELD_NAME
@@ -98,6 +98,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     FORMULA_FIELDNAME = BASE_FORMULA_FIELD_NAME
     PREFIX = "brdrQ_"
+    SUFFIX = ""  # parameter for composing a suffix for the layers
     LAYER_RESULT = (
         PREFIX + "RESULT"  # parameter that holds the TOC layername of the result
     )
@@ -555,3 +556,18 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         if str(self.FORMULA_FIELDNAME) == "NULL":
             self.FORMULA_FIELDNAME = None
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
+
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        self.SUFFIX = (
+            "_" + ref_suffix + "_" + timestamp
+        )
+        self.SUFFIX = self.SUFFIX.replace(".", "_")
+        self.SUFFIX = self.SUFFIX.replace(" ", "_")
+
+        self.LAYER_RESULT = self.LAYER_RESULT + self.SUFFIX
+        self.LAYER_RESULT_DIFF = self.LAYER_RESULT_DIFF + self.SUFFIX
+        self.LAYER_RESULT_DIFF_PLUS = self.LAYER_RESULT_DIFF_PLUS + self.SUFFIX
+        self.LAYER_RESULT_DIFF_MIN = self.LAYER_RESULT_DIFF_MIN + self.SUFFIX
+        self.GROUP_LAYER = self.GROUP_LAYER + self.SUFFIX
+
+
