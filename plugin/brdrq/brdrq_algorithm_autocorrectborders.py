@@ -745,7 +745,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ids_to_align.append(key)
             elif feat[DIFF_PERC_INDEX] > self.REVIEW_PERCENTAGE:
                 ids_to_review.append(key)
-            elif feat[DIFF_PERC_INDEX] == 0:
+            elif feat[DIFF_INDEX] < 0.01:
                 ids_not_changed.append(key)
 
         # 4. Update geometries in duplicated layer
