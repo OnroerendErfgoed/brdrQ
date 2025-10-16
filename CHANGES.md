@@ -1,3 +1,13 @@
+# v0.16.0
+
+- Added logic for automatic non-Windows install of 'brdr' [#206]
+- Added brdrQState-filter functionality to Feature Aligner [#198]
+- Make plugin compatible with other CRS than 31370 en 3812 [#201]
+- Unique name to resulting layers (bulk), so they stay available in the TOC [#216]
+- Bugfix: Using slider without Aligner [#209]
+- Bugfix: features categorised as 'unchanged' still have a small change [#214]
+- Bugfix: autocorrectborders/autocorrectborders - 'only selected features does not work' [#210]
+
 # v0.15.1
 
 - CRS support for featureAligner

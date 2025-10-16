@@ -27,7 +27,7 @@ CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFT
 THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ***************************************************************************
 """
-
+from datetime import datetime
 
 from brdr.aligner import Aligner
 from brdr.constants import BASE_FORMULA_FIELD_NAME
@@ -78,7 +78,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     # calling from the QGIS console.
 
     INPUT_THEMATIC = "INPUT_THEMATIC"  # reference to the combobox for choosing the thematic input layer
-    THEMATIC_LAYER = None  # reference to the thematic input QgisVectorLayer
+    LAYER_THEMATIC = None  # reference to the thematic input QgisVectorLayer
     ID_THEME_FIELDNAME = (
         ""  # parameters that holds the fieldname of the unique theme id
     )
@@ -98,6 +98,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     FORMULA_FIELDNAME = BASE_FORMULA_FIELD_NAME
     PREFIX = "brdrQ_"
+    SUFFIX = ""  # parameter for composing a suffix for the layers
     LAYER_RESULT = (
         PREFIX + "RESULT"  # parameter that holds the TOC layername of the result
     )
@@ -363,7 +364,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.prepare_parameters(parameters, context)
 
         thematic, thematic_buffered, self.CRS = thematic_preparation(
-            self.THEMATIC_LAYER,
+            self.LAYER_THEMATIC,
             self.RELEVANT_DISTANCE,
             context,
             feedback,
@@ -523,18 +524,19 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         param_input_thematic = parameters[self.INPUT_THEMATIC]
         if isinstance(
-            parameters[self.INPUT_THEMATIC], QgsProcessingFeatureSourceDefinition
+            param_input_thematic, QgsProcessingFeatureSourceDefinition
         ):
-            self.THEMATIC_LAYER = QgsProject.instance().mapLayer(
-                param_input_thematic.toVariant()["source"]["val"]
-            )
+            self.LAYER_THEMATIC = parameters[self.INPUT_THEMATIC]
+            crs = QgsProject.instance().mapLayer(
+                param_input_thematic.toVariant()["source"]["val"]).sourceCrs().authid()
         else:
-            self.THEMATIC_LAYER = self.parameterAsVectorLayer(
+            self.LAYER_THEMATIC = self.parameterAsVectorLayer(
                 parameters, self.INPUT_THEMATIC, context
             )
-        self.CRS = (
-            self.THEMATIC_LAYER.sourceCrs().authid()
-        )  # set CRS for the calculations, based on the THEMATIC input layer
+            crs = (
+                self.LAYER_THEMATIC.sourceCrs().authid()
+            )  # set CRS for the calculations, based on the THEMATIC input layer
+        self.CRS = crs
         self.MAX_DISTANCE_FOR_ACTUALISATION = parameters["MAX_RELEVANT_DISTANCE"]
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
         self.OD_STRATEGY = OpenDomainStrategy[
@@ -555,3 +557,18 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         if str(self.FORMULA_FIELDNAME) == "NULL":
             self.FORMULA_FIELDNAME = None
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
+
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        self.SUFFIX = (
+            "_" + ref_suffix + "_" + timestamp
+        )
+        self.SUFFIX = self.SUFFIX.replace(".", "_")
+        self.SUFFIX = self.SUFFIX.replace(" ", "_")
+
+        self.LAYER_RESULT = self.LAYER_RESULT + self.SUFFIX
+        self.LAYER_RESULT_DIFF = self.LAYER_RESULT_DIFF + self.SUFFIX
+        self.LAYER_RESULT_DIFF_PLUS = self.LAYER_RESULT_DIFF_PLUS + self.SUFFIX
+        self.LAYER_RESULT_DIFF_MIN = self.LAYER_RESULT_DIFF_MIN + self.SUFFIX
+        self.GROUP_LAYER = self.GROUP_LAYER + self.SUFFIX
+
+

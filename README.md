@@ -16,7 +16,8 @@ Quick links:
 
 ## Description
 
-`brdrQ` is a QGIS-processing plugin that aligns features (polygons) to reference borders: It searches for overlap relevance between thematic borders and reference borders,
+`brdrQ` is a QGIS-processing plugin that aligns features (polygons) to reference borders: It searches for overlap
+relevance between thematic borders and reference borders,
 and creates a resulting border based on the overlapping areas that are relevant.
 The algorithm can make (one or more) 'predictions' so the user can compare and choose the right aligned geometry.
 
@@ -25,15 +26,16 @@ based on a 'relevant distance'. This parameter is used in the algorithm to deter
 effectively adjusted to the reference layer, or where the original boundary is preserved. Thus, the adjustment of the
 boundaries of resulting geometries and original geometries is at most as large as the 'relevant distance'
 
-
 ## Installation
-* Windows-users: Use the QGIS PluginManager to install brdrQ (v0.15.1) from the official QGIS-repo:
-<img src="docs/figures/plugin_list.png" width="50%" />
 
-* Ubuntu/Linux: For newer versions of Ubuntu/Linux it could be needed to run QGIS inside a virtual environment. You can use the following script to create a virtual environment and run QGIS before following the installation steps below: [linux_venv_qgis.sh](dist/linux_venv_qgis.sh).
+* Windows-users: Use the QGIS PluginManager to install brdrQ from the official QGIS-repo:
+  <img src="docs/figures/plugin_list.png" width="50%" />
 
-* Mac: Usage of the plugin on Mac is not tested, and can give errors or unexpected behaviour.)
-
+* Ubuntu/Linux/Mac: Please try to install brdrQ by using the QGIS PluginManager (see Windows-install). For newer
+  versions of Ubuntu/Linux it could be needed to run QGIS inside a virtual environment. You can use the following script
+  to create a virtual environment and run QGIS before following the installation steps
+  below: [linux_venv_qgis.sh](dist/linux_venv_qgis.sh). Usage of the plugin on Mac is not tested, and can give errors or
+  unexpected behaviour.
 
 ### Pre-requisites
 
@@ -43,25 +45,32 @@ boundaries of resulting geometries and original geometries is at most as large a
   higher on Windows installations. On Linux and Mac this may not be the case. If the modules are not found, the plugin
   will attempt to install both 'brdr' and 'shapely' from Pypi.
 
-
 ## The brdrQ - PLUGIN
 
-The brdrQ-plugin adds a toolbar, a toolmenu (vector) & a brdrQ processing provider (processing toolbox) with several tools. You can find a link to the docs of each tool/script below.
+The brdrQ-plugin adds a toolbar, a toolmenu (vector) & a brdrQ processing provider (processing toolbox) with several
+tools. You can find a link to the docs of each tool/script below.
 
 ### brdrQ Tool Menu (vector)
+
 <img src="docs/figures/toolmenu.png" width="50%" />
 
 ### brdrQ Toolbar
+
 <img src="docs/figures/toolbar.png" width="50%" />
 
 ### brdrQ Processing provider
+
 <img src="docs/figures/installation-step-3b.png" width="50%" />
 
 ### Tools/Scripts
+
 - A custom tool (feature-by-feature):
-  - **FeatureAligner (predictor)**: Custom tool to align feature-by-feature based on predictions [link to documentation](docs/featurealigner.md)
+    - **FeatureAligner (predictor)**: Custom tool to align feature-by-feature based on
+      predictions [link to documentation](docs/featurealigner.md)
 - a processing algorithm script (bulk):
-  - **AutoCorrectBorders**:Processing algorithm to align polygons based on a specific relevant distance [link to documentation](docs/autocorrectborders.md)
+    - **AutoCorrectBorders**:Processing algorithm to align polygons based on a specific relevant
+      distance [link to documentation](docs/autocorrectborders.md)
+    - **AutoUpdateBorders (GRB Updater)**: Processing algorithm to update/align features based on the actual situation of the GRB (Flanders - Belgium) [link to documentation](docs/autoupdateborders.md)
 - Plugin version information: overview of the version of brdr and brdrQ
 
 (Also note that these processing algorithms can also be used inside the QGIS ModelBuilder to 'chain' processes)

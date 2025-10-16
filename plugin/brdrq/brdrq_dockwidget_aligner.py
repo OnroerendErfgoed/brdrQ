@@ -211,16 +211,17 @@ class brdrQDockWidgetAligner(object):
         return
 
     def setFilterOnLayers(self, value):
-        layer_result = get_layer_by_name(self.LAYER_RESULT)
-        layer_result_diff = get_layer_by_name(self.LAYER_RESULT_DIFF)
-        layer_result_diff_min = get_layer_by_name(self.LAYER_RESULT_DIFF_MIN)
-        layer_result_diff_plus = get_layer_by_name(self.LAYER_RESULT_DIFF_PLUS)
+        filter = f"brdr_relevant_distance = {value}"
+        self._setFilterOnLayer(self.LAYER_RESULT,filter)
+        self._setFilterOnLayer(self.LAYER_RESULT_DIFF,filter)
+        self._setFilterOnLayer(self.LAYER_RESULT_DIFF_MIN,filter)
+        self._setFilterOnLayer(self.LAYER_RESULT_DIFF_PLUS,filter)
+        return
 
-        # Filter layers based on relevant distance
-        layer_result.setSubsetString(f"brdr_relevant_distance = {value}")
-        layer_result_diff.setSubsetString(f"brdr_relevant_distance = {value}")
-        layer_result_diff_min.setSubsetString(f"brdr_relevant_distance = {value}")
-        layer_result_diff_plus.setSubsetString(f"brdr_relevant_distance = {value}")
+    def _setFilterOnLayer(self, layername,filter):
+        layer = get_layer_by_name(layername)
+        if not layer is None:
+            layer.setSubsetString(filter)
         return
 
     def get_wkt(self):

@@ -30,9 +30,10 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 import inspect
 import os
 import sys
+from datetime import datetime
 
 from PyQt5.QtCore import QVariant
-from brdr.constants import STABILITY, DIFF_PERC_INDEX, DIFF_INDEX
+from brdr.constants import STABILITY, DIFF_PERC_INDEX, DIFF_INDEX, FORMULA_FIELD_NAME
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
     QgsRendererCategory,
@@ -685,7 +686,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )[0]
         try:
             correction_layer = self.generate_correction_layer(
-                self.LAYER_THEMATIC, result
+                thematic, result
             )
         except:
             print("problem generating correction layer")
@@ -711,7 +712,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         results_layer = result
 
         # Copy source layer to gpkg-layers
-        correction_layer_name = input.name() + "_CORR" + self.SUFFIX
+        correction_layer_name = "CORRECTION" + self.SUFFIX
         remove_layer_by_name(correction_layer_name)
         correction_layer = self.generate_gpkg_layer(source_layer, correction_layer_name)
 
@@ -723,6 +724,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         id_geom_map = {}
         id_diff_index_map = {}
         id_diff_perc_index_map = {}
+        id_formula_map = {}
         ids_to_review = []
         ids_to_align = []
         ids_not_changed = []
@@ -735,19 +737,22 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 # when key not unique and multiple predictions, the last prediction is added to the list and the status is set to review
                 ids_to_review.append(key)
             id_geom_map[key] = feat.geometry()
+            if self.ADD_FORMULA:
+                id_formula_map[key] = feat[FORMULA_FIELD_NAME]
             id_diff_index_map[key] = feat[DIFF_INDEX]
             id_diff_perc_index_map[key] = feat[DIFF_PERC_INDEX]
             if stability_field_available and not feat[STABILITY]:
                 ids_to_align.append(key)
             elif feat[DIFF_PERC_INDEX] > self.REVIEW_PERCENTAGE:
                 ids_to_review.append(key)
-            elif feat[DIFF_PERC_INDEX] == 0:
+            elif feat[DIFF_INDEX] < 0.01:
                 ids_not_changed.append(key)
 
         # 4. Update geometries in duplicated layer
         correction_layer.startEditing()
         correction_layer.dataProvider().addAttributes(
             [
+                QgsField(FORMULA_FIELD_NAME, QVariant.String),
                 QgsField(BRDRQ_STATE_FIELDNAME, QVariant.String),
                 QgsField(BRDRQ_ORIGINAL_WKT_FIELDNAME, QVariant.String),
                 QgsField(DIFF_INDEX, QVariant.Double),
@@ -757,6 +762,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         correction_layer.updateFields()
         for feat in correction_layer.getFeatures():
             fid = feat[self.ID_THEME_FIELDNAME]
+            if self.ADD_FORMULA:
+                feat[FORMULA_FIELD_NAME] = id_formula_map[fid]
             feat[DIFF_INDEX] = id_diff_index_map[fid]
             feat[DIFF_PERC_INDEX] = id_diff_perc_index_map[fid]
             feat[BRDRQ_ORIGINAL_WKT_FIELDNAME] = feat.geometry().asWkt()
@@ -922,18 +929,19 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
         param_input_thematic = parameters[self.INPUT_THEMATIC]
         if isinstance(
-            parameters[self.INPUT_THEMATIC], QgsProcessingFeatureSourceDefinition
+            param_input_thematic, QgsProcessingFeatureSourceDefinition
         ):
-            self.LAYER_THEMATIC = QgsProject.instance().mapLayer(
-                param_input_thematic.toVariant()["source"]["val"]
-            )
+            self.LAYER_THEMATIC = parameters[self.INPUT_THEMATIC]
+            crs = QgsProject.instance().mapLayer(
+                param_input_thematic.toVariant()["source"]["val"]).sourceCrs().authid()
         else:
             self.LAYER_THEMATIC = self.parameterAsVectorLayer(
                 parameters, self.INPUT_THEMATIC, context
             )
-        self.CRS = (
-            self.LAYER_THEMATIC.sourceCrs().authid()
-        )  # set CRS for the calculations, based on the THEMATIC input layer
+            crs = (
+                self.LAYER_THEMATIC.sourceCrs().authid()
+            )  # set CRS for the calculations, based on the THEMATIC input layer
+        self.CRS = crs
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
         self.ID_REFERENCE_FIELDNAME = parameters["COMBOBOX_ID_REFERENCE"]
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
@@ -957,8 +965,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ref, self.LAYER_REFERENCE, self.ID_REFERENCE_FIELDNAME, self.CRS
             )
         )
-
-        self.SUFFIX = "_DIST_" + str(self.RELEVANT_DISTANCE) + "_" + ref_suffix
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        self.SUFFIX = "_DIST_" + str(self.RELEVANT_DISTANCE) + "_" + ref_suffix + "_" +timestamp
         self.SUFFIX = self.SUFFIX.replace(".", "_")
         self.SUFFIX = self.SUFFIX.replace(" ", "_")
         if self.PREDICTIONS:
@@ -973,3 +981,4 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.LAYER_RESULT_DIFF_MIN = self.LAYER_RESULT_DIFF_MIN + self.SUFFIX
         self.GROUP_LAYER = self.GROUP_LAYER + self.SUFFIX
         self.GROUP_LAYER_ACTUAL = self.GROUP_LAYER_ACTUAL + self.SUFFIX
+        self.LAYER_REFERENCE_NAME = self.LAYER_REFERENCE_NAME + self.SUFFIX

@@ -100,4 +100,4 @@ class TestAutoUpdateBorders(unittest.TestCase):
         assert len(output)==4
         for o in output.values():
             assert isinstance(o,QgsVectorLayer)
-            assert o.featureCount()==featurecount
+            assert o.featureCount()==1
