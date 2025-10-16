@@ -78,7 +78,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     # calling from the QGIS console.
 
     INPUT_THEMATIC = "INPUT_THEMATIC"  # reference to the combobox for choosing the thematic input layer
-    THEMATIC_LAYER = None  # reference to the thematic input QgisVectorLayer
+    LAYER_THEMATIC = None  # reference to the thematic input QgisVectorLayer
     ID_THEME_FIELDNAME = (
         ""  # parameters that holds the fieldname of the unique theme id
     )
@@ -364,7 +364,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.prepare_parameters(parameters, context)
 
         thematic, thematic_buffered, self.CRS = thematic_preparation(
-            self.THEMATIC_LAYER,
+            self.LAYER_THEMATIC,
             self.RELEVANT_DISTANCE,
             context,
             feedback,
@@ -524,18 +524,19 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         param_input_thematic = parameters[self.INPUT_THEMATIC]
         if isinstance(
-            parameters[self.INPUT_THEMATIC], QgsProcessingFeatureSourceDefinition
+            param_input_thematic, QgsProcessingFeatureSourceDefinition
         ):
-            self.THEMATIC_LAYER = QgsProject.instance().mapLayer(
-                param_input_thematic.toVariant()["source"]["val"]
-            )
+            self.LAYER_THEMATIC = parameters[self.INPUT_THEMATIC]
+            crs = QgsProject.instance().mapLayer(
+                param_input_thematic.toVariant()["source"]["val"]).sourceCrs().authid()
         else:
-            self.THEMATIC_LAYER = self.parameterAsVectorLayer(
+            self.LAYER_THEMATIC = self.parameterAsVectorLayer(
                 parameters, self.INPUT_THEMATIC, context
             )
-        self.CRS = (
-            self.THEMATIC_LAYER.sourceCrs().authid()
-        )  # set CRS for the calculations, based on the THEMATIC input layer
+            crs = (
+                self.LAYER_THEMATIC.sourceCrs().authid()
+            )  # set CRS for the calculations, based on the THEMATIC input layer
+        self.CRS = crs
         self.MAX_DISTANCE_FOR_ACTUALISATION = parameters["MAX_RELEVANT_DISTANCE"]
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
         self.OD_STRATEGY = OpenDomainStrategy[

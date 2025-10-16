@@ -686,7 +686,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )[0]
         try:
             correction_layer = self.generate_correction_layer(
-                self.LAYER_THEMATIC, result
+                thematic, result
             )
         except:
             print("problem generating correction layer")
@@ -712,7 +712,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         results_layer = result
 
         # Copy source layer to gpkg-layers
-        correction_layer_name = input.name() + "_CORR" + self.SUFFIX
+        correction_layer_name = "CORRECTION" + self.SUFFIX
         remove_layer_by_name(correction_layer_name)
         correction_layer = self.generate_gpkg_layer(source_layer, correction_layer_name)
 
@@ -929,18 +929,19 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.RELEVANT_DISTANCE = parameters["RELEVANT_DISTANCE"]
         param_input_thematic = parameters[self.INPUT_THEMATIC]
         if isinstance(
-            parameters[self.INPUT_THEMATIC], QgsProcessingFeatureSourceDefinition
+            param_input_thematic, QgsProcessingFeatureSourceDefinition
         ):
-            self.LAYER_THEMATIC = QgsProject.instance().mapLayer(
-                param_input_thematic.toVariant()["source"]["val"]
-            )
+            self.LAYER_THEMATIC = parameters[self.INPUT_THEMATIC]
+            crs = QgsProject.instance().mapLayer(
+                param_input_thematic.toVariant()["source"]["val"]).sourceCrs().authid()
         else:
             self.LAYER_THEMATIC = self.parameterAsVectorLayer(
                 parameters, self.INPUT_THEMATIC, context
             )
-        self.CRS = (
-            self.LAYER_THEMATIC.sourceCrs().authid()
-        )  # set CRS for the calculations, based on the THEMATIC input layer
+            crs = (
+                self.LAYER_THEMATIC.sourceCrs().authid()
+            )  # set CRS for the calculations, based on the THEMATIC input layer
+        self.CRS = crs
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
         self.ID_REFERENCE_FIELDNAME = parameters["COMBOBOX_ID_REFERENCE"]
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
