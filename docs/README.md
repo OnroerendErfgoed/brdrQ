@@ -6,11 +6,11 @@ here you can find links to the different tools that are currently provided:
 
 * [Autocorrectborders](autocorrectborders.md) - Bulk alignment to reference layer
 * [Feature aligner](featurealigner.md) - Feature-by-feature alignment with predictions
-* [Autoupdateborders](autoupdateborders.md) - Bulk alignment to latest GRB based on predictions and provenance
+* [Autoupdateborders](autoupdateborders.md) - Bulk alignment to latest GRB (Flanders - Belgium) based on predictions and provenance
 
 ## Workflow
 1. Use [Autocorrectborders](autocorrectborders.md) to align your thematic data to a reference layer. 
-2. Output will be generated and a 'brdrq_state' is added.
+2. Output (CORRECTION layer) will be generated and a 'brdrq_state' is added.
 3. Use [Feature aligner](featurealigner.md) to review and update the features that are not automatically updated according the 'brdrq_state'.
 
 
