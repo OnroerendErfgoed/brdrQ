@@ -1,0 +1,23 @@
+project:
+  type: website
+
+website:
+  title: "brdrQ - Aligning borders with QGIS"
+  navbar:
+    logo: "static/logo.svg"
+    left:
+      - text: Home
+        href: index.qmd
+
+lang: en
+
+highlight-style: github-dark
+
+format:
+  html:
+    theme:
+      - static/custom.scss
+    code-fold: false
+    embed-resources: false
+    toc: true
+    toc-location: "right"
