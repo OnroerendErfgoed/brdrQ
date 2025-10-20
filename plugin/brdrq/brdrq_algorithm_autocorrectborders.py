@@ -31,7 +31,7 @@ import inspect
 import os
 import sys
 from datetime import datetime
-
+#TODO QGIS4
 from PyQt5.QtCore import QVariant
 from brdr.constants import STABILITY, DIFF_PERC_INDEX, DIFF_INDEX, FORMULA_FIELD_NAME
 from qgis.core import (

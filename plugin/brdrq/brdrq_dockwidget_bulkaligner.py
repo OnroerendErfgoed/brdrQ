@@ -23,7 +23,7 @@
 """
 
 import os
-
+#TODO QGIS4
 from PyQt5.QtCore import QVariant
 from brdr.aligner import Aligner
 from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME

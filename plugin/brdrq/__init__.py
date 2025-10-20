@@ -48,6 +48,7 @@ def classFactory(iface):  # pylint: disable=invalid-name
 
 
 def show_error_dialog():
+    # TODO QGIS4
     from PyQt5.QtWidgets import QMessageBox
 
     msg = QMessageBox()
