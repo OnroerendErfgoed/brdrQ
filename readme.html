@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>featurealigner – brdrQ - Aligning borders with QGIS</title>
+<title>readme – brdrQ - Aligning borders with QGIS</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -94,7 +94,7 @@ ul.task-list li input[type="checkbox"] {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="./readme.html"> 
+    <a class="nav-link active" href="./readme.html" aria-current="page"> 
 <span class="menu-text">Home</span></a>
   </li>  
   <li class="nav-item">
@@ -102,7 +102,7 @@ ul.task-list li input[type="checkbox"] {
 <span class="menu-text">Autocorrectborders</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link active" href="./featurealigner.html" aria-current="page"> 
+    <a class="nav-link" href="./featurealigner.html"> 
 <span class="menu-text">FeatureAligner</span></a>
   </li>  
   <li class="nav-item">
@@ -129,10 +129,11 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#documentation-of-qgis-python-plugin-featurealigner" id="toc-documentation-of-qgis-python-plugin-featurealigner" class="nav-link active" data-scroll-target="#documentation-of-qgis-python-plugin-featurealigner">Documentation of QGIS Python plugin: FeatureAligner</a>
+  <li><a href="#welcome-to-the-brdrq-documentation-page" id="toc-welcome-to-the-brdrq-documentation-page" class="nav-link active" data-scroll-target="#welcome-to-the-brdrq-documentation-page">Welcome to the brdrQ-Documentation page</a>
   <ul class="collapse">
-  <li><a href="#instructions" id="toc-instructions" class="nav-link" data-scroll-target="#instructions">Instructions</a></li>
-  <li><a href="#settings" id="toc-settings" class="nav-link" data-scroll-target="#settings">Settings</a></li>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link" data-scroll-target="#introduction">Introduction</a></li>
+  <li><a href="#installation" id="toc-installation" class="nav-link" data-scroll-target="#installation">Installation</a></li>
+  <li><a href="#possible-workflow" id="toc-possible-workflow" class="nav-link" data-scroll-target="#possible-workflow">Possible workflow</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -143,34 +144,35 @@ ul.task-list li input[type="checkbox"] {
 
 
 
-<section id="documentation-of-qgis-python-plugin-featurealigner" class="level1">
-<h1>Documentation of QGIS Python plugin: FeatureAligner</h1>
-<p><img src="figures/featurealigner.png" width="100%"></p>
-<section id="instructions" class="level2">
-<h2 class="anchored" data-anchor-id="instructions">Instructions</h2>
-<ol type="1">
-<li>Select the thematic layer you want to align.</li>
-<li>Select a feature from the list or via ‘Select feature on map’.</li>
-<li>View the prediction(s) for this aligned feature.</li>
-</ol>
-<p>Additionally, you can: * Switch between multiple predictions (via list, slider, or spinbox). * Request a brdr-chart of these features (relevant distance (m) vs.&nbsp;change (m²)). * Visualize the predicted relevant distances side by side. * Adjust the original geometry to the chosen prediction. * Reset the original geometry (only within a feature session, so if no other feature is selected).</p>
+<section id="welcome-to-the-brdrq-documentation-page" class="level1">
+<h1>Welcome to the brdrQ-Documentation page</h1>
+<section id="introduction" class="level2">
+<h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
+<p><strong>brdrQ</strong> is a QGIS plugin designed to align geometries with reference data. It helps users correct spatial discrepancies adjusting geometries to match reference sources using <a href="https://github.com/OnroerendErfgoed/brdr"><code>brdr</code></a>.</p>
 </section>
-<section id="settings" class="level2">
-<h2 class="anchored" data-anchor-id="settings">Settings</h2>
-<p><img src="figures/featurealigner_settings.png" width="50%"></p>
+<section id="installation" class="level2">
+<h2 class="anchored" data-anchor-id="installation">Installation</h2>
+<ol type="1">
+<li>Open QGIS.</li>
+<li>Go to <code>Plugins</code> → <code>Manage and Install Plugins</code>.</li>
+<li>Search for <code>brdrQ</code>.</li>
+<li>Click <code>Install Plugin</code>.</li>
+<li>Once installed, the plugin will appear in the plugin toolbar.</li>
+</ol>
+<p>This plugin provides tools to align geometries to reference data.</p>
+<p>here you can find links to the different tools that are currently provided:</p>
 <ul>
-<li>Choice of the reference layer you want to align to (default ADP - current GRB parcels).</li>
-<li>Choice of ‘Public Domain’ Strategy (exclude or include the Public Domain).</li>
-<li>Threshold_overlap_percentage (default 50): fallback value for the algorithm if no relevant areas are detected.</li>
-<li>Maximum relevant distance: Maximum distance (in meters) that can be used to search for predictions. (Prediction deviates at most by this value from the original).</li>
-<li>Add brdr_formula: A field with a descriptive formula of the geometry is added to the result.</li>
-<li>Evaluation Strategy FULL: Choice that determines the score of the predictions based on a full overlap with reference polygons:
-<ul>
-<li>ONLY_FULL: Only predictions with a full reference overlap are shown.</li>
-<li>PREFER_FULL: Predictions with a full reference overlap get a higher score, others are still shown.</li>
-<li>NO_FULL: No distinction is made between predictions with or without full reference overlap.</li>
-</ul></li>
+<li><a href="./autocorrectborders.html">Autocorrectborders</a> - Bulk alignment to reference layer</li>
+<li><a href="./featurealigner.html">Feature aligner</a> - Feature-by-feature alignment with predictions</li>
+<li><a href="./autoupdateborders.html">Autoupdateborders</a> - Bulk alignment to latest GRB (Flanders - Belgium) based on predictions and provenance</li>
 </ul>
+</section>
+<section id="possible-workflow" class="level2">
+<h2 class="anchored" data-anchor-id="possible-workflow">Possible workflow</h2>
+<ol type="1">
+<li>Use <a href="./autocorrectborders.html">Autocorrectborders</a> to align your thematic data to a reference layer. A CORRECTION_ layer is returned that indicates the brdrq_state of the alignment.</li>
+<li>Use <a href="./featurealigner.html">Feature aligner</a> on the CORRECTION_ layer to review/update features that are not automatically updated, according the ‘brdrq_state’ (to_review, to_update).</li>
+</ol>
 
 
 </section>

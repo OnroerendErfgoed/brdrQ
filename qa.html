@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>featurealigner – brdrQ - Aligning borders with QGIS</title>
+<title>Q &amp; A – brdrQ - Aligning borders with QGIS</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -102,7 +102,7 @@ ul.task-list li input[type="checkbox"] {
 <span class="menu-text">Autocorrectborders</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link active" href="./featurealigner.html" aria-current="page"> 
+    <a class="nav-link" href="./featurealigner.html"> 
 <span class="menu-text">FeatureAligner</span></a>
   </li>  
   <li class="nav-item">
@@ -110,7 +110,7 @@ ul.task-list li input[type="checkbox"] {
 <span class="menu-text">Autoupdateborders</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./qa.html"> 
+    <a class="nav-link active" href="./qa.html" aria-current="page"> 
 <span class="menu-text">Q &amp; A</span></a>
   </li>  
 </ul>
@@ -129,51 +129,45 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#documentation-of-qgis-python-plugin-featurealigner" id="toc-documentation-of-qgis-python-plugin-featurealigner" class="nav-link active" data-scroll-target="#documentation-of-qgis-python-plugin-featurealigner">Documentation of QGIS Python plugin: FeatureAligner</a>
-  <ul class="collapse">
-  <li><a href="#instructions" id="toc-instructions" class="nav-link" data-scroll-target="#instructions">Instructions</a></li>
-  <li><a href="#settings" id="toc-settings" class="nav-link" data-scroll-target="#settings">Settings</a></li>
-  </ul></li>
+  <li><a href="#q-does-brdrq-modify-the-original-data" id="toc-q-does-brdrq-modify-the-original-data" class="nav-link active" data-scroll-target="#q-does-brdrq-modify-the-original-data"><strong>Q: Does brdrQ modify the original data?</strong></a></li>
+  <li><a href="#q-what-types-of-geometries-are-supported" id="toc-q-what-types-of-geometries-are-supported" class="nav-link" data-scroll-target="#q-what-types-of-geometries-are-supported"><strong>Q: What types of geometries are supported?</strong></a></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"></header>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Q &amp; A</h1>
+</div>
 
 
 
+<div class="quarto-title-meta">
 
-<section id="documentation-of-qgis-python-plugin-featurealigner" class="level1">
-<h1>Documentation of QGIS Python plugin: FeatureAligner</h1>
-<p><img src="figures/featurealigner.png" width="100%"></p>
-<section id="instructions" class="level2">
-<h2 class="anchored" data-anchor-id="instructions">Instructions</h2>
-<ol type="1">
-<li>Select the thematic layer you want to align.</li>
-<li>Select a feature from the list or via ‘Select feature on map’.</li>
-<li>View the prediction(s) for this aligned feature.</li>
-</ol>
-<p>Additionally, you can: * Switch between multiple predictions (via list, slider, or spinbox). * Request a brdr-chart of these features (relevant distance (m) vs.&nbsp;change (m²)). * Visualize the predicted relevant distances side by side. * Adjust the original geometry to the chosen prediction. * Reset the original geometry (only within a feature session, so if no other feature is selected).</p>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>This page lists the answers on FAQ’s &amp; brdrQ - errors/warnings.</p>
+<p>#FAQ</p>
+<section id="q-does-brdrq-modify-the-original-data" class="level2">
+<h2 class="anchored" data-anchor-id="q-does-brdrq-modify-the-original-data"><strong>Q: Does brdrQ modify the original data?</strong></h2>
+<p>A: When using Autocorrectborders or Autoupdateborders, the original data is not effected and an new layer is returned. When using the FeatureAligner, the data in the selected layer can be changed by saving the predicted geometry</p>
 </section>
-<section id="settings" class="level2">
-<h2 class="anchored" data-anchor-id="settings">Settings</h2>
-<p><img src="figures/featurealigner_settings.png" width="50%"></p>
-<ul>
-<li>Choice of the reference layer you want to align to (default ADP - current GRB parcels).</li>
-<li>Choice of ‘Public Domain’ Strategy (exclude or include the Public Domain).</li>
-<li>Threshold_overlap_percentage (default 50): fallback value for the algorithm if no relevant areas are detected.</li>
-<li>Maximum relevant distance: Maximum distance (in meters) that can be used to search for predictions. (Prediction deviates at most by this value from the original).</li>
-<li>Add brdr_formula: A field with a descriptive formula of the geometry is added to the result.</li>
-<li>Evaluation Strategy FULL: Choice that determines the score of the predictions based on a full overlap with reference polygons:
-<ul>
-<li>ONLY_FULL: Only predictions with a full reference overlap are shown.</li>
-<li>PREFER_FULL: Predictions with a full reference overlap get a higher score, others are still shown.</li>
-<li>NO_FULL: No distinction is made between predictions with or without full reference overlap.</li>
-</ul></li>
-</ul>
+<section id="q-what-types-of-geometries-are-supported" class="level2">
+<h2 class="anchored" data-anchor-id="q-what-types-of-geometries-are-supported"><strong>Q: What types of geometries are supported?</strong></h2>
+<p>A: The brdr-library is initially developed to align (Multi-)Polygons to (Multi-)Polygons. However the plugin can also be used for other types of input/reference (Points &amp; Linestrings).</p>
+<p>#Warnings/Errors ## CRS error A: Please check if the CRS is set on the thematic layer and reference layer, and they use the same projected CRS (in units: meter)</p>
 
 
-</section>
 </section>
 
 </main> <!-- /main -->

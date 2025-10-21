@@ -75,7 +75,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-969ddfa49e00a70eb3423444dbc81f6c.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-66637f7aac715e5a0db970eb374460cc.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-b79b1fcb1424b07627426b9f3ef330b1.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -129,8 +129,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="./index.html"> 
+    <a class="nav-link" href="./readme.html"> 
 <span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link active" href="./autocorrectborders.html" aria-current="page"> 
+<span class="menu-text">Autocorrectborders</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./featurealigner.html"> 
+<span class="menu-text">FeatureAligner</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./autoupdateborders.html"> 
+<span class="menu-text">Autoupdateborders</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./qa.html"> 
+<span class="menu-text">Q &amp; A</span></a>
   </li>  
 </ul>
           </div> <!-- /navcollapse -->
@@ -151,10 +167,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#documentation-of-qgis-python-script-autocorrectborders" id="toc-documentation-of-qgis-python-script-autocorrectborders" class="nav-link active" data-scroll-target="#documentation-of-qgis-python-script-autocorrectborders">Documentation of QGIS Python Script: Autocorrectborders</a>
   <ul class="collapse">
   <li><a href="#description" id="toc-description" class="nav-link" data-scroll-target="#description">Description</a></li>
-  <li><a href="#input-parameters" id="toc-input-parameters" class="nav-link" data-scroll-target="#input-parameters">Input Parameters</a>
-  <ul class="collapse">
-  <li><a href="#advanced-input-parameters" id="toc-advanced-input-parameters" class="nav-link" data-scroll-target="#advanced-input-parameters">ADVANCED INPUT PARAMETERS</a></li>
-  </ul></li>
+  <li><a href="#input-parameters" id="toc-input-parameters" class="nav-link" data-scroll-target="#input-parameters">Input Parameters</a></li>
   <li><a href="#output-parameters" id="toc-output-parameters" class="nav-link" data-scroll-target="#output-parameters">Output Parameters</a></li>
   <li><a href="#example-of-usage" id="toc-example-of-usage" class="nav-link" data-scroll-target="#example-of-usage">Example of Usage</a></li>
   <li><a href="#tips" id="toc-tips" class="nav-link" data-scroll-target="#tips">TIPS</a></li>
@@ -178,98 +191,108 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="input-parameters" class="level2">
 <h2 class="anchored" data-anchor-id="input-parameters">Input Parameters</h2>
 <p>The script requires the following input parameters:</p>
-<ul>
-<li><strong>Thematic Layer</strong>: A (MULTI)POLYGON layer with EPSG:31370 or EPSG:3812 coordinates and a unique ID.
-<ul>
-<li><strong>Default</strong>: No default value, must be provided by the user.</li>
-<li><strong>Optional</strong>: No.</li>
-</ul></li>
-<li><strong>Thematic ID</strong>: Textual or numeric ID of the thematic layer used as a reference to the objects. This must be unique.
-<ul>
-<li><strong>Default</strong>: No default value, must be provided by the user.</li>
-<li><strong>Optional</strong>: No.</li>
-</ul></li>
-<li><strong>Reference Layer</strong>: A (MULTI)POLYGON layer with EPSG:31370 or EPSG:3812 coordinates. Combobox to choose which referencelayer will be used. There is a choice between on-the-fly downloadable referencelayers from GRB, or to use your own local REFERENCELAYER.
-<ul>
-<li><p>The local referencelayer and unique reference ID has to be choosen from the TOC:</p></li>
-<li><p>The on-the-fly downloads are only possible for smaller areas.</p>
-<ul>
-<li>ADP: (on-the-fly download) - Actual administrative parcels from GRB (Grootschalig Referentie Bestand)</li>
-<li>GBG: (on-the-fly download) - Actual buildings from GRB</li>
-<li>KNW: (on-the-fly download) - Actual artwork from GRB</li>
-<li>Adpf20xx: (on-the-fly download) - Fiscal versions of the administrative parcels of GRB</li>
-<li>(Note: the on-the-fly downloads are only possible for a subset or small area of thematic objects as this results in downloading this reference-area. When using brdrQ for bigger areas a local reference layer is necessary)</li>
-</ul></li>
-<li><p><strong>Default</strong>: No default value, must be provided by the user.</p></li>
-<li><p><strong>Optional</strong>: No.</p></li>
-</ul></li>
-<li><strong>Reference ID</strong>: Textual or numeric ID of the reference layer used as a reference to the objects. This must be unique.
-<ul>
-<li><strong>Default</strong>: No default value.</li>
-<li><strong>Optional</strong>: Yes.</li>
-</ul></li>
-<li><strong>Relevant Distance (meters)</strong>: Positive (decimal) number in meters. This is the distance by which the original boundary is maximally shifted to align with the reference layer. The ‘Relevant distance’ used in the algorithm to determine the relevant intersections and relevant differences between the thematic layer and the reference layer.
-<ul>
-<li><strong>Default</strong>: 3 (meters)</li>
-<li><strong>Optional</strong>: No.</li>
-</ul></li>
-</ul>
-<section id="advanced-input-parameters" class="level3">
-<h3 class="anchored" data-anchor-id="advanced-input-parameters">ADVANCED INPUT PARAMETERS</h3>
-<ul>
-<li><strong>OD_STRATEGY</strong>: This parameter determines how the algorithm deals with parts of the geometry that do not lie on the reference layer. (=public domain in the case of parcels as reference layer). There are several strategies:
-<ul>
-<li>EXCLUDE (-1): All parts that are not covered by the reference layer are excluded from the resulting geometry</li>
-<li>AS IS (0): All parts that are not covered by the reference layer are added AS IS to the resulting geometry</li>
-<li>SNAP_SINGLE_SIDE (1): Based on the RELEVANT_DISTANCE, an attempt is made to shift the OD-parts of the original boundary inwards so that it lies on the reference layer</li>
-<li>SNAP_ALL_SIDE (2): Based on the RELEVANT_DISTANCE, an attempt is made to shift the OD-parts of the original boundary inwards OR outwards so that it lies on the reference layer</li>
-<li><strong>Default</strong>: SNAP_ALL_SIDE (2)</li>
-<li><strong>Optional</strong>: No.</li>
-</ul></li>
-<li><strong>FULL_OVERLAP_PERCENTAGE % (0-100)</strong>: For “Doubtful” parcels where relevant zones are absent: In cases where the algorithm cannot decide based on relevant intersection or relevant difference whether a parcel should be retained, the percentage that they are covered by the original geometry is considered:
-<ul>
-<li>BIGGER THAN FULL_OVERLAP_PERCENTAGE: Parcel is retained</li>
-<li>SMALLER THAN FULL_OVERLAP_PERCENTAGE: Parcel is excluded for example • 0%: “doubtful” parcels are always retained, since the overlap is always greater than 0 • 50% (default): “doubtful” parcels are retained if they are more than half covered by the original geometry • 100%: “doubtful” parcels are always excluded, except if they are 100%(fully) covered</li>
-<li><strong>Default</strong>: 50 (%)</li>
-<li><strong>Optional</strong>: No.</li>
-</ul></li>
-<li><strong>REVIEW_PERCENTAGE % (0-100)</strong>: Results that changed more than this percentage are getting a status ‘to_review’
-<ul>
-<li>Difference (%) &gt; REVIEW_PERCENTAGE: brdrQ_state = ‘to_review’</li>
-<li>Difference (%) &lt; REVIEW_PERCENTAGE: brdrQ_state = ‘auto_updated’</li>
-<li><strong>Default</strong>: 10 (%)</li>
-<li><strong>Optional</strong>: No.</li>
-</ul></li>
-<li><strong>WORKING FOLDER</strong>: Folder to save the resulting geojson-files. By default empty, resulting in saving the geojson-files in a default folder on your machine.
-<ul>
-<li><strong>Default</strong>: By default, the output will be saved in a local folder on your machine.</li>
-<li><strong>Optional</strong>: yes.</li>
-</ul></li>
-<li><strong>SHOW_INTERMEDIATE_LAYERS</strong>:
-<ul>
-<li>True (Default): 2 additional layers are generated as output that visually represent the significant intersections and significant differences</li>
-<li>False: The 2 additional layers are not added to the output</li>
-</ul></li>
-<li><strong>GET_BEST_PREDICTION_FOR_RELEVANT_DISTANCES (!slower!)</strong> (Default: False):
-<ul>
-<li>When True, the code will use all relevant distances with an interval of 10cm to try to search for ‘predictions’. These are results where the output geometry is a stable result that could be the possible wanted result.</li>
-<li>The resulting layer will use the prediction with the highest prediction score.</li>
-<li>Warning : When this option is used, the processing will be much slower, as a multitude of calculations are needed.</li>
-<li><strong>Default</strong>: False</li>
-<li><strong>Optional</strong>: No.</li>
-</ul></li>
-<li><strong>SHOW_LOG_INFO</strong> (default False): When True, the logging of brdr is shown in the feedback-window
-<ul>
-<li><strong>Default</strong>: False</li>
-<li><strong>Optional</strong>: No.</li>
-</ul></li>
-</ul>
-</section>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 10%">
+<col style="width: 79%">
+<col style="width: 8%">
+<col style="width: 1%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Parameter</th>
+<th>Description</th>
+<th>Default</th>
+<th>Optional</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Thematic Layer</td>
+<td>A (MULTI)POLYGON layer with a projected CRS (unit: meter) and a unique ID.</td>
+<td>No default value, must be provided by the user.</td>
+<td>No.</td>
+</tr>
+<tr class="even">
+<td>Thematic ID</td>
+<td>Textual or numeric ID of the thematic layer used as a reference to the objects. This must be unique.</td>
+<td>No default value, must be provided by the user.</td>
+<td>No.</td>
+</tr>
+<tr class="odd">
+<td>SELECT Reference Layer:</td>
+<td>Selection of REFERENCE LAYER: The user can choose between a LOCAL REFERENCE LAYER (see parameters below), or on-the fly reference layers from GRB (Flanders, Belgium)</td>
+<td>LOCREF: use of a LOCAL REFERENCE LAYER</td>
+<td>Yes.</td>
+</tr>
+<tr class="even">
+<td>Reference Layer (when LOCREF selected)</td>
+<td>A (MULTI)POLYGON layer with the same projected CRS (unit: meter).</td>
+<td>No default value, must be provided by the user.</td>
+<td>Yes.</td>
+</tr>
+<tr class="odd">
+<td>Reference ID (when LOCREF selected)</td>
+<td>Textual or numeric ID of the reference layer used as a reference to the objects.</td>
+<td>No default value, must be provided by the user.</td>
+<td>Yes.</td>
+</tr>
+<tr class="even">
+<td>Relevant Distance (meters)</td>
+<td>Positive (decimal) number in meters. This indicates the maximum distance that the geometry is allowed to change.</td>
+<td>3 (meters)</td>
+<td>No.</td>
+</tr>
+<tr class="odd">
+<td>OD_STRATEGY</td>
+<td>This parameter determines how the algorithm deals with parts of the geometry that is not covered by reference data. Different strategies are available: EXCLUDE, ASIS, SNAP_INNER_SIDE, SNAP_ALL_SIDE</td>
+<td>SNAP_ALL_SIDE (2)</td>
+<td>No</td>
+</tr>
+<tr class="even">
+<td>FULL_OVERLAP_PERCENTAGE % (0-100)</td>
+<td>Backup-parameter when the algorithm cannot decide if a reference is relevant to be taken into account. It falls back to the covered percentage.</td>
+<td>50%</td>
+<td>No</td>
+</tr>
+<tr class="odd">
+<td>REVIEW_PERCENTAGE % (0-100)</td>
+<td>Resulting geometries that change more than REVIEW_PERCENTAGE are categorised as ‘to_review’</td>
+<td>10 (%)</td>
+<td>No.</td>
+</tr>
+<tr class="even">
+<td>WORKING FOLDER</td>
+<td>Folder to save the resulting geojson-files. By default empty, resulting in saving the geojson-files in a created folder.</td>
+<td>Empty - a local folder is used</td>
+<td>No</td>
+</tr>
+<tr class="odd">
+<td>SHOW_INTERMEDIATE_LAYERS</td>
+<td>If True, 2 additional layers are generated as output that visually represent the significant intersections and significant differences</td>
+<td>False</td>
+<td>No.</td>
+</tr>
+<tr class="even">
+<td>GET_BEST_PREDICTION_FOR_RELEVANT_DISTANCES (!slower!)</td>
+<td>If True, the code will do a FULL SCAN of all relevant distances with an interval of 10cm to try to search for the best ‘predictions’.These are results where the output geometry is a stable result that could be the possible wanted result.- The resulting layer will use the prediction with the highest prediction score. Warning : When this option is used, the processing will be much slower, as a multitude of calculations are needed.</td>
+<td>False</td>
+<td>No</td>
+</tr>
+<tr class="odd">
+<td>SHOW_LOG_INFO</td>
+<td>If True, the logging of brdr is shown in the feedback-window.</td>
+<td>False</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="output-parameters" class="level2">
 <h2 class="anchored" data-anchor-id="output-parameters">Output Parameters</h2>
-<p>The script generates several output layers in the layer overview:</p>
+<p>The script generates a GROUP layer with several output layers in the TOC:</p>
 <ul>
+<li>CORRECTION_X_Y: a copy of the thematic layer with updated geometries, divided into categories (brdrq_state)</li>
 <li>brdrQ_RESULT_X_Y: resulting geometries after alignment</li>
 <li>brdrQ_DIFF_X_Y: differences (+ and -) between original and resulting geometry</li>
 <li>brdrQ_DIFF_MIN_X_Y:differences (-) between original and resulting geometry</li>
@@ -277,35 +300,36 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li>(optional) brdrQ_RLVNT_DIFF_X_Y: relevant differences (parts to exclude), used when processing the resulting geometry</li>
 <li>(optional) brdrQ_RLVNT_ISECT_X_Y: relevant intersection (parts to include), used when processing the resulting geometry</li>
 </ul>
-<p>The name includes which ‘RELEVANT_DISTANCE (X)’ and ‘OD-STRATEGY (Y)’ is used <img src="docs/figures/output.png" width="100%"></p>
+<p>The name includes which ‘RELEVANT_DISTANCE (X)’ and ‘REFERENCE (Y)’ is used <img src="docs/figures/output.png" width="100%"></p>
 </section>
 <section id="example-of-usage" class="level2">
 <h2 class="anchored" data-anchor-id="example-of-usage">Example of Usage</h2>
 <p>Here is an example of how to use the script in Python:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>params <span class="op">=</span> {</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>                <span class="st">"INPUT_THEMATIC"</span>: themelayername,</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>                <span class="st">"COMBOBOX_ID_THEME"</span>: <span class="st">"theme_identifier"</span>,</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>                <span class="st">"RELEVANT_DISTANCE"</span>: <span class="dv">2</span>,</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>                <span class="st">"ENUM_REFERENCE"</span>: <span class="dv">1</span>,</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>                <span class="st">"INPUT_REFERENCE"</span>: <span class="va">None</span>,</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>                <span class="st">"COMBOBOX_ID_REFERENCE"</span>: <span class="st">""</span>,</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>                <span class="st">"WORK_FOLDER"</span>: <span class="st">""</span>,</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>                <span class="st">"ENUM_OD_STRATEGY"</span>: <span class="dv">3</span>,</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>                <span class="st">"THRESHOLD_OVERLAP_PERCENTAGE"</span>: <span class="dv">50</span>,</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>                <span class="st">"ADD_FORMULA"</span>: <span class="va">True</span>,</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>                <span class="st">"ADD_ATTRIBUTES"</span>: <span class="va">True</span>,</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>                <span class="st">"SHOW_INTERMEDIATE_LAYERS"</span>: <span class="va">True</span>,</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>                <span class="st">"PREDICTIONS"</span>: <span class="va">False</span>,</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>                <span class="st">"SHOW_LOG_INFO"</span>: <span class="va">False</span>,</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>            }</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"INPUT_THEMATIC"</span>: themelayername,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"COMBOBOX_ID_THEME"</span>: <span class="st">"theme_identifier"</span>,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"RELEVANT_DISTANCE"</span>: <span class="dv">2</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"ENUM_REFERENCE"</span>: <span class="dv">1</span>,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">"INPUT_REFERENCE"</span>: <span class="va">None</span>,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">"COMBOBOX_ID_REFERENCE"</span>: <span class="st">""</span>,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">"WORK_FOLDER"</span>: <span class="st">""</span>,</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">"ENUM_OD_STRATEGY"</span>: <span class="dv">3</span>,</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">"THRESHOLD_OVERLAP_PERCENTAGE"</span>: <span class="dv">50</span>,</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">"ADD_FORMULA"</span>: <span class="va">True</span>,</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="st">"ADD_ATTRIBUTES"</span>: <span class="va">True</span>,</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SHOW_INTERMEDIATE_LAYERS"</span>: <span class="va">True</span>,</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="st">"PREDICTIONS"</span>: <span class="va">False</span>,</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SHOW_LOG_INFO"</span>: <span class="va">False</span>,</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>}</span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>processing.run(<span class="st">'brdrqprovider:brdrqautocorrectborders'</span>,params)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>processing.run(<span class="st">'brdrqprovider:brdrqautocorrectborders'</span>, params)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="tips" class="level2">
 <h2 class="anchored" data-anchor-id="tips">TIPS</h2>
 <ul>
-<li>Analyse your thematic dataset and try to gain insight into the ‘deviation’ (precision and accuracy from the reference layer):
+<li><p>Set GET_BEST_PREDICTION_FOR_RELEVANT_DISTANCES = True for the best results. This will analyse the full range of RELEVANT_DISTANCES (FULL SCAN), and returns the best stable results. A side-effect is that the processing-time is much slower. By default this parameter is set to False to have quicker results (QUICK SCAN), missing the better results.</p></li>
+<li><p>Analyse your thematic dataset and try to gain insight into the ‘deviation’ (precision and accuracy from the reference layer):</p>
 <ul>
 <li>Where does the thematic data come from?</li>
 <li>when was it created,</li>
@@ -317,7 +341,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>This allows you to gain insight into the ‘deviation’ and which RELEVANT_DISTANCE value can best be applied.</p>
 <ul>
 <li>The RELEVANT_DISTANCE must be chosen according to the ‘deviation’ of the thematic data compared to the reference layer. If the thematic data contains different geometries that show large differences in ‘deviation’, it is best to split the thematic data and process it separately with an appropriate RELEVANT_DISTANCE so that the RELEVANT_DISTANCE can be kept as small as possible.</li>
-<li>The current version of the script assumes that both the thematic layer and reference layer are in the same CRS: Lambert72 (EPSG:31370) or Lambert 2008 (EPSG:3812).</li>
+<li>The current version of the script assumes that both the thematic layer and reference layer are in the same projected CRS with units in meter.</li>
 <li>Thematic boundaries consisting of 1 or a few reference polygons are processed by the script in a few seconds. If the thematic boundaries cover a very large area (~1000 and reference polygons), it may take several minutes for the OUTPUT to be calculated. It’s best to let QGIS finish this processing before proceeding</li>
 <li>In practice, we notice that large thematic demarcations are sometimes drawn more roughly (less precisely or inaccurately), so that a high RELEVANT DISTANCE is required to shift them to the reference file. For large areas that are drawn ‘roughly’, it is best to use a high RELEVANT_DISTANCE (e.g.&nbsp;&gt;10 meters) and:
 <ul>
