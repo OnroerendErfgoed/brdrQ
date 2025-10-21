@@ -170,7 +170,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     MULTI_AS_SINGLE_MODUS = True  # default MULTI_AS_SINGLE_MODUS for the aligner
 
     # CHECKBOX parameters defaults
-    SHOW_INTERMEDIATE_LAYERS = True
+    SHOW_INTERMEDIATE_LAYERS = False
     ADD_FORMULA = True
     ATTRIBUTES = True
     PREDICTIONS = False
