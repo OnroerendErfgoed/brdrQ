@@ -31,7 +31,7 @@ import inspect
 import os
 import sys
 from datetime import datetime
-
+#TODO QGIS4
 from PyQt5.QtCore import QVariant
 from brdr.constants import STABILITY, DIFF_PERC_INDEX, DIFF_INDEX, FORMULA_FIELD_NAME
 from qgis.core import (
@@ -170,7 +170,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     MULTI_AS_SINGLE_MODUS = True  # default MULTI_AS_SINGLE_MODUS for the aligner
 
     # CHECKBOX parameters defaults
-    SHOW_INTERMEDIATE_LAYERS = True
+    SHOW_INTERMEDIATE_LAYERS = False
     ADD_FORMULA = True
     ATTRIBUTES = True
     PREDICTIONS = False

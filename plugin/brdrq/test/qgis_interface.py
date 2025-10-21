@@ -25,7 +25,7 @@ __copyright__ = (
 
 import logging
 from typing import List
-
+#TODO QGIS4
 from PyQt5.QtCore import QObject, pyqtSlot, pyqtSignal, QSize
 from PyQt5.QtWidgets import QToolBar, QMenu
 from qgis.PyQt.QtWidgets import QDockWidget

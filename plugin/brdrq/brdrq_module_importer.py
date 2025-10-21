@@ -4,6 +4,7 @@ import site
 import subprocess
 import sys
 
+#TODO QGIS4
 from PyQt5.QtWidgets import QMessageBox
 from qgis.utils import iface
 
@@ -90,15 +91,15 @@ def import_modules():
         install_brdr(python_exe)
 
 
-def show_new_brdr_dialog():
-    from PyQt5.QtWidgets import QMessageBox
-
-    msg = QMessageBox()
-    msg.setIcon(QMessageBox.Warning)
-    msg.setWindowTitle("New installation of 'brdr'")
-    msg.setText(
-        f"A new version of 'brdr'({brdr_version}) is installed for the calculations in the brdrQ-plugin: . A restart of QGIS is required to ensure correct functioning of brdrQ"
-    )
-    msg.setInformativeText("Please restart QGIS before using brdrQ.")
-    msg.setStandardButtons(QMessageBox.Ok)
-    msg.exec_()
+# def show_new_brdr_dialog():
+#     from PyQt5.QtWidgets import QMessageBox
+#
+#     msg = QMessageBox()
+#     msg.setIcon(QMessageBox.Warning)
+#     msg.setWindowTitle("New installation of 'brdr'")
+#     msg.setText(
+#         f"A new version of 'brdr'({brdr_version}) is installed for the calculations in the brdrQ-plugin: . A restart of QGIS is required to ensure correct functioning of brdrQ"
+#     )
+#     msg.setInformativeText("Please restart QGIS before using brdrQ.")
+#     msg.setStandardButtons(QMessageBox.Ok)
+#     msg.exec_()

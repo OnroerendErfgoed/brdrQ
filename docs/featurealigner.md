@@ -17,6 +17,9 @@ Additionally, you can:
 * Reset the original geometry (only within a feature session, so if no other feature is selected).
 
 ## Settings
+
+<img src="figures/featurealigner_settings.png" width="50%" />
+
 * Choice of the reference layer you want to align to (default ADP - current GRB parcels).
 * Choice of 'Public Domain' Strategy (exclude or include the Public Domain).
 * Threshold_overlap_percentage (default 50): fallback value for the algorithm if no relevant areas are detected.

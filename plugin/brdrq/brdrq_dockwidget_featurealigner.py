@@ -23,7 +23,7 @@
 """
 
 import os
-
+#TODO QGIS4
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QListWidgetItem
 from brdr.aligner import Aligner
