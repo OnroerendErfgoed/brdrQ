@@ -4,7 +4,7 @@ format: html
 ---
 This page lists the answers on FAQ's & brdrQ - errors/warnings.
 
-#FAQ
+# FAQ
 
 ## **Q: Does brdrQ modify the original data?**
 A: When using Autocorrectborders or Autoupdateborders, the original data is not effected and an new layer is returned. When using the FeatureAligner, the data in the selected layer can be changed by saving the predicted geometry
@@ -13,6 +13,7 @@ A: When using Autocorrectborders or Autoupdateborders, the original data is not 
 A: The brdr-library is initially developed to align (Multi-)Polygons to (Multi-)Polygons. However the plugin can also be used for other types of input/reference (Points & Linestrings).
 
 
-#Warnings/Errors
+# Warnings/Errors
+
 ## CRS error
 A: Please check if the CRS is set on the thematic layer and reference layer, and they use the same projected CRS (in units: meter)

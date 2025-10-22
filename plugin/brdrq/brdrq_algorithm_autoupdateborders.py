@@ -62,7 +62,6 @@ from .brdrq_utils import (
     PredictionStrategy,
     ENUM_FULL_STRATEGY_OPTIONS,
     ENUM_OD_STRATEGY_OPTIONS,
-    get_symbol,
     get_reference_params,
 )
 
@@ -450,8 +449,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             geojson_result_diff_min = fcs_actualisation[result_diff_min]
             geojson_to_layer(
                 self.LAYER_RESULT_DIFF_MIN,
-                geojson_result_diff_min,
-                get_symbol(geojson_result_diff_min, result_diff_min),
+                geojson_result_diff_min,result_diff_min,
                 True,
                 self.GROUP_LAYER,
                 self.WORKFOLDER,
@@ -461,8 +459,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             geojson_result_diff_plus = fcs_actualisation[result_diff_plus]
             geojson_to_layer(
                 self.LAYER_RESULT_DIFF_PLUS,
-                geojson_result_diff_plus,
-                get_symbol(geojson_result_diff_plus, result_diff_plus),
+                geojson_result_diff_plus,result_diff_plus,
                 True,
                 self.GROUP_LAYER,
                 self.WORKFOLDER,
@@ -472,8 +469,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             geojson_result_diff = fcs_actualisation[result_diff]
             geojson_to_layer(
                 self.LAYER_RESULT_DIFF,
-                geojson_result_diff,
-                get_symbol(geojson_result_diff, result_diff),
+                geojson_result_diff, result_diff,
                 False,
                 self.GROUP_LAYER,
                 self.WORKFOLDER,
@@ -483,8 +479,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         geojson_result = fcs_actualisation[result]
         geojson_to_layer(
             self.LAYER_RESULT,
-            geojson_result,
-            get_symbol(geojson_result, result),
+            geojson_result, result,
             True,
             self.GROUP_LAYER,
             self.WORKFOLDER,

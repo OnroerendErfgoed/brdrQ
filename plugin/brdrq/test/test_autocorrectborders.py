@@ -101,6 +101,40 @@ class TestAutoCorrectBorders(unittest.TestCase):
         for o in output.values():
             assert isinstance(o,QgsVectorLayer)
             assert o.featureCount()==featurecount
+    def test_autocorrectborders_osm(self):
+        foldername = QgsProcessingParameterFolderDestination(name="brdrQ").generateTemporaryDestination()
+
+        path = os.path.join(os.path.dirname(__file__), "themelayer_test.geojson")
+        themelayername = "themelayer_test"
+        layer_theme = QgsVectorLayer(path, themelayername)
+        QgsProject.instance().addMapLayer(layer_theme)
+
+        output = processing.run(
+            "brdrqprovider:brdrqautocorrectborders",
+            {
+                "INPUT_THEMATIC": themelayername,
+                "COMBOBOX_ID_THEME": "theme_identifier",
+                "RELEVANT_DISTANCE": 2,
+                "ENUM_REFERENCE": 34,  # osm_buildings
+                "INPUT_REFERENCE": None,
+                "COMBOBOX_ID_REFERENCE": "",
+                "WORK_FOLDER": foldername,
+                "ENUM_OD_STRATEGY": 1,
+                "THRESHOLD_OVERLAP_PERCENTAGE": 50,
+                "REVIEW_PERCENTAGE": 10,
+                "ADD_FORMULA": True,
+                "STABILITY": True,
+                "ADD_ATTRIBUTES": True,
+                "SHOW_INTERMEDIATE_LAYERS": True,
+                "PREDICTIONS": False,
+                "SHOW_LOG_INFO": False,
+            },
+        )
+        featurecount = layer_theme.featureCount()
+        assert len(output)==5
+        for o in output.values():
+            assert isinstance(o,QgsVectorLayer)
+            assert o.featureCount()==featurecount
 
     def test_autocorrectborders_selection(self):
         # See https://gis.stackexchange.com/a/276979/4972 for a list of algorithms

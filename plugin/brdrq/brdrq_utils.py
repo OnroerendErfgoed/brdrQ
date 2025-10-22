@@ -1,6 +1,7 @@
+import copy
 import os
 from enum import Enum
-#TODO QGIS4
+# TODO QGIS4
 from PyQt5.QtGui import QColor
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
 from qgis.core import QgsProcessingException
@@ -34,7 +35,7 @@ from brdr.enums import (
 )
 from brdr.typings import ProcessResult
 from brdr.utils import write_geojson
-#TODO QGIS4
+# TODO QGIS4
 from PyQt5.QtCore import pyqtSignal
 from qgis.PyQt.QtCore import Qt
 from qgis import processing
@@ -43,6 +44,7 @@ from qgis.core import QgsProcessingParameterFolderDestination
 from qgis.core import QgsGeometry
 from qgis.core import (
     QgsSimpleLineSymbolLayer,
+    QgsSymbol,
     QgsFillSymbol,
     QgsSingleSymbolRenderer,
     QgsMapLayer,
@@ -54,6 +56,15 @@ from qgis.core import QgsVectorLayer
 from qgis.utils import iface
 from shapely import to_wkt, from_wkt, make_valid
 
+
+class OsmType(dict, Enum):
+    """
+    Enum for defining the state of a (processed) feature
+    """
+
+    osm_buildings = {"building": True}
+    osm_landuse = {"landuse": True}
+    osm_streets = {"highway": True}
 
 SPLITTER = ":"
 PREFIX_LOCAL_LAYER = (
@@ -77,11 +88,19 @@ DICT_ADPF_VERSIONS = dict()
 for x in [datetime.datetime.today().year - i for i in range(6)]:
     DICT_ADPF_VERSIONS["Administratieve fiscale percelen" + SPLITTER + " " + str(x)] = x
 
+DICT_OSM_TYPES = dict()
+for x in OsmType:
+    DICT_OSM_TYPES[x.name]=x.value
+
+
 DICT_REFERENCE_OPTIONS.update(DICT_GRB_TYPES)
 DICT_REFERENCE_OPTIONS.update(DICT_ADPF_VERSIONS)
+DICT_REFERENCE_OPTIONS.update(DICT_OSM_TYPES)
+
 
 GRB_TYPES = list(DICT_GRB_TYPES.keys())
 ADPF_VERSIONS = list(DICT_ADPF_VERSIONS.keys())
+OSM_TYPES = list(DICT_OSM_TYPES.keys())
 ENUM_REFERENCE_OPTIONS = list(DICT_REFERENCE_OPTIONS.keys())
 
 # ENUM for choosing the OD-strategy
@@ -293,7 +312,7 @@ def get_renderer(fill_symbol):
 
 
 def get_symbol(geojson, resulttype):
-    geojson = geojson_to_multi(geojson)
+
     feature_types = get_geojson_type(geojson)
     if len(feature_types) > 1:
         raise TypeError("Geojson multiple types detected. Not supported")
@@ -302,7 +321,7 @@ def get_symbol(geojson, resulttype):
     else:
         geometrytype = "MultiPolygon"
 
-    if geometrytype == "MultiPolygon":
+    if geometrytype in ("Polygon","MultiPolygon"):
         if resulttype == "result_diff":
             return QgsStyle.defaultStyle().symbol("hashed black X")
         elif resulttype == "result_diff_plus":
@@ -315,7 +334,7 @@ def get_symbol(geojson, resulttype):
             return QgsStyle.defaultStyle().symbol("outline black")
         else:
             return QgsStyle.defaultStyle().symbol("outline blue")
-    elif geometrytype == "MultiLineString":
+    elif geometrytype in ("LineString","MultiLineString"):
         if resulttype == "result_diff":
             return QgsStyle.defaultStyle().symbol("topo railway")
         elif resulttype == "result_diff_plus":
@@ -328,7 +347,7 @@ def get_symbol(geojson, resulttype):
             return QgsStyle.defaultStyle().symbol("simple black line")
         else:
             return QgsStyle.defaultStyle().symbol("simple blue line")
-    elif geometrytype == "MultiPoint":
+    elif geometrytype in ("Point","MultiPoint"):
         if resulttype == "result_diff":
             return QgsStyle.defaultStyle().symbol("dot white")
         elif resulttype == "result_diff_plus":
@@ -342,7 +361,7 @@ def get_symbol(geojson, resulttype):
         else:
             return QgsStyle.defaultStyle().symbol("dot blue")
     else:
-        raise TypeError("Unknown Type")
+        raise TypeError("Unknown GeometryType")
 
 
 def get_geojson_type(geojson):
@@ -357,8 +376,17 @@ def get_geojson_type(geojson):
 
 def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
     """
-    Add a geojson to a QGIS-layer to add it to the TOC
+    Add a geojson to a QGIS-layer to add it to the TOC. If geojson has multiple types (point,line, polygon) these types are added seperately.
     """
+    geojson =geojson_to_multi(geojson)
+    feature_types = get_geojson_type(geojson)
+    if len(feature_types)>1:
+        for x in feature_types:
+            name_x = name +"_" + str(x)
+            geojson_x = filter_geojson_by_geometry_type(geojson,x)
+            geojson_to_layer(name_x, geojson_x, symbol, visible, group, tempfolder)
+        return
+
     qinst = QgsProject.instance()
     lyrs = qinst.mapLayersByName(name)
     root = qinst.layerTreeRoot()
@@ -370,11 +398,13 @@ def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
     if tempfolder is None or str(tempfolder) == "NULL" or str(tempfolder) == "":
         tempfolder = "tempfolder"
     tempfilename = tempfolder + "/" + name + ".geojson"
-    write_geojson(tempfilename, geojson_to_multi(geojson))
+    write_geojson(tempfilename, geojson)
 
     vl = QgsVectorLayer(tempfilename, name, "ogr")
     # styling
-    if symbol is not None and vl.renderer() is not None:
+    if symbol is not None and isinstance(symbol,str):
+        symbol = get_symbol(geojson,symbol)
+    if symbol is not None and vl.renderer() is not None and isinstance(symbol,QgsSymbol):
         vl.renderer().setSymbol(symbol)
     # vl.setOpacity(0.5)
 
@@ -396,6 +426,25 @@ def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
         iface.layerTreeView().refreshLayerSymbology(vl.id())
     return vl
 
+
+def filter_geojson_by_geometry_type(input_geojson, geometry_type):
+    """
+    Filter features in a GeoJSON file by geometry type and save to a new file.
+
+    Parameters:
+    - input_geojson: str, path to the input GeoJSON file
+    - geometry_type: str, e.g. 'Point', 'LineString', 'Polygon'
+    """
+
+    # Filter features by geometry type
+    filtered_features = [
+        feature for feature in input_geojson.get("features", [])
+        if feature.get("geometry", {}).get("type") == geometry_type
+    ]
+    output_geojson = copy.deepcopy(input_geojson)
+    output_geojson["features"] = filtered_features
+    # Create new GeoJSON structure
+    return output_geojson
 
 def set_layer_visibility(layer: QgsMapLayer, visible: bool):
     """
@@ -712,6 +761,10 @@ def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_
         selected_reference = ref
         layer_reference_name = ref
         ref_suffix = str(ref_id)
+    elif ref in OSM_TYPES:
+        selected_reference = ref
+        layer_reference_name = ref
+        ref_suffix = str(ref)
     else:
         selected_reference = 0
         if layer_reference is None or id_reference_fieldname == "NULL":

@@ -31,9 +31,10 @@ import inspect
 import os
 import sys
 from datetime import datetime
-#TODO QGIS4
+# TODO QGIS4
 from PyQt5.QtCore import QVariant
 from brdr.constants import STABILITY, DIFF_PERC_INDEX, DIFF_INDEX, FORMULA_FIELD_NAME
+from brdr.osm import OSMLoader
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
     QgsRendererCategory,
@@ -51,7 +52,6 @@ from .brdrq_utils import (
     geojson_to_layer,
     get_workfolder,
     thematic_preparation,
-    get_symbol,
     get_reference_params,
     PREFIX_LOCAL_LAYER,
     DICT_ADPF_VERSIONS,
@@ -62,6 +62,8 @@ from .brdrq_utils import (
     BRDRQ_ORIGINAL_WKT_FIELDNAME,
     remove_layer_by_name,
     is_field_in_layer,
+    OSM_TYPES,
+    DICT_OSM_TYPES,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -547,6 +549,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             aligner.load_reference_data(
                 GRBFiscalParcelLoader(year=str(year), aligner=aligner, partition=1000)
             )
+        elif self.SELECTED_REFERENCE in OSM_TYPES:
+            tags = DICT_OSM_TYPES[self.SELECTED_REFERENCE]
+            aligner.load_reference_data(
+                OSMLoader(osm_tags=tags, aligner=aligner)
+            )
         else:
             aligner.load_reference_data(
                 GRBActualLoader(
@@ -610,7 +617,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             geojson_to_layer(
                 self.LAYER_REFERENCE_NAME,
                 reference_geojson,
-                get_symbol(reference_geojson, "reference"),
+                "reference",
                 True,
                 self.GROUP_LAYER,
                 self.WORKFOLDER,
@@ -640,7 +647,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         geojson_to_layer(
             self.LAYER_RESULT_DIFF,
             geojson_result_diff,
-            get_symbol(geojson_result_diff, result_diff),
+             result_diff,
             False,
             self.GROUP_LAYER,
             self.WORKFOLDER,
@@ -650,7 +657,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         geojson_to_layer(
             self.LAYER_RESULT_DIFF_PLUS,
             geojson_result_diff_plus,
-            get_symbol(geojson_result_diff_plus, result_diff_plus),
+             result_diff_plus,
             False,
             self.GROUP_LAYER,
             self.WORKFOLDER,
@@ -660,7 +667,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         geojson_to_layer(
             self.LAYER_RESULT_DIFF_MIN,
             geojson_result_diff_min,
-            get_symbol(geojson_result_diff_min, result_diff_min),
+             result_diff_min,
             False,
             self.GROUP_LAYER,
             self.WORKFOLDER,
@@ -670,7 +677,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         geojson_to_layer(
             self.LAYER_RESULT,
             geojson_result,
-            get_symbol(geojson_result, result),
+             result,
             False,
             self.GROUP_LAYER,
             self.WORKFOLDER,

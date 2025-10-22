@@ -23,7 +23,7 @@
 """
 
 import os
-#TODO QGIS4
+# TODO QGIS4
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QListWidgetItem
 from brdr.aligner import Aligner
@@ -31,6 +31,7 @@ from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME
 from brdr.enums import AlignerResultType, GRBType
 from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader
 from brdr.loader import DictLoader
+from brdr.osm import OSMLoader
 from qgis import processing
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import Qt
@@ -49,7 +50,6 @@ from .brdrq_utils import (
     ADPF_VERSIONS,
     geom_qgis_to_shapely,
     remove_group_layer,
-    get_symbol,
     DICT_REFERENCE_OPTIONS,
     PREFIX_LOCAL_LAYER,
     geom_shapely_to_qgis,
@@ -59,6 +59,8 @@ from .brdrq_utils import (
     get_original_geometry,
     PolygonSelectTool,
     BrdrQState,
+    OSM_TYPES,
+    DICT_OSM_TYPES,
 )
 
 FORM_CLASS, _ = uic.loadUiType(
@@ -419,8 +421,7 @@ class brdrQDockWidgetFeatureAligner(
         geojson_result_diff = fcs[result_diff]
         geojson_to_layer(
             self.LAYER_RESULT_DIFF,
-            geojson_result_diff,
-            get_symbol(geojson_result_diff, result_diff),
+            geojson_result_diff,result_diff,
             False,
             self.GROUP_LAYER,
             self.tempfolder,
@@ -429,8 +430,7 @@ class brdrQDockWidgetFeatureAligner(
         geojson_result_diff_plus = fcs[result_diff_plus]
         geojson_to_layer(
             self.LAYER_RESULT_DIFF_PLUS,
-            geojson_result_diff_plus,
-            get_symbol(geojson_result_diff_plus, result_diff_plus),
+            geojson_result_diff_plus, result_diff_plus,
             True,
             self.GROUP_LAYER,
             self.tempfolder,
@@ -439,8 +439,7 @@ class brdrQDockWidgetFeatureAligner(
         geojson_result_diff_min = fcs[result_diff_min]
         geojson_to_layer(
             self.LAYER_RESULT_DIFF_MIN,
-            geojson_result_diff_min,
-            get_symbol(geojson_result_diff_min, result_diff_min),
+            geojson_result_diff_min, result_diff_min,
             True,
             self.GROUP_LAYER,
             self.tempfolder,
@@ -449,8 +448,7 @@ class brdrQDockWidgetFeatureAligner(
         geojson_result = fcs[result]
         geojson_to_layer(
             self.LAYER_RESULT,
-            geojson_result,
-            get_symbol(geojson_result, result),
+            geojson_result, result,
             True,
             self.GROUP_LAYER,
             self.tempfolder,
@@ -519,6 +517,11 @@ class brdrQDockWidgetFeatureAligner(
                 GRBFiscalParcelLoader(
                     year=reference_choice_id, aligner=self.aligner, partition=1000
                 )
+            )
+        elif self.reference_choice in OSM_TYPES:
+            tags = DICT_OSM_TYPES[self.reference_choice]
+            self.aligner.load_reference_data(
+                OSMLoader(osm_tags=tags, aligner=self.aligner)
             )
         else:
             # Load local referencelayer
