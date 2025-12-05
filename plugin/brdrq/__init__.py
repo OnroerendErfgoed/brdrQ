@@ -56,7 +56,7 @@ def show_error_dialog():
     msg.setWindowTitle("Problem while initializing the brdrQ-plugin")
     msg.setText(f"The brdrQ-plugin could not be loaded correctly.")
     msg.setInformativeText(
-        "Please restart QGIS and retry. If this problem persists, try to upgrade the plugin."
+        "Please restart QGIS and retry. If this problem persists, try to upgrade the plugin or the QGIS-version."
     )
     msg.setStandardButtons(QMessageBox.Ok)
     msg.exec_()
