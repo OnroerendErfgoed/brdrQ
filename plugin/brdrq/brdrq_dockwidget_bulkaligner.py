@@ -23,13 +23,15 @@
 """
 
 import os
-#TODO QGIS4
+# TODO QGIS4
 from PyQt5.QtCore import QVariant
 from brdr.aligner import Aligner
+from brdr.be.grb.enums import GRBType
+from brdr.be.grb.loader import GRBActualLoader, GRBFiscalParcelLoader
 from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME
-from brdr.enums import GRBType, AlignerResultType
+from brdr.enums import AlignerResultType
 from brdr.geometry_utils import geom_from_wkt
-from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader
+
 from brdr.loader import DictLoader
 from qgis import processing
 from qgis.PyQt import QtWidgets, uic

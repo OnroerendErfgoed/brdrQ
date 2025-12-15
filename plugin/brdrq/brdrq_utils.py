@@ -3,6 +3,7 @@ import os
 from enum import Enum
 # TODO QGIS4
 from PyQt5.QtGui import QColor
+from brdr.be.grb.enums import GRBType
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
 from qgis.core import QgsProcessingException
 from qgis.core import QgsRectangle
@@ -27,11 +28,10 @@ from math import ceil
 import geopandas as gpd
 import matplotlib.pyplot as plt
 from brdr.enums import (
-    GRBType,
     OpenDomainStrategy,
     SnapStrategy,
-    FullStrategy,
     PredictionStrategy,
+    FullReferenceStrategy,
 )
 from brdr.typings import ProcessResult
 from brdr.utils import write_geojson
@@ -112,7 +112,7 @@ ENUM_OD_STRATEGY_OPTIONS = [e.name for e in OpenDomainStrategy][
 ENUM_SNAP_STRATEGY_OPTIONS = [e.name for e in SnapStrategy]
 
 # ENUM for choosing the full-strategy when evaluating
-ENUM_FULL_STRATEGY_OPTIONS = [e.name for e in FullStrategy]
+ENUM_FULL_STRATEGY_OPTIONS = [e.name for e in FullReferenceStrategy]
 
 # ENUM for choosing the full-strategy when evaluating
 ENUM_PREDICTION_STRATEGY_OPTIONS = [e.name for e in PredictionStrategy]

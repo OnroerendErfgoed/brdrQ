@@ -30,9 +30,10 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 from datetime import datetime
 
 from brdr.aligner import Aligner
+from brdr.be.grb.enums import GRBType
+from brdr.be.grb.grb import update_to_actual_grb
 from brdr.constants import BASE_FORMULA_FIELD_NAME
-from brdr.enums import AlignerInputType, GRBType, FullStrategy, OpenDomainStrategy
-from brdr.grb import update_to_actual_grb
+from brdr.enums import AlignerInputType, OpenDomainStrategy, FullReferenceStrategy
 from brdr.loader import DictLoader
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QDate, QDateTime
@@ -118,7 +119,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     MAX_DISTANCE_FOR_ACTUALISATION = 3  # maximum relevant distance that is used in the predictor when trying to update to actual GRB
     WORKFOLDER = "brdrQ"
     PREDICTION_STRATEGY = PredictionStrategy.ALL
-    FULL_STRATEGY = FullStrategy.NO_FULL
+    FULL_STRATEGY = FullReferenceStrategy.NO_FULL_REFERENCE
     SHOW_LOG_INFO = True
 
     def flags(self):
@@ -545,7 +546,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.PREDICTION_STRATEGY = PredictionStrategy[
             ENUM_PREDICTION_STRATEGY_OPTIONS[parameters["PREDICTION_STRATEGY"]]
         ]
-        self.FULL_STRATEGY = FullStrategy[
+        self.FULL_STRATEGY = FullReferenceStrategy[
             ENUM_FULL_STRATEGY_OPTIONS[parameters["FULL_STRATEGY"]]
         ]
         self.FORMULA_FIELDNAME = parameters["FORMULA_FIELD"]
@@ -565,5 +566,3 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.LAYER_RESULT_DIFF_PLUS = self.LAYER_RESULT_DIFF_PLUS + self.SUFFIX
         self.LAYER_RESULT_DIFF_MIN = self.LAYER_RESULT_DIFF_MIN + self.SUFFIX
         self.GROUP_LAYER = self.GROUP_LAYER + self.SUFFIX
-
-

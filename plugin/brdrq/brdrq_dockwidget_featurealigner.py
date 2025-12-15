@@ -27,11 +27,12 @@ import os
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QListWidgetItem
 from brdr.aligner import Aligner
+from brdr.be.grb.enums import GRBType
+from brdr.be.grb.loader import GRBActualLoader, GRBFiscalParcelLoader
 from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME
-from brdr.enums import AlignerResultType, GRBType
-from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader
+from brdr.enums import AlignerResultType
 from brdr.loader import DictLoader
-from brdr.osm import OSMLoader
+from brdr.osm.loader import OSMLoader
 from qgis import processing
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import Qt

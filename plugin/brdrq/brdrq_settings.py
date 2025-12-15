@@ -25,7 +25,7 @@
 import os
 
 import numpy as np
-from brdr.enums import OpenDomainStrategy, FullStrategy, SnapStrategy
+from brdr.enums import OpenDomainStrategy, SnapStrategy, FullReferenceStrategy
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.core import QgsSettings
@@ -175,20 +175,20 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             self.comboBox_snapstrategy.currentText()
         ]
 
-        if self.full_strategy is None or self.full_strategy not in FullStrategy:
-            default_full_strategy = FullStrategy.PREFER_FULL
+        if self.full_strategy is None or self.full_strategy not in FullReferenceStrategy:
+            default_full_strategy = FullReferenceStrategy.PREFER_FULL_REFERENCE
             full_strategy_name = s.value(
                 "brdrq/full_strategy", default_full_strategy.name
             )
-            if full_strategy_name not in FullStrategy.__members__:
+            if full_strategy_name not in FullReferenceStrategy.__members__:
                 full_strategy_name = default_full_strategy.name
             index = self.comboBox_fullstrategy.findText(
-                FullStrategy[full_strategy_name].name
+                FullReferenceStrategy[full_strategy_name].name
             )
             if index == -1:
                 index = 0
             self.comboBox_fullstrategy.setCurrentIndex(index)
-        self.full_strategy = FullStrategy[self.comboBox_fullstrategy.currentText()]
+        self.full_strategy = FullReferenceStrategy[self.comboBox_fullstrategy.currentText()]
 
         if (
             self.reference_choice is None

@@ -33,8 +33,16 @@ import sys
 from datetime import datetime
 # TODO QGIS4
 from PyQt5.QtCore import QVariant
-from brdr.constants import STABILITY, DIFF_PERC_INDEX, DIFF_INDEX, FORMULA_FIELD_NAME
-from brdr.osm import OSMLoader
+from brdr.be.grb.enums import GRBType
+from brdr.be.grb.loader import GRBFiscalParcelLoader, GRBActualLoader
+from brdr.constants import (
+    STABILITY,
+    FORMULA_FIELD_NAME,
+    SYMMETRICAL_AREA_CHANGE,
+    SYMMETRICAL_AREA_PERCENTAGE_CHANGE,
+)
+from brdr.osm.loader import OSMLoader
+
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
     QgsRendererCategory,
@@ -77,7 +85,6 @@ from qgis.PyQt.QtCore import QDate, QDateTime
 from qgis.core import QgsFeatureRequest
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
-from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingMultiStepFeedback
 from qgis.core import QgsProcessingOutputVectorLayer
 from qgis.core import QgsProcessingParameterBoolean
@@ -87,6 +94,7 @@ from qgis.core import QgsProcessingParameterFeatureSource
 from qgis.core import QgsProcessingParameterField
 from qgis.core import QgsProcessingParameterFile
 from qgis.core import QgsProcessingParameterNumber
+from qgis.core import QgsProcessingException
 from qgis.core import QgsProject
 from qgis.core import QgsStyle
 
@@ -94,11 +102,9 @@ from brdr.aligner import Aligner
 from brdr.loader import DictLoader
 from brdr.enums import (
     OpenDomainStrategy,
-    GRBType,
     AlignerInputType,
     AlignerResultType,
 )
-from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader
 from brdr.geometry_utils import safe_unary_union
 
 
@@ -746,13 +752,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             id_geom_map[key] = feat.geometry()
             if self.ADD_FORMULA:
                 id_formula_map[key] = feat[FORMULA_FIELD_NAME]
-            id_diff_index_map[key] = feat[DIFF_INDEX]
-            id_diff_perc_index_map[key] = feat[DIFF_PERC_INDEX]
+            id_diff_index_map[key] = feat[SYMMETRICAL_AREA_CHANGE]
+            id_diff_perc_index_map[key] = feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE]
             if stability_field_available and not feat[STABILITY]:
                 ids_to_align.append(key)
-            elif feat[DIFF_PERC_INDEX] > self.REVIEW_PERCENTAGE:
+            elif feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] > self.REVIEW_PERCENTAGE:
                 ids_to_review.append(key)
-            elif feat[DIFF_INDEX] < 0.01:
+            elif feat[SYMMETRICAL_AREA_CHANGE] < 0.01:
                 ids_not_changed.append(key)
 
         # 4. Update geometries in duplicated layer
@@ -762,8 +768,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 QgsField(FORMULA_FIELD_NAME, QVariant.String),
                 QgsField(BRDRQ_STATE_FIELDNAME, QVariant.String),
                 QgsField(BRDRQ_ORIGINAL_WKT_FIELDNAME, QVariant.String),
-                QgsField(DIFF_INDEX, QVariant.Double),
-                QgsField(DIFF_PERC_INDEX, QVariant.Double),
+                QgsField(SYMMETRICAL_AREA_CHANGE, QVariant.Double),
+                QgsField(SYMMETRICAL_AREA_PERCENTAGE_CHANGE, QVariant.Double),
             ]
         )
         correction_layer.updateFields()
@@ -771,8 +777,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             fid = feat[self.ID_THEME_FIELDNAME]
             if self.ADD_FORMULA:
                 feat[FORMULA_FIELD_NAME] = id_formula_map[fid]
-            feat[DIFF_INDEX] = id_diff_index_map[fid]
-            feat[DIFF_PERC_INDEX] = id_diff_perc_index_map[fid]
+            feat[SYMMETRICAL_AREA_CHANGE] = id_diff_index_map[fid]
+            feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] = id_diff_perc_index_map[fid]
             feat[BRDRQ_ORIGINAL_WKT_FIELDNAME] = feat.geometry().asWkt()
             state = str(BrdrQState.NONE.value)
             if fid in id_geom_map and fid not in ids_to_align:
@@ -783,8 +789,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             if fid in ids_to_review:
                 state = str(BrdrQState.TO_REVIEW.value)
             if fid in ids_to_align:
-                feat[DIFF_INDEX] = -1
-                feat[DIFF_PERC_INDEX] = -1
+                feat[SYMMETRICAL_AREA_CHANGE] = -1
+                feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] = -1
                 state = str(BrdrQState.TO_UPDATE.value)
             feat[BRDRQ_STATE_FIELDNAME] = state
             correction_layer.updateFeature(feat)

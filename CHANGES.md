@@ -1,3 +1,7 @@
+# v0.17.0
+
+- Upgrade to brdr stable release version 0.99.0 (In progress)
+
 # v0.16.0
 
 - Added logic for automatic non-Windows install of 'brdr' [#206]
