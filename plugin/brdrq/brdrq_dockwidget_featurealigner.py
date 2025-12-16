@@ -29,10 +29,12 @@ from PyQt5.QtWidgets import QListWidgetItem
 from brdr.aligner import Aligner
 from brdr.be.grb.enums import GRBType
 from brdr.be.grb.loader import GRBActualLoader, GRBFiscalParcelLoader
+from brdr.configs import ProcessorConfig
 from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME
 from brdr.enums import AlignerResultType
 from brdr.loader import DictLoader
 from brdr.osm.loader import OSMLoader
+from brdr.processor import AlignerGeometryProcessor
 from qgis import processing
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import Qt
@@ -415,8 +417,8 @@ class brdrQDockWidgetFeatureAligner(
         print("adding results")
         if self.aligner is None:
             return
-        fcs = self.aligner.get_results_as_geojson(
-            resulttype=AlignerResultType.PROCESSRESULTS, formula=self.formula
+        fcs = self.aligner_result.get_results_as_geojson(aligner=self.aligner,
+            result_type=AlignerResultType.PROCESSRESULTS, formula=self.formula
         )
         result_diff = "result_diff"
         geojson_result_diff = fcs[result_diff]
@@ -489,15 +491,20 @@ class brdrQDockWidgetFeatureAligner(
 
             dict_to_load[feature.id()] = geom_shapely
 
+        config=ProcessorConfig()
+        config.od_strategy = self.od_strategy
+        config.threshold_overlap_percentage = self.threshold_overlap_percentage
+        config.snap_strategy = self.partial_snapping_strategy
+        config.snap_max_segment_length = self.snap_max_segment_length
+        config.partial_snapping = self.partial_snapping
+        config.partial_snap_strategy = self.partial_snapping_strategy
+        config.partial_snap_max_segment_length = self.snap_max_segment_length
+
+        processor=AlignerGeometryProcessor(config)
         self.aligner = Aligner(
-            crs=self.crs,
-            od_strategy=self.od_strategy,
-            threshold_overlap_percentage=self.threshold_overlap_percentage,
-            snap_strategy=self.partial_snapping_strategy,
-            snap_max_segment_length=self.snap_max_segment_length,
-            partial_snapping=self.partial_snapping,
-            partial_snap_strategy=self.partial_snapping_strategy,
-            partial_snap_max_segment_length=self.snap_max_segment_length,
+        crs = self.crs,
+            processor=processor
+
         )
 
         # Load thematic data
@@ -564,18 +571,18 @@ class brdrQDockWidgetFeatureAligner(
             self.aligner.dict_reference_source["version_date"] = "unknown"
         self.progressBar.setValue(50)
 
-        dict_evaluated = self.aligner.evaluate(
-            ids_to_evaluate=None,
+        self.aligner_result = self.aligner.evaluate(
+            dict_thematic=None,
             base_formula_field=None,
             max_predictions=4,
             relevant_distances=self.relevant_distances,
-            full_strategy=self.full_strategy,
+            full_reference_strategy=self.full_strategy,
         )
 
-        self.dict_processresults = self.aligner.dict_processresults
-        self.dict_evaluated_predictions = dict_evaluated
+        self.dict_processresults = self.aligner_result.get_results(aligner=self.aligner)
+        self.dict_evaluated_predictions = self.aligner_result.get_results(aligner=self.aligner,result_type=AlignerResultType.EVALUATED_PREDICTIONS)
 
-        self.diffs_dict = self.aligner.get_diff_metrics(self.dict_processresults)
+        self.diffs_dict = self.aligner.get_difference_metrics_for_dict_thematic(self.dict_processresults)
 
         outputMessage = "PREDICTIONS (@ relevant distances): " + str(
             [str(k) for k in self.dict_evaluated_predictions[feat.id()].keys()]

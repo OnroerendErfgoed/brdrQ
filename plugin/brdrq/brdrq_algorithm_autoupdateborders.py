@@ -32,9 +32,11 @@ from datetime import datetime
 from brdr.aligner import Aligner
 from brdr.be.grb.enums import GRBType
 from brdr.be.grb.grb import update_to_actual_grb
+from brdr.configs import ProcessorConfig
 from brdr.constants import BASE_FORMULA_FIELD_NAME
 from brdr.enums import AlignerInputType, OpenDomainStrategy, FullReferenceStrategy
 from brdr.loader import DictLoader
+from brdr.processor import AlignerGeometryProcessor
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QDate, QDateTime
 from qgis.core import QgsProcessing
@@ -397,9 +399,23 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                     attributes_dict[key] = value
             dict_thematic_properties[id_theme] = attributes_dict
 
+        # Aligner IMPLEMENTATION
+        if self.SHOW_LOG_INFO:
+            log_info = feedback
+        else:
+            log_info = None
+
+        config=ProcessorConfig()
+        config.od_strategy = self.OD_STRATEGY
+        config.multi_as_single_modus = self.MULTI_AS_SINGLE_MODUS
+        config.correction_distance = self.CORR_DISTANCE
+        config.threshold_overlap_percentage = self.THRESHOLD_OVERLAP_PERCENTAGE
+        processor=AlignerGeometryProcessor(config)
         aligner = Aligner(
-            od_strategy=self.OD_STRATEGY,
-            threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
+            feedback=log_info,
+        crs = self.CRS,
+            processor=processor
+
         )
         aligner.load_thematic_data(
             DictLoader(
@@ -409,10 +425,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         fc = aligner.get_input_as_geojson(inputtype=AlignerInputType.THEMATIC)
 
         feedback.pushInfo("START ACTUALISATION")
-        if self.SHOW_LOG_INFO:
-            log_info = feedback
-        else:
-            log_info = None
+        # if self.SHOW_LOG_INFO:
+        #     log_info = feedback
+        # else:
+        #     log_info = None
 
         if self.PREDICTION_STRATEGY == PredictionStrategy.BEST:
             max_predictions = 1
@@ -434,7 +450,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
             feedback=log_info,
             max_predictions=max_predictions,
-            full_strategy=self.FULL_STRATEGY,
+            full_reference_strategy=self.FULL_STRATEGY,
             multi_to_best_prediction=multi_to_best_prediction,
         )
         if fcs_actualisation is None or fcs_actualisation == {}:

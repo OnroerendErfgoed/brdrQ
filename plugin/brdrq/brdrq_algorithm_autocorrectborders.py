@@ -35,6 +35,7 @@ from datetime import datetime
 from PyQt5.QtCore import QVariant
 from brdr.be.grb.enums import GRBType
 from brdr.be.grb.loader import GRBFiscalParcelLoader, GRBActualLoader
+from brdr.configs import ProcessorConfig
 from brdr.constants import (
     STABILITY,
     FORMULA_FIELD_NAME,
@@ -42,11 +43,12 @@ from brdr.constants import (
     SYMMETRICAL_AREA_PERCENTAGE_CHANGE,
 )
 from brdr.osm.loader import OSMLoader
+from brdr.processor import AlignerGeometryProcessor
 
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
     QgsRendererCategory,
-    QgsFillSymbol,
+    QgsFillSymbol, processing_source_repr,
 )
 from qgis.core import QgsField
 from qgis.core import QgsProcessingFeatureSourceDefinition
@@ -104,6 +106,7 @@ from brdr.enums import (
     OpenDomainStrategy,
     AlignerInputType,
     AlignerResultType,
+    FullReferenceStrategy,
 )
 from brdr.geometry_utils import safe_unary_union
 
@@ -528,14 +531,18 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             log_info = feedback
         else:
             log_info = None
+
+        config=ProcessorConfig()
+        config.od_strategy = self.OD_STRATEGY
+        config.multi_as_single_modus = self.MULTI_AS_SINGLE_MODUS
+        config.correction_distance = self.CORR_DISTANCE
+        config.threshold_overlap_percentage = self.THRESHOLD_OVERLAP_PERCENTAGE
+        processor=AlignerGeometryProcessor(config)
         aligner = Aligner(
             feedback=log_info,
-            relevant_distance=self.RELEVANT_DISTANCE,
-            od_strategy=self.OD_STRATEGY,
-            crs=self.CRS,
-            multi_as_single_modus=self.MULTI_AS_SINGLE_MODUS,
-            correction_distance=self.CORR_DISTANCE,
-            threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
+        crs = self.CRS,
+            processor=processor
+
         )
 
         feedback.pushInfo("Load thematic data")
@@ -580,29 +587,23 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             raise QgsProcessingException("Please provide a RELEVANT DISTANCE >=0")
         elif not self.PREDICTIONS:
             relevant_distances = [self.RELEVANT_DISTANCE]
-            aligner.predictor(
-                relevant_distances=relevant_distances,
-            )
-            fcs = aligner.get_results_as_geojson(
-                formula=self.ADD_FORMULA,
-                attributes=self.ATTRIBUTES,
-            )
-
         else:
             relevant_distances = (
-                np.arange(0, self.RELEVANT_DISTANCE * 100, 10, dtype=int) / 100
+                    np.arange(0, self.RELEVANT_DISTANCE * 100, 10, dtype=int) / 100
             )
-
-            aligner.evaluate(
-                relevant_distances=relevant_distances,
-                max_predictions=1,
-                multi_to_best_prediction=True,
-            )
-            fcs = aligner.get_results_as_geojson(
-                resulttype=AlignerResultType.EVALUATED_PREDICTIONS,
-                formula=self.ADD_FORMULA,
-                attributes=self.ATTRIBUTES,
-            )
+        #TODO: //Add parameter to prefer full reference
+        aligner_result = aligner.evaluate(
+            relevant_distances=relevant_distances,
+            max_predictions=1,
+            multi_to_best_prediction=True,
+            full_reference_strategy=FullReferenceStrategy.PREFER_FULL_REFERENCE,
+        )
+        fcs = aligner_result.get_results_as_geojson(
+            aligner=aligner,
+            result_type=AlignerResultType.EVALUATED_PREDICTIONS,
+            formula=self.ADD_FORMULA,
+            attributes=self.ATTRIBUTES,
+        )
         if "result" not in fcs:
             feedback.pushInfo("Geen predicties gevonden")
             feedback.pushInfo("END")
