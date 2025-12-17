@@ -48,7 +48,7 @@ class TestAutoUpdateBorders(unittest.TestCase):
                 "ENUM_OD_STRATEGY": 2,
                 "WORK_FOLDER": foldername,
                 "PREDICTION_STRATEGY": 1,
-                "FULL_STRATEGY": 2,
+                "FULL_REFERENCE_STRATEGY": 2,
                 "SHOW_LOG_INFO": True,
             },
         )
@@ -91,7 +91,7 @@ class TestAutoUpdateBorders(unittest.TestCase):
                 "ENUM_OD_STRATEGY": 2,
                 "WORK_FOLDER": foldername,
                 "PREDICTION_STRATEGY": 1,
-                "FULL_STRATEGY": 2,
+                "FULL_REFERENCE_STRATEGY": 2,
                 "SHOW_LOG_INFO": True,
             },
         )

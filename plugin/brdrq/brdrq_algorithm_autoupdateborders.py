@@ -63,7 +63,7 @@ from .brdrq_utils import (
     thematic_preparation,
     ENUM_PREDICTION_STRATEGY_OPTIONS,
     PredictionStrategy,
-    ENUM_FULL_STRATEGY_OPTIONS,
+    ENUM_FULL_REFERENCE_STRATEGY_OPTIONS,
     ENUM_OD_STRATEGY_OPTIONS,
     get_reference_params,
 )
@@ -121,7 +121,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     MAX_DISTANCE_FOR_ACTUALISATION = 3  # maximum relevant distance that is used in the predictor when trying to update to actual GRB
     WORKFOLDER = "brdrQ"
     PREDICTION_STRATEGY = PredictionStrategy.ALL
-    FULL_STRATEGY = FullReferenceStrategy.NO_FULL_REFERENCE
+    FULL_REFERENCE_STRATEGY = FullReferenceStrategy.NO_FULL_REFERENCE
     SHOW_LOG_INFO = True
 
     def flags(self):
@@ -282,9 +282,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterEnum(
-            "FULL_STRATEGY",
-            "Select FULL_STRATEGY:",
-            options=ENUM_FULL_STRATEGY_OPTIONS,
+            "FULL_REFERENCE_STRATEGY",
+            "Select FULL_REFERENCE_STRATEGY:",
+            options=ENUM_FULL_REFERENCE_STRATEGY_OPTIONS,
             defaultValue=2,
         )
         parameter.setFlags(
@@ -441,7 +441,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             multi_to_best_prediction = False
         else:
             raise Exception("Unknown PREDICTION_STRATEGY")
-
+        #TODO: check to improve; first finding the not changed ones; and also the capakey-equals?
         fcs_actualisation = update_to_actual_grb(
             fc,
             id_theme_fieldname=self.ID_THEME_FIELDNAME,
@@ -450,8 +450,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
             feedback=log_info,
             max_predictions=max_predictions,
-            full_reference_strategy=self.FULL_STRATEGY,
+            full_reference_strategy=self.FULL_REFERENCE_STRATEGY,
             multi_to_best_prediction=multi_to_best_prediction,
+            process_all_at_once=self.SHOW_LOG_INFO
         )
         if fcs_actualisation is None or fcs_actualisation == {}:
             feedback.pushInfo(
@@ -562,8 +563,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.PREDICTION_STRATEGY = PredictionStrategy[
             ENUM_PREDICTION_STRATEGY_OPTIONS[parameters["PREDICTION_STRATEGY"]]
         ]
-        self.FULL_STRATEGY = FullReferenceStrategy[
-            ENUM_FULL_STRATEGY_OPTIONS[parameters["FULL_STRATEGY"]]
+        self.FULL_REFERENCE_STRATEGY = FullReferenceStrategy[
+            ENUM_FULL_REFERENCE_STRATEGY_OPTIONS[parameters["FULL_REFERENCE_STRATEGY"]]
         ]
         self.FORMULA_FIELDNAME = parameters["FORMULA_FIELD"]
         if str(self.FORMULA_FIELDNAME) == "NULL":

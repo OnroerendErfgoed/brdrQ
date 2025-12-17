@@ -112,7 +112,7 @@ ENUM_OD_STRATEGY_OPTIONS = [e.name for e in OpenDomainStrategy][
 ENUM_SNAP_STRATEGY_OPTIONS = [e.name for e in SnapStrategy]
 
 # ENUM for choosing the full-strategy when evaluating
-ENUM_FULL_STRATEGY_OPTIONS = [e.name for e in FullReferenceStrategy]
+ENUM_FULL_REFERENCE_STRATEGY_OPTIONS = [e.name for e in FullReferenceStrategy]
 
 # ENUM for choosing the full-strategy when evaluating
 ENUM_PREDICTION_STRATEGY_OPTIONS = [e.name for e in PredictionStrategy]

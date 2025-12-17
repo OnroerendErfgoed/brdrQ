@@ -33,7 +33,7 @@ from qgis.core import QgsSettings
 from .brdrq_utils import (
     ENUM_REFERENCE_OPTIONS,
     ENUM_OD_STRATEGY_OPTIONS,
-    ENUM_FULL_STRATEGY_OPTIONS,
+    ENUM_FULL_REFERENCE_STRATEGY_OPTIONS,
     ENUM_SNAP_STRATEGY_OPTIONS,
 )
 
@@ -88,7 +88,7 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             self.comboBox_odstrategy.addItem(od)
         for s in ENUM_SNAP_STRATEGY_OPTIONS:
             self.comboBox_snapstrategy.addItem(s)
-        for f in ENUM_FULL_STRATEGY_OPTIONS:
+        for f in ENUM_FULL_REFERENCE_STRATEGY_OPTIONS:
             self.comboBox_fullstrategy.addItem(f)
         self.comboBox_referencelayer.currentIndexChanged.connect(
             self.update_reference_choice

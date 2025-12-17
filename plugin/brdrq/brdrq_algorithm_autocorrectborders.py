@@ -31,6 +31,7 @@ import inspect
 import os
 import sys
 from datetime import datetime
+
 # TODO QGIS4
 from PyQt5.QtCore import QVariant
 from brdr.be.grb.enums import GRBType
@@ -44,12 +45,10 @@ from brdr.constants import (
 )
 from brdr.osm.loader import OSMLoader
 from brdr.processor import AlignerGeometryProcessor
-
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
     QgsRendererCategory,
-    QgsFillSymbol, processing_source_repr,
-)
+    QgsFillSymbol, )
 from qgis.core import QgsField
 from qgis.core import QgsProcessingFeatureSourceDefinition
 from qgis.core import QgsVectorFileWriter, QgsVectorLayer
@@ -74,6 +73,8 @@ from .brdrq_utils import (
     is_field_in_layer,
     OSM_TYPES,
     DICT_OSM_TYPES,
+    ENUM_FULL_REFERENCE_STRATEGY_OPTIONS,
+    ENUM_PREDICTION_STRATEGY_OPTIONS,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -107,6 +108,7 @@ from brdr.enums import (
     AlignerInputType,
     AlignerResultType,
     FullReferenceStrategy,
+    PredictionStrategy,
 )
 from brdr.geometry_utils import safe_unary_union
 
@@ -172,6 +174,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     OD_STRATEGY = (
         OpenDomainStrategy.SNAP_ALL_SIDE
     )  # default OD_STRATEGY for the aligner,updated by user-choice
+    FULL_REFERENCE_STRATEGY = FullReferenceStrategy.NO_FULL_REFERENCE
+    #TODO: check what is best predictionStrategy in combination with correction_layer
+    PREDICTION_STRATEGY = PredictionStrategy.BEST
     THRESHOLD_OVERLAP_PERCENTAGE = 50  # default THRESHOLD_OVERLAP_PERCENTAGE for the aligner,updated by user-choice
     REVIEW_PERCENTAGE = 10  # default - features that changes more than this % wil be moved to review lisr
     RELEVANT_DISTANCE = (
@@ -381,7 +386,28 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
         )
         self.addParameter(parameter)
+        parameter = QgsProcessingParameterEnum(
+            "FULL_REFERENCE_STRATEGY",
+            "Select FULL_REFERENCE_STRATEGY:",
+            options=ENUM_FULL_REFERENCE_STRATEGY_OPTIONS,
+            defaultValue=2,
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
 
+        parameter = QgsProcessingParameterEnum(
+            "PREDICTION_STRATEGY",
+            "Select PREDICTION_STRATEGY:",
+            options=ENUM_PREDICTION_STRATEGY_OPTIONS,
+            defaultValue=1,
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        parameter.setFlags(parameter.flags())
+        self.addParameter(parameter)
         parameter = QgsProcessingParameterFile(
             "WORK_FOLDER",
             self.tr("Working folder"),
@@ -432,7 +458,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterBoolean(
             "PREDICTIONS",
-            "GET_BEST_PREDICTION_FOR_RELEVANT_DISTANCE (slower)",
+            "GET_BEST_PREDICTION_FOR_RELEVANT_DISTANCE (slower; evaluates also intermediate relevant distances resulting in possibly more detailed results)",
             defaultValue=self.PREDICTIONS,
         )
         parameter.setFlags(
@@ -591,12 +617,24 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             relevant_distances = (
                     np.arange(0, self.RELEVANT_DISTANCE * 100, 10, dtype=int) / 100
             )
-        #TODO: //Add parameter to prefer full reference
+
+        if self.PREDICTION_STRATEGY == PredictionStrategy.BEST:
+            max_predictions = 1
+            multi_to_best_prediction = True
+        elif self.PREDICTION_STRATEGY == PredictionStrategy.ALL:
+            max_predictions = -1
+            multi_to_best_prediction = False
+        elif self.PREDICTION_STRATEGY == PredictionStrategy.ORIGINAL:
+            max_predictions = 1
+            multi_to_best_prediction = False
+        else:
+            raise Exception("Unknown PREDICTION_STRATEGY")
+
         aligner_result = aligner.evaluate(
             relevant_distances=relevant_distances,
-            max_predictions=1,
-            multi_to_best_prediction=True,
-            full_reference_strategy=FullReferenceStrategy.PREFER_FULL_REFERENCE,
+            max_predictions=max_predictions,
+            multi_to_best_prediction=multi_to_best_prediction,
+            full_reference_strategy=self.FULL_REFERENCE_STRATEGY,
         )
         fcs = aligner_result.get_results_as_geojson(
             aligner=aligner,
@@ -963,6 +1001,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.OD_STRATEGY = OpenDomainStrategy[
             ENUM_OD_STRATEGY_OPTIONS[parameters["ENUM_OD_STRATEGY"]]
         ]
+        self.FULL_REFERENCE_STRATEGY = FullReferenceStrategy[
+            ENUM_FULL_REFERENCE_STRATEGY_OPTIONS[parameters["FULL_REFERENCE_STRATEGY"]]
+        ]
+        self.PREDICTION_STRATEGY = PredictionStrategy[
+            ENUM_PREDICTION_STRATEGY_OPTIONS[parameters["PREDICTION_STRATEGY"]]]
         self.ADD_FORMULA = parameters["ADD_FORMULA"]
         self.ATTRIBUTES = parameters["ADD_ATTRIBUTES"]
         self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
