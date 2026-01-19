@@ -13,7 +13,7 @@ from qgis.utils import iface
 # https://github.com/qgis/QGIS/issues/45646
 
 
-brdr_version = "0.99.0"
+brdr_version = "0.15.1"
 
 
 def find_python():

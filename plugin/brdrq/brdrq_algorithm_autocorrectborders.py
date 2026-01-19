@@ -39,9 +39,9 @@ from brdr.be.grb.loader import GRBFiscalParcelLoader, GRBActualLoader
 from brdr.configs import ProcessorConfig
 from brdr.constants import (
     STABILITY,
-    FORMULA_FIELD_NAME,
     SYMMETRICAL_AREA_CHANGE,
     SYMMETRICAL_AREA_PERCENTAGE_CHANGE,
+    METADATA_FIELD_NAME,
 )
 from brdr.osm.loader import OSMLoader
 from brdr.processor import AlignerGeometryProcessor
@@ -578,11 +578,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo("Load reference data")
         if self.SELECTED_REFERENCE == 0:
             aligner.load_reference_data(DictLoader(dict_reference))
-            aligner.name_reference_id = self.ID_REFERENCE_FIELDNAME
-            aligner.dict_reference_source["source"] = (
-                PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE_NAME
-            )
-            aligner.dict_reference_source["version_date"] = "unknown"
+            #aligner.reference_data.id_fieldname = self.ID_REFERENCE_FIELDNAME
+            aligner.reference_data.source= {
+                "source": PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE_NAME,
+            "version_date":  "unknown"}
         elif self.SELECTED_REFERENCE in ADPF_VERSIONS:
             year = DICT_ADPF_VERSIONS[self.SELECTED_REFERENCE]
             aligner.load_reference_data(
@@ -612,7 +611,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         if self.RELEVANT_DISTANCE < 0:
             raise QgsProcessingException("Please provide a RELEVANT DISTANCE >=0")
         elif not self.PREDICTIONS:
-            relevant_distances = [self.RELEVANT_DISTANCE]
+            relevant_distances = [0,self.RELEVANT_DISTANCE] #TODO - check if adding 0 is ok for brdrQ
         else:
             relevant_distances = (
                     np.arange(0, self.RELEVANT_DISTANCE * 100, 10, dtype=int) / 100
@@ -639,8 +638,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         fcs = aligner_result.get_results_as_geojson(
             aligner=aligner,
             result_type=AlignerResultType.EVALUATED_PREDICTIONS,
-            formula=self.ADD_FORMULA,
-            attributes=self.ATTRIBUTES,
+            add_metadata=self.ADD_FORMULA,
+            add_original_attributes=self.ATTRIBUTES,
         )
         if "result" not in fcs:
             feedback.pushInfo("Geen predicties gevonden")
@@ -656,9 +655,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         # MAKE TEMPORARY LAYERS
         if self.SELECTED_REFERENCE != 0:
-            reference_geojson = aligner.get_input_as_geojson(
-                inputtype=AlignerInputType.REFERENCE
-            )
+            reference_geojson = aligner.reference_data.to_geojson()
             geojson_to_layer(
                 self.LAYER_REFERENCE_NAME,
                 reference_geojson,
@@ -790,7 +787,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ids_to_review.append(key)
             id_geom_map[key] = feat.geometry()
             if self.ADD_FORMULA:
-                id_formula_map[key] = feat[FORMULA_FIELD_NAME]
+                id_formula_map[key] = feat[METADATA_FIELD_NAME]
             id_diff_index_map[key] = feat[SYMMETRICAL_AREA_CHANGE]
             id_diff_perc_index_map[key] = feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE]
             if stability_field_available and not feat[STABILITY]:
@@ -804,7 +801,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         correction_layer.startEditing()
         correction_layer.dataProvider().addAttributes(
             [
-                QgsField(FORMULA_FIELD_NAME, QVariant.String),
+                QgsField(METADATA_FIELD_NAME, QVariant.String),
                 QgsField(BRDRQ_STATE_FIELDNAME, QVariant.String),
                 QgsField(BRDRQ_ORIGINAL_WKT_FIELDNAME, QVariant.String),
                 QgsField(SYMMETRICAL_AREA_CHANGE, QVariant.Double),
@@ -815,7 +812,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         for feat in correction_layer.getFeatures():
             fid = feat[self.ID_THEME_FIELDNAME]
             if self.ADD_FORMULA:
-                feat[FORMULA_FIELD_NAME] = id_formula_map[fid]
+                feat[METADATA_FIELD_NAME] = id_formula_map[fid]
             feat[SYMMETRICAL_AREA_CHANGE] = id_diff_index_map[fid]
             feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] = id_diff_perc_index_map[fid]
             feat[BRDRQ_ORIGINAL_WKT_FIELDNAME] = feat.geometry().asWkt()

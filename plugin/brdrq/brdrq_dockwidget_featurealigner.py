@@ -418,7 +418,7 @@ class brdrQDockWidgetFeatureAligner(
         if self.aligner is None:
             return
         fcs = self.aligner_result.get_results_as_geojson(aligner=self.aligner,
-            result_type=AlignerResultType.PROCESSRESULTS, formula=self.formula
+            result_type=AlignerResultType.PROCESSRESULTS, add_metadata=self.formula
         )
         result_diff = "result_diff"
         geojson_result_diff = fcs[result_diff]
@@ -572,8 +572,6 @@ class brdrQDockWidgetFeatureAligner(
         self.progressBar.setValue(50)
 
         self.aligner_result = self.aligner.evaluate(
-            dict_thematic=None,
-            base_formula_field=None,
             max_predictions=4,
             relevant_distances=self.relevant_distances,
             full_reference_strategy=self.full_strategy,
@@ -582,7 +580,7 @@ class brdrQDockWidgetFeatureAligner(
         self.dict_processresults = self.aligner_result.get_results(aligner=self.aligner)
         self.dict_evaluated_predictions = self.aligner_result.get_results(aligner=self.aligner,result_type=AlignerResultType.EVALUATED_PREDICTIONS)
 
-        self.diffs_dict = self.aligner.get_difference_metrics_for_dict_thematic(self.dict_processresults)
+        self.diffs_dict = self.aligner.get_difference_metrics_for_thematic_data(self.dict_processresults)
 
         outputMessage = "PREDICTIONS (@ relevant distances): " + str(
             [str(k) for k in self.dict_evaluated_predictions[feat.id()].keys()]

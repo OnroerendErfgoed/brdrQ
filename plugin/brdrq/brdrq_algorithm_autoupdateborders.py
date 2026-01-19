@@ -31,9 +31,9 @@ from datetime import datetime
 
 from brdr.aligner import Aligner
 from brdr.be.grb.enums import GRBType
-from brdr.be.grb.grb import update_to_actual_grb
+from brdr.be.grb.grb import update_featurecollection_to_actual_grb
 from brdr.configs import ProcessorConfig
-from brdr.constants import BASE_FORMULA_FIELD_NAME
+from brdr.constants import BASE_METADATA_FIELD_NAME
 from brdr.enums import AlignerInputType, OpenDomainStrategy, FullReferenceStrategy
 from brdr.loader import DictLoader
 from brdr.processor import AlignerGeometryProcessor
@@ -98,7 +98,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     CORR_DISTANCE = 0.01  # default CORR_DISTANCE for the aligner
     MULTI_AS_SINGLE_MODUS = True  # default MULTI_AS_SINGLE_MODUS for the aligner
 
-    FORMULA_FIELDNAME = BASE_FORMULA_FIELD_NAME
+    METADATA_FIELDNAME = BASE_METADATA_FIELD_NAME
     PREFIX = "brdrQ_"
     SUFFIX = ""  # parameter for composing a suffix for the layers
     LAYER_RESULT = (
@@ -422,13 +422,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 data_dict=dict_thematic, data_dict_properties=dict_thematic_properties
             )
         )
-        fc = aligner.get_input_as_geojson(inputtype=AlignerInputType.THEMATIC)
+        fc = aligner.thematic_data.to_geojson()
 
         feedback.pushInfo("START ACTUALISATION")
-        # if self.SHOW_LOG_INFO:
-        #     log_info = feedback
-        # else:
-        #     log_info = None
 
         if self.PREDICTION_STRATEGY == PredictionStrategy.BEST:
             max_predictions = 1
@@ -441,18 +437,17 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             multi_to_best_prediction = False
         else:
             raise Exception("Unknown PREDICTION_STRATEGY")
-        #TODO: check to improve; first finding the not changed ones; and also the capakey-equals?
-        fcs_actualisation = update_to_actual_grb(
+        # TODO: check to improve; first finding the not changed ones; and also the capakey-equals?
+        fcs_actualisation = update_featurecollection_to_actual_grb(
             fc,
             id_theme_fieldname=self.ID_THEME_FIELDNAME,
-            base_formula_field=self.FORMULA_FIELDNAME,
+            base_metadata_field=self.METADATA_FIELDNAME,
             grb_type=self.GRB_TYPE,
             max_distance_for_actualisation=self.MAX_DISTANCE_FOR_ACTUALISATION,
             feedback=log_info,
             max_predictions=max_predictions,
             full_reference_strategy=self.FULL_REFERENCE_STRATEGY,
             multi_to_best_prediction=multi_to_best_prediction,
-            process_all_at_once=self.SHOW_LOG_INFO
         )
         if fcs_actualisation is None or fcs_actualisation == {}:
             feedback.pushInfo(
@@ -566,9 +561,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.FULL_REFERENCE_STRATEGY = FullReferenceStrategy[
             ENUM_FULL_REFERENCE_STRATEGY_OPTIONS[parameters["FULL_REFERENCE_STRATEGY"]]
         ]
-        self.FORMULA_FIELDNAME = parameters["FORMULA_FIELD"]
-        if str(self.FORMULA_FIELDNAME) == "NULL":
-            self.FORMULA_FIELDNAME = None
+        self.METADATA_FIELDNAME = parameters["FORMULA_FIELD"]
+        if str(self.METADATA_FIELDNAME) == "NULL":
+            self.METADATA_FIELDNAME = None
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
 
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
