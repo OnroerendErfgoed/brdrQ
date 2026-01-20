@@ -20,7 +20,7 @@ class VersionInfoDialog(QDialog):
 
         # Version-information
 
-        brdrq_version_label = QLabel(f"<b>brdrQ Version:</b> {self.metadata.get("version")} - (<a href='https://onroerenderfgoed.github.io/brdrQ/readme.html'> brdrQ Documentation</a>)")
+        brdrq_version_label = QLabel(f"<b>brdrQ Version:</b> {self.metadata.get("version")} - (<a href='https://onroerenderfgoed.github.io/brdrQ/'> brdrQ Documentation</a>)")
         brdrq_version_label.setOpenExternalLinks(True)
         brdr_version_label = QLabel(f"<b>brdr Version:</b> {brdr.__version__} - (<a href='https://onroerenderfgoed.github.io/brdr/'> brdr Documentation</a>)")
         brdr_version_label.setOpenExternalLinks(True)
