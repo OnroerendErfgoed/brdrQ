@@ -70,6 +70,34 @@
     "text": "Q: What types of geometries are supported?\nA: The brdr-library is initially developed to align (Multi-)Polygons to (Multi-)Polygons. However the plugin can also be used for other types of input/reference (Points & Linestrings).\n#Warnings/Errors ## CRS error A: Please check if the CRS is set on the thematic layer and reference layer, and they use the same projected CRS (in units: meter)"
   },
   {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Home",
+    "section": "",
+    "text": "brdrQ is a QGIS plugin designed to align geometries with reference data. It helps users correct spatial discrepancies adjusting geometries to match reference sources using brdr.\n\n\n\n\nOpen QGIS.\nGo to Plugins → Manage and Install Plugins.\nSearch for brdrQ.\nClick Install Plugin.\nOnce installed, the plugin will appear in the plugin toolbar.\n\nThis plugin provides tools to align geometries to reference data.\nhere you can find links to the different tools that are currently provided:\n\nAutocorrectborders - Bulk alignment to reference layer\nFeature aligner - Feature-by-feature alignment with predictions\nAutoupdateborders - Bulk alignment to latest GRB (Flanders - Belgium) based on predictions and provenance\n\n\n\n\n\nUse Autocorrectborders to align your thematic data to a reference layer. A CORRECTION_ layer is returned that indicates the brdrq_state of the alignment.\nUse Feature aligner on the CORRECTION_ layer to review/update features that are not automatically updated, according the ‘brdrq_state’ (to_review, to_update)."
+  },
+  {
+    "objectID": "index.html#introduction",
+    "href": "index.html#introduction",
+    "title": "Home",
+    "section": "",
+    "text": "brdrQ is a QGIS plugin designed to align geometries with reference data. It helps users correct spatial discrepancies adjusting geometries to match reference sources using brdr."
+  },
+  {
+    "objectID": "index.html#installation",
+    "href": "index.html#installation",
+    "title": "Home",
+    "section": "",
+    "text": "Open QGIS.\nGo to Plugins → Manage and Install Plugins.\nSearch for brdrQ.\nClick Install Plugin.\nOnce installed, the plugin will appear in the plugin toolbar.\n\nThis plugin provides tools to align geometries to reference data.\nhere you can find links to the different tools that are currently provided:\n\nAutocorrectborders - Bulk alignment to reference layer\nFeature aligner - Feature-by-feature alignment with predictions\nAutoupdateborders - Bulk alignment to latest GRB (Flanders - Belgium) based on predictions and provenance"
+  },
+  {
+    "objectID": "index.html#possible-workflow",
+    "href": "index.html#possible-workflow",
+    "title": "Home",
+    "section": "",
+    "text": "Use Autocorrectborders to align your thematic data to a reference layer. A CORRECTION_ layer is returned that indicates the brdrq_state of the alignment.\nUse Feature aligner on the CORRECTION_ layer to review/update features that are not automatically updated, according the ‘brdrq_state’ (to_review, to_update)."
+  },
+  {
     "objectID": "autocorrectborders.html",
     "href": "autocorrectborders.html",
     "title": "Documentation of QGIS Python Script: Autocorrectborders",
