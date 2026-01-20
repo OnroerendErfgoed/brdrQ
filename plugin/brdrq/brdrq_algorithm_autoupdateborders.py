@@ -32,11 +32,10 @@ from datetime import datetime
 from brdr.aligner import Aligner
 from brdr.be.grb.enums import GRBType
 from brdr.be.grb.grb import update_featurecollection_to_actual_grb
-from brdr.configs import ProcessorConfig
+from brdr.configs import ProcessorConfig, AlignerConfig
 from brdr.constants import BASE_METADATA_FIELD_NAME
-from brdr.enums import AlignerInputType, OpenDomainStrategy, FullReferenceStrategy
+from brdr.enums import OpenDomainStrategy, FullReferenceStrategy
 from brdr.loader import DictLoader
-from brdr.processor import AlignerGeometryProcessor
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QDate, QDateTime
 from qgis.core import QgsProcessing
@@ -66,6 +65,9 @@ from .brdrq_utils import (
     ENUM_FULL_REFERENCE_STRATEGY_OPTIONS,
     ENUM_OD_STRATEGY_OPTIONS,
     get_reference_params,
+    get_processor_by_id,
+    Processor,
+    ENUM_PROCESSOR_OPTIONS,
 )
 
 
@@ -95,6 +97,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     RELEVANT_DISTANCE = (
         2  # default RELEVANT_DISTANCE for the aligner,updated by user-choice
     )
+    PROCESSOR = Processor.ALIGNER
     CORR_DISTANCE = 0.01  # default CORR_DISTANCE for the aligner
     MULTI_AS_SINGLE_MODUS = True  # default MULTI_AS_SINGLE_MODUS for the aligner
 
@@ -260,6 +263,17 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         # ADVANCED INPUT
         parameter = QgsProcessingParameterEnum(
+            "ENUM_PROCESSOR",
+            "Select Processing algorithm:",
+            options=ENUM_PROCESSOR_OPTIONS,
+            defaultValue=0,  # Index of the default option (e.g., 'ALIGNER')
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterEnum(
             "ENUM_OD_STRATEGY",
             "Select OD-STRATEGY:",
             options=ENUM_OD_STRATEGY_OPTIONS,
@@ -405,16 +419,21 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         else:
             log_info = None
 
-        config=ProcessorConfig()
-        config.od_strategy = self.OD_STRATEGY
-        config.multi_as_single_modus = self.MULTI_AS_SINGLE_MODUS
-        config.correction_distance = self.CORR_DISTANCE
-        config.threshold_overlap_percentage = self.THRESHOLD_OVERLAP_PERCENTAGE
-        processor=AlignerGeometryProcessor(config)
+        processor_config=ProcessorConfig()
+        processor_config.od_strategy = self.OD_STRATEGY
+        processor_config.multi_as_single_modus = self.MULTI_AS_SINGLE_MODUS
+        processor_config.correction_distance = self.CORR_DISTANCE
+        processor_config.threshold_overlap_percentage = self.THRESHOLD_OVERLAP_PERCENTAGE
+        processor=get_processor_by_id(processor_id=self.PROCESSOR.value,config=processor_config)
+        aligner_config = AlignerConfig()
+        aligner_config.log_metadata = False
+        aligner_config.add_observations = False
+
         aligner = Aligner(
             feedback=log_info,
         crs = self.CRS,
-            processor=processor
+            processor=processor,
+            config=aligner_config,
 
         )
         aligner.load_thematic_data(
@@ -555,6 +574,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             ref, None, None, self.CRS
         )
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
+        self.PROCESSOR = Processor[
+            ENUM_PROCESSOR_OPTIONS[parameters["ENUM_PROCESSOR"]]
+        ]
         self.PREDICTION_STRATEGY = PredictionStrategy[
             ENUM_PREDICTION_STRATEGY_OPTIONS[parameters["PREDICTION_STRATEGY"]]
         ]

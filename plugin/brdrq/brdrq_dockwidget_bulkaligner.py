@@ -179,6 +179,7 @@ class brdrQDockWidgetBulkAligner(
 
     def evaluate_layer(self):
         self.progressBar.setValue(5)
+        processor_config
         self.aligner = Aligner()
         dict_to_load = {}
         for feature in self.getWorkingFeatures():

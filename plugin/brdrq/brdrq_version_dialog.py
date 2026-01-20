@@ -18,9 +18,12 @@ class VersionInfoDialog(QDialog):
     def init_ui(self):
         layout = QVBoxLayout()
 
-        # Versie-informatie
-        brdrq_version_label = QLabel(f"<b>brdrQ Version:</b> {self.metadata.get("version")}")
-        brdr_version_label = QLabel(f"<b>brdr Version:</b> {brdr.__version__}")
+        # Version-information
+
+        brdrq_version_label = QLabel(f"<b>brdrQ Version:</b> {self.metadata.get("version")} - (<a href='https://onroerenderfgoed.github.io/brdrQ/readme.html'> brdrQ Documentation</a>)")
+        brdrq_version_label.setOpenExternalLinks(True)
+        brdr_version_label = QLabel(f"<b>brdr Version:</b> {brdr.__version__} - (<a href='https://onroerenderfgoed.github.io/brdr/'> brdr Documentation</a>)")
+        brdr_version_label.setOpenExternalLinks(True)
         qgis_version_label = QLabel(f"<b>QGIS Version:</b> {Qgis.QGIS_VERSION}")
         python_version_label = QLabel(f"<b>Python Version:</b> {platform.python_version()}")
         author = f"<b>Author:</b> {self.metadata.get("author")}  [{self.metadata.get("email")}]"
@@ -34,7 +37,7 @@ class VersionInfoDialog(QDialog):
         layout.addWidget(author_label)
         layout.addWidget(poweredby_label)
 
-        # Afbeeldingen
+        # Images
         image_layout = QHBoxLayout()
         icon_athumi = os.path.join(os.path.join(cmd_folder, "icon_athumi.png"))
         icon_oe = os.path.join(os.path.join(cmd_folder, "icon_oe.png"))

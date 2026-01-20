@@ -4,6 +4,13 @@ from enum import Enum
 # TODO QGIS4
 from PyQt5.QtGui import QColor
 from brdr.be.grb.enums import GRBType
+from brdr.processor import (
+    AlignerGeometryProcessor,
+    DieussaertGeometryProcessor,
+    NetworkGeometryProcessor,
+    SnapGeometryProcessor,
+    TopologyProcessor,
+)
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
 from qgis.core import QgsProcessingException
 from qgis.core import QgsRectangle
@@ -31,7 +38,7 @@ from brdr.enums import (
     OpenDomainStrategy,
     SnapStrategy,
     PredictionStrategy,
-    FullReferenceStrategy,
+    FullReferenceStrategy, ProcessorID,
 )
 from brdr.typings import ProcessResult
 from brdr.utils import write_geojson
@@ -56,6 +63,15 @@ from qgis.core import QgsVectorLayer
 from qgis.utils import iface
 from shapely import to_wkt, from_wkt, make_valid
 
+class Processor(str, Enum):
+    """
+    Enum for processors that can be used in brdrQ. Values based on the IDs in brdr.
+    """
+    ALIGNER = "2024:aligner2024a"
+    DIEUSSAERT = "2024:dieussaert2024a"
+    SNAP = "2024:snap2024a"
+    NETWORK = "2024:network2024a"
+    TOPOLOGY = "2024:topology2024a"
 
 class OsmType(dict, Enum):
     """
@@ -117,6 +133,9 @@ ENUM_FULL_REFERENCE_STRATEGY_OPTIONS = [e.name for e in FullReferenceStrategy]
 # ENUM for choosing the full-strategy when evaluating
 ENUM_PREDICTION_STRATEGY_OPTIONS = [e.name for e in PredictionStrategy]
 
+# ENUM for choosing the Processing-algorithm
+ENUM_PROCESSOR_OPTIONS = [e.name for e in Processor]  # list with all processing-algorithm-options
+
 BRDRQ_ORIGINAL_WKT_FIELDNAME = "brdrq_original_wkt"
 BRDRQ_STATE_FIELDNAME = "brdrq_state"
 
@@ -132,6 +151,28 @@ class BrdrQState(str, Enum):
     TO_REVIEW = "to_review"
     TO_UPDATE = "to_update"
     NONE = "none"
+
+
+
+def get_processor_by_id(processor_id,config):
+    """
+    Function that returns a Processor, based on the ID
+    """
+    #AlignerGeometryProcessor as default processor
+    processor = AlignerGeometryProcessor(config=config)
+    try:
+        processor_id=ProcessorID(processor_id)
+    except ValueError:
+        return processor
+    if processor_id == ProcessorID.DIEUSSAERT:
+        return DieussaertGeometryProcessor(config=config)
+    if processor_id == ProcessorID.NETWORK:
+        return NetworkGeometryProcessor(config=config)
+    if processor_id == ProcessorID.SNAP:
+        return SnapGeometryProcessor(config=config)
+    if processor_id == ProcessorID.TOPOLOGY:
+        return TopologyProcessor(config=config)
+    return processor
 
 
 def geom_shapely_to_qgis(geom_shapely):

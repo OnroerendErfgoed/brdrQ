@@ -62,7 +62,7 @@ class brdrQDockWidgetAligner(object):
         self.partialSelectTool = None
         self.formerMapTool = None
         self.aligner = None
-
+        self.processor =None
         self.relevant_distances = None
         self.threshold_overlap_percentage = None
         self.od_strategy = None
@@ -310,6 +310,7 @@ class brdrQDockWidgetAligner(object):
         self.threshold_overlap_percentage = (
             self.settingsDialog.threshold_overlap_percentage
         )
+        self.processor = self.settingsDialog.processor
         self.od_strategy = self.settingsDialog.od_strategy
         self.reference_choice = self.settingsDialog.reference_choice
         self.reference_id = self.settingsDialog.reference_id

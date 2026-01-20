@@ -23,18 +23,18 @@
 """
 
 import os
+
 # TODO QGIS4
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QListWidgetItem
 from brdr.aligner import Aligner
 from brdr.be.grb.enums import GRBType
 from brdr.be.grb.loader import GRBActualLoader, GRBFiscalParcelLoader
-from brdr.configs import ProcessorConfig
+from brdr.configs import ProcessorConfig, AlignerConfig
 from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME
 from brdr.enums import AlignerResultType
 from brdr.loader import DictLoader
 from brdr.osm.loader import OSMLoader
-from brdr.processor import AlignerGeometryProcessor
 from qgis import processing
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import Qt
@@ -64,6 +64,7 @@ from .brdrq_utils import (
     BrdrQState,
     OSM_TYPES,
     DICT_OSM_TYPES,
+    get_processor_by_id,
 )
 
 FORM_CLASS, _ = uic.loadUiType(
@@ -491,19 +492,23 @@ class brdrQDockWidgetFeatureAligner(
 
             dict_to_load[feature.id()] = geom_shapely
 
-        config=ProcessorConfig()
-        config.od_strategy = self.od_strategy
-        config.threshold_overlap_percentage = self.threshold_overlap_percentage
-        config.snap_strategy = self.partial_snapping_strategy
-        config.snap_max_segment_length = self.snap_max_segment_length
-        config.partial_snapping = self.partial_snapping
-        config.partial_snap_strategy = self.partial_snapping_strategy
-        config.partial_snap_max_segment_length = self.snap_max_segment_length
+        processor_config = ProcessorConfig()
+        processor_config.od_strategy = self.od_strategy
+        processor_config.threshold_overlap_percentage = self.threshold_overlap_percentage
+        processor_config.snap_strategy = self.partial_snapping_strategy
+        processor_config.snap_max_segment_length = self.snap_max_segment_length
+        processor_config.partial_snapping = self.partial_snapping
+        processor_config.partial_snap_strategy = self.partial_snapping_strategy
+        processor_config.partial_snap_max_segment_length = self.snap_max_segment_length
 
-        processor=AlignerGeometryProcessor(config)
+        processor = get_processor_by_id(processor_id=self.processor.value,config=processor_config)
+        aligner_config = AlignerConfig()
+        aligner_config.log_metadata = False
+        aligner_config.add_observations = False
         self.aligner = Aligner(
         crs = self.crs,
-            processor=processor
+            processor=processor,
+            config=aligner_config,
 
         )
 

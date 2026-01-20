@@ -35,6 +35,8 @@ from .brdrq_utils import (
     ENUM_OD_STRATEGY_OPTIONS,
     ENUM_FULL_REFERENCE_STRATEGY_OPTIONS,
     ENUM_SNAP_STRATEGY_OPTIONS,
+    Processor,
+    ENUM_PROCESSOR_OPTIONS,
 )
 
 FORM_CLASS, _ = uic.loadUiType(
@@ -70,6 +72,7 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.max_rel_dist = None
         self.formula = None
         self.full_strategy = None
+        self.processor = None
         self.partial_snapping = None
         self.partial_snapping_strategy = None
         self.snap_max_segment_length = None
@@ -90,6 +93,8 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             self.comboBox_snapstrategy.addItem(s)
         for f in ENUM_FULL_REFERENCE_STRATEGY_OPTIONS:
             self.comboBox_fullstrategy.addItem(f)
+        for p in ENUM_PROCESSOR_OPTIONS:
+            self.comboBox_processor.addItem(p)
         self.comboBox_referencelayer.currentIndexChanged.connect(
             self.update_reference_choice
         )
@@ -174,6 +179,20 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.partial_snapping_strategy = SnapStrategy[
             self.comboBox_snapstrategy.currentText()
         ]
+        if self.processor is None or self.processor not in Processor:
+            default_processor = Processor.ALIGNER
+            processor_name = s.value(
+                "brdrq/processor", default_processor.name
+            )
+            if processor_name not in Processor.__members__:
+                full_strategy_name = default_processor.name
+            index = self.comboBox_processor.findText(
+                Processor[processor_name].name
+            )
+            if index == -1:
+                index = 0
+            self.comboBox_processor.setCurrentIndex(index)
+        self.processor = Processor[self.comboBox_processor.currentText()]
 
         if self.full_strategy is None or self.full_strategy not in FullReferenceStrategy:
             default_full_strategy = FullReferenceStrategy.PREFER_FULL_REFERENCE
