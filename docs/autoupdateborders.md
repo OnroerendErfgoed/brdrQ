@@ -1,10 +1,10 @@
-# Documentation of QGIS Python Script: AutoUpdateBorders
+# Documentation of QGIS Python Script: AutoUpdateBorders - GRB Updater (Flanders-specific dataset)
 
 <img src="figures/autoupdateborders.png" width="50%" />
 
 ## Description
 
-`AutoUpdateBorders` is a QGIS-processing Script to auto-update geometries that are aligned to an old GRB-referencelayer
+`AutoUpdateBorders` is a QGIS-processing Script to auto-update geometries that are aligned to an old GRB-referencelayer (Flanders)
 to a newer GRB-referencelayer. It makes predictions to find the resulting aligned geometry. If multiple predictions are
 found the user can choose to return ALL predictions, the BEST prediction, or the ORIGINAL geometry (for further
 analysis).

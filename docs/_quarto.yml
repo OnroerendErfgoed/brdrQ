@@ -7,7 +7,7 @@ website:
     logo: "static/logo.svg"
     left:
       - text: Home
-        href: readme.md
+        href: index.qmd
       - text: Autocorrectborders
         href: autocorrectborders.md
       - text: FeatureAligner
