@@ -12,6 +12,23 @@ A: When using Autocorrectborders or Autoupdateborders, the original data is not 
 ## **Q: What types of geometries are supported?**
 A: The brdr-library is initially developed to align (Multi-)Polygons to (Multi-)Polygons. However the plugin can also be used for other types of input/reference (Points & Linestrings).
 
+## **Q: My 'local' reference layer seems to slow down brdrQ. What can I do about it?**
+A: Performance bottlenecks with reference layers are usually caused by how data is accessed and how efficiently it is searched. Even "local" layers can be slow due to two main factors:
+* Network Latency: If your data is stored on a network drive, a VPN share, or a cloud-synced folder (like OneDrive or Dropbox), QGIS must communicate with the server for every geometry calculation. This constant data transfer creates significant delays compared to reading directly from your hardware.
+* Missing Spatial Index: This is the most common technical bottleneck. Without a spatial index, QGIS must perform a "Full Table Scan." This means to find a feature at a specific location, the tool has to check every single feature in the file one by one.
+
+To significantly speed up your 'local' reference layer, implement the following optimizations:
+* Work Locally: Ensure your reference layer is stored on your computer's internal SSD. Avoid running heavy analysis on files stored on network paths or external mechanical drives.
+* Create a Spatial Index: A spatial index acts like a "lookup table" for geometries. It allows the tool to instantly identify which features are in a specific area without scanning the entire dataset.
+* Use Efficient Formats: While Shapefiles are common, the GeoPackage (.gpkg) format is more modern and generally offers better performance for large datasets in QGIS.
+
+How to add a Spatial Index in QGIS: Creating an index is a quick process that can be done directly within the layer settings:
+
+* Right-click the layer in the Layers Panel and select Properties.
+* Navigate to the Source tab.
+* Look for the Geometry section.
+* Click the Create Spatial Index button. (If the button is greyed out, an index is already present).
+
 
 # Warnings/Errors
 
