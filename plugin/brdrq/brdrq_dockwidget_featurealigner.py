@@ -503,8 +503,8 @@ class brdrQDockWidgetFeatureAligner(
 
         processor = get_processor_by_id(processor_id=self.processor.value,config=processor_config)
         aligner_config = AlignerConfig()
-        aligner_config.log_metadata = False
-        aligner_config.add_observations = False
+        aligner_config.log_metadata = self.metadata
+        aligner_config.add_observations = self.metadata
         self.aligner = Aligner(
         crs = self.crs,
             processor=processor,
