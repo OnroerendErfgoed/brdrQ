@@ -265,9 +265,9 @@ class brdrQDockWidgetAligner(object):
             return
         key = feat.id()
         show_map(
-            {key: self.dict_evaluated_predictions[key]},
-            {key: self.aligner.dict_thematic[key]},
-            self.aligner.reference_data.features,
+            dict_results = {key: self.dict_evaluated_predictions[key]},
+            dict_thematic= {key: self.aligner.thematic_data[key].geometry},
+            dict_reference= {k :v.geometry for k,v in self.aligner.reference_data.features.items()},
         )
         return
 
@@ -283,7 +283,7 @@ class brdrQDockWidgetAligner(object):
     def show_help_dialog(self):
         print("show help dialog")
         # Open link to documentation
-        webbrowser.open("https://github.com/OnroerendErfgoed/brdrQ/blob/main/docs/featurealigner.md")
+        webbrowser.open("https://onroerenderfgoed.github.io/brdrQ/featurealigner.html")
         # self.helpDialog.show()
 
     def show_settings_dialog(self):

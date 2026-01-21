@@ -704,7 +704,7 @@ def show_map(
     # Adjust layout
     # plt.tight_layout()
     # Show figure
-    plt.show()
+    plt.show(block=False)
 
 
 def print_brdr_formula(dict_results, aligner):
@@ -736,7 +736,7 @@ def plot_series(
     plt.ylabel(ylabel)
     plt.title(title)
     # plt.legend()
-    plt.show()
+    plt.show(block=False)
     return
 
 

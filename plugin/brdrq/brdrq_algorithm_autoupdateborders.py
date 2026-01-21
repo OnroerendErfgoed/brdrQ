@@ -181,7 +181,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameters and outputs associated with it.
         """
         return self.tr(
-            "Script to auto-update geometries that are aligned to an old GRB-referencelayer to a newer GRB-referencelayer. Bulk alignment to latest GRB based on predictions and provenance"
+            "Script to auto-update geometries that are aligned to an old GRB-referencelayer to a newer GRB-referencelayer. Bulk alignment to latest GRB based on predictions and provenance. See <a href='https://onroerenderfgoed.github.io/brdrQ/autoupdateborders.html'>https://onroerenderfgoed.github.io/brdrQ/</a> for documentation of the brdrQ-plugin"
         )
 
     def helpUrl(self):
@@ -191,7 +191,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameters and outputs associated with it.
         """
         return self.tr(
-            "https://github.com/OnroerendErfgoed/brdrQ/blob/main/docs/autoupdateborders.md"
+            "https://onroerenderfgoed.github.io/brdrQ/autoupdateborders.html"
         )
 
     def shortHelpString(self):
@@ -201,7 +201,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameters and outputs associated with it.
         """
         return self.tr(
-            "Script to auto-update geometries to the actual GRB-referencelayer"
+            "Script to auto-update geometries that are aligned to an old GRB-referencelayer to a newer GRB-referencelayer. Bulk alignment to latest GRB based on predictions and provenance. See <a href='https://onroerenderfgoed.github.io/brdrQ/autoupdateborders.html'>https://onroerenderfgoed.github.io/brdrQ/</a> for documentation of the brdrQ-plugin"
         )
 
     def initAlgorithm(self, config=None):

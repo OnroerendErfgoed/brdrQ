@@ -1,6 +1,8 @@
 import os
+import time
 import unittest
 
+from matplotlib import pyplot as plt
 # sys.path.append("C:/Program Files/QGIS 3.38.1/apps/qgis/python/plugins")
 from processing.core.Processing import Processing
 from qgis.PyQt.QtCore import Qt
@@ -83,6 +85,14 @@ class TestFlow(unittest.TestCase):
             widget.onFeatureActivated(item)
         layers = project.mapLayers(validOnly=True)
         self.assertEqual(len(layers), 5)
+        wkt = widget.get_wkt()
+        print(wkt)
+        widget.get_graphic()
+        time.sleep(2)
+        plt.close('all')
+        widget.get_visualisation()
+        time.sleep(2)
+        plt.close("all")
         project.removeAllMapLayers()
         widget.close()
 

@@ -246,6 +246,17 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         """
         return "brdrq"
 
+    def helpString(self):
+        """
+        Returns a localised short helper string for the algorithm. This string
+        should provide a basic description about what the algorithm does and the
+        parameters and outputs associated with it.
+        """
+        return self.tr(
+            "This script searches for overlap relevance between thematic borders and "
+            "reference borders, and creates a resulting border based on the overlapping "
+            "areas that are relevant. See <a href='https://onroerenderfgoed.github.io/brdrQ/autocorrectborders.html'>https://onroerenderfgoed.github.io/brdrQ/</a> for documentation of the brdrQ-plugin"
+        )
     def shortHelpString(self):
         """
         Returns a localised short helper string for the algorithm. This string
@@ -255,7 +266,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         return self.tr(
             "This script searches for overlap relevance between thematic borders and "
             "reference borders, and creates a resulting border based on the overlapping "
-            "areas that are relevant."
+            "areas that are relevant. See <a href='https://onroerenderfgoed.github.io/brdrQ/autocorrectborders.html'>https://onroerenderfgoed.github.io/brdrQ/</a> for documentation of the brdrQ-plugin"
         )
 
     def helpUrl(self):
@@ -265,7 +276,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameters and outputs associated with it.
         """
         return self.tr(
-            "https://github.com/OnroerendErfgoed/brdrQ/blob/main/docs/autocorrectborders.md"
+            "https://onroerenderfgoed.github.io/brdrQ/autocorrectborders.html"
         )
 
     def initAlgorithm(self, config=None):
