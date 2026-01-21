@@ -267,7 +267,7 @@ class brdrQDockWidgetAligner(object):
         show_map(
             {key: self.dict_evaluated_predictions[key]},
             {key: self.aligner.dict_thematic[key]},
-            self.aligner.dict_reference,
+            self.aligner.reference_data.features,
         )
         return
 

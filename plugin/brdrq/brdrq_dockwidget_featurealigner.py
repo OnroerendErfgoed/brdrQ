@@ -31,7 +31,7 @@ from brdr.aligner import Aligner
 from brdr.be.grb.enums import GRBType
 from brdr.be.grb.loader import GRBActualLoader, GRBFiscalParcelLoader
 from brdr.configs import ProcessorConfig, AlignerConfig
-from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME
+from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME, VERSION_DATE
 from brdr.enums import AlignerResultType
 from brdr.loader import DictLoader
 from brdr.osm.loader import OSMLoader
@@ -459,18 +459,18 @@ class brdrQDockWidgetFeatureAligner(
         )
         return
 
-    def onListItemActivated(self, currentItem):
+    def onListItemActivated(self, current_item):
         print("onListItemActivated")
         self.deactivateSelectTool()
-        self._listItemActivated(currentItem)
+        self._listItemActivated(current_item)
 
     def _align(self):
         print("_align")
         feat = self.feature
-        selectedFeatures = []
+        selected_features = []
         if feat is not None:
-            selectedFeatures.append(feat)
-        if len(selectedFeatures) == 0:
+            selected_features.append(feat)
+        if len(selected_features) == 0:
             self.textEdit_output.setText(
                 "No features selected. Please select a feature from the active layer."
             )
@@ -479,7 +479,7 @@ class brdrQDockWidgetFeatureAligner(
         dict_to_load = {}
 
         self.progressBar.setValue(0)
-        for feature in selectedFeatures:
+        for feature in selected_features:
             original_geometry = get_original_geometry(
                 feature, BRDRQ_ORIGINAL_WKT_FIELDNAME
             )
@@ -572,8 +572,9 @@ class brdrQDockWidgetFeatureAligner(
             self.reference_layer.removeSelection()
             self.aligner.load_reference_data(DictLoader(dict_reference))
             self.aligner.name_reference_id = self.reference_id
-            self.aligner.dict_reference_source["source"] = PREFIX_LOCAL_LAYER
-            self.aligner.dict_reference_source["version_date"] = "unknown"
+            self.aligner.reference_data.source["source"] = PREFIX_LOCAL_LAYER
+            self.aligner.reference_data.source["source_url"] = PREFIX_LOCAL_LAYER
+            self.aligner.reference_data.source[VERSION_DATE] = "unknown"
         self.progressBar.setValue(50)
 
         self.aligner_result = self.aligner.evaluate(
@@ -587,10 +588,10 @@ class brdrQDockWidgetFeatureAligner(
 
         self.diffs_dict = self.aligner.get_difference_metrics_for_thematic_data(self.dict_processresults)
 
-        outputMessage = "PREDICTIONS (@ relevant distances): " + str(
+        output_message = "PREDICTIONS (@ relevant distances): " + str(
             [str(k) for k in self.dict_evaluated_predictions[feat.id()].keys()]
         )
-        self.textEdit_output.setText(outputMessage)
+        self.textEdit_output.setText(output_message)
         return (
             self.dict_processresults,
             self.dict_evaluated_predictions,
