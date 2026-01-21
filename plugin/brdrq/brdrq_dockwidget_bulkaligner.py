@@ -179,7 +179,6 @@ class brdrQDockWidgetBulkAligner(
 
     def evaluate_layer(self):
         self.progressBar.setValue(5)
-        processor_config
         self.aligner = Aligner()
         dict_to_load = {}
         for feature in self.getWorkingFeatures():
@@ -231,7 +230,7 @@ class brdrQDockWidgetBulkAligner(
 
         dict_evaluated_predictions = self.aligner.evaluate(
             ids_to_evaluate=None,
-            base_formula_field=None,
+            base_metadata_field=None,
             max_predictions=-1,
             relevant_distances=self.relevant_distances,
             full_strategy=self.full_strategy,
@@ -290,7 +289,7 @@ class brdrQDockWidgetBulkAligner(
 
     def add_results_to_grouplayer(self):
         fcs = self.aligner.get_results_as_geojson(
-            resulttype=AlignerResultType.PROCESSRESULTS, formula=self.formula
+            resulttype=AlignerResultType.PROCESSRESULTS, add_metadata=self.metadata
         )
 
         geojson_to_layer(

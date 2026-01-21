@@ -97,7 +97,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     RELEVANT_DISTANCE = (
         2  # default RELEVANT_DISTANCE for the aligner,updated by user-choice
     )
-    PROCESSOR = Processor.ALIGNER
+    PROCESSOR = Processor.AlignerGeometryProcessor
     CORR_DISTANCE = 0.01  # default CORR_DISTANCE for the aligner
     MULTI_AS_SINGLE_MODUS = True  # default MULTI_AS_SINGLE_MODUS for the aligner
 
@@ -307,9 +307,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterField(
-            "FORMULA_FIELD",
-            "brdr_formula field (optional; field that holds a brdr_formula, used for a better prediction)",  # (if empty, formula will be calculated based on following alignment-date)
-            "brdr_formula",
+            "METADATA_FIELD",
+            "brdr_metadata field (optional; field that holds brdr_metadata, used for a better prediction)",  # (if empty, metadata will not be used)
+            "brdr_metadata",
             self.INPUT_THEMATIC,
             optional=True,
         )
@@ -426,8 +426,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         processor_config.threshold_overlap_percentage = self.THRESHOLD_OVERLAP_PERCENTAGE
         processor=get_processor_by_id(processor_id=self.PROCESSOR.value,config=processor_config)
         aligner_config = AlignerConfig()
-        aligner_config.log_metadata = False
-        aligner_config.add_observations = False
+        aligner_config.log_metadata = True
+        aligner_config.add_observations = True
 
         aligner = Aligner(
             feedback=log_info,
@@ -583,7 +583,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.FULL_REFERENCE_STRATEGY = FullReferenceStrategy[
             ENUM_FULL_REFERENCE_STRATEGY_OPTIONS[parameters["FULL_REFERENCE_STRATEGY"]]
         ]
-        self.METADATA_FIELDNAME = parameters["FORMULA_FIELD"]
+        self.METADATA_FIELDNAME = parameters["METADATA_FIELD"]
         if str(self.METADATA_FIELDNAME) == "NULL":
             self.METADATA_FIELDNAME = None
         self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]

@@ -419,7 +419,7 @@ class brdrQDockWidgetFeatureAligner(
         if self.aligner is None:
             return
         fcs = self.aligner_result.get_results_as_geojson(aligner=self.aligner,
-            result_type=AlignerResultType.PROCESSRESULTS, add_metadata=self.formula
+            result_type=AlignerResultType.PROCESSRESULTS, add_metadata=self.metadata
         )
         result_diff = "result_diff"
         geojson_result_diff = fcs[result_diff]

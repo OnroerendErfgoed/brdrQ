@@ -121,12 +121,12 @@
       <item row="8" column="0">
        <widget class="QLabel" name="label_11">
         <property name="text">
-         <string>Add brdr_formula?</string>
+         <string>Add brdr_metadata?</string>
         </property>
        </widget>
       </item>
       <item row="8" column="1">
-       <widget class="QCheckBox" name="checkBox_formula">
+       <widget class="QCheckBox" name="checkBox_metadata">
         <property name="text">
          <string/>
         </property>

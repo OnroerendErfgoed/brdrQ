@@ -67,11 +67,11 @@ class Processor(str, Enum):
     """
     Enum for processors that can be used in brdrQ. Values based on the IDs in brdr.
     """
-    ALIGNER = "2024:aligner2024a"
-    DIEUSSAERT = "2024:dieussaert2024a"
-    SNAP = "2024:snap2024a"
-    NETWORK = "2024:network2024a"
-    TOPOLOGY = "2024:topology2024a"
+    AlignerGeometryProcessor = "2024:aligner2024a"
+    #DieussaertGeometryProcessor = "2024:dieussaert2024a"
+    SnapGeometryProcessor = "2024:snap2024a"
+    NetworkGeometryProcessor = "2024:network2024a"
+    #TOPOLOGY = "2024:topology2024a"
 
 class OsmType(dict, Enum):
     """
@@ -705,20 +705,6 @@ def show_map(
     # plt.tight_layout()
     # Show figure
     plt.show(block=False)
-
-
-def print_brdr_formula(dict_results, aligner):
-    for theme_id, dist_results in dict_results.items():
-        for rel_dist, processresults in dist_results.items():
-            print(
-                "--------Formula for ID  "
-                + str(theme_id)
-                + " with relevant distance "
-                + str(rel_dist)
-                + "--------------"
-            )
-            print(aligner.get_brdr_formula(processresults["result"]))
-    return
 
 
 def plot_series(

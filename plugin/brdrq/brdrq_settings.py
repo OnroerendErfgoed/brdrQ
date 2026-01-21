@@ -70,7 +70,7 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.reference_id = None
         self.reference_layer = None
         self.max_rel_dist = None
-        self.formula = None
+        self.metadata = None
         self.full_strategy = None
         self.processor = None
         self.partial_snapping = None
@@ -180,12 +180,12 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             self.comboBox_snapstrategy.currentText()
         ]
         if self.processor is None or self.processor not in Processor:
-            default_processor = Processor.ALIGNER
+            default_processor = Processor.AlignerGeometryProcessor
             processor_name = s.value(
                 "brdrq/processor", default_processor.name
             )
             if processor_name not in Processor.__members__:
-                full_strategy_name = default_processor.name
+                processor_name = default_processor.name
             index = self.comboBox_processor.findText(
                 Processor[processor_name].name
             )
@@ -242,10 +242,10 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
                 self.mFieldComboBox_reference.setField(None)
         self.reference_id = self.mFieldComboBox_reference.currentField()
 
-        if self.formula is None:
-            self.formula = int(s.value("brdrq/formula", 0))
-            self.checkBox_formula.setCheckState(self.formula)
-        self.formula = self.checkBox_formula.checkState()
+        if self.metadata is None:
+            self.metadata = int(s.value("brdrq/metadata", 0))
+            self.checkBox_metadata.setCheckState(self.metadata)
+        self.metadata = self.checkBox_metadata.checkState()
 
         # if self.partial_snapping is None:
         #     self.partial_snapping = int(s.value("brdrq/partial_snapping", 0))
@@ -276,8 +276,9 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         s.setValue("brdrq/reference_id", self.reference_id)
         s.setValue("brdrq/reference_layer", self.reference_layer)
         s.setValue("brdrq/max_rel_dist", self.max_rel_dist)
-        s.setValue("brdrq/formula", self.formula)
+        s.setValue("brdrq/metadata", self.metadata)
         s.setValue("brdrq/full_strategy", self.full_strategy.name)
+        s.setValue("brdrq/processor", self.processor.name)
         s.setValue("brdrq/partial_snapping", self.partial_snapping)
         s.setValue(
             "brdrq/partial_snapping_strategy", self.partial_snapping_strategy.name

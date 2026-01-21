@@ -178,7 +178,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     FULL_REFERENCE_STRATEGY = FullReferenceStrategy.NO_FULL_REFERENCE
     # TODO: check what is best predictionStrategy in combination with correction_layer
     PREDICTION_STRATEGY = PredictionStrategy.BEST
-    PROCESSOR = Processor.ALIGNER
+    PROCESSOR = Processor.AlignerGeometryProcessor
     THRESHOLD_OVERLAP_PERCENTAGE = 50  # default THRESHOLD_OVERLAP_PERCENTAGE for the aligner,updated by user-choice
     REVIEW_PERCENTAGE = 10  # default - features that changes more than this % wil be moved to review lisr
     RELEVANT_DISTANCE = (
@@ -589,8 +589,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         processor_config.threshold_overlap_percentage = self.THRESHOLD_OVERLAP_PERCENTAGE
         processor=get_processor_by_id(processor_id=self.PROCESSOR.value, config=processor_config)
         aligner_config = AlignerConfig()
-        aligner_config.log_metadata = False
-        aligner_config.add_observations = False
+        aligner_config.log_metadata = self.ADD_METADATA
+        aligner_config.add_observations = self.ADD_METADATA
         aligner = Aligner(
             feedback=log_info,
         crs = self.CRS,
@@ -801,7 +801,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         id_geom_map = {}
         id_diff_index_map = {}
         id_diff_perc_index_map = {}
-        id_formula_map = {}
+        id_metadata_map = {}
         ids_to_review = []
         ids_to_align = []
         ids_not_changed = []
@@ -815,7 +815,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ids_to_review.append(key)
             id_geom_map[key] = feat.geometry()
             if self.ADD_METADATA:
-                id_formula_map[key] = feat[METADATA_FIELD_NAME]
+                id_metadata_map[key] = feat[METADATA_FIELD_NAME]#TODO - to check
             id_diff_index_map[key] = feat[SYMMETRICAL_AREA_CHANGE]
             id_diff_perc_index_map[key] = feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE]
             if stability_field_available and not feat[STABILITY]:
@@ -840,7 +840,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         for feat in correction_layer.getFeatures():
             fid = feat[self.ID_THEME_FIELDNAME]
             if self.ADD_METADATA:
-                feat[METADATA_FIELD_NAME] = id_formula_map[fid]
+                feat[METADATA_FIELD_NAME] = id_metadata_map[fid]
             feat[SYMMETRICAL_AREA_CHANGE] = id_diff_index_map[fid]
             feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] = id_diff_perc_index_map[fid]
             feat[BRDRQ_ORIGINAL_WKT_FIELDNAME] = feat.geometry().asWkt()

@@ -49,7 +49,7 @@ class brdrQDockWidgetAligner(object):
             self.iface = self.brdrqplugin.iface
         self.layer = None
         self.crs = None
-        self.formula = None
+        self.metadata = None
         self.max_feature_count = 5000
         self.max_area_optimization = 100000
         self.max_area_limit = (
@@ -70,7 +70,7 @@ class brdrQDockWidgetAligner(object):
         self.reference_id = None
         self.reference_layer = None
         self.max_rel_dist = None
-        self.formula = None
+        self.metadata = None
         self.full_strategy = None
         self.partial_snapping = None
         self.partial_snapping_strategy = None
@@ -320,7 +320,7 @@ class brdrQDockWidgetAligner(object):
         self.maximum = self.settingsDialog.maximum
         self.step = self.settingsDialog.step
         self.relevant_distances = self.settingsDialog.relevant_distances
-        self.formula = self.settingsDialog.formula
+        self.metadata = self.settingsDialog.metadata
         self.full_strategy = self.settingsDialog.full_strategy
         self.partial_snapping = self.settingsDialog.partial_snapping
         self.partial_snapping_strategy = self.settingsDialog.partial_snapping_strategy
