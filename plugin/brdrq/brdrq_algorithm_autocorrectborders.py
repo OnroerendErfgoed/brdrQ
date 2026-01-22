@@ -32,6 +32,7 @@ import os
 import sys
 from datetime import datetime
 
+import brdr.constants
 # TODO QGIS4
 from PyQt5.QtCore import QVariant
 from brdr.be.grb.enums import GRBType
@@ -42,9 +43,11 @@ from brdr.constants import (
     SYMMETRICAL_AREA_CHANGE,
     SYMMETRICAL_AREA_PERCENTAGE_CHANGE,
     METADATA_FIELD_NAME,
+ID_THEME_FIELD_NAME
 )
 from brdr.geometry_utils import safe_unary_union
 from brdr.osm.loader import OSMLoader
+
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
     QgsRendererCategory,
@@ -127,7 +130,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     # THEMATIC PARAMETERS
     INPUT_THEMATIC = "INPUT_THEMATIC"  # reference to the combobox for choosing the thematic input layer
-    ID_THEME_FIELDNAME = (
+    ID_THEME_BRDRQ_FIELDNAME = (
         ""  # parameters that holds the fieldname of the unique theme id
     )
     LAYER_THEMATIC = None  # reference to the thematic input QgisVectorLayer
@@ -138,7 +141,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     LAYER_REFERENCE_NAME = (
         "LAYER_REFERENCE_NAME"  # Name of the local referencelayer in the TOC
     )
-    ID_REFERENCE_FIELDNAME = "CAPAKEY"  # field that holds the fieldname of the unique reference id,defaults to CAPAKEY
+    ID_REFERENCE_BRDRQ_FIELDNAME = "CAPAKEY"  # field that holds the fieldname of the unique reference id,defaults to CAPAKEY
     SELECTED_REFERENCE = None  # parameter that holds the chosen reference layer (0 means that a local reference layer is used)
 
     # ENUM for choosing the OD-strategy
@@ -175,8 +178,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     OD_STRATEGY = (
         OpenDomainStrategy.SNAP_ALL_SIDE
     )  # default OD_STRATEGY for the aligner,updated by user-choice
-    FULL_REFERENCE_STRATEGY = FullReferenceStrategy.NO_FULL_REFERENCE
-    # TODO: check what is best predictionStrategy in combination with correction_layer
+    FULL_REFERENCE_STRATEGY = FullReferenceStrategy.PREFER_FULL_REFERENCE
     PREDICTION_STRATEGY = PredictionStrategy.BEST
     PROCESSOR = Processor.AlignerGeometryProcessor
     THRESHOLD_OVERLAP_PERCENTAGE = 50  # default THRESHOLD_OVERLAP_PERCENTAGE for the aligner,updated by user-choice
@@ -253,9 +255,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameters and outputs associated with it.
         """
         return self.tr(
-            "This script searches for overlap relevance between thematic borders and "
-            "reference borders, and creates a resulting border based on the overlapping "
-            "areas that are relevant. See <a href='https://onroerenderfgoed.github.io/brdrQ/autocorrectborders.html'>https://onroerenderfgoed.github.io/brdrQ/</a> for documentation of the brdrQ-plugin"
+            "This process aligns your thematic data to reference data, based on the chosen parameters. <br> See <a href='https://onroerenderfgoed.github.io/brdrQ/autocorrectborders.html'>https://onroerenderfgoed.github.io/brdrQ/</a> for documentation of the brdrQ-plugin"
         )
     def shortHelpString(self):
         """
@@ -264,9 +264,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameters and outputs associated with it.
         """
         return self.tr(
-            "This script searches for overlap relevance between thematic borders and "
-            "reference borders, and creates a resulting border based on the overlapping "
-            "areas that are relevant. See <a href='https://onroerenderfgoed.github.io/brdrQ/autocorrectborders.html'>https://onroerenderfgoed.github.io/brdrQ/</a> for documentation of the brdrQ-plugin"
+            "This process aligns your thematic data to reference data, based on the chosen parameters. <br> See <a href='https://onroerenderfgoed.github.io/brdrQ/autocorrectborders.html'>https://onroerenderfgoed.github.io/brdrQ/</a> for documentation of the brdrQ-plugin"
         )
 
     def helpUrl(self):
@@ -289,24 +287,26 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterFeatureSource(
             self.INPUT_THEMATIC,
-            self.tr("THEMATIC LAYER"),
+            '<b>THEMATIC DATA</b><br><i style="color: gray;">Choose your thematic layer to align and its unique ID</i><br><br>Thematic Layer',
             [QgsProcessing.TypeVectorAnyGeometry],
             defaultValue="themelayer",
         )
+
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
         parameter = QgsProcessingParameterField(
             "COMBOBOX_ID_THEME",
-            "Choose thematic ID",
+            "Thematic ID (unique!)",
             "theme_identifier",
             self.INPUT_THEMATIC,
         )
+
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterEnum(
             "ENUM_REFERENCE",
-            "Select Reference Layer:",
+            '<br><b>REFERENCE DATA</b><br><i style="color: gray;">Choose the reference data. You can choose for on-the-fly download of prepared reference-data OR a local reference layer (LOCREF)</i><br><br>Reference',
             options=ENUM_REFERENCE_OPTIONS,
             defaultValue=0,  # Index of the default option (e.g., 'Option A')
         )
@@ -315,7 +315,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterFeatureSource(
             self.INPUT_REFERENCE,
-            self.tr("REFERENCE LAYER"),
+            '<br>Local reference layer<br><i style="color: gray;">If LOCREF, Choose reference layer</i>',
             [QgsProcessing.TypeVectorAnyGeometry],
             optional=True,
         )
@@ -324,8 +324,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterField(
             "COMBOBOX_ID_REFERENCE",
-            "Choose reference ID",
-            self.ID_REFERENCE_FIELDNAME,  # defaults to CAPAKEY
+            '<br>Reference ID (unique!)<br><i style="color: gray;">If LOCREF, Choose unique Reference ID for reference layer</i>',
+            self.ID_REFERENCE_BRDRQ_FIELDNAME,  # defaults to CAPAKEY
             self.INPUT_REFERENCE,
             optional=True,
         )
@@ -334,7 +334,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterNumber(
             "RELEVANT_DISTANCE",
-            "RELEVANT_DISTANCE (meter)",
+            '<br><b>RELEVANT DISTANCE (units: meter)</b><br><i style="color: gray;">This distance in meters determines what the max amount of change will be allowed when aligning your data</i><br><br>Relevant distance (m)',
             type=QgsProcessingParameterNumber.Double,
             defaultValue=3,
         )
@@ -377,9 +377,45 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             )
         )
         # advanced parameters
+
+        parameter = QgsProcessingParameterEnum(
+            "PREDICTIONS",
+            '<br><b>PREDICTION SETTINGS</b><br><i style="color: gray;">Predictions uses a range of relevant distances to predict the best alignment. This results in better alignment results, but (!) increases (!) processing time</i><br><br>Use predictions',
+            options=["NO_PREDICTIONS","PREDICTIONS"],
+            defaultValue=0,
+        )
+
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterEnum(
+            "PREDICTION_STRATEGY",
+            '<br>Prediction Strategy<br><i style="color: gray;">When using Predictions, the prediction strategy determines which predictions are returned in the output: All predictions, only the BEST prediction, or the ORIGINAL if there are multiple predictions</i>',
+            options=ENUM_PREDICTION_STRATEGY_OPTIONS,
+            defaultValue=1,
+            #optional=True,
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
+        parameter = QgsProcessingParameterEnum(
+            "FULL_REFERENCE_STRATEGY",
+            '<br>Full Reference Strategy<br><i style="color: gray;">When using Predictions, the Full Reference strategy determines how predictions are handled that are fully covered by reference-data </i>',
+            options=ENUM_FULL_REFERENCE_STRATEGY_OPTIONS,
+            defaultValue=2,
+            #optional=True,
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
+
         parameter = QgsProcessingParameterEnum(
             "ENUM_PROCESSOR",
-            "Select Processing algorithm:",
+            '<br><b>PROCESSOR_SETTINGS</b><br><i style="color: gray;">These settings determine the Processor (algorithm) & Processing-parameters to execute the alignment</i><br><br>Processor',
             options=ENUM_PROCESSOR_OPTIONS,
             defaultValue=0,  # Index of the default option (e.g., 'ALIGNER')
         )
@@ -389,7 +425,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
         parameter = QgsProcessingParameterEnum(
             "ENUM_OD_STRATEGY",
-            "Select OD-STRATEGY:",
+            '<br>Open Domain Strategy<br><i style="color: gray;">Strategy how the processing-algorithm handles the parts that are not covered by reference features (=Open Domain). You can choose to Exclude, Leave it AS IS, or ALIGN it to the reference features</i>',
             options=ENUM_OD_STRATEGY_OPTIONS,
             defaultValue=3,  # Index of the default option (e.g., 'SNAP_ALL_SIDE')
         )
@@ -400,7 +436,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterNumber(
             "THRESHOLD_OVERLAP_PERCENTAGE",
-            "THRESHOLD_OVERLAP_PERCENTAGE (%)",
+            '<br>Threshold overlap percentage<br><i style="color: gray;">In the exceptional case that the algorithm cannot determine if a reference feature is relevant, this fallback-parameter is used to determine to include/exclude a reference based on overlap-percentage</i>',
             type=QgsProcessingParameterNumber.Double,
             defaultValue=50,
         )
@@ -408,31 +444,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
         )
         self.addParameter(parameter)
-        parameter = QgsProcessingParameterEnum(
-            "FULL_REFERENCE_STRATEGY",
-            "Select FULL_REFERENCE_STRATEGY:",
-            options=ENUM_FULL_REFERENCE_STRATEGY_OPTIONS,
-            defaultValue=2,
-        )
-        parameter.setFlags(
-            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
-        )
-        self.addParameter(parameter)
 
-        parameter = QgsProcessingParameterEnum(
-            "PREDICTION_STRATEGY",
-            "Select PREDICTION_STRATEGY:",
-            options=ENUM_PREDICTION_STRATEGY_OPTIONS,
-            defaultValue=1,
-        )
-        parameter.setFlags(
-            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
-        )
-        parameter.setFlags(parameter.flags())
-        self.addParameter(parameter)
         parameter = QgsProcessingParameterFile(
             "WORK_FOLDER",
-            self.tr("Working folder"),
+            '<br><b>OUTPUT SETTINGS</b><br><i style="color: gray;"> Settings to determine how the output will appear</i><br><br>Work Folder',
             behavior=QgsProcessingParameterFile.Folder,
             optional=True,
         )
@@ -443,7 +458,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterNumber(
             "REVIEW_PERCENTAGE",
-            "REVIEW_PERCENTAGE (%) - results with a higher change % move to review-list",
+            '<br>REVIEW_PERCENTAGE (%)<br><i style="color: gray;">results with a higher change % move to review-list </i>',
             type=QgsProcessingParameterNumber.Double,
             defaultValue=10,
         )
@@ -453,7 +468,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
-            "ADD_METADATA", "ADD_METADATA", defaultValue=self.ADD_METADATA
+            "ADD_METADATA", "Add METADATA to output", defaultValue=self.ADD_METADATA
         )
         parameter.setFlags(
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
@@ -461,7 +476,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
-            "ADD_ATTRIBUTES", "ADD_ATTRIBUTES", defaultValue=self.ATTRIBUTES
+            "ADD_ATTRIBUTES", "Add ATTRIBUTES to output", defaultValue=self.ATTRIBUTES
         )
         parameter.setFlags(
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
@@ -470,7 +485,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterBoolean(
             "SHOW_INTERMEDIATE_LAYERS",
-            "SHOW_INTERMEDIATE_LAYERS",
+            "Show Intermediate processing results (if provided by processor)",
             defaultValue=self.SHOW_INTERMEDIATE_LAYERS,
         )
         parameter.setFlags(
@@ -479,17 +494,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
-            "PREDICTIONS",
-            "GET_BEST_PREDICTION_FOR_RELEVANT_DISTANCE (slower; evaluates also intermediate relevant distances resulting in possibly more detailed results)",
-            defaultValue=self.PREDICTIONS,
-        )
-        parameter.setFlags(
-            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
-        )
-        self.addParameter(parameter)
-
-        parameter = QgsProcessingParameterBoolean(
-            "SHOW_LOG_INFO", "SHOW_LOG_INFO (brdr-log)", defaultValue=self.SHOW_LOG_INFO
+            "SHOW_LOG_INFO", "Show extra logging (from brdr-log)", defaultValue=self.SHOW_LOG_INFO
         )
         parameter.setFlags(
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
@@ -521,7 +526,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             feature_geom = feature.geometry()
             if feedback.isCanceled():
                 return {}
-            id_theme = feature.attribute(self.ID_THEME_FIELDNAME)
+            id_theme = feature.attribute(self.ID_THEME_BRDRQ_FIELDNAME)
             dict_thematic[id_theme] = geom_qgis_to_shapely(feature_geom)
             if self.ATTRIBUTES:
                 # dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
@@ -569,7 +574,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             for current, feature in enumerate(features):
                 if feedback.isCanceled():
                     return {}
-                id_reference = feature.attribute(self.ID_REFERENCE_FIELDNAME)
+                id_reference = feature.attribute(self.ID_REFERENCE_BRDRQ_FIELDNAME)
                 dict_reference[id_reference] = geom_qgis_to_shapely(feature.geometry())
         feedback.pushInfo("2) PREPROCESSING - Reference layer fixed")
         feedback.setCurrentStep(3)
@@ -601,7 +606,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         feedback.pushInfo("Load thematic data")
         aligner.load_thematic_data(DictLoader(dict_thematic, dict_thematic_properties))
-        aligner.name_thematic_id = self.ID_THEME_FIELDNAME
+        aligner.name_thematic_id = self.ID_THEME_BRDRQ_FIELDNAME
 
         feedback.pushInfo("Load reference data")
         if self.SELECTED_REFERENCE == 0:
@@ -638,39 +643,48 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         if self.RELEVANT_DISTANCE < 0:
             raise QgsProcessingException("Please provide a RELEVANT DISTANCE >=0")
-        elif not self.PREDICTIONS:
-            relevant_distances = [0,self.RELEVANT_DISTANCE] #TODO - check if adding 0 is ok for brdrQ
+        if not self.PREDICTIONS:
+            relevant_distances = [self.RELEVANT_DISTANCE]
+            aligner_result = aligner.predict(
+                relevant_distances=relevant_distances,
+            )
+            fcs = aligner_result.get_results_as_geojson(
+                aligner=aligner,
+                result_type=AlignerResultType.PROCESSRESULTS,
+                add_metadata=self.ADD_METADATA,
+                add_original_attributes=self.ATTRIBUTES,
+            )
         else:
             relevant_distances = (
                     np.arange(0, self.RELEVANT_DISTANCE * 100, 10, dtype=int) / 100
             )
 
-        if self.PREDICTION_STRATEGY == PredictionStrategy.BEST:
-            max_predictions = 1
-            multi_to_best_prediction = True
-        elif self.PREDICTION_STRATEGY == PredictionStrategy.ALL:
-            max_predictions = -1
-            multi_to_best_prediction = False
-        elif self.PREDICTION_STRATEGY == PredictionStrategy.ORIGINAL:
-            max_predictions = 1
-            multi_to_best_prediction = False
-        else:
-            raise Exception("Unknown PREDICTION_STRATEGY")
+            if self.PREDICTION_STRATEGY == PredictionStrategy.BEST:
+                max_predictions = 1
+                multi_to_best_prediction = True
+            elif self.PREDICTION_STRATEGY == PredictionStrategy.ALL:
+                max_predictions = -1
+                multi_to_best_prediction = False
+            elif self.PREDICTION_STRATEGY == PredictionStrategy.ORIGINAL:
+                max_predictions = 1
+                multi_to_best_prediction = False
+            else:
+                raise Exception("Unknown PREDICTION_STRATEGY")
 
-        aligner_result = aligner.evaluate(
-            relevant_distances=relevant_distances,
-            max_predictions=max_predictions,
-            multi_to_best_prediction=multi_to_best_prediction,
-            full_reference_strategy=self.FULL_REFERENCE_STRATEGY,
-        )
-        fcs = aligner_result.get_results_as_geojson(
-            aligner=aligner,
-            result_type=AlignerResultType.EVALUATED_PREDICTIONS,
-            add_metadata=self.ADD_METADATA,
-            add_original_attributes=self.ATTRIBUTES,
-        )
+            aligner_result = aligner.evaluate(
+                relevant_distances=relevant_distances,
+                max_predictions=max_predictions,
+                multi_to_best_prediction=multi_to_best_prediction,
+                full_reference_strategy=self.FULL_REFERENCE_STRATEGY,
+            )
+            fcs = aligner_result.get_results_as_geojson(
+                aligner=aligner,
+                result_type=AlignerResultType.EVALUATED_PREDICTIONS,
+                add_metadata=self.ADD_METADATA,
+                add_original_attributes=self.ATTRIBUTES,
+            )
         if "result" not in fcs:
-            feedback.pushInfo("Geen predicties gevonden")
+            feedback.pushInfo("No results found")
             feedback.pushInfo("END")
 
             return {}
@@ -761,19 +775,22 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         result_diff_min = QgsProject.instance().mapLayersByName(
             self.LAYER_RESULT_DIFF_MIN
         )[0]
-        try:
-            correction_layer = self.generate_correction_layer(
-                thematic, result
-            )
-        except:
-            print("problem generating correction layer")
-            correction_layer = None
+        correction_layer = None
+        if not self.PREDICTIONS or self.PREDICTION_STRATEGY!=PredictionStrategy.ALL:
+            feedback.pushInfo("Generating correction layer")
+            try:
+                correction_layer = self.generate_correction_layer(
+                    thematic, result
+                )
+            except:
+                print("problem generating correction layer")
+        else:
+            feedback.pushInfo("No correction layer generated when predictions with predictionStrategy ALL is activated")
 
         QgsProject.instance().reloadAllLayers()
-        feedback.pushInfo("Resulterende geometrie berekend")
         if feedback.isCanceled():
             return {}
-        feedback.pushInfo("EINDE: RESULTAAT BEREKEND")
+        feedback.pushInfo("END: RESULTS CALCULATED")
         # feedback.setCurrentStep(6) #removed so the script will end before 100%-progressbar is reached
         return {
             "OUTPUT_RESULT": result,
@@ -809,13 +826,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         if is_field_in_layer(STABILITY, results_layer):
             stability_field_available = True
         for feat in results_layer.getFeatures():
-            key = feat[self.ID_THEME_FIELDNAME]
+            key = feat[ID_THEME_FIELD_NAME]
             if key in id_geom_map.keys():
                 # when key not unique and multiple predictions, the last prediction is added to the list and the status is set to review
                 ids_to_review.append(key)
             id_geom_map[key] = feat.geometry()
             if self.ADD_METADATA:
-                id_metadata_map[key] = feat[METADATA_FIELD_NAME]#TODO - to check
+                id_metadata_map[key] = feat[METADATA_FIELD_NAME]
             id_diff_index_map[key] = feat[SYMMETRICAL_AREA_CHANGE]
             id_diff_perc_index_map[key] = feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE]
             if stability_field_available and not feat[STABILITY]:
@@ -838,7 +855,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         correction_layer.updateFields()
         for feat in correction_layer.getFeatures():
-            fid = feat[self.ID_THEME_FIELDNAME]
+            fid = feat[self.ID_THEME_BRDRQ_FIELDNAME]
             if self.ADD_METADATA:
                 feat[METADATA_FIELD_NAME] = id_metadata_map[fid]
             feat[SYMMETRICAL_AREA_CHANGE] = id_diff_index_map[fid]
@@ -1019,8 +1036,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 self.LAYER_THEMATIC.sourceCrs().authid()
             )  # set CRS for the calculations, based on the THEMATIC input layer
         self.CRS = crs
-        self.ID_THEME_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
-        self.ID_REFERENCE_FIELDNAME = parameters["COMBOBOX_ID_REFERENCE"]
+        self.ID_THEME_BRDRQ_FIELDNAME = parameters["COMBOBOX_ID_THEME"]
+        self.ID_REFERENCE_BRDRQ_FIELDNAME = parameters["COMBOBOX_ID_REFERENCE"]
         self.THRESHOLD_OVERLAP_PERCENTAGE = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
         self.REVIEW_PERCENTAGE = parameters["REVIEW_PERCENTAGE"]
         self.OD_STRATEGY = OpenDomainStrategy[
@@ -1037,7 +1054,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.ADD_METADATA = parameters["ADD_METADATA"]
         self.ATTRIBUTES = parameters["ADD_ATTRIBUTES"]
         self.SHOW_INTERMEDIATE_LAYERS = parameters["SHOW_INTERMEDIATE_LAYERS"]
-        self.PREDICTIONS = parameters["PREDICTIONS"]
+        if parameters["PREDICTIONS"]:
+            self.PREDICTIONS = True #1 means PREDICTION
+        else:
+            self.PREDICTIONS = False #0 means NO_PREDICTION
 
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
 
@@ -1047,7 +1067,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         self.SELECTED_REFERENCE, self.LAYER_REFERENCE_NAME, ref_suffix = (
             get_reference_params(
-                ref, self.LAYER_REFERENCE, self.ID_REFERENCE_FIELDNAME, self.CRS
+                ref, self.LAYER_REFERENCE, self.ID_REFERENCE_BRDRQ_FIELDNAME, self.CRS
             )
         )
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")

@@ -59,7 +59,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "STABILITY": True,
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
-                "PREDICTIONS": False,
+                "PREDICTIONS": 0,
                 "SHOW_LOG_INFO": False,
             },
         )
@@ -98,7 +98,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "STABILITY": True,
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
-                "PREDICTIONS": False,
+                "PREDICTIONS": 0,
                 "SHOW_LOG_INFO": False,
             },
         )
@@ -135,7 +135,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "STABILITY": True,
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
-                "PREDICTIONS": False,
+                "PREDICTIONS": 0,
                 "SHOW_LOG_INFO": False,
             },
         )
@@ -187,7 +187,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "STABILITY": True,
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
-                "PREDICTIONS": False,
+                "PREDICTIONS": 0,
                 "SHOW_LOG_INFO": False,
             },
         )
@@ -234,7 +234,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "STABILITY": True,
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
-                "PREDICTIONS": False,
+                "PREDICTIONS": 0,
                 "SHOW_LOG_INFO": False,
             },
         )
@@ -265,19 +265,116 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "ENUM_PROCESSOR": 0,
                 "THRESHOLD_OVERLAP_PERCENTAGE": 50,
                 "FULL_REFERENCE_STRATEGY": 2,
-                "PREDICTION_STRATEGY": 0,
+                "PREDICTION_STRATEGY": 2,
                 "REVIEW_PERCENTAGE": 10,
                 "ADD_METADATA": True,
                 "STABILITY": True,
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
-                "PREDICTIONS": True,
+                "PREDICTIONS": 1,
                 "SHOW_LOG_INFO": False,
             },
         )
         featurecount = layer_theme.featureCount()
         assert len(output)==5
         for o in output.values():
+            assert isinstance(o,QgsVectorLayer)
+            assert o.featureCount()>=featurecount
+
+    def test_autocorrectborders_no_metadata(self):
+        foldername = QgsProcessingParameterFolderDestination(name="brdrQ").generateTemporaryDestination()
+        path = os.path.join(os.path.dirname(__file__), "themelayer_test.geojson")
+        themelayername = "themelayer_test"
+        layer_theme = QgsVectorLayer(path, themelayername)
+        QgsProject.instance().addMapLayer(layer_theme)
+
+        output = processing.run(
+            "brdrqprovider:brdrqautocorrectborders",
+            # {
+            #     "INPUT_THEMATIC": themelayername,
+            #     "COMBOBOX_ID_THEME": "theme_identifier",
+            #     "RELEVANT_DISTANCE": 5,
+            #     "ENUM_REFERENCE": 1,
+            #     "INPUT_REFERENCE": None,
+            #     "COMBOBOX_ID_REFERENCE": "",
+            #     "WORK_FOLDER": foldername,
+            #     "ENUM_OD_STRATEGY": 1,
+            #     "ENUM_PROCESSOR": 0,
+            #     "THRESHOLD_OVERLAP_PERCENTAGE": 50,
+            #     "FULL_REFERENCE_STRATEGY": 2,
+            #     "PREDICTION_STRATEGY": 1,
+            #     "REVIEW_PERCENTAGE": 10,
+            #     "ADD_METADATA": False,
+            #     "STABILITY": True,
+            #     "ADD_ATTRIBUTES": True,
+            #     "SHOW_INTERMEDIATE_LAYERS": True,
+            #     "PREDICTIONS": 0,
+            #     "SHOW_LOG_INFO": False,
+            # },
+            {
+                "INPUT_THEMATIC": themelayername,
+                "COMBOBOX_ID_THEME": "theme_identifier",
+                "ENUM_REFERENCE": 1,
+                "INPUT_REFERENCE": None,
+                "COMBOBOX_ID_REFERENCE": "",
+                "RELEVANT_DISTANCE": 3,
+                "PREDICTIONS": 0,
+                "PREDICTION_STRATEGY": 1,
+                "FULL_REFERENCE_STRATEGY": 2,
+                "ENUM_PROCESSOR": 0,
+                "ENUM_OD_STRATEGY": 3,
+                "THRESHOLD_OVERLAP_PERCENTAGE": 50,
+                "WORK_FOLDER": "",
+                "REVIEW_PERCENTAGE": 10,
+                "ADD_METADATA": False,
+                "ADD_ATTRIBUTES": False,
+                "SHOW_INTERMEDIATE_LAYERS": False,
+                "SHOW_LOG_INFO": False,
+            },
+        )
+        featurecount = layer_theme.featureCount()
+        assert len(output)==5
+        for o in output.values():
+            assert isinstance(o,QgsVectorLayer)
+            assert o.featureCount()>=featurecount
+
+    def test_autocorrectborders_no_correctionlayer_created(self):
+        foldername = QgsProcessingParameterFolderDestination(name="brdrQ").generateTemporaryDestination()
+        path = os.path.join(os.path.dirname(__file__), "themelayer_test.geojson")
+        themelayername = "themelayer_test"
+        layer_theme = QgsVectorLayer(path, themelayername)
+        QgsProject.instance().addMapLayer(layer_theme)
+
+        output = processing.run(
+            "brdrqprovider:brdrqautocorrectborders",
+            {
+                "INPUT_THEMATIC": themelayername,
+                "COMBOBOX_ID_THEME": "theme_identifier",
+                "RELEVANT_DISTANCE": 5,
+                "ENUM_REFERENCE": 1,
+                "INPUT_REFERENCE": None,
+                "COMBOBOX_ID_REFERENCE": "",
+                "WORK_FOLDER": foldername,
+                "ENUM_OD_STRATEGY": 1,
+                "ENUM_PROCESSOR": 0,
+                "THRESHOLD_OVERLAP_PERCENTAGE": 50,
+                "FULL_REFERENCE_STRATEGY": 2,
+                "PREDICTION_STRATEGY": 0, #ALL
+                "REVIEW_PERCENTAGE": 10,
+                "ADD_METADATA": False,
+                "STABILITY": True,
+                "ADD_ATTRIBUTES": True,
+                "SHOW_INTERMEDIATE_LAYERS": True,
+                "PREDICTIONS": 1,
+                "SHOW_LOG_INFO": False,
+            },
+        )
+        featurecount = layer_theme.featureCount()
+
+        output_layers =list(output.values())
+        assert len(output_layers)==5
+        assert output_layers[0] is None #correction_layer is None
+        for o in output_layers[1:]:
             assert isinstance(o,QgsVectorLayer)
             assert o.featureCount()>=featurecount
 
@@ -310,7 +407,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                     "STABILITY": True,
                     "ADD_ATTRIBUTES": True,
                     "SHOW_INTERMEDIATE_LAYERS": True,
-                    "PREDICTIONS": False,
+                    "PREDICTIONS": 0,
                     "SHOW_LOG_INFO": False,
                 },
             )
