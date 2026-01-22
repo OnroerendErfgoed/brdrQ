@@ -582,6 +582,7 @@ class brdrQDockWidgetFeatureAligner(
             relevant_distances=self.relevant_distances,
             full_reference_strategy=self.full_strategy,
         )
+        #TODO should we add a try/catch, fe when using DieussaertProcessing for non-polygons it will result in error
 
         self.dict_processresults = self.aligner_result.get_results(aligner=self.aligner)
         self.dict_evaluated_predictions = self.aligner_result.get_results(aligner=self.aligner,result_type=AlignerResultType.EVALUATED_PREDICTIONS)
