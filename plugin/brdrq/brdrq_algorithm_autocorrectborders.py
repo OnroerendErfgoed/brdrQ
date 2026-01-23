@@ -291,9 +291,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             [QgsProcessing.TypeVectorAnyGeometry],
             defaultValue="themelayer",
         )
-
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
+
         parameter = QgsProcessingParameterField(
             "COMBOBOX_ID_THEME",
             "Thematic ID (unique!)",
@@ -423,6 +423,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
         )
         self.addParameter(parameter)
+
         parameter = QgsProcessingParameterEnum(
             "ENUM_OD_STRATEGY",
             '<br>Open Domain Strategy<br><i style="color: gray;">Strategy how the processing-algorithm handles the parts that are not covered by reference features (=Open Domain). You can choose to Exclude, Leave it AS IS, or ALIGN it to the reference features</i>',
@@ -595,7 +596,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         processor=get_processor_by_id(processor_id=self.PROCESSOR.value, config=processor_config)
         aligner_config = AlignerConfig()
         aligner_config.log_metadata = self.ADD_METADATA
-        aligner_config.add_observations = self.ADD_METADATA
+        if self.PREDICTIONS:
+            aligner_config.add_observations = self.ADD_METADATA
+        else:
+            aligner_config.add_observations = True #Set always to True when NO_predictions
         aligner = Aligner(
             feedback=log_info,
         crs = self.CRS,

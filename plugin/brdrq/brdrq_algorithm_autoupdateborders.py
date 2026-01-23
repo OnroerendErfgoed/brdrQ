@@ -213,7 +213,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # standard parameters
         parameter = QgsProcessingParameterFeatureSource(
             self.INPUT_THEMATIC,
-            "THEMATIC LAYER, with the features to align",
+            '<b>THEMATIC DATA</b><br><i style="color: gray;">Choose your thematic layer to align and its unique ID</i><br><br>Thematic Layer',
             [QgsProcessing.TypeVectorAnyGeometry],
             defaultValue="themelayer",
         )
@@ -222,13 +222,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterField(
             "COMBOBOX_ID_THEME",
-            "Choose thematic ID (a field with unique identifiers of the thematic layer)",
+            "Thematic ID (unique!)",
             "theme_identifier",
             self.INPUT_THEMATIC,
-        )
-
-        parameter.setHelp(
-            "Dit is de themalaag die als input zal worden gebruikt voor de verwerking."
         )
 
         parameter.setFlags(parameter.flags())
@@ -236,7 +232,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterEnum(
             "ENUM_REFERENCE",
-            "Select actual GRB Type to align to (ADP=parcels, GBG=buildings, KNW=artwork) :",
+            '<br><b>REFERENCE DATA</b><br><i style="color: gray;">Choose the GRB reference data. The data will be downloaded on-the-fly </i>',
             options=GRB_TYPES,
             defaultValue=0,  # Index of the default option (e.g., 'Option A')
         )
@@ -245,26 +241,43 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterNumber(
             "MAX_RELEVANT_DISTANCE",
-            "MAX_RELEVANT_DISTANCE (meter) - Max distance to try to align on the actual GRB",
+            '<br><b>RELEVANT DISTANCE (units: meter)</b><br><i style="color: gray;">This distance in meters determines what the max amount of change will be allowed when aligning your data</i><br><br>Relevant distance (m)',
             type=QgsProcessingParameterNumber.Double,
             defaultValue=3,
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
 
-        parameter = QgsProcessingParameterEnum(
-            "PREDICTION_STRATEGY",
-            "Select PREDICTION_STRATEGY:",
-            options=ENUM_PREDICTION_STRATEGY_OPTIONS,
-            defaultValue=1,
-        )
-        parameter.setFlags(parameter.flags())
-        self.addParameter(parameter)
+
 
         # ADVANCED INPUT
         parameter = QgsProcessingParameterEnum(
+            "PREDICTION_STRATEGY",
+            '<br><b>PREDICTION-SETTINGS</b><br><i style="color: gray;">The prediction strategy determines which predictions are returned in the output: All predictions, only the BEST prediction, or the ORIGINAL if there are multiple predictions</i>Prediction Strategy',
+            options=ENUM_PREDICTION_STRATEGY_OPTIONS,
+            defaultValue=1,
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterEnum(
+            "FULL_REFERENCE_STRATEGY",
+            '<br>Full Reference Strategy<br><i style="color: gray;">When using Predictions, the Full Reference strategy determines how predictions are handled that are fully covered by reference-data </i>',
+            options=ENUM_FULL_REFERENCE_STRATEGY_OPTIONS,
+            defaultValue=2,
+            #optional=True,
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
+
+        parameter = QgsProcessingParameterEnum(
             "ENUM_PROCESSOR",
-            "Select Processing algorithm:",
+            '<br><b>PROCESSOR_SETTINGS</b><br><i style="color: gray;">These settings determine the Processor (algorithm) & Processing-parameters to execute the alignment</i><br><br>Processor',
             options=ENUM_PROCESSOR_OPTIONS,
             defaultValue=0,  # Index of the default option (e.g., 'ALIGNER')
         )
@@ -275,7 +288,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterEnum(
             "ENUM_OD_STRATEGY",
-            "Select OD-STRATEGY:",
+            '<br>Open Domain Strategy<br><i style="color: gray;">Strategy how the processing-algorithm handles the parts that are not covered by reference features (=Open Domain). You can choose to Exclude, Leave it AS IS, or ALIGN it to the reference features</i>',
             options=ENUM_OD_STRATEGY_OPTIONS,
             defaultValue=3,  # Index of the default option (e.g., 'SNAP_ALL_SIDE')
         )
@@ -286,7 +299,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterNumber(
             "THRESHOLD_OVERLAP_PERCENTAGE",
-            "THRESHOLD_OVERLAP_PERCENTAGE (%)",
+            '<br>Threshold overlap percentage<br><i style="color: gray;">In the exceptional case that the algorithm cannot determine if a reference feature is relevant, this fallback-parameter is used to determine to include/exclude a reference based on overlap-percentage</i>',
             type=QgsProcessingParameterNumber.Double,
             defaultValue=50,
         )
@@ -295,16 +308,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         self.addParameter(parameter)
 
-        parameter = QgsProcessingParameterEnum(
-            "FULL_REFERENCE_STRATEGY",
-            "Select FULL_REFERENCE_STRATEGY:",
-            options=ENUM_FULL_REFERENCE_STRATEGY_OPTIONS,
-            defaultValue=2,
-        )
-        parameter.setFlags(
-            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
-        )
-        self.addParameter(parameter)
+
 
         parameter = QgsProcessingParameterField(
             "METADATA_FIELD",
@@ -320,7 +324,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterFile(
             "WORK_FOLDER",
-            "Working folder (optional; folder where output will be saved)",
+            '<br><b>OUTPUT SETTINGS</b><br><i style="color: gray;"> Settings to determine how the output will appear</i><br><br>Work Folder',
             behavior=QgsProcessingParameterFile.Folder,
             optional=True,
         )
@@ -330,7 +334,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(parameter)
 
         parameter = QgsProcessingParameterBoolean(
-            "SHOW_LOG_INFO", "SHOW_LOG_INFO (brdr-log)", defaultValue=self.SHOW_LOG_INFO
+            "SHOW_LOG_INFO", "Show extra logging (from brdr-log)", defaultValue=self.SHOW_LOG_INFO
         )
         parameter.setFlags(
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
@@ -456,7 +460,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             multi_to_best_prediction = False
         else:
             raise Exception("Unknown PREDICTION_STRATEGY")
-        # TODO: check to improve; first finding the not changed ones; and also the capakey-equals?
         fcs_actualisation = update_featurecollection_to_actual_grb(
             fc,
             id_theme_fieldname=self.ID_THEME_FIELDNAME,
