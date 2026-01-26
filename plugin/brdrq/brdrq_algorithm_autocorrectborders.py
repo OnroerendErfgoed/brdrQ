@@ -1049,7 +1049,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.INPUT_THEMATIC: "themelayer",
             "COMBOBOX_ID_THEME": "id",
             "ENUM_REFERENCE": 0,
-            self.INPUT_REFERENCE: -1,
+            self.INPUT_REFERENCE: None,
             "COMBOBOX_ID_REFERENCE": None,
             "RELEVANT_DISTANCE": 3,
             "PREDICTIONS": 0,

@@ -559,8 +559,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "SHOW_LOG_INFO": False,
         }
 
-        # 2. Laat de individuele variabelen verwijzen naar de dictionary
-        # Dit zorgt ervoor dat je bestaande code blijft werken zonder overal de dict te moeten aanroepen.
+        #Read from default dict first
         self.default_theme_layer = self.params_default_dict[self.INPUT_THEMATIC]
         self.default_theme_layer_id = self.params_default_dict["COMBOBOX_ID_THEME"]
         self.default_reference = self.params_default_dict["ENUM_REFERENCE"]
