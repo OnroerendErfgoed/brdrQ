@@ -1,11 +1,21 @@
 import copy
 import os
 from enum import Enum
+
 # TODO QGIS4
 from PyQt5.QtGui import QColor
+from brdr.be.grb.enums import GRBType
+from brdr.processor import (
+    AlignerGeometryProcessor,
+    DieussaertGeometryProcessor,
+    NetworkGeometryProcessor,
+    SnapGeometryProcessor,
+    TopologyProcessor,
+)
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
 from qgis.core import QgsProcessingException
 from qgis.core import QgsRectangle
+from qgis.core import QgsSettings
 from qgis.core import QgsWkbTypes
 from qgis.gui import QgsMapTool
 from qgis.gui import QgsRubberBand
@@ -27,11 +37,10 @@ from math import ceil
 import geopandas as gpd
 import matplotlib.pyplot as plt
 from brdr.enums import (
-    GRBType,
     OpenDomainStrategy,
     SnapStrategy,
-    FullStrategy,
     PredictionStrategy,
+    FullReferenceStrategy, ProcessorID,
 )
 from brdr.typings import ProcessResult
 from brdr.utils import write_geojson
@@ -56,6 +65,15 @@ from qgis.core import QgsVectorLayer
 from qgis.utils import iface
 from shapely import to_wkt, from_wkt, make_valid
 
+class Processor(str, Enum):
+    """
+    Enum for processors that can be used in brdrQ. Values based on the IDs in brdr.
+    """
+    AlignerGeometryProcessor = "2024:aligner2024a"
+    #DieussaertGeometryProcessor = "2024:dieussaert2024a"
+    SnapGeometryProcessor = "2024:snap2024a"
+    NetworkGeometryProcessor = "2024:network2024a"
+    #TOPOLOGY = "2024:topology2024a"
 
 class OsmType(dict, Enum):
     """
@@ -112,10 +130,13 @@ ENUM_OD_STRATEGY_OPTIONS = [e.name for e in OpenDomainStrategy][
 ENUM_SNAP_STRATEGY_OPTIONS = [e.name for e in SnapStrategy]
 
 # ENUM for choosing the full-strategy when evaluating
-ENUM_FULL_STRATEGY_OPTIONS = [e.name for e in FullStrategy]
+ENUM_FULL_REFERENCE_STRATEGY_OPTIONS = [e.name for e in FullReferenceStrategy]
 
 # ENUM for choosing the full-strategy when evaluating
 ENUM_PREDICTION_STRATEGY_OPTIONS = [e.name for e in PredictionStrategy]
+
+# ENUM for choosing the Processing-algorithm
+ENUM_PROCESSOR_OPTIONS = [e.name for e in Processor]  # list with all processing-algorithm-options
 
 BRDRQ_ORIGINAL_WKT_FIELDNAME = "brdrq_original_wkt"
 BRDRQ_STATE_FIELDNAME = "brdrq_state"
@@ -132,6 +153,85 @@ class BrdrQState(str, Enum):
     TO_REVIEW = "to_review"
     TO_UPDATE = "to_update"
     NONE = "none"
+
+
+def get_processor_by_id(processor_id,config):
+    """
+    Function that returns a Processor, based on the ID
+    """
+    # AlignerGeometryProcessor as default processor
+    processor = AlignerGeometryProcessor(config=config)
+    try:
+        processor_id=ProcessorID(processor_id)
+    except ValueError:
+        return processor
+    if processor_id == ProcessorID.DIEUSSAERT:
+        return DieussaertGeometryProcessor(config=config)
+    if processor_id == ProcessorID.NETWORK:
+        return NetworkGeometryProcessor(config=config)
+    if processor_id == ProcessorID.SNAP:
+        return SnapGeometryProcessor(config=config)
+    if processor_id == ProcessorID.TOPOLOGY:
+        return TopologyProcessor(config=config)
+    return processor
+
+
+def read_setting(prefix, key, fallback):
+    """
+    Reads a value with priority:
+    1. Current QGIS Project (Specific to this file)
+    2. QgsSettings (Global User Profile)
+    3. Fallback (Default value)
+    """
+    # # 1. Try to read from the Project file first
+    # # readEntry returns a tuple: (value, boolean_success)
+    # project_value, exists = QgsProject.instance().readEntry(prefix, key)
+    #
+    # if exists and project_value is not None:
+    #     return project_value
+
+    # 2. If not found in project, try QgsSettings (Global Profile)
+    settings = QgsSettings()
+    return settings.value(prefix + key, fallback)
+
+
+def write_setting(prefix, key, value):
+    """
+    Writes value to both the Project file and the Global User Profile.
+    """
+
+    # # Convert complex QGIS objects to strings (usually the layer ID/Source)
+    # # 1. Unpack FeatureSourceDefinition
+    # if isinstance(value, QgsProcessingFeatureSourceDefinition):
+    #     value = value.source  # This might be a string OR a QgsProperty
+    #
+    # # 2. Extract value from QgsProperty (if it's a Property now or was originally)
+    # if isinstance(value, QgsProperty):
+    #     try:
+    #         value = value.asExpression()
+    #     except:
+    #         value = value.staticValue()
+    #
+    # # 3. Final cleanup for the Project XML
+    # if value is None:
+    #     QgsProject.instance().removeEntry(prefix, key)
+    #     # Also remove from settings to keep them synced
+    #     QgsSettings().remove(prefix + key)
+    #     return
+    #
+    # # 4. Save to both locations
+    # # We ensure value is converted to a string if it's not a basic type
+    # save_value = str(value) if not isinstance(value, (int, float, bool)) else value
+    #
+    # # 1. Write to the Project file
+    # QgsProject.instance().writeEntry(prefix, key, value)
+
+    # 2. Write to QgsSettings (Global Profile)
+    settings = QgsSettings()
+    settings.setValue(prefix + key, value)
+
+    # # Sync to ensure the changes are written to the disk immediately
+    # settings.sync()
 
 
 def geom_shapely_to_qgis(geom_shapely):
@@ -663,21 +763,7 @@ def show_map(
     # Adjust layout
     # plt.tight_layout()
     # Show figure
-    plt.show()
-
-
-def print_brdr_formula(dict_results, aligner):
-    for theme_id, dist_results in dict_results.items():
-        for rel_dist, processresults in dist_results.items():
-            print(
-                "--------Formula for ID  "
-                + str(theme_id)
-                + " with relevant distance "
-                + str(rel_dist)
-                + "--------------"
-            )
-            print(aligner.get_brdr_formula(processresults["result"]))
-    return
+    plt.show(block=False)
 
 
 def plot_series(
@@ -695,8 +781,26 @@ def plot_series(
     plt.ylabel(ylabel)
     plt.title(title)
     # plt.legend()
-    plt.show()
+    plt.show(block=False)
     return
+
+
+def get_valid_layer(layer_id_or_name):
+    """
+    Checks if the layer_id exists in the current project.
+    Returns the layer object if valid, otherwise returns None.
+    """
+    if layer_id_or_name is None or not layer_id_or_name or layer_id_or_name==-1 or not isinstance(layer_id_or_name,str):
+        return None
+    project=QgsProject.instance()
+    # Zoek de laag in het huidige project
+    layer = project.mapLayer((layer_id_or_name))
+
+    # Controleer of de laag echt is gevonden en 'valid' is (bijv. bronbestand niet verwijderd)
+    if layer and layer.isValid():
+        return layer
+
+    return None
 
 
 def _processresult_to_dicts(processresult):
@@ -767,7 +871,7 @@ def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_
         ref_suffix = str(ref)
     else:
         selected_reference = 0
-        if layer_reference is None or id_reference_fieldname == "NULL":
+        if layer_reference is None or id_reference_fieldname is None or id_reference_fieldname == "NULL":
             raise QgsProcessingException(
                 "Please choose a REFERENCELAYER from the table of contents, and the associated unique REFERENCE ID"
             )

@@ -35,7 +35,7 @@ import os
 import sys
 
 import brdr
-#TODO QGIS4
+# TODO QGIS4
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QMenu
 from qgis import processing

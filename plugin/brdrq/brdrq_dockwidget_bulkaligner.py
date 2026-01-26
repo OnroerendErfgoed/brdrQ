@@ -23,13 +23,15 @@
 """
 
 import os
-#TODO QGIS4
+
+# TODO QGIS4
 from PyQt5.QtCore import QVariant
 from brdr.aligner import Aligner
+from brdr.be.grb.enums import GRBType
+from brdr.be.grb.loader import GRBActualLoader, GRBFiscalParcelLoader
 from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME
-from brdr.enums import GRBType, AlignerResultType
+from brdr.enums import AlignerResultType
 from brdr.geometry_utils import geom_from_wkt
-from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader
 from brdr.loader import DictLoader
 from qgis import processing
 from qgis.PyQt import QtWidgets, uic
@@ -59,10 +61,6 @@ from .brdrq_utils import (
 FORM_CLASS, _ = uic.loadUiType(
     os.path.join(os.path.dirname(__file__), "brdrq_dockwidget_bulkaligner.ui")
 )
-# TODO implementeer only selected
-# TODO visualiseer predictions
-# TODO implementeer saven van geometrie en aanpassen van attribuut
-# TODO implementeer only selected
 
 
 class brdrQDockWidgetBulkAligner(
@@ -228,7 +226,7 @@ class brdrQDockWidgetBulkAligner(
 
         dict_evaluated_predictions = self.aligner.evaluate(
             ids_to_evaluate=None,
-            base_formula_field=None,
+            base_metadata_field=None,
             max_predictions=-1,
             relevant_distances=self.relevant_distances,
             full_strategy=self.full_strategy,
@@ -287,7 +285,7 @@ class brdrQDockWidgetBulkAligner(
 
     def add_results_to_grouplayer(self):
         fcs = self.aligner.get_results_as_geojson(
-            resulttype=AlignerResultType.PROCESSRESULTS, formula=self.formula
+            resulttype=AlignerResultType.PROCESSRESULTS, add_metadata=self.metadata
         )
 
         geojson_to_layer(

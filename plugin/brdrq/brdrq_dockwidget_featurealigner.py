@@ -23,15 +23,18 @@
 """
 
 import os
+
 # TODO QGIS4
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QListWidgetItem
 from brdr.aligner import Aligner
-from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME
-from brdr.enums import AlignerResultType, GRBType
-from brdr.grb import GRBActualLoader, GRBFiscalParcelLoader
+from brdr.be.grb.enums import GRBType
+from brdr.be.grb.loader import GRBActualLoader, GRBFiscalParcelLoader
+from brdr.configs import ProcessorConfig, AlignerConfig
+from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME, VERSION_DATE
+from brdr.enums import AlignerResultType
 from brdr.loader import DictLoader
-from brdr.osm import OSMLoader
+from brdr.osm.loader import OSMLoader
 from qgis import processing
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import Qt
@@ -61,6 +64,11 @@ from .brdrq_utils import (
     BrdrQState,
     OSM_TYPES,
     DICT_OSM_TYPES,
+    get_processor_by_id,
+    ENUM_REFERENCE_OPTIONS,
+    write_setting,
+    read_setting,
+    get_valid_layer,
 )
 
 FORM_CLASS, _ = uic.loadUiType(
@@ -83,6 +91,7 @@ class brdrQDockWidgetFeatureAligner(
         # self.<objectname>, and you can use autoconnect slots - see
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
+        self.prefix = "brdrqfeaturealigner/"
         self.setupUi(self)
         self._initialize()
 
@@ -111,16 +120,22 @@ class brdrQDockWidgetFeatureAligner(
         self.pushButton_reset.clicked.connect(self.reset_geometry)
         self.pushButton_select.clicked.connect(self.activate_selectTool)
         # self.pushButton_select_partial.clicked.connect(self.activate_partialSelectTool)
-        self.mMapLayerComboBox.setFilters(
-            QgsMapLayerProxyModel.PolygonLayer
-            | QgsMapLayerProxyModel.LineLayer
-            | QgsMapLayerProxyModel.PointLayer
-        )
+
         self.mMapLayerComboBox.layerChanged.connect(self.themeLayerChanged)
         self.listWidget_features.itemPressed.connect(self.onFeatureActivated)
         self.listWidget_predictions.itemPressed.connect(self.onListItemActivated)
         self.horizontalSlider.sliderMoved.connect(self.onSliderChange)
         self.doubleSpinBox.valueChanged.connect(self.onSpinboxChange)
+
+        self.mMapLayerComboBox.setFilters(
+            QgsMapLayerProxyModel.PolygonLayer
+            | QgsMapLayerProxyModel.LineLayer
+            | QgsMapLayerProxyModel.PointLayer
+        )
+        # Load default (saved) layer
+        saved_layer_id = read_setting(self.prefix, "theme_layer", None)
+        theme_layer = get_valid_layer(saved_layer_id)
+        self.mMapLayerComboBox.setLayer(theme_layer)
 
         # show the dockwidget
         self.iface.addDockWidget(Qt.RightDockWidgetArea, self)
@@ -130,14 +145,18 @@ class brdrQDockWidgetFeatureAligner(
         return
 
     def _initializeSelectFeatures(self):
-        self.comboBox_selectfeatures.addItem("ALL FEATURES",userData="ALL")
-        self.comboBox_selectfeatures.addItem("SELECTED FEATURES",userData="SELECTED")
+        self.comboBox_selectfeatures.addItem("ALL FEATURES", userData="ALL")
+        self.comboBox_selectfeatures.addItem("SELECTED FEATURES", userData="SELECTED")
         for x in BrdrQState:
-            self.comboBox_selectfeatures.addItem("STATE: "+str(x.value),userData = str(x.value))
+            self.comboBox_selectfeatures.addItem(
+                "STATE: " + str(x.value), userData=str(x.value)
+            )
 
-        self.comboBox_selectfeatures.currentIndexChanged.connect(self.on_selectfeatures_changed)
+        self.comboBox_selectfeatures.currentIndexChanged.connect(
+            self.on_selectfeatures_changed
+        )
 
-    def on_selectfeatures_changed(self,index):
+    def on_selectfeatures_changed(self, index):
         data = self.comboBox_selectfeatures.itemData(index)
         print("Selected data:", data)
         self.listFeatures(selection=data)
@@ -219,14 +238,18 @@ class brdrQDockWidgetFeatureAligner(
             self.crs = self.layer.sourceCrs().authid()
         except:
             self.crs = None
-        if self.crs is None or self.crs == 'NULL' or self.crs == '':
+        if self.crs is None or self.crs == "NULL" or self.crs == "":
             iface.messageBar().pushWarning(
-                 "CRS", "CRS of the thematic layer is not defined. Please define a CRS to the thematic layer with units in meter")
+                "CRS",
+                "CRS of the thematic layer is not defined. Please define a CRS to the thematic layer with units in meter",
+            )
             self.layer = None
             self.mMapLayerComboBox.setLayer(self.layer)
             return
         if self._check_warn_edit_modus(self.layer):
-            iface.messageBar().pushWarning("Edit-session","Please close edit-session of layer")
+            iface.messageBar().pushWarning(
+                "Edit-session", "Please close edit-session of layer"
+            )
             self.layer = None
             self.mMapLayerComboBox.setLayer(self.layer)
             return
@@ -238,12 +261,14 @@ class brdrQDockWidgetFeatureAligner(
                 f"Nr of features bigger than {str(self.max_feature_count)}. Please make a smaller selection of features"
             )
             return
+        # Write the layer_id to the settings
+        write_setting(self.prefix, "theme_layer", self.layer.id())
 
         index = self.comboBox_selectfeatures.currentIndex()
         data = self.comboBox_selectfeatures.itemData(index)
         self.listFeatures(selection=data)
 
-    def listFeatures(self,selection=None,features=None):
+    def listFeatures(self, selection=None, features=None):
         self.clearUserInterface()
         if not features is None:
             self.listed_features = features
@@ -328,7 +353,7 @@ class brdrQDockWidgetFeatureAligner(
         if original_geometry is None:
             original_geometry = self.feature.geometry()
 
-        zoom_to_features([self.feature], self.iface,features_crs=self.crs)
+        zoom_to_features([self.feature], self.iface, features_crs=self.crs)
         key = self.feature.id()
 
         # Check feature on area
@@ -386,7 +411,7 @@ class brdrQDockWidgetFeatureAligner(
                 geom_shapely_to_qgis(self.dict_evaluated_predictions[key][rd]["result"])
             )
             list_predictions_features.append(feat)
-        zoom_to_features(list_predictions_features, self.iface,features_crs=self.crs)
+        zoom_to_features(list_predictions_features, self.iface, features_crs=self.crs)
         for k in list_predictions:
             items.append(str(k))
             score = self.dict_evaluated_predictions[key][k]["properties"][
@@ -414,14 +439,17 @@ class brdrQDockWidgetFeatureAligner(
         print("adding results")
         if self.aligner is None:
             return
-        fcs = self.aligner.get_results_as_geojson(
-            resulttype=AlignerResultType.PROCESSRESULTS, formula=self.formula
+        fcs = self.aligner_result.get_results_as_geojson(
+            aligner=self.aligner,
+            result_type=AlignerResultType.PROCESSRESULTS,
+            add_metadata=self.metadata,
         )
         result_diff = "result_diff"
         geojson_result_diff = fcs[result_diff]
         geojson_to_layer(
             self.LAYER_RESULT_DIFF,
-            geojson_result_diff,result_diff,
+            geojson_result_diff,
+            result_diff,
             False,
             self.GROUP_LAYER,
             self.tempfolder,
@@ -430,7 +458,8 @@ class brdrQDockWidgetFeatureAligner(
         geojson_result_diff_plus = fcs[result_diff_plus]
         geojson_to_layer(
             self.LAYER_RESULT_DIFF_PLUS,
-            geojson_result_diff_plus, result_diff_plus,
+            geojson_result_diff_plus,
+            result_diff_plus,
             True,
             self.GROUP_LAYER,
             self.tempfolder,
@@ -439,7 +468,8 @@ class brdrQDockWidgetFeatureAligner(
         geojson_result_diff_min = fcs[result_diff_min]
         geojson_to_layer(
             self.LAYER_RESULT_DIFF_MIN,
-            geojson_result_diff_min, result_diff_min,
+            geojson_result_diff_min,
+            result_diff_min,
             True,
             self.GROUP_LAYER,
             self.tempfolder,
@@ -448,25 +478,26 @@ class brdrQDockWidgetFeatureAligner(
         geojson_result = fcs[result]
         geojson_to_layer(
             self.LAYER_RESULT,
-            geojson_result, result,
+            geojson_result,
+            result,
             True,
             self.GROUP_LAYER,
             self.tempfolder,
         )
         return
 
-    def onListItemActivated(self, currentItem):
+    def onListItemActivated(self, current_item):
         print("onListItemActivated")
         self.deactivateSelectTool()
-        self._listItemActivated(currentItem)
+        self._listItemActivated(current_item)
 
     def _align(self):
         print("_align")
         feat = self.feature
-        selectedFeatures = []
+        selected_features = []
         if feat is not None:
-            selectedFeatures.append(feat)
-        if len(selectedFeatures) == 0:
+            selected_features.append(feat)
+        if len(selected_features) == 0:
             self.textEdit_output.setText(
                 "No features selected. Please select a feature from the active layer."
             )
@@ -475,7 +506,7 @@ class brdrQDockWidgetFeatureAligner(
         dict_to_load = {}
 
         self.progressBar.setValue(0)
-        for feature in selectedFeatures:
+        for feature in selected_features:
             original_geometry = get_original_geometry(
                 feature, BRDRQ_ORIGINAL_WKT_FIELDNAME
             )
@@ -488,15 +519,27 @@ class brdrQDockWidgetFeatureAligner(
 
             dict_to_load[feature.id()] = geom_shapely
 
+        processor_config = ProcessorConfig()
+        processor_config.od_strategy = self.od_strategy
+        processor_config.threshold_overlap_percentage = (
+            self.threshold_overlap_percentage
+        )
+        processor_config.snap_strategy = self.partial_snapping_strategy
+        processor_config.snap_max_segment_length = self.snap_max_segment_length
+        processor_config.partial_snapping = self.partial_snapping
+        processor_config.partial_snap_strategy = self.partial_snapping_strategy
+        processor_config.partial_snap_max_segment_length = self.snap_max_segment_length
+
+        processor = get_processor_by_id(
+            processor_id=self.processor.value, config=processor_config
+        )
+        aligner_config = AlignerConfig()
+        aligner_config.log_metadata = self.metadata
+        aligner_config.add_observations = self.metadata
         self.aligner = Aligner(
             crs=self.crs,
-            od_strategy=self.od_strategy,
-            threshold_overlap_percentage=self.threshold_overlap_percentage,
-            snap_strategy=self.partial_snapping_strategy,
-            snap_max_segment_length=self.snap_max_segment_length,
-            partial_snapping=self.partial_snapping,
-            partial_snap_strategy=self.partial_snapping_strategy,
-            partial_snap_max_segment_length=self.snap_max_segment_length,
+            processor=processor,
+            config=aligner_config,
         )
 
         # Load thematic data
@@ -530,15 +573,29 @@ class brdrQDockWidgetFeatureAligner(
                 reference_crs = self.reference_layer.sourceCrs().authid()
             except:
                 reference_crs = None
-            if reference_crs is None or reference_crs == "NULL"  or reference_crs == '':
-                iface.messageBar().pushWarning("CRS",
-                    "CRS of the local Reference Layer is not defined. Please define a CRS to the REFERENCE Layer with units in meter"
+            if reference_crs is None or reference_crs == "NULL" or reference_crs == "":
+                iface.messageBar().pushWarning(
+                    "CRS",
+                    "CRS of the local Reference Layer is not defined. Please define a CRS to the REFERENCE Layer with units in meter",
                 )
                 return None
             elif reference_crs != self.crs:
-                iface.messageBar().pushWarning("CRS",
+                iface.messageBar().pushWarning(
+                    "CRS",
                     "Thematic layer and ReferenceLayer are in a different CRS. "
-                    "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"
+                    "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)",
+                )
+                return None
+            elif (
+                self.reference_id is None
+                or self.reference_id == "NULL"
+                or self.reference_id == ""
+                or self.reference_id == -1
+            ):
+                iface.messageBar().pushWarning(
+                    "Reference ID",
+                    "Reference ID not selected: "
+                    "Please provide the Unique ID-fieldname of the reference layer (SETTINGS)",
                 )
                 return None
             # Load reference-layer into a shapely_dict:
@@ -559,27 +616,31 @@ class brdrQDockWidgetFeatureAligner(
             self.reference_layer.removeSelection()
             self.aligner.load_reference_data(DictLoader(dict_reference))
             self.aligner.name_reference_id = self.reference_id
-            self.aligner.dict_reference_source["source"] = PREFIX_LOCAL_LAYER
-            self.aligner.dict_reference_source["version_date"] = "unknown"
+            self.aligner.reference_data.source["source"] = PREFIX_LOCAL_LAYER
+            self.aligner.reference_data.source["source_url"] = PREFIX_LOCAL_LAYER
+            self.aligner.reference_data.source[VERSION_DATE] = "unknown"
         self.progressBar.setValue(50)
 
-        dict_evaluated = self.aligner.evaluate(
-            ids_to_evaluate=None,
-            base_formula_field=None,
+        self.aligner_result = self.aligner.evaluate(
             max_predictions=4,
             relevant_distances=self.relevant_distances,
-            full_strategy=self.full_strategy,
+            full_reference_strategy=self.full_strategy,
+        )
+        # TODO should we add a try/catch, fe when using DieussaertProcessing for non-polygons it will result in error
+
+        self.dict_processresults = self.aligner_result.get_results(aligner=self.aligner)
+        self.dict_evaluated_predictions = self.aligner_result.get_results(
+            aligner=self.aligner, result_type=AlignerResultType.EVALUATED_PREDICTIONS
         )
 
-        self.dict_processresults = self.aligner.dict_processresults
-        self.dict_evaluated_predictions = dict_evaluated
+        self.diffs_dict = self.aligner.get_difference_metrics_for_thematic_data(
+            self.dict_processresults
+        )
 
-        self.diffs_dict = self.aligner.get_diff_metrics(self.dict_processresults)
-
-        outputMessage = "PREDICTIONS (@ relevant distances): " + str(
+        output_message = "PREDICTIONS (@ relevant distances): " + str(
             [str(k) for k in self.dict_evaluated_predictions[feat.id()].keys()]
         )
-        self.textEdit_output.setText(outputMessage)
+        self.textEdit_output.setText(output_message)
         return (
             self.dict_processresults,
             self.dict_evaluated_predictions,
@@ -601,9 +662,22 @@ class brdrQDockWidgetFeatureAligner(
         self.clearUserInterface()
         self.textEdit_output.setText("Please select a feature to align")
         self.loadSettings()
+        self.add_reference_label()
         self.setHandles()
         self.show()
+        # directly start the themelayerchanged
+        self.themeLayerChanged()
         return
+
+    def add_reference_label(self):
+        # label for referencelayer
+        index = ENUM_REFERENCE_OPTIONS.index(self.reference_choice)
+        reflabel = "Reference Layer"
+        if index > 0:
+            reflabel = self.reference_choice
+        else:
+            reflabel = self.reference_layer
+        self.label_referencelayer.setText(f"<@ {reflabel}>")
 
 
 def __init__():

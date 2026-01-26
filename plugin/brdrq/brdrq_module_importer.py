@@ -4,16 +4,15 @@ import site
 import subprocess
 import sys
 
-#TODO QGIS4
+# TODO QGIS4
 from PyQt5.QtWidgets import QMessageBox
-from qgis.utils import iface
 
 # helper function to find embedded python
 # path in windows. Based on
 # https://github.com/qgis/QGIS/issues/45646
 
 
-brdr_version = "0.14.0"
+brdr_version = "0.15.3"
 
 
 def find_python():
@@ -63,6 +62,7 @@ def install_brdr(python_exe):
     importlib.reload(brdr)
     import brdr
     print(f"reloaded version of brdr: {brdr.__version__}")
+    show_new_brdr_dialog()
 
 def install_shapely(python_exe):
     print("Module shapely not found. Installing from PyPi.")
@@ -91,15 +91,16 @@ def import_modules():
         install_brdr(python_exe)
 
 
-# def show_new_brdr_dialog():
-#     from PyQt5.QtWidgets import QMessageBox
-#
-#     msg = QMessageBox()
-#     msg.setIcon(QMessageBox.Warning)
-#     msg.setWindowTitle("New installation of 'brdr'")
-#     msg.setText(
-#         f"A new version of 'brdr'({brdr_version}) is installed for the calculations in the brdrQ-plugin: . A restart of QGIS is required to ensure correct functioning of brdrQ"
-#     )
-#     msg.setInformativeText("Please restart QGIS before using brdrQ.")
-#     msg.setStandardButtons(QMessageBox.Ok)
-#     msg.exec_()
+def show_new_brdr_dialog():
+    # TODO QGIS4
+    from PyQt5.QtWidgets import QMessageBox
+
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Warning)
+    msg.setWindowTitle("New installation of 'brdr'")
+    msg.setText(
+        f"A new version of 'brdr'({brdr_version}) is installed for the calculations in the brdrQ-plugin: . A restart of QGIS is required to ensure correct functioning of brdrQ"
+    )
+    msg.setInformativeText("Please restart QGIS before using brdrQ.")
+    msg.setStandardButtons(QMessageBox.Ok)
+    msg.exec_()
