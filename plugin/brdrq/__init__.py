@@ -38,16 +38,84 @@ def classFactory(iface):  # pylint: disable=invalid-name
     from .brdrq_module_importer import import_modules
 
     try:
+        if not python_version_compatibility(iface):
+            print("failed python version check")
+            return None
+        if not qgis_version_compatibility(iface):
+            print("failed qgis version check")
+            return None
+
         import_modules()
+        print("modules succesfully loaded")
         from .brdrq_plugin import BrdrQPlugin
 
         return BrdrQPlugin(iface)
-    except:
-        show_error_dialog()
-        raise RuntimeError("Error initializing brdrQ-plugin")
+    except Exception as e:
+        show_error_dialog(e)
+        return None
+        # raise RuntimeError("Error initializing brdrQ-plugin") #better to raise Error or to return None?
 
 
-def show_error_dialog():
+def qgis_version_compatibility(iface):
+    from PyQt5.QtWidgets import QMessageBox
+    from qgis._core import Qgis
+
+    # 1. Define requirements
+    min_qgis = (3, 36, 0)
+
+    # 2. Get current QGIS version
+    q_ver_str = Qgis.QGIS_VERSION.split("-")[0].split(".")
+    current_qgis = tuple(map(int, q_ver_str))
+
+    req_str = ".".join(map(str, min_qgis))
+    cur_str = ".".join(map(str, current_qgis))
+    print(f" QGIS required{req_str} & current{cur_str}")
+
+    # 3. Perform check
+    if current_qgis < min_qgis:
+        print("failed qgis version check")
+        # We use iface.mainWindow() to ensure the dialog has a parent
+        QMessageBox.critical(
+            iface.mainWindow(),
+            "brdrQ-Plugin Load Error",
+            f"This plugin requires QGIS {min_qgis}+. You are running {current_qgis}.",
+        )
+        return False  # QGIS will handle this gracefully as a load failure
+    return True
+
+
+def python_version_compatibility(iface):
+    import sys
+    from PyQt5.QtWidgets import QMessageBox
+
+    # 1. Define minimum Python version (e.g., 3.11)
+    # Using a tuple makes comparison easy: (3, 11, 0) > (3, 9, 5)
+    required_python = (3, 11, 0)
+    current_python = sys.version_info[:3]
+
+    req_str = ".".join(map(str, required_python))
+    cur_str = ".".join(map(str, current_python))
+    print(f"¨Python required{req_str} & current{cur_str}")
+
+    # 2. Perform the check
+    if current_python < required_python:
+        print("failed python check")
+        req_str = ".".join(map(str, required_python))
+        cur_str = ".".join(map(str, current_python))
+
+        msg = (
+            f"<h3>Incompatible Python Version</h3>"
+            f"brdrQ-plugin requires <b>Python {req_str}</b> or higher.<br>"
+            f"You are currently running <b>Python {cur_str}</b>.<br><br>"
+            f"Please upgrade QGIS to a more recent version."
+        )
+
+        QMessageBox.critical(iface.mainWindow(), "Dependency Error", msg)
+        return False  # Tells QGIS that the plugin failed to load
+    return True
+
+
+def show_error_dialog(e):
     # TODO QGIS4
     from PyQt5.QtWidgets import QMessageBox
 
@@ -56,7 +124,7 @@ def show_error_dialog():
     msg.setWindowTitle("Problem while initializing the brdrQ-plugin")
     msg.setText(f"The brdrQ-plugin could not be loaded correctly.")
     msg.setInformativeText(
-        "Please restart QGIS and retry. If this problem persists, try to upgrade the plugin."
+        f"Please restart QGIS and retry.<br>If the problem persists, try to upgrade the plugin or the QGIS-version.<br>If it still persists you can log the issue at: <a href='https://github.com/OnroerendErfgoed/brdrQ/issues'>https://github.com/OnroerendErfgoed/brdrQ/issues</a>.<br>Error-message: {e} "
     )
     msg.setStandardButtons(QMessageBox.Ok)
     msg.exec_()

@@ -10,6 +10,7 @@ from qgis.core import (
     QgsProject,
     QgsVectorLayer,
 )
+from qgis.core import QgsSettings
 from qgis.gui import QgsMapCanvas
 
 from .utilities import get_qgis_app
@@ -23,6 +24,19 @@ class TestAutoUpdateBorders(unittest.TestCase):
     def setUp(self):
         self.provider = BrdrQProvider()
         QGISAPP.processingRegistry().addProvider(self.provider)
+
+        # self.settings = QgsSettings()
+        #
+        # # Reset specifiek jouw plugin/provider settings
+        # # Gebruik de juiste prefix die jouw algoritme gebruikt
+        # prefix = "brdrqautoupdateborders/"
+        #
+        # for key in self.settings.allKeys():
+        #     if key.startswith(prefix):
+        #         self.settings.remove(key)
+        # # Forceer het wegschrijven naar schijf/geheugen
+        # self.settings.sync()
+
 
     def tearDown(self):
         QGISAPP.processingRegistry().removeProvider(self.provider)
@@ -42,13 +56,14 @@ class TestAutoUpdateBorders(unittest.TestCase):
                 "INPUT_THEMATIC": themelayername,
                 "COMBOBOX_ID_THEME": "theme_identifier",
                 "ENUM_REFERENCE": 0,
-                "FORMULA_FIELD": "",
-                "MAX_RELEVANT_DISTANCE": 5,
+                "METADATA_FIELD": "",
+                "RELEVANT_DISTANCE": 5,
                 "THRESHOLD_OVERLAP_PERCENTAGE": 50,
                 "ENUM_OD_STRATEGY": 2,
+                "ENUM_PROCESSOR": 0,
                 "WORK_FOLDER": foldername,
                 "PREDICTION_STRATEGY": 1,
-                "FULL_STRATEGY": 2,
+                "FULL_REFERENCE_STRATEGY": 2,
                 "SHOW_LOG_INFO": True,
             },
         )
@@ -85,13 +100,14 @@ class TestAutoUpdateBorders(unittest.TestCase):
                 "INPUT_THEMATIC": source,
                 "COMBOBOX_ID_THEME": "theme_identifier",
                 "ENUM_REFERENCE": 0,
-                "FORMULA_FIELD": "",
-                "MAX_RELEVANT_DISTANCE": 5,
+                "METADATA_FIELD": "",
+                "RELEVANT_DISTANCE": 5,
                 "THRESHOLD_OVERLAP_PERCENTAGE": 50,
                 "ENUM_OD_STRATEGY": 2,
+                "ENUM_PROCESSOR": 0,
                 "WORK_FOLDER": foldername,
                 "PREDICTION_STRATEGY": 1,
-                "FULL_STRATEGY": 2,
+                "FULL_REFERENCE_STRATEGY": 2,
                 "SHOW_LOG_INFO": True,
             },
         )

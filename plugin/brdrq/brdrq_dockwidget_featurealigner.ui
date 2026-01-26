@@ -18,7 +18,138 @@
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="3" column="0">
+    <item row="20" column="0">
+     <widget class="QDoubleSpinBox" name="doubleSpinBox"/>
+    </item>
+    <item row="19" column="0">
+     <widget class="QSlider" name="horizontalSlider">
+      <property name="singleStep">
+       <number>10</number>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+     </widget>
+    </item>
+    <item row="8" column="0">
+     <widget class="QLabel" name="label">
+      <property name="text">
+       <string>List of (all, selected, clicked) features:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="44" column="0" rowspan="3">
+     <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0">
+      <property name="bottomMargin">
+       <number>7</number>
+      </property>
+      <item>
+       <widget class="QPushButton" name="pushButton_settings">
+        <property name="text">
+         <string>SETTINGS</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pushButton_help">
+        <property name="text">
+         <string>HELP</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item row="31" column="0">
+     <widget class="QPushButton" name="pushButton_reset">
+      <property name="text">
+       <string> RESET GEOM - (!) Only within session (!)</string>
+      </property>
+     </widget>
+    </item>
+    <item row="29" column="0">
+     <layout class="QHBoxLayout" name="horizontalLayout_4"/>
+    </item>
+    <item row="36" column="0">
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QPushButton" name="pushButton_grafiek">
+        <property name="text">
+         <string>PLOT</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pushButton_visualisatie">
+        <property name="text">
+         <string>VISUALIZE PREDICTIONS</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item row="2" column="0">
+     <widget class="QgsMapLayerComboBox" name="mMapLayerComboBox"/>
+    </item>
+    <item row="30" column="0">
+     <widget class="QPushButton" name="pushButton_save">
+      <property name="toolTip">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Save&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+      <property name="text">
+       <string extracomment="save"> SAVE GEOM - (!) Changes your dataset (!)</string>
+      </property>
+     </widget>
+    </item>
+    <item row="11" column="0">
+     <widget class="QLabel" name="label_2">
+      <property name="text">
+       <string>PREDICTION(S):</string>
+      </property>
+     </widget>
+    </item>
+    <item row="17" column="0">
+     <widget class="QListWidget" name="listWidget_predictions">
+      <property name="editTriggers">
+       <set>QAbstractItemView::CurrentChanged|QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
+      </property>
+     </widget>
+    </item>
+    <item row="35" column="0">
+     <widget class="QTextEdit" name="textEdit_output">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>16777215</width>
+        <height>50</height>
+       </size>
+      </property>
+      <property name="baseSize">
+       <size>
+        <width>0</width>
+        <height>50</height>
+       </size>
+      </property>
+      <property name="html">
+       <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:7.8pt;&quot;&gt;                                &lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:7.8pt;&quot;&gt;                                 &lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:7.8pt;&quot;&gt;                                 &lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:7.8pt;&quot;&gt;LOG                             &lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+     </widget>
+    </item>
+    <item row="9" column="0">
+     <widget class="QListWidget" name="listWidget_features"/>
+    </item>
+    <item row="4" column="0">
      <widget class="QGroupBox" name="groupBox">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
@@ -72,141 +203,17 @@
       </widget>
      </widget>
     </item>
-    <item row="18" column="0">
-     <widget class="QDoubleSpinBox" name="doubleSpinBox"/>
-    </item>
-    <item row="9" column="0">
+    <item row="10" column="0">
      <widget class="QProgressBar" name="progressBar">
       <property name="value">
        <number>0</number>
       </property>
      </widget>
     </item>
-    <item row="8" column="0">
-     <widget class="QListWidget" name="listWidget_features"/>
-    </item>
-    <item row="2" column="0">
-     <widget class="QgsMapLayerComboBox" name="mMapLayerComboBox"/>
-    </item>
-    <item row="15" column="0">
-     <widget class="QListWidget" name="listWidget_predictions">
-      <property name="editTriggers">
-       <set>QAbstractItemView::CurrentChanged|QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
-      </property>
-     </widget>
-    </item>
-    <item row="28" column="0">
-     <widget class="QPushButton" name="pushButton_save">
-      <property name="toolTip">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Save&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-      </property>
+    <item row="12" column="0">
+     <widget class="QLabel" name="label_referencelayer">
       <property name="text">
-       <string extracomment="save"> SAVE GEOM - (!) Changes your dataset (!)</string>
-      </property>
-     </widget>
-    </item>
-    <item row="10" column="0">
-     <widget class="QLabel" name="label_2">
-      <property name="text">
-       <string>PREDICTION(S):</string>
-      </property>
-     </widget>
-    </item>
-    <item row="33" column="0">
-     <widget class="QTextEdit" name="textEdit_output">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>16777215</width>
-        <height>50</height>
-       </size>
-      </property>
-      <property name="baseSize">
-       <size>
-        <width>0</width>
-        <height>50</height>
-       </size>
-      </property>
-      <property name="html">
-       <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:7.8pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;                                &lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;                                 &lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;                                 &lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;LOG                             &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-      </property>
-     </widget>
-    </item>
-    <item row="7" column="0">
-     <widget class="QLabel" name="label">
-      <property name="text">
-       <string>List of (all, selected, clicked) features:</string>
-      </property>
-     </widget>
-    </item>
-    <item row="27" column="0">
-     <layout class="QHBoxLayout" name="horizontalLayout_4"/>
-    </item>
-    <item row="34" column="0">
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
-       <widget class="QPushButton" name="pushButton_grafiek">
-        <property name="text">
-         <string>PLOT</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pushButton_visualisatie">
-        <property name="text">
-         <string>VISUALIZE PREDICTIONS</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item row="42" column="0" rowspan="3">
-     <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0">
-      <property name="bottomMargin">
-       <number>7</number>
-      </property>
-      <item>
-       <widget class="QPushButton" name="pushButton_settings">
-        <property name="text">
-         <string>SETTINGS</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pushButton_help">
-        <property name="text">
-         <string>HELP</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item row="29" column="0">
-     <widget class="QPushButton" name="pushButton_reset">
-      <property name="text">
-       <string> RESET GEOM - (!) Only within session (!)</string>
-      </property>
-     </widget>
-    </item>
-    <item row="17" column="0">
-     <widget class="QSlider" name="horizontalSlider">
-      <property name="singleStep">
-       <number>10</number>
-      </property>
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
+       <string>Referencelayer</string>
       </property>
      </widget>
     </item>

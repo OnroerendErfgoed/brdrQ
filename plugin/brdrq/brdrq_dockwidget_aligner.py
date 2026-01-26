@@ -49,20 +49,20 @@ class brdrQDockWidgetAligner(object):
             self.iface = self.brdrqplugin.iface
         self.layer = None
         self.crs = None
-        self.formula = None
+        self.metadata = None
         self.max_feature_count = 5000
         self.max_area_optimization = 100000
         self.max_area_limit = (
             1000000  # maximum m² where the calculation will be done for
         )
-        self.max_rel_dist_optimization = 5  # in meters
+        self.max_rel_dist_optimization = 7.5  # in meters
         self.listed_features = None
         self.feature = None
         self.selectTool = None
         self.partialSelectTool = None
         self.formerMapTool = None
         self.aligner = None
-
+        self.processor = None
         self.relevant_distances = None
         self.threshold_overlap_percentage = None
         self.od_strategy = None
@@ -70,7 +70,7 @@ class brdrQDockWidgetAligner(object):
         self.reference_id = None
         self.reference_layer = None
         self.max_rel_dist = None
-        self.formula = None
+        self.metadata = None
         self.full_strategy = None
         self.partial_snapping = None
         self.partial_snapping_strategy = None
@@ -212,13 +212,13 @@ class brdrQDockWidgetAligner(object):
 
     def setFilterOnLayers(self, value):
         filter = f"brdr_relevant_distance = {value}"
-        self._setFilterOnLayer(self.LAYER_RESULT,filter)
-        self._setFilterOnLayer(self.LAYER_RESULT_DIFF,filter)
-        self._setFilterOnLayer(self.LAYER_RESULT_DIFF_MIN,filter)
-        self._setFilterOnLayer(self.LAYER_RESULT_DIFF_PLUS,filter)
+        self._setFilterOnLayer(self.LAYER_RESULT, filter)
+        self._setFilterOnLayer(self.LAYER_RESULT_DIFF, filter)
+        self._setFilterOnLayer(self.LAYER_RESULT_DIFF_MIN, filter)
+        self._setFilterOnLayer(self.LAYER_RESULT_DIFF_PLUS, filter)
         return
 
-    def _setFilterOnLayer(self, layername,filter):
+    def _setFilterOnLayer(self, layername, filter):
         layer = get_layer_by_name(layername)
         if not layer is None:
             layer.setSubsetString(filter)
@@ -265,9 +265,11 @@ class brdrQDockWidgetAligner(object):
             return
         key = feat.id()
         show_map(
-            {key: self.dict_evaluated_predictions[key]},
-            {key: self.aligner.dict_thematic[key]},
-            self.aligner.dict_reference,
+            dict_results={key: self.dict_evaluated_predictions[key]},
+            dict_thematic={key: self.aligner.thematic_data[key].geometry},
+            dict_reference={
+                k: v.geometry for k, v in self.aligner.reference_data.features.items()
+            },
         )
         return
 
@@ -283,7 +285,7 @@ class brdrQDockWidgetAligner(object):
     def show_help_dialog(self):
         print("show help dialog")
         # Open link to documentation
-        webbrowser.open("https://github.com/OnroerendErfgoed/brdrQ/blob/main/docs/featurealigner.md")
+        webbrowser.open("https://onroerenderfgoed.github.io/brdrQ/featurealigner.html")
         # self.helpDialog.show()
 
     def show_settings_dialog(self):
@@ -310,6 +312,7 @@ class brdrQDockWidgetAligner(object):
         self.threshold_overlap_percentage = (
             self.settingsDialog.threshold_overlap_percentage
         )
+        self.processor = self.settingsDialog.processor
         self.od_strategy = self.settingsDialog.od_strategy
         self.reference_choice = self.settingsDialog.reference_choice
         self.reference_id = self.settingsDialog.reference_id
@@ -319,7 +322,7 @@ class brdrQDockWidgetAligner(object):
         self.maximum = self.settingsDialog.maximum
         self.step = self.settingsDialog.step
         self.relevant_distances = self.settingsDialog.relevant_distances
-        self.formula = self.settingsDialog.formula
+        self.metadata = self.settingsDialog.metadata
         self.full_strategy = self.settingsDialog.full_strategy
         self.partial_snapping = self.settingsDialog.partial_snapping
         self.partial_snapping_strategy = self.settingsDialog.partial_snapping_strategy

@@ -25,7 +25,7 @@
 import os
 
 import numpy as np
-from brdr.enums import OpenDomainStrategy, FullStrategy, SnapStrategy
+from brdr.enums import OpenDomainStrategy, SnapStrategy, FullReferenceStrategy
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.core import QgsSettings
@@ -33,8 +33,10 @@ from qgis.core import QgsSettings
 from .brdrq_utils import (
     ENUM_REFERENCE_OPTIONS,
     ENUM_OD_STRATEGY_OPTIONS,
-    ENUM_FULL_STRATEGY_OPTIONS,
+    ENUM_FULL_REFERENCE_STRATEGY_OPTIONS,
     ENUM_SNAP_STRATEGY_OPTIONS,
+    Processor,
+    ENUM_PROCESSOR_OPTIONS,
 )
 
 FORM_CLASS, _ = uic.loadUiType(
@@ -68,8 +70,9 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.reference_id = None
         self.reference_layer = None
         self.max_rel_dist = None
-        self.formula = None
+        self.metadata = None
         self.full_strategy = None
+        self.processor = None
         self.partial_snapping = None
         self.partial_snapping_strategy = None
         self.snap_max_segment_length = None
@@ -88,8 +91,10 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             self.comboBox_odstrategy.addItem(od)
         for s in ENUM_SNAP_STRATEGY_OPTIONS:
             self.comboBox_snapstrategy.addItem(s)
-        for f in ENUM_FULL_STRATEGY_OPTIONS:
+        for f in ENUM_FULL_REFERENCE_STRATEGY_OPTIONS:
             self.comboBox_fullstrategy.addItem(f)
+        for p in ENUM_PROCESSOR_OPTIONS:
+            self.comboBox_processor.addItem(p)
         self.comboBox_referencelayer.currentIndexChanged.connect(
             self.update_reference_choice
         )
@@ -174,21 +179,35 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.partial_snapping_strategy = SnapStrategy[
             self.comboBox_snapstrategy.currentText()
         ]
+        if self.processor is None or self.processor not in Processor:
+            default_processor = Processor.AlignerGeometryProcessor
+            processor_name = s.value(
+                "brdrq/processor", default_processor.name
+            )
+            if processor_name not in Processor.__members__:
+                processor_name = default_processor.name
+            index = self.comboBox_processor.findText(
+                Processor[processor_name].name
+            )
+            if index == -1:
+                index = 0
+            self.comboBox_processor.setCurrentIndex(index)
+        self.processor = Processor[self.comboBox_processor.currentText()]
 
-        if self.full_strategy is None or self.full_strategy not in FullStrategy:
-            default_full_strategy = FullStrategy.PREFER_FULL
+        if self.full_strategy is None or self.full_strategy not in FullReferenceStrategy:
+            default_full_strategy = FullReferenceStrategy.PREFER_FULL_REFERENCE
             full_strategy_name = s.value(
                 "brdrq/full_strategy", default_full_strategy.name
             )
-            if full_strategy_name not in FullStrategy.__members__:
+            if full_strategy_name not in FullReferenceStrategy.__members__:
                 full_strategy_name = default_full_strategy.name
             index = self.comboBox_fullstrategy.findText(
-                FullStrategy[full_strategy_name].name
+                FullReferenceStrategy[full_strategy_name].name
             )
             if index == -1:
                 index = 0
             self.comboBox_fullstrategy.setCurrentIndex(index)
-        self.full_strategy = FullStrategy[self.comboBox_fullstrategy.currentText()]
+        self.full_strategy = FullReferenceStrategy[self.comboBox_fullstrategy.currentText()]
 
         if (
             self.reference_choice is None
@@ -205,28 +224,22 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.reference_choice = self.comboBox_referencelayer.currentText()
         current_reference_layer_index = self.mMapLayerComboBox_reference.currentIndex()
         if (
-            current_reference_layer_index == -1
-        ):  # or current_reference_layer_index == 0:
+            current_reference_layer_index == -1 or current_reference_layer_index == 0):  # :
             try:
                 self.reference_layer = s.value("brdrq/reference_layer", None)
                 self.mMapLayerComboBox_reference.setLayer(self.reference_layer)
-            except:
-                self.mMapLayerComboBox_reference.setLayer(None)
-        self.reference_layer = self.mMapLayerComboBox_reference.currentLayer()
-
-        current_reference_id_index = self.mFieldComboBox_reference.currentIndex()
-        if current_reference_id_index == -1:
-            try:
-                self.reference_id = s.value("brdrq/reference_id", None)
+                self.reference_id = s.value("brdrq/reference_id", 0)
                 self.mFieldComboBox_reference.setField(self.reference_id)
             except:
+                self.mMapLayerComboBox_reference.setLayer(None)
                 self.mFieldComboBox_reference.setField(None)
+        self.reference_layer = self.mMapLayerComboBox_reference.currentLayer()
         self.reference_id = self.mFieldComboBox_reference.currentField()
 
-        if self.formula is None:
-            self.formula = int(s.value("brdrq/formula", 0))
-            self.checkBox_formula.setCheckState(self.formula)
-        self.formula = self.checkBox_formula.checkState()
+        if self.metadata is None:
+            self.metadata = int(s.value("brdrq/metadata", 0))
+            self.checkBox_metadata.setCheckState(self.metadata)
+        self.metadata = self.checkBox_metadata.checkState()
 
         # if self.partial_snapping is None:
         #     self.partial_snapping = int(s.value("brdrq/partial_snapping", 0))
@@ -257,8 +270,9 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         s.setValue("brdrq/reference_id", self.reference_id)
         s.setValue("brdrq/reference_layer", self.reference_layer)
         s.setValue("brdrq/max_rel_dist", self.max_rel_dist)
-        s.setValue("brdrq/formula", self.formula)
+        s.setValue("brdrq/metadata", self.metadata)
         s.setValue("brdrq/full_strategy", self.full_strategy.name)
+        s.setValue("brdrq/processor", self.processor.name)
         s.setValue("brdrq/partial_snapping", self.partial_snapping)
         s.setValue(
             "brdrq/partial_snapping_strategy", self.partial_snapping_strategy.name

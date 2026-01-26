@@ -1,3 +1,14 @@
+# v0.17.0
+
+- Upgrade to brdr release version 0.15.3 (stable API)
+- brdr_formula changed to linked (meta)data brdr_metadata: actuations & observations
+- Added OSMLoader to brdrQ
+- added qgis minimum version (3.36) for brdrQ
+- Added extra parameters to AutoCorrectBorders when using Predictions
+- Added choice/enum of Processors
+- Updated links to Documentation/API
+- Saved settings in profile for brdrQ parameters
+
 # v0.16.0
 
 - Added logic for automatic non-Windows install of 'brdr' [#206]
