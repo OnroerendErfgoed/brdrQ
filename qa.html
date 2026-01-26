@@ -129,8 +129,16 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#q-does-brdrq-modify-the-original-data" id="toc-q-does-brdrq-modify-the-original-data" class="nav-link active" data-scroll-target="#q-does-brdrq-modify-the-original-data"><strong>Q: Does brdrQ modify the original data?</strong></a></li>
+  <li><a href="#faq" id="toc-faq" class="nav-link active" data-scroll-target="#faq">FAQ</a>
+  <ul class="collapse">
+  <li><a href="#q-does-brdrq-modify-the-original-data" id="toc-q-does-brdrq-modify-the-original-data" class="nav-link" data-scroll-target="#q-does-brdrq-modify-the-original-data"><strong>Q: Does brdrQ modify the original data?</strong></a></li>
   <li><a href="#q-what-types-of-geometries-are-supported" id="toc-q-what-types-of-geometries-are-supported" class="nav-link" data-scroll-target="#q-what-types-of-geometries-are-supported"><strong>Q: What types of geometries are supported?</strong></a></li>
+  <li><a href="#q-my-local-reference-layer-seems-to-slow-down-brdrq.-what-can-i-do-about-it" id="toc-q-my-local-reference-layer-seems-to-slow-down-brdrq.-what-can-i-do-about-it" class="nav-link" data-scroll-target="#q-my-local-reference-layer-seems-to-slow-down-brdrq.-what-can-i-do-about-it"><strong>Q: My ‘local’ reference layer seems to slow down brdrQ. What can I do about it?</strong></a></li>
+  </ul></li>
+  <li><a href="#warningserrors" id="toc-warningserrors" class="nav-link" data-scroll-target="#warningserrors">Warnings/Errors</a>
+  <ul class="collapse">
+  <li><a href="#crs-error" id="toc-crs-error" class="nav-link" data-scroll-target="#crs-error">CRS error</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -157,7 +165,8 @@ ul.task-list li input[type="checkbox"] {
 
 
 <p>This page lists the answers on FAQ’s &amp; brdrQ - errors/warnings.</p>
-<p>#FAQ</p>
+<section id="faq" class="level1">
+<h1>FAQ</h1>
 <section id="q-does-brdrq-modify-the-original-data" class="level2">
 <h2 class="anchored" data-anchor-id="q-does-brdrq-modify-the-original-data"><strong>Q: Does brdrQ modify the original data?</strong></h2>
 <p>A: When using Autocorrectborders or Autoupdateborders, the original data is not effected and an new layer is returned. When using the FeatureAligner, the data in the selected layer can be changed by saving the predicted geometry</p>
@@ -165,9 +174,28 @@ ul.task-list li input[type="checkbox"] {
 <section id="q-what-types-of-geometries-are-supported" class="level2">
 <h2 class="anchored" data-anchor-id="q-what-types-of-geometries-are-supported"><strong>Q: What types of geometries are supported?</strong></h2>
 <p>A: The brdr-library is initially developed to align (Multi-)Polygons to (Multi-)Polygons. However the plugin can also be used for other types of input/reference (Points &amp; Linestrings).</p>
-<p>#Warnings/Errors ## CRS error A: Please check if the CRS is set on the thematic layer and reference layer, and they use the same projected CRS (in units: meter)</p>
+</section>
+<section id="q-my-local-reference-layer-seems-to-slow-down-brdrq.-what-can-i-do-about-it" class="level2">
+<h2 class="anchored" data-anchor-id="q-my-local-reference-layer-seems-to-slow-down-brdrq.-what-can-i-do-about-it"><strong>Q: My ‘local’ reference layer seems to slow down brdrQ. What can I do about it?</strong></h2>
+<p>A: Performance bottlenecks with reference layers are usually caused by how data is accessed and how efficiently it is searched. Even “local” layers can be slow due to two main factors: * Network Latency: If your data is stored on a network drive, a VPN share, or a cloud-synced folder (like OneDrive or Dropbox), QGIS must communicate with the server for every geometry calculation. This constant data transfer creates significant delays compared to reading directly from your hardware. * Missing Spatial Index: This is the most common technical bottleneck. Without a spatial index, QGIS must perform a “Full Table Scan.” This means to find a feature at a specific location, the tool has to check every single feature in the file one by one.</p>
+<p>To significantly speed up your ‘local’ reference layer, implement the following optimizations: * Work Locally: Ensure your reference layer is stored on your computer’s internal SSD. Avoid running heavy analysis on files stored on network paths or external mechanical drives. * Create a Spatial Index: A spatial index acts like a “lookup table” for geometries. It allows the tool to instantly identify which features are in a specific area without scanning the entire dataset. * Use Efficient Formats: While Shapefiles are common, the GeoPackage (.gpkg) format is more modern and generally offers better performance for large datasets in QGIS.</p>
+<p>How to add a Spatial Index in QGIS: Creating an index is a quick process that can be done directly within the layer settings:</p>
+<ul>
+<li>Right-click the layer in the Layers Panel and select Properties.</li>
+<li>Navigate to the Source tab.</li>
+<li>Look for the Geometry section.</li>
+<li>Click the Create Spatial Index button. (If the button is greyed out, an index is already present).</li>
+</ul>
+</section>
+</section>
+<section id="warningserrors" class="level1">
+<h1>Warnings/Errors</h1>
+<section id="crs-error" class="level2">
+<h2 class="anchored" data-anchor-id="crs-error">CRS error</h2>
+<p>A: Please check if the CRS is set on the thematic layer and reference layer, and they use the same projected CRS (in units: meter)</p>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->
