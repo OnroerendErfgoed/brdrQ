@@ -65,6 +65,7 @@ from .brdrq_utils import (
     OSM_TYPES,
     DICT_OSM_TYPES,
     get_processor_by_id,
+    ENUM_REFERENCE_OPTIONS,
 )
 
 FORM_CLASS, _ = uic.loadUiType(
@@ -554,6 +555,12 @@ class brdrQDockWidgetFeatureAligner(
                     "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"
                 )
                 return None
+            elif self.reference_id is None or self.reference_id == "NULL" or self.reference_id == ''  or self.reference_id == -1:
+                iface.messageBar().pushWarning("Reference ID",
+                    "Reference ID not selected: " 
+                    "Please provide the Unique ID-fieldname of the reference layer (SETTINGS)"
+                )
+                return None
             # Load reference-layer into a shapely_dict:
             dict_reference = {}
             processing.run(
@@ -582,7 +589,7 @@ class brdrQDockWidgetFeatureAligner(
             relevant_distances=self.relevant_distances,
             full_reference_strategy=self.full_strategy,
         )
-        #TODO should we add a try/catch, fe when using DieussaertProcessing for non-polygons it will result in error
+        # TODO should we add a try/catch, fe when using DieussaertProcessing for non-polygons it will result in error
 
         self.dict_processresults = self.aligner_result.get_results(aligner=self.aligner)
         self.dict_evaluated_predictions = self.aligner_result.get_results(aligner=self.aligner,result_type=AlignerResultType.EVALUATED_PREDICTIONS)
@@ -614,9 +621,20 @@ class brdrQDockWidgetFeatureAligner(
         self.clearUserInterface()
         self.textEdit_output.setText("Please select a feature to align")
         self.loadSettings()
+        self.add_reference_label()
         self.setHandles()
         self.show()
         return
+
+    def add_reference_label(self):
+        # label for referencelayer
+        index = ENUM_REFERENCE_OPTIONS.index(self.reference_choice)
+        reflabel = "Reference Layer"
+        if index > 0:
+            reflabel = self.reference_choice
+        else:
+            reflabel = self.reference_layer
+        self.label_referencelayer.setText(f"<@ {reflabel}>")
 
 
 def __init__():

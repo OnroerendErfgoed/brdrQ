@@ -224,22 +224,16 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.reference_choice = self.comboBox_referencelayer.currentText()
         current_reference_layer_index = self.mMapLayerComboBox_reference.currentIndex()
         if (
-            current_reference_layer_index == -1
-        ):  # or current_reference_layer_index == 0:
+            current_reference_layer_index == -1 or current_reference_layer_index == 0):  # :
             try:
                 self.reference_layer = s.value("brdrq/reference_layer", None)
                 self.mMapLayerComboBox_reference.setLayer(self.reference_layer)
-            except:
-                self.mMapLayerComboBox_reference.setLayer(None)
-        self.reference_layer = self.mMapLayerComboBox_reference.currentLayer()
-
-        current_reference_id_index = self.mFieldComboBox_reference.currentIndex()
-        if current_reference_id_index == -1:
-            try:
-                self.reference_id = s.value("brdrq/reference_id", None)
+                self.reference_id = s.value("brdrq/reference_id", 0)
                 self.mFieldComboBox_reference.setField(self.reference_id)
             except:
+                self.mMapLayerComboBox_reference.setLayer(None)
                 self.mFieldComboBox_reference.setField(None)
+        self.reference_layer = self.mMapLayerComboBox_reference.currentLayer()
         self.reference_id = self.mFieldComboBox_reference.currentField()
 
         if self.metadata is None:
