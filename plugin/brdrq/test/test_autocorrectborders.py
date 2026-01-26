@@ -13,6 +13,7 @@ from qgis.core import (
     QgsProject,
     QgsVectorLayer,
 )
+from qgis.core import QgsSettings
 from qgis.gui import QgsMapCanvas
 
 from .utilities import get_qgis_app
@@ -27,9 +28,24 @@ class TestAutoCorrectBorders(unittest.TestCase):
         self.provider = BrdrQProvider()
         QGISAPP.processingRegistry().addProvider(self.provider)
 
+        # self.settings = QgsSettings()
+        #
+        # # Reset specifiek jouw plugin/provider settings
+        # # Gebruik de juiste prefix die jouw algoritme gebruikt
+        # prefix = "brdrqautocorrectborders/"
+        #
+        # for key in self.settings.allKeys():
+        #     if key.startswith(prefix):
+        #         self.settings.remove(key)
+        # # Forceer het wegschrijven naar schijf/geheugen
+        # self.settings.sync()
+
+
     def tearDown(self):
         QGISAPP.processingRegistry().removeProvider(self.provider)
         QgsProject.instance().clear()
+
+
     def test_autocorrectborders(self):
         # See https://gis.stackexchange.com/a/276979/4972 for a list of algorithms
         foldername = QgsProcessingParameterFolderDestination(name="brdrQ").generateTemporaryDestination()
@@ -47,7 +63,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "RELEVANT_DISTANCE": 2,
                 "ENUM_REFERENCE": 1,
                 "INPUT_REFERENCE": None,
-                "COMBOBOX_ID_REFERENCE": "",
+                "COMBOBOX_ID_REFERENCE": None,
                 "WORK_FOLDER": foldername,
                 "ENUM_OD_STRATEGY": 1,
                 "ENUM_PROCESSOR": 0,
@@ -86,7 +102,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "RELEVANT_DISTANCE": 2,
                 "ENUM_REFERENCE": 30,  # fiscal2023
                 "INPUT_REFERENCE": None,
-                "COMBOBOX_ID_REFERENCE": "",
+                "COMBOBOX_ID_REFERENCE": None,
                 "WORK_FOLDER": foldername,
                 "ENUM_OD_STRATEGY": 1,
                 "ENUM_PROCESSOR": 0,
@@ -123,7 +139,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "RELEVANT_DISTANCE": 2,
                 "ENUM_REFERENCE": 34,  # osm_buildings
                 "INPUT_REFERENCE": None,
-                "COMBOBOX_ID_REFERENCE": "",
+                "COMBOBOX_ID_REFERENCE": None,
                 "WORK_FOLDER": foldername,
                 "ENUM_OD_STRATEGY": 1,
                 "ENUM_PROCESSOR": 0,
@@ -175,7 +191,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "RELEVANT_DISTANCE": 2,
                 "ENUM_REFERENCE": 1,
                 "INPUT_REFERENCE": None,
-                "COMBOBOX_ID_REFERENCE": "",
+                "COMBOBOX_ID_REFERENCE": None,
                 "WORK_FOLDER": foldername,
                 "ENUM_OD_STRATEGY": 1,
                 "ENUM_PROCESSOR": 0,
@@ -259,7 +275,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "RELEVANT_DISTANCE": 5,
                 "ENUM_REFERENCE": 1,
                 "INPUT_REFERENCE": None,
-                "COMBOBOX_ID_REFERENCE": "",
+                "COMBOBOX_ID_REFERENCE": None,
                 "WORK_FOLDER": foldername,
                 "ENUM_OD_STRATEGY": 1,
                 "ENUM_PROCESSOR": 0,
@@ -290,33 +306,12 @@ class TestAutoCorrectBorders(unittest.TestCase):
 
         output = processing.run(
             "brdrqprovider:brdrqautocorrectborders",
-            # {
-            #     "INPUT_THEMATIC": themelayername,
-            #     "COMBOBOX_ID_THEME": "theme_identifier",
-            #     "RELEVANT_DISTANCE": 5,
-            #     "ENUM_REFERENCE": 1,
-            #     "INPUT_REFERENCE": None,
-            #     "COMBOBOX_ID_REFERENCE": "",
-            #     "WORK_FOLDER": foldername,
-            #     "ENUM_OD_STRATEGY": 1,
-            #     "ENUM_PROCESSOR": 0,
-            #     "THRESHOLD_OVERLAP_PERCENTAGE": 50,
-            #     "FULL_REFERENCE_STRATEGY": 2,
-            #     "PREDICTION_STRATEGY": 1,
-            #     "REVIEW_PERCENTAGE": 10,
-            #     "ADD_METADATA": False,
-            #     "STABILITY": True,
-            #     "ADD_ATTRIBUTES": True,
-            #     "SHOW_INTERMEDIATE_LAYERS": True,
-            #     "PREDICTIONS": 0,
-            #     "SHOW_LOG_INFO": False,
-            # },
             {
                 "INPUT_THEMATIC": themelayername,
                 "COMBOBOX_ID_THEME": "theme_identifier",
                 "ENUM_REFERENCE": 1,
                 "INPUT_REFERENCE": None,
-                "COMBOBOX_ID_REFERENCE": "",
+                "COMBOBOX_ID_REFERENCE": None,
                 "RELEVANT_DISTANCE": 3,
                 "PREDICTIONS": 0,
                 "PREDICTION_STRATEGY": 1,
@@ -353,7 +348,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "RELEVANT_DISTANCE": 5,
                 "ENUM_REFERENCE": 1,
                 "INPUT_REFERENCE": None,
-                "COMBOBOX_ID_REFERENCE": "",
+                "COMBOBOX_ID_REFERENCE": None,
                 "WORK_FOLDER": foldername,
                 "ENUM_OD_STRATEGY": 1,
                 "ENUM_PROCESSOR": 0,
@@ -395,7 +390,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                     "RELEVANT_DISTANCE": 2,
                     "ENUM_REFERENCE": 1,
                     "INPUT_REFERENCE": None,
-                    "COMBOBOX_ID_REFERENCE": "",
+                    "COMBOBOX_ID_REFERENCE": None,
                     "WORK_FOLDER": foldername,
                     "ENUM_OD_STRATEGY": 8,
                     "ENUM_PROCESSOR": 0,

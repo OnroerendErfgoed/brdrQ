@@ -11,6 +11,8 @@ from brdr.processor import (
     SnapGeometryProcessor,
     TopologyProcessor,
 )
+from qgis._core import QgsProperty
+from qgis.core import QgsSettings, QgsProcessingFeatureSourceDefinition
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
 from qgis.core import QgsProcessingException
 from qgis.core import QgsRectangle
@@ -153,12 +155,11 @@ class BrdrQState(str, Enum):
     NONE = "none"
 
 
-
 def get_processor_by_id(processor_id,config):
     """
     Function that returns a Processor, based on the ID
     """
-    #AlignerGeometryProcessor as default processor
+    # AlignerGeometryProcessor as default processor
     processor = AlignerGeometryProcessor(config=config)
     try:
         processor_id=ProcessorID(processor_id)
@@ -173,6 +174,64 @@ def get_processor_by_id(processor_id,config):
     if processor_id == ProcessorID.TOPOLOGY:
         return TopologyProcessor(config=config)
     return processor
+
+
+def read_setting(prefix, key, fallback):
+    """
+    Reads a value with priority:
+    1. Current QGIS Project (Specific to this file)
+    2. QgsSettings (Global User Profile)
+    3. Fallback (Default value)
+    """
+    # # 1. Try to read from the Project file first
+    # # readEntry returns a tuple: (value, boolean_success)
+    # project_value, exists = QgsProject.instance().readEntry(prefix, key)
+    #
+    # if exists and project_value is not None:
+    #     return project_value
+
+    # 2. If not found in project, try QgsSettings (Global Profile)
+    settings = QgsSettings()
+    return settings.value(prefix + key, fallback)
+
+
+def write_setting(prefix, key, value):
+    """
+    Writes value to both the Project file and the Global User Profile.
+    """
+
+    # # Convert complex QGIS objects to strings (usually the layer ID/Source)
+    # # 1. Unpack FeatureSourceDefinition
+    # if isinstance(value, QgsProcessingFeatureSourceDefinition):
+    #     value = value.source  # This might be a string OR a QgsProperty
+    #
+    # # 2. Extract value from QgsProperty (if it's a Property now or was originally)
+    # if isinstance(value, QgsProperty):
+    #     try:
+    #         value = value.asExpression()
+    #     except:
+    #         value = value.staticValue()
+    #
+    # # 3. Final cleanup for the Project XML
+    # if value is None:
+    #     QgsProject.instance().removeEntry(prefix, key)
+    #     # Also remove from settings to keep them synced
+    #     QgsSettings().remove(prefix + key)
+    #     return
+    #
+    # # 4. Save to both locations
+    # # We ensure value is converted to a string if it's not a basic type
+    # save_value = str(value) if not isinstance(value, (int, float, bool)) else value
+    #
+    # # 1. Write to the Project file
+    # QgsProject.instance().writeEntry(prefix, key, value)
+
+    # 2. Write to QgsSettings (Global Profile)
+    settings = QgsSettings()
+    settings.setValue(prefix + key, value)
+
+    # # Sync to ensure the changes are written to the disk immediately
+    # settings.sync()
 
 
 def geom_shapely_to_qgis(geom_shapely):
@@ -726,6 +785,24 @@ def plot_series(
     return
 
 
+def get_valid_layer(layer_id_or_name):
+    """
+    Checks if the layer_id exists in the current project.
+    Returns the layer object if valid, otherwise returns None.
+    """
+    if layer_id_or_name is None or not layer_id_or_name or layer_id_or_name==-1 or not isinstance(layer_id_or_name,str):
+        return None
+    project=QgsProject.instance()
+    # Zoek de laag in het huidige project
+    layer = project.mapLayer((layer_id_or_name))
+
+    # Controleer of de laag echt is gevonden en 'valid' is (bijv. bronbestand niet verwijderd)
+    if layer and layer.isValid():
+        return layer
+
+    return None
+
+
 def _processresult_to_dicts(processresult):
     """
     Transforms a dictionary with all ProcessResults to individual dictionaries of the
@@ -794,7 +871,7 @@ def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_
         ref_suffix = str(ref)
     else:
         selected_reference = 0
-        if layer_reference is None or id_reference_fieldname == "NULL":
+        if layer_reference is None or id_reference_fieldname is None or id_reference_fieldname == "NULL":
             raise QgsProcessingException(
                 "Please choose a REFERENCELAYER from the table of contents, and the associated unique REFERENCE ID"
             )
