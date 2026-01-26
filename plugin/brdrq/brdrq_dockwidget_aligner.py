@@ -62,7 +62,7 @@ class brdrQDockWidgetAligner(object):
         self.partialSelectTool = None
         self.formerMapTool = None
         self.aligner = None
-        self.processor =None
+        self.processor = None
         self.relevant_distances = None
         self.threshold_overlap_percentage = None
         self.od_strategy = None
@@ -212,13 +212,13 @@ class brdrQDockWidgetAligner(object):
 
     def setFilterOnLayers(self, value):
         filter = f"brdr_relevant_distance = {value}"
-        self._setFilterOnLayer(self.LAYER_RESULT,filter)
-        self._setFilterOnLayer(self.LAYER_RESULT_DIFF,filter)
-        self._setFilterOnLayer(self.LAYER_RESULT_DIFF_MIN,filter)
-        self._setFilterOnLayer(self.LAYER_RESULT_DIFF_PLUS,filter)
+        self._setFilterOnLayer(self.LAYER_RESULT, filter)
+        self._setFilterOnLayer(self.LAYER_RESULT_DIFF, filter)
+        self._setFilterOnLayer(self.LAYER_RESULT_DIFF_MIN, filter)
+        self._setFilterOnLayer(self.LAYER_RESULT_DIFF_PLUS, filter)
         return
 
-    def _setFilterOnLayer(self, layername,filter):
+    def _setFilterOnLayer(self, layername, filter):
         layer = get_layer_by_name(layername)
         if not layer is None:
             layer.setSubsetString(filter)
@@ -265,9 +265,11 @@ class brdrQDockWidgetAligner(object):
             return
         key = feat.id()
         show_map(
-            dict_results = {key: self.dict_evaluated_predictions[key]},
-            dict_thematic= {key: self.aligner.thematic_data[key].geometry},
-            dict_reference= {k :v.geometry for k,v in self.aligner.reference_data.features.items()},
+            dict_results={key: self.dict_evaluated_predictions[key]},
+            dict_thematic={key: self.aligner.thematic_data[key].geometry},
+            dict_reference={
+                k: v.geometry for k, v in self.aligner.reference_data.features.items()
+            },
         )
         return
 

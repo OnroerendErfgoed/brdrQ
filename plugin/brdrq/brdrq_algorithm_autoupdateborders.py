@@ -102,7 +102,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     CORR_DISTANCE = 0.01  # default CORR_DISTANCE for the aligner
     MULTI_AS_SINGLE_MODUS = True  # default MULTI_AS_SINGLE_MODUS for the aligner
 
-
     PREFIX = "brdrQ_"
     SUFFIX = ""  # parameter for composing a suffix for the layers
     LAYER_RESULT = (
@@ -120,7 +119,6 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         + "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
     )
     GROUP_LAYER = PREFIX + "GRB_UPDATE"
-
 
     def flags(self):
         return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
@@ -221,7 +219,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "COMBOBOX_ID_THEME",
             "Thematic ID (unique!)",
             defaultValue=self.default_theme_layer_id,
-            parentLayerParameterName = self.INPUT_THEMATIC,
+            parentLayerParameterName=self.INPUT_THEMATIC,
         )
         parameter.setFlags(parameter.flags())
         self.addParameter(parameter)
@@ -262,7 +260,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             '<br>Full Reference Strategy<br><i style="color: gray;">When using Predictions, the Full Reference strategy determines how predictions are handled that are fully covered by reference-data </i>',
             options=ENUM_FULL_REFERENCE_STRATEGY_OPTIONS,
             defaultValue=self.default_full_reference_strategy,
-            #optional=True,
+            # optional=True,
         )
         parameter.setFlags(
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
@@ -306,7 +304,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "METADATA_FIELD",
             "brdr_metadata field (optional; field that holds brdr_metadata, used for a better prediction)",  # (if empty, metadata will not be used)
             defaultValue=self.default_metadata_field,
-            parentLayerParameterName = self.INPUT_THEMATIC,
+            parentLayerParameterName=self.INPUT_THEMATIC,
             optional=True,
         )
         parameter.setFlags(
@@ -329,7 +327,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter = QgsProcessingParameterBoolean(
             "SHOW_LOG_INFO",
             "Show extra logging (from brdr-log)",
-            defaultValue=self.default_extra_logging
+            defaultValue=self.default_extra_logging,
         )
         parameter.setFlags(
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
@@ -418,22 +416,25 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         else:
             log_info = None
 
-        processor_config=ProcessorConfig()
+        processor_config = ProcessorConfig()
         processor_config.od_strategy = self.OD_STRATEGY
         processor_config.multi_as_single_modus = self.MULTI_AS_SINGLE_MODUS
         processor_config.correction_distance = self.CORR_DISTANCE
-        processor_config.threshold_overlap_percentage = self.THRESHOLD_OVERLAP_PERCENTAGE
-        processor=get_processor_by_id(processor_id=self.PROCESSOR.value,config=processor_config)
+        processor_config.threshold_overlap_percentage = (
+            self.THRESHOLD_OVERLAP_PERCENTAGE
+        )
+        processor = get_processor_by_id(
+            processor_id=self.PROCESSOR.value, config=processor_config
+        )
         aligner_config = AlignerConfig()
         aligner_config.log_metadata = True
         aligner_config.add_observations = True
 
         aligner = Aligner(
             feedback=log_info,
-        crs = self.CRS,
+            crs=self.CRS,
             processor=processor,
             config=aligner_config,
-
         )
         aligner.load_thematic_data(
             DictLoader(
@@ -479,7 +480,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             geojson_result_diff_min = fcs_actualisation[result_diff_min]
             geojson_to_layer(
                 self.LAYER_RESULT_DIFF_MIN,
-                geojson_result_diff_min,result_diff_min,
+                geojson_result_diff_min,
+                result_diff_min,
                 True,
                 self.GROUP_LAYER,
                 self.WORKFOLDER,
@@ -489,7 +491,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             geojson_result_diff_plus = fcs_actualisation[result_diff_plus]
             geojson_to_layer(
                 self.LAYER_RESULT_DIFF_PLUS,
-                geojson_result_diff_plus,result_diff_plus,
+                geojson_result_diff_plus,
+                result_diff_plus,
                 True,
                 self.GROUP_LAYER,
                 self.WORKFOLDER,
@@ -499,7 +502,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             geojson_result_diff = fcs_actualisation[result_diff]
             geojson_to_layer(
                 self.LAYER_RESULT_DIFF,
-                geojson_result_diff, result_diff,
+                geojson_result_diff,
+                result_diff,
                 False,
                 self.GROUP_LAYER,
                 self.WORKFOLDER,
@@ -509,7 +513,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         geojson_result = fcs_actualisation[result]
         geojson_to_layer(
             self.LAYER_RESULT,
-            geojson_result, result,
+            geojson_result,
+            result,
             True,
             self.GROUP_LAYER,
             self.WORKFOLDER,
@@ -559,7 +564,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "SHOW_LOG_INFO": False,
         }
 
-        #Read from default dict first
+        # Read from default dict first
         self.default_theme_layer = self.params_default_dict[self.INPUT_THEMATIC]
         self.default_theme_layer_id = self.params_default_dict["COMBOBOX_ID_THEME"]
         self.default_reference = self.params_default_dict["ENUM_REFERENCE"]
@@ -580,38 +585,76 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.default_extra_logging = self.params_default_dict["SHOW_LOG_INFO"]
 
         # READ FROM SAVED SETTINGS
-        self.default_theme_layer  = read_setting(prefix,"theme_layer",self.default_theme_layer)
-        self.default_theme_layer_id  = read_setting(prefix,"default_theme_layer_id",self.default_theme_layer_id)
-        self.default_reference  = read_setting(prefix,"default_reference",self.default_reference)
-        self.default_relevant_distance  = read_setting(prefix,"relevant_distance",self.default_relevant_distance)
-        self.default_prediction_strategy  = read_setting(prefix,"default_prediction_strategy",self.default_prediction_strategy)
-        self.default_full_reference_strategy  = read_setting(prefix,"default_full_reference_strategy",self.default_full_reference_strategy)
-        self.default_processor  = read_setting(prefix,"default_processor",self.default_processor)
-        self.default_od_strategy  = read_setting(prefix,"default_od_strategy",self.default_od_strategy)
-        self.default_threshold_overlap_percentage  = read_setting(prefix,"default_threshold_overlap_percentage",self.default_threshold_overlap_percentage)
-        self.default_workfolder  = read_setting(prefix,"default_workfolder",self.default_workfolder)
-        self.default_metadata_field  = read_setting(prefix,"default_metadata_field",self.default_metadata_field)
-        self.default_extra_logging  = read_setting(prefix, "default_extra_logging", self.default_extra_logging)
+        self.default_theme_layer = read_setting(
+            prefix, "theme_layer", self.default_theme_layer
+        )
+        self.default_theme_layer_id = read_setting(
+            prefix, "default_theme_layer_id", self.default_theme_layer_id
+        )
+        self.default_reference = read_setting(
+            prefix, "default_reference", self.default_reference
+        )
+        self.default_relevant_distance = read_setting(
+            prefix, "relevant_distance", self.default_relevant_distance
+        )
+        self.default_prediction_strategy = read_setting(
+            prefix, "default_prediction_strategy", self.default_prediction_strategy
+        )
+        self.default_full_reference_strategy = read_setting(
+            prefix,
+            "default_full_reference_strategy",
+            self.default_full_reference_strategy,
+        )
+        self.default_processor = read_setting(
+            prefix, "default_processor", self.default_processor
+        )
+        self.default_od_strategy = read_setting(
+            prefix, "default_od_strategy", self.default_od_strategy
+        )
+        self.default_threshold_overlap_percentage = read_setting(
+            prefix,
+            "default_threshold_overlap_percentage",
+            self.default_threshold_overlap_percentage,
+        )
+        self.default_workfolder = read_setting(
+            prefix, "default_workfolder", self.default_workfolder
+        )
+        self.default_metadata_field = read_setting(
+            prefix, "default_metadata_field", self.default_metadata_field
+        )
+        self.default_extra_logging = read_setting(
+            prefix, "default_extra_logging", self.default_extra_logging
+        )
 
-        #Validate defaults
+        # Validate defaults
         if not get_valid_layer(self.default_theme_layer):
-            self.default_theme_layer =self.params_default_dict[self.INPUT_THEMATIC]
+            self.default_theme_layer = self.params_default_dict[self.INPUT_THEMATIC]
 
     def write_settings(self):
         # print ('write_settings')
         prefix = self.name() + "/"
 
-        write_setting(prefix,"theme_layer",self.default_theme_layer)
-        write_setting(prefix,"default_theme_layer_id",self.default_theme_layer_id)
-        write_setting(prefix,"default_reference",self.default_reference)
-        write_setting(prefix,"relevant_distance",self.default_relevant_distance)
-        write_setting(prefix,"default_prediction_strategy",self.default_prediction_strategy)
-        write_setting(prefix,"default_full_reference_strategy",self.default_full_reference_strategy)
-        write_setting(prefix,"default_processor",self.default_processor)
-        write_setting(prefix,"default_od_strategy",self.default_od_strategy)
-        write_setting(prefix,"default_threshold_overlap_percentage",self.default_threshold_overlap_percentage)
-        write_setting(prefix,"default_workfolder",self.default_workfolder)
-        write_setting(prefix,"default_metadata_field",self.default_metadata_field)
+        write_setting(prefix, "theme_layer", self.default_theme_layer)
+        write_setting(prefix, "default_theme_layer_id", self.default_theme_layer_id)
+        write_setting(prefix, "default_reference", self.default_reference)
+        write_setting(prefix, "relevant_distance", self.default_relevant_distance)
+        write_setting(
+            prefix, "default_prediction_strategy", self.default_prediction_strategy
+        )
+        write_setting(
+            prefix,
+            "default_full_reference_strategy",
+            self.default_full_reference_strategy,
+        )
+        write_setting(prefix, "default_processor", self.default_processor)
+        write_setting(prefix, "default_od_strategy", self.default_od_strategy)
+        write_setting(
+            prefix,
+            "default_threshold_overlap_percentage",
+            self.default_threshold_overlap_percentage,
+        )
+        write_setting(prefix, "default_workfolder", self.default_workfolder)
+        write_setting(prefix, "default_metadata_field", self.default_metadata_field)
         write_setting(prefix, "default_extra_logging", self.default_extra_logging)
 
     def prepare_parameters(self, parameters, context):
@@ -624,27 +667,29 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.default_prediction_strategy = parameters["PREDICTION_STRATEGY"]
         self.default_full_reference_strategy = parameters["FULL_REFERENCE_STRATEGY"]
         self.default_processor = parameters["ENUM_PROCESSOR"]
-        self.default_od_strategy= parameters["ENUM_OD_STRATEGY"]
-        self.default_threshold_overlap_percentage = parameters["THRESHOLD_OVERLAP_PERCENTAGE"]
+        self.default_od_strategy = parameters["ENUM_OD_STRATEGY"]
+        self.default_threshold_overlap_percentage = parameters[
+            "THRESHOLD_OVERLAP_PERCENTAGE"
+        ]
         self.default_workfolder = parameters["WORK_FOLDER"]
-        self.default_metadata_field= parameters["METADATA_FIELD"]
-        self.default_extra_logging= parameters["SHOW_LOG_INFO"]
+        self.default_metadata_field = parameters["METADATA_FIELD"]
+        self.default_extra_logging = parameters["SHOW_LOG_INFO"]
 
         wrkfldr = self.default_workfolder
         if wrkfldr is None or str(wrkfldr) == "" or str(wrkfldr) == "NULL":
             wrkfldr = self.WORKFOLDER
-        self.WORKFOLDER = get_workfolder(
-            wrkfldr, name=self.name(), temporary=False
-        )
+        self.WORKFOLDER = get_workfolder(wrkfldr, name=self.name(), temporary=False)
 
         self.RELEVANT_DISTANCE = self.default_relevant_distance
 
-        if isinstance(
-            self.default_theme_layer, QgsProcessingFeatureSourceDefinition
-        ):
+        if isinstance(self.default_theme_layer, QgsProcessingFeatureSourceDefinition):
             self.LAYER_THEMATIC = self.default_theme_layer
-            crs = QgsProject.instance().mapLayer(
-                self.default_theme_layer.toVariant()["source"]["val"]).sourceCrs().authid()
+            crs = (
+                QgsProject.instance()
+                .mapLayer(self.default_theme_layer.toVariant()["source"]["val"])
+                .sourceCrs()
+                .authid()
+            )
         else:
             self.LAYER_THEMATIC = self.parameterAsVectorLayer(
                 parameters, self.INPUT_THEMATIC, context
@@ -673,16 +718,12 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
 
-
         self.METADATA_FIELDNAME = self.default_metadata_field
         if str(self.METADATA_FIELDNAME) == "NULL":
             self.METADATA_FIELDNAME = None
 
-
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        self.SUFFIX = (
-            "_" + ref_suffix + "_" + timestamp
-        )
+        self.SUFFIX = "_" + ref_suffix + "_" + timestamp
         self.SUFFIX = self.SUFFIX.replace(".", "_")
         self.SUFFIX = self.SUFFIX.replace(" ", "_")
 

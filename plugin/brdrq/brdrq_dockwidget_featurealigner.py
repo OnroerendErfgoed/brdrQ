@@ -145,14 +145,18 @@ class brdrQDockWidgetFeatureAligner(
         return
 
     def _initializeSelectFeatures(self):
-        self.comboBox_selectfeatures.addItem("ALL FEATURES",userData="ALL")
-        self.comboBox_selectfeatures.addItem("SELECTED FEATURES",userData="SELECTED")
+        self.comboBox_selectfeatures.addItem("ALL FEATURES", userData="ALL")
+        self.comboBox_selectfeatures.addItem("SELECTED FEATURES", userData="SELECTED")
         for x in BrdrQState:
-            self.comboBox_selectfeatures.addItem("STATE: "+str(x.value),userData = str(x.value))
+            self.comboBox_selectfeatures.addItem(
+                "STATE: " + str(x.value), userData=str(x.value)
+            )
 
-        self.comboBox_selectfeatures.currentIndexChanged.connect(self.on_selectfeatures_changed)
+        self.comboBox_selectfeatures.currentIndexChanged.connect(
+            self.on_selectfeatures_changed
+        )
 
-    def on_selectfeatures_changed(self,index):
+    def on_selectfeatures_changed(self, index):
         data = self.comboBox_selectfeatures.itemData(index)
         print("Selected data:", data)
         self.listFeatures(selection=data)
@@ -234,14 +238,18 @@ class brdrQDockWidgetFeatureAligner(
             self.crs = self.layer.sourceCrs().authid()
         except:
             self.crs = None
-        if self.crs is None or self.crs == 'NULL' or self.crs == '':
+        if self.crs is None or self.crs == "NULL" or self.crs == "":
             iface.messageBar().pushWarning(
-                 "CRS", "CRS of the thematic layer is not defined. Please define a CRS to the thematic layer with units in meter")
+                "CRS",
+                "CRS of the thematic layer is not defined. Please define a CRS to the thematic layer with units in meter",
+            )
             self.layer = None
             self.mMapLayerComboBox.setLayer(self.layer)
             return
         if self._check_warn_edit_modus(self.layer):
-            iface.messageBar().pushWarning("Edit-session","Please close edit-session of layer")
+            iface.messageBar().pushWarning(
+                "Edit-session", "Please close edit-session of layer"
+            )
             self.layer = None
             self.mMapLayerComboBox.setLayer(self.layer)
             return
@@ -260,7 +268,7 @@ class brdrQDockWidgetFeatureAligner(
         data = self.comboBox_selectfeatures.itemData(index)
         self.listFeatures(selection=data)
 
-    def listFeatures(self,selection=None,features=None):
+    def listFeatures(self, selection=None, features=None):
         self.clearUserInterface()
         if not features is None:
             self.listed_features = features
@@ -345,7 +353,7 @@ class brdrQDockWidgetFeatureAligner(
         if original_geometry is None:
             original_geometry = self.feature.geometry()
 
-        zoom_to_features([self.feature], self.iface,features_crs=self.crs)
+        zoom_to_features([self.feature], self.iface, features_crs=self.crs)
         key = self.feature.id()
 
         # Check feature on area
@@ -403,7 +411,7 @@ class brdrQDockWidgetFeatureAligner(
                 geom_shapely_to_qgis(self.dict_evaluated_predictions[key][rd]["result"])
             )
             list_predictions_features.append(feat)
-        zoom_to_features(list_predictions_features, self.iface,features_crs=self.crs)
+        zoom_to_features(list_predictions_features, self.iface, features_crs=self.crs)
         for k in list_predictions:
             items.append(str(k))
             score = self.dict_evaluated_predictions[key][k]["properties"][
@@ -431,14 +439,17 @@ class brdrQDockWidgetFeatureAligner(
         print("adding results")
         if self.aligner is None:
             return
-        fcs = self.aligner_result.get_results_as_geojson(aligner=self.aligner,
-            result_type=AlignerResultType.PROCESSRESULTS, add_metadata=self.metadata
+        fcs = self.aligner_result.get_results_as_geojson(
+            aligner=self.aligner,
+            result_type=AlignerResultType.PROCESSRESULTS,
+            add_metadata=self.metadata,
         )
         result_diff = "result_diff"
         geojson_result_diff = fcs[result_diff]
         geojson_to_layer(
             self.LAYER_RESULT_DIFF,
-            geojson_result_diff,result_diff,
+            geojson_result_diff,
+            result_diff,
             False,
             self.GROUP_LAYER,
             self.tempfolder,
@@ -447,7 +458,8 @@ class brdrQDockWidgetFeatureAligner(
         geojson_result_diff_plus = fcs[result_diff_plus]
         geojson_to_layer(
             self.LAYER_RESULT_DIFF_PLUS,
-            geojson_result_diff_plus, result_diff_plus,
+            geojson_result_diff_plus,
+            result_diff_plus,
             True,
             self.GROUP_LAYER,
             self.tempfolder,
@@ -456,7 +468,8 @@ class brdrQDockWidgetFeatureAligner(
         geojson_result_diff_min = fcs[result_diff_min]
         geojson_to_layer(
             self.LAYER_RESULT_DIFF_MIN,
-            geojson_result_diff_min, result_diff_min,
+            geojson_result_diff_min,
+            result_diff_min,
             True,
             self.GROUP_LAYER,
             self.tempfolder,
@@ -465,7 +478,8 @@ class brdrQDockWidgetFeatureAligner(
         geojson_result = fcs[result]
         geojson_to_layer(
             self.LAYER_RESULT,
-            geojson_result, result,
+            geojson_result,
+            result,
             True,
             self.GROUP_LAYER,
             self.tempfolder,
@@ -507,22 +521,25 @@ class brdrQDockWidgetFeatureAligner(
 
         processor_config = ProcessorConfig()
         processor_config.od_strategy = self.od_strategy
-        processor_config.threshold_overlap_percentage = self.threshold_overlap_percentage
+        processor_config.threshold_overlap_percentage = (
+            self.threshold_overlap_percentage
+        )
         processor_config.snap_strategy = self.partial_snapping_strategy
         processor_config.snap_max_segment_length = self.snap_max_segment_length
         processor_config.partial_snapping = self.partial_snapping
         processor_config.partial_snap_strategy = self.partial_snapping_strategy
         processor_config.partial_snap_max_segment_length = self.snap_max_segment_length
 
-        processor = get_processor_by_id(processor_id=self.processor.value,config=processor_config)
+        processor = get_processor_by_id(
+            processor_id=self.processor.value, config=processor_config
+        )
         aligner_config = AlignerConfig()
         aligner_config.log_metadata = self.metadata
         aligner_config.add_observations = self.metadata
         self.aligner = Aligner(
-        crs = self.crs,
+            crs=self.crs,
             processor=processor,
             config=aligner_config,
-
         )
 
         # Load thematic data
@@ -556,21 +573,29 @@ class brdrQDockWidgetFeatureAligner(
                 reference_crs = self.reference_layer.sourceCrs().authid()
             except:
                 reference_crs = None
-            if reference_crs is None or reference_crs == "NULL"  or reference_crs == '':
-                iface.messageBar().pushWarning("CRS",
-                    "CRS of the local Reference Layer is not defined. Please define a CRS to the REFERENCE Layer with units in meter"
+            if reference_crs is None or reference_crs == "NULL" or reference_crs == "":
+                iface.messageBar().pushWarning(
+                    "CRS",
+                    "CRS of the local Reference Layer is not defined. Please define a CRS to the REFERENCE Layer with units in meter",
                 )
                 return None
             elif reference_crs != self.crs:
-                iface.messageBar().pushWarning("CRS",
+                iface.messageBar().pushWarning(
+                    "CRS",
                     "Thematic layer and ReferenceLayer are in a different CRS. "
-                    "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"
+                    "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)",
                 )
                 return None
-            elif self.reference_id is None or self.reference_id == "NULL" or self.reference_id == ''  or self.reference_id == -1:
-                iface.messageBar().pushWarning("Reference ID",
-                    "Reference ID not selected: " 
-                    "Please provide the Unique ID-fieldname of the reference layer (SETTINGS)"
+            elif (
+                self.reference_id is None
+                or self.reference_id == "NULL"
+                or self.reference_id == ""
+                or self.reference_id == -1
+            ):
+                iface.messageBar().pushWarning(
+                    "Reference ID",
+                    "Reference ID not selected: "
+                    "Please provide the Unique ID-fieldname of the reference layer (SETTINGS)",
                 )
                 return None
             # Load reference-layer into a shapely_dict:
@@ -604,9 +629,13 @@ class brdrQDockWidgetFeatureAligner(
         # TODO should we add a try/catch, fe when using DieussaertProcessing for non-polygons it will result in error
 
         self.dict_processresults = self.aligner_result.get_results(aligner=self.aligner)
-        self.dict_evaluated_predictions = self.aligner_result.get_results(aligner=self.aligner,result_type=AlignerResultType.EVALUATED_PREDICTIONS)
+        self.dict_evaluated_predictions = self.aligner_result.get_results(
+            aligner=self.aligner, result_type=AlignerResultType.EVALUATED_PREDICTIONS
+        )
 
-        self.diffs_dict = self.aligner.get_difference_metrics_for_thematic_data(self.dict_processresults)
+        self.diffs_dict = self.aligner.get_difference_metrics_for_thematic_data(
+            self.dict_processresults
+        )
 
         output_message = "PREDICTIONS (@ relevant distances): " + str(
             [str(k) for k in self.dict_evaluated_predictions[feat.id()].keys()]

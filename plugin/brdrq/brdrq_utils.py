@@ -1,6 +1,7 @@
 import copy
 import os
 from enum import Enum
+
 # TODO QGIS4
 from PyQt5.QtGui import QColor
 from brdr.be.grb.enums import GRBType
@@ -11,11 +12,10 @@ from brdr.processor import (
     SnapGeometryProcessor,
     TopologyProcessor,
 )
-from qgis._core import QgsProperty
-from qgis.core import QgsSettings, QgsProcessingFeatureSourceDefinition
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
 from qgis.core import QgsProcessingException
 from qgis.core import QgsRectangle
+from qgis.core import QgsSettings
 from qgis.core import QgsWkbTypes
 from qgis.gui import QgsMapTool
 from qgis.gui import QgsRubberBand
