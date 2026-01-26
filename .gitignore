@@ -182,3 +182,7 @@ plugin/brdrq/zip_build/brdrq/
 /docs
 /plugin/brdrq/test/brdrQ/
 /brdrQ/autocorrectborders
+/autocorrectborders
+/brdrqautocorrectborders
+/plugin/brdrq/test/autocorrectborders
+/plugin/brdrq/test/brdrqautocorrectborders
