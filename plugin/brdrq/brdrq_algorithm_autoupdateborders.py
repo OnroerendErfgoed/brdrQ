@@ -520,7 +520,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.WORKFOLDER,
         )
 
-        feedback.pushInfo("Resulterende geometrie berekend")
+        feedback.pushInfo("Resulting geometry calculated")
         feedback.pushInfo("END ACTUALISATION")
         result = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
         result_diff = QgsProject.instance().mapLayersByName(self.LAYER_RESULT_DIFF)[0]
@@ -531,7 +531,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.LAYER_RESULT_DIFF_MIN
         )[0]
         QgsProject.instance().reloadAllLayers()
-        feedback.pushInfo("Resulterende geometrie berekend")
+        feedback.pushInfo("Resulting geometry calculated")
         feedback.setCurrentStep(6)
         if feedback.isCanceled():
             return {}
