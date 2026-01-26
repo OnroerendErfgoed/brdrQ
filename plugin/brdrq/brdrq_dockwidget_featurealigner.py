@@ -66,6 +66,9 @@ from .brdrq_utils import (
     DICT_OSM_TYPES,
     get_processor_by_id,
     ENUM_REFERENCE_OPTIONS,
+    write_setting,
+    read_setting,
+    get_valid_layer,
 )
 
 FORM_CLASS, _ = uic.loadUiType(
@@ -88,6 +91,7 @@ class brdrQDockWidgetFeatureAligner(
         # self.<objectname>, and you can use autoconnect slots - see
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
+        self.prefix = "brdrqfeaturealigner/"
         self.setupUi(self)
         self._initialize()
 
@@ -116,16 +120,22 @@ class brdrQDockWidgetFeatureAligner(
         self.pushButton_reset.clicked.connect(self.reset_geometry)
         self.pushButton_select.clicked.connect(self.activate_selectTool)
         # self.pushButton_select_partial.clicked.connect(self.activate_partialSelectTool)
-        self.mMapLayerComboBox.setFilters(
-            QgsMapLayerProxyModel.PolygonLayer
-            | QgsMapLayerProxyModel.LineLayer
-            | QgsMapLayerProxyModel.PointLayer
-        )
+
         self.mMapLayerComboBox.layerChanged.connect(self.themeLayerChanged)
         self.listWidget_features.itemPressed.connect(self.onFeatureActivated)
         self.listWidget_predictions.itemPressed.connect(self.onListItemActivated)
         self.horizontalSlider.sliderMoved.connect(self.onSliderChange)
         self.doubleSpinBox.valueChanged.connect(self.onSpinboxChange)
+
+        self.mMapLayerComboBox.setFilters(
+            QgsMapLayerProxyModel.PolygonLayer
+            | QgsMapLayerProxyModel.LineLayer
+            | QgsMapLayerProxyModel.PointLayer
+        )
+        # Load default (saved) layer
+        saved_layer_id = read_setting(self.prefix, "theme_layer", None)
+        theme_layer = get_valid_layer(saved_layer_id)
+        self.mMapLayerComboBox.setLayer(theme_layer)
 
         # show the dockwidget
         self.iface.addDockWidget(Qt.RightDockWidgetArea, self)
@@ -243,6 +253,8 @@ class brdrQDockWidgetFeatureAligner(
                 f"Nr of features bigger than {str(self.max_feature_count)}. Please make a smaller selection of features"
             )
             return
+        # Write the layer_id to the settings
+        write_setting(self.prefix, "theme_layer", self.layer.id())
 
         index = self.comboBox_selectfeatures.currentIndex()
         data = self.comboBox_selectfeatures.itemData(index)
@@ -624,6 +636,8 @@ class brdrQDockWidgetFeatureAligner(
         self.add_reference_label()
         self.setHandles()
         self.show()
+        # directly start the themelayerchanged
+        self.themeLayerChanged()
         return
 
     def add_reference_label(self):
