@@ -39,11 +39,10 @@ boundaries of resulting geometries and original geometries is at most as large a
 
 ### Pre-requisites
 
-- QGIS >3.34.8: The plugin has been developed and tested based on QGIS 3.34.8. (In older versions, the plugin might give
-  unexpected behaviour)
-- brdr needs Shapely 2.0.2 or higher. This version of Shapely is already available by default in QGIS version 3.34.8 and
-  higher on Windows installations. On Linux and Mac this may not be the case. If the modules are not found, the plugin
-  will attempt to install both 'brdr' and 'shapely' from Pypi.
+- 3.36 <= QGIS-version < 4.x :  The plugin has been developed and tested based on QGIS 3.36. In older versions, the plugin might give
+  unexpected behaviour. Adaptations for QGIS 4 are not yet available.
+- brdrQ is dependent on some other python packages (brdr,Shapely,...). If these packages are not found, the plugin
+  will attempt to install both 'brdr', 'shapely' and others from Pypi.
 
 ## The brdrQ - PLUGIN
 
