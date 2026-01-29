@@ -1,0 +1,10 @@
+https://plugins.qgis.org/docs/security-scanning
+
+
+# Install the security tools
+pip install bandit detect-secrets flake8 flake8-json
+
+# Run checks on your plugin directory
+bandit -r your_plugin_directory/
+detect-secrets scan your_plugin_directory/
+flake8 your_plugin_directory/

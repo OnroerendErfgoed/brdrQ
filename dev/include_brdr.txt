@@ -1,0 +1,55 @@
+
+
+
+import os
+import sys
+
+# Stap 1: Voeg de lokale 'libs' map toe aan het pad
+plugin_dir = os.path.dirname(__file__)
+libs_path = os.path.join(plugin_dir, 'libs')
+
+if libs_path not in sys.path:
+    # We zetten hem op positie 1 zodat hij voorrang krijgt
+    # op eventuele andere (foute) versies op de pc van de gebruiker
+    sys.path.insert(0, libs_path)
+
+# Stap 2: Importeer je library pas NADAT het pad is aangepast
+try:
+    import pandas as pd
+    import requests
+except ImportError as e:
+    # Dit vangt op als er toch iets mis is gegaan met de bundling
+    from qgis.core import Qgis, QgsMessageLog
+    QgsMessageLog.logMessage(f
+
+
+
+bat:
+
+@echo off
+echo Bezig met voorbereiden van de libs map...
+
+:: 1. Verwijder de oude libs map en maak een nieuwe aan
+if exist libs (
+    rd /s /q libs
+)
+mkdir libs
+
+:: 2. Installeer de libraries uit requirements.txt
+echo Libraries installeren via pip...
+pip install -r requirements.txt --target ./libs --no-compile --upgrade
+
+:: 3. Verwijder metadata mappen (.dist-info en .egg-info)
+echo Metadata opschonen...
+for /d %%i in (libs\*.dist-info) do rd /s /q "%%i"
+for /d %%i in (libs\*.egg-info) do rd /s /q "%%i"
+
+:: 4. Verwijder alle __pycache__ mappen die diep in de structuur zitten
+echo Pycache verwijderen...
+for /d /r libs %%d in (__pycache__) do (
+    if exist "%%d" rd /s /q "%%d"
+)
+
+echo.
+echo Klaar! De 'libs' map is nu optimaal gevuld voor de QGIS Repository.
+pause
