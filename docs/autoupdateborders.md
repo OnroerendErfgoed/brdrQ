@@ -1,4 +1,4 @@
-# Documentation of QGIS Python Script: AutoUpdateBorders - GRB Updater (Flanders-specific dataset)
+# Documentation of QGIS Python plugin brdrQ -  AutoUpdateBorders - GRB Updater (Flanders-specific dataset)
 
 <img src="figures/autoupdateborders.png" width="50%" />
 
