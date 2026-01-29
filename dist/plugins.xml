@@ -11,6 +11,6 @@
         <experimental>False</experimental>
         <tracker>https://github.com/OnroerendErfgoed/brdrQ/issues</tracker>
         <repository>https://github.com/OnroerendErfgoed/brdrQ</repository>
-        <tags>python, geodatamanagement,dataquality</tags>
+        <tags>python,geodatamanagement,dataquality,reference,matching,alignment,algorithm</tags>
     </pyqgis_plugin>
 </plugins>
