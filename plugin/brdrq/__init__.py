@@ -78,7 +78,7 @@ def qgis_version_compatibility(iface):
         QMessageBox.critical(
             iface.mainWindow(),
             "brdrQ-Plugin Load Error",
-            f"This plugin requires QGIS {min_qgis}+. You are running {current_qgis}.",
+            f"This plugin requires QGIS3 version {min_qgis} or higher. You are running {current_qgis}.",
         )
         return False  # QGIS will handle this gracefully as a load failure
     return True
