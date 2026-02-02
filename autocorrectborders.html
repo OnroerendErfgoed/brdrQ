@@ -104,6 +104,35 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   }
 }</script>
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -164,13 +193,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#documentation-of-qgis-python-script-autocorrectborders" id="toc-documentation-of-qgis-python-script-autocorrectborders" class="nav-link active" data-scroll-target="#documentation-of-qgis-python-script-autocorrectborders">Documentation of QGIS Python Script: Autocorrectborders</a>
+  <li><a href="#documentation-of-qgis-python-plugin-brdrq---autocorrectborders" id="toc-documentation-of-qgis-python-plugin-brdrq---autocorrectborders" class="nav-link active" data-scroll-target="#documentation-of-qgis-python-plugin-brdrq---autocorrectborders">Documentation of QGIS Python plugin brdrQ - Autocorrectborders</a>
   <ul class="collapse">
   <li><a href="#description" id="toc-description" class="nav-link" data-scroll-target="#description">Description</a></li>
   <li><a href="#input-parameters" id="toc-input-parameters" class="nav-link" data-scroll-target="#input-parameters">Input Parameters</a></li>
   <li><a href="#output-parameters" id="toc-output-parameters" class="nav-link" data-scroll-target="#output-parameters">Output Parameters</a></li>
   <li><a href="#example-of-usage" id="toc-example-of-usage" class="nav-link" data-scroll-target="#example-of-usage">Example of Usage</a></li>
   <li><a href="#tips" id="toc-tips" class="nav-link" data-scroll-target="#tips">TIPS</a></li>
+  <li><a href="#output---fields" id="toc-output---fields" class="nav-link" data-scroll-target="#output---fields">OUTPUT - FIELDS</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -181,8 +211,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<section id="documentation-of-qgis-python-script-autocorrectborders" class="level1">
-<h1>Documentation of QGIS Python Script: Autocorrectborders</h1>
+<section id="documentation-of-qgis-python-plugin-brdrq---autocorrectborders" class="level1">
+<h1>Documentation of QGIS Python plugin brdrQ - Autocorrectborders</h1>
 <p><img src="figures/autocorrectborders.png" width="50%"></p>
 <section id="description" class="level2">
 <h2 class="anchored" data-anchor-id="description">Description</h2>
@@ -193,9 +223,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>The script requires the following input parameters:</p>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 10%">
-<col style="width: 79%">
-<col style="width: 8%">
+<col style="width: 7%">
+<col style="width: 74%">
+<col style="width: 16%">
 <col style="width: 1%">
 </colgroup>
 <thead>
@@ -244,6 +274,30 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>No.</td>
 </tr>
 <tr class="odd">
+<td>PREDICTIONS (!slower!)</td>
+<td>If True, the code will do a FULL SCAN of all relevant distances with an interval of 10cm to try to search for the best ‘predictions’.These are results where the output geometry is a stable result that could be the possible wanted result.- The resulting layer will use the prediction with the highest prediction score. Warning : When this option is used, the processing will be much slower, as a multitude of calculations are needed.</td>
+<td>False</td>
+<td>No</td>
+</tr>
+<tr class="even">
+<td>Prediction Strategy (when PREDICTIONS)</td>
+<td>When PREDICTIONS, you can set Prediction Strategy to ALL (all predictions in result), BEST (the prediction with highest prediction score) or ORIGINAL (if multiple predictions,the original geometry is shown)</td>
+<td>BEST</td>
+<td>Yes.</td>
+</tr>
+<tr class="odd">
+<td>Full Reference Strategy (when PREDICTIONS)</td>
+<td>When PREDICTIONS, you can set if predictions that are fully aligned with the reference are prefered or not</td>
+<td>PREFER_FULL_REFERENCE</td>
+<td>Yes.</td>
+</tr>
+<tr class="even">
+<td>Processor</td>
+<td>Choice of which processing-algorithm is used. Best to set it to AlignerGeometryProcessor as this chooses automatically the fastest algorithm</td>
+<td>AlignerGeometryProcessor (Wrapper for DieussaertGeometryProcessor &amp; NetworkGeometryProcessor)</td>
+<td>No</td>
+</tr>
+<tr class="odd">
 <td>OD_STRATEGY</td>
 <td>This parameter determines how the algorithm deals with parts of the geometry that is not covered by reference data. Different strategies are available: EXCLUDE, ASIS, SNAP_INNER_SIDE, SNAP_ALL_SIDE</td>
 <td>SNAP_ALL_SIDE (2)</td>
@@ -274,12 +328,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>No.</td>
 </tr>
 <tr class="even">
-<td>GET_BEST_PREDICTION_FOR_RELEVANT_DISTANCES (!slower!)</td>
-<td>If True, the code will do a FULL SCAN of all relevant distances with an interval of 10cm to try to search for the best ‘predictions’.These are results where the output geometry is a stable result that could be the possible wanted result.- The resulting layer will use the prediction with the highest prediction score. Warning : When this option is used, the processing will be much slower, as a multitude of calculations are needed.</td>
-<td>False</td>
-<td>No</td>
-</tr>
-<tr class="odd">
 <td>SHOW_LOG_INFO</td>
 <td>If True, the logging of brdr is shown in the feedback-window.</td>
 <td>False</td>
@@ -306,29 +354,34 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="example-of-usage">Example of Usage</h2>
 <p>Here is an example of how to use the script in Python:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>params <span class="op">=</span> {</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"INPUT_THEMATIC"</span>: themelayername,</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"COMBOBOX_ID_THEME"</span>: <span class="st">"theme_identifier"</span>,</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"RELEVANT_DISTANCE"</span>: <span class="dv">2</span>,</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"ENUM_REFERENCE"</span>: <span class="dv">1</span>,</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">"INPUT_REFERENCE"</span>: <span class="va">None</span>,</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">"COMBOBOX_ID_REFERENCE"</span>: <span class="st">""</span>,</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">"WORK_FOLDER"</span>: <span class="st">""</span>,</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">"ENUM_OD_STRATEGY"</span>: <span class="dv">3</span>,</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">"THRESHOLD_OVERLAP_PERCENTAGE"</span>: <span class="dv">50</span>,</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">"ADD_FORMULA"</span>: <span class="va">True</span>,</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="st">"ADD_ATTRIBUTES"</span>: <span class="va">True</span>,</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SHOW_INTERMEDIATE_LAYERS"</span>: <span class="va">True</span>,</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="st">"PREDICTIONS"</span>: <span class="va">False</span>,</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SHOW_LOG_INFO"</span>: <span class="va">False</span>,</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>processing.run(<span class="st">'brdrqprovider:brdrqautocorrectborders'</span>, params)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>                <span class="st">"INPUT_THEMATIC"</span>: themelayername,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>                <span class="st">"COMBOBOX_ID_THEME"</span>: <span class="st">"theme_identifier"</span>,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>                <span class="st">"RELEVANT_DISTANCE"</span>: <span class="dv">2</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>                <span class="st">"ENUM_REFERENCE"</span>: <span class="dv">1</span>,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>                <span class="st">"INPUT_REFERENCE"</span>: <span class="va">None</span>,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>                <span class="st">"COMBOBOX_ID_REFERENCE"</span>: <span class="va">None</span>,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>                <span class="st">"WORK_FOLDER"</span>: <span class="st">'brdrq'</span>,</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>                <span class="st">"ENUM_OD_STRATEGY"</span>: <span class="dv">1</span>,</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>                <span class="st">"ENUM_PROCESSOR"</span>: <span class="dv">0</span>,</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>                <span class="st">"THRESHOLD_OVERLAP_PERCENTAGE"</span>: <span class="dv">50</span>,</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"PREDICTIONS"</span>: <span class="dv">0</span>,</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>                <span class="st">"FULL_REFERENCE_STRATEGY"</span>: <span class="dv">2</span>,</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>                <span class="st">"PREDICTION_STRATEGY"</span>: <span class="dv">0</span>,</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>                <span class="st">"REVIEW_PERCENTAGE"</span>: <span class="dv">10</span>,</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>                <span class="st">"ADD_METADATA"</span>: <span class="va">True</span>,</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>                <span class="st">"STABILITY"</span>: <span class="va">True</span>,</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>                <span class="st">"ADD_ATTRIBUTES"</span>: <span class="va">True</span>,</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>                <span class="st">"SHOW_INTERMEDIATE_LAYERS"</span>: <span class="va">True</span>,</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>                <span class="st">"SHOW_LOG_INFO"</span>: <span class="va">False</span>,</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>            }</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>processing.run(<span class="st">'brdrqprovider:brdrqautocorrectborders'</span>, params)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="tips" class="level2">
 <h2 class="anchored" data-anchor-id="tips">TIPS</h2>
 <ul>
-<li><p>Set GET_BEST_PREDICTION_FOR_RELEVANT_DISTANCES = True for the best results. This will analyse the full range of RELEVANT_DISTANCES (FULL SCAN), and returns the best stable results. A side-effect is that the processing-time is much slower. By default this parameter is set to False to have quicker results (QUICK SCAN), missing the better results.</p></li>
+<li><p>Set PREDICTIONS for the best results. This will analyse the full range of RELEVANT_DISTANCES (FULL SCAN), and returns the best stable results. A side-effect is that the processing-time is much slower. By default this parameter is set to False to have quicker results (QUICK SCAN), missing the better results.</p></li>
 <li><p>Analyse your thematic dataset and try to gain insight into the ‘deviation’ (precision and accuracy from the reference layer):</p>
 <ul>
 <li>Where does the thematic data come from?</li>
@@ -340,7 +393,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul>
 <p>This allows you to gain insight into the ‘deviation’ and which RELEVANT_DISTANCE value can best be applied.</p>
 <ul>
-<li>The RELEVANT_DISTANCE must be chosen according to the ‘deviation’ of the thematic data compared to the reference layer. If the thematic data contains different geometries that show large differences in ‘deviation’, it is best to split the thematic data and process it separately with an appropriate RELEVANT_DISTANCE so that the RELEVANT_DISTANCE can be kept as small as possible.</li>
 <li>The current version of the script assumes that both the thematic layer and reference layer are in the same projected CRS with units in meter.</li>
 <li>Thematic boundaries consisting of 1 or a few reference polygons are processed by the script in a few seconds. If the thematic boundaries cover a very large area (~1000 and reference polygons), it may take several minutes for the OUTPUT to be calculated. It’s best to let QGIS finish this processing before proceeding</li>
 <li>In practice, we notice that large thematic demarcations are sometimes drawn more roughly (less precisely or inaccurately), so that a high RELEVANT DISTANCE is required to shift them to the reference file. For large areas that are drawn ‘roughly’, it is best to use a high RELEVANT_DISTANCE (e.g.&nbsp;&gt;10 meters) and:
@@ -351,6 +403,106 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li>OD strategy SNAP_ALL_SIDE: if you want to keep the public domain within the demarcation, but move the edges to the inner &amp; outer side of the thematic polygon</li>
 </ul></li>
 </ul>
+</section>
+<section id="output---fields" class="level2">
+<h2 class="anchored" data-anchor-id="output---fields">OUTPUT - FIELDS</h2>
+<p>This sections lists fieldnames that can be found in the output layer and explains what this field is about.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Attribute</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>brdr_id</strong></td>
+<td style="text-align: left;">Integer</td>
+<td style="text-align: left;">Internal unique identifier for the processed feature.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>brdr_area</strong></td>
+<td style="text-align: left;">Double</td>
+<td style="text-align: left;">The calculated area of the resulting geometry (<span class="math inline">\(m^2\)</span>).</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>brdr_perimeter</strong></td>
+<td style="text-align: left;">Double</td>
+<td style="text-align: left;">The total length of the boundary of the resulting geometry (<span class="math inline">\(m\)</span>).</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>brdr_shape_index</strong></td>
+<td style="text-align: left;">Double</td>
+<td style="text-align: left;">A complexity metric of the shape (e.g., compactness ratio).</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>brdr_stability</strong></td>
+<td style="text-align: left;">Boolean</td>
+<td style="text-align: left;">Indicates if the geometry remains stable across multiple calculation iterations.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>brdr_prediction_score</strong></td>
+<td style="text-align: left;">Double</td>
+<td style="text-align: left;">Confidence score (%) of the alignment prediction.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>brdr_prediction_count</strong></td>
+<td style="text-align: left;">Integer</td>
+<td style="text-align: left;">Number of candidate matches found for the alignment.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>brdr_evaluation</strong></td>
+<td style="text-align: left;">String</td>
+<td style="text-align: left;">Categorization of the result (e.g., <code>prediction_unique</code>, <code>to_check_prediction_multi</code>).</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>brdr_relevant_distance</strong></td>
+<td style="text-align: left;">Double</td>
+<td style="text-align: left;">The buffer or search distance used during the alignment procedure (<span class="math inline">\(m\)</span>).</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>brdr_sym_diff_area_index</strong></td>
+<td style="text-align: left;">Double</td>
+<td style="text-align: left;">The absolute area of the symmetrical difference between base and target (<span class="math inline">\(m^2\)</span>).</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>brdr_sym_diff_area_index_perc</strong></td>
+<td style="text-align: left;">Double</td>
+<td style="text-align: left;">The symmetrical difference expressed as a percentage of the total area.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>brdr_diff_area_index</strong></td>
+<td style="text-align: left;">Double</td>
+<td style="text-align: left;">The absolute area difference between input and output geometries (<span class="math inline">\(m^2\)</span>).</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>brdr_diff_length_index</strong></td>
+<td style="text-align: left;">Double</td>
+<td style="text-align: left;">The absolute difference in boundary length (<span class="math inline">\(m\)</span>).</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>brdr_full_actual</strong></td>
+<td style="text-align: left;">Boolean</td>
+<td style="text-align: left;">Flag indicating if the alignment covers the full extent of the actual feature.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>brdr_remark</strong></td>
+<td style="text-align: left;">String</td>
+<td style="text-align: left;">Automated logs or warnings generated during the geometry processing.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>brdr_metadata</strong></td>
+<td style="text-align: left;">JSON/Object</td>
+<td style="text-align: left;">Embedded SOSA/SSN metadata containing the lineage, sensors, and procedures used.</td>
+</tr>
+</tbody>
+</table>
 
 
 </section>
