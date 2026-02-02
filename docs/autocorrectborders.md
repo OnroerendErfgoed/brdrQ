@@ -64,6 +64,7 @@ Here is an example of how to use the script in Python:
                 "ENUM_OD_STRATEGY": 1,
                 "ENUM_PROCESSOR": 0,
                 "THRESHOLD_OVERLAP_PERCENTAGE": 50,
+                  "PREDICTIONS": 0,
                 "FULL_REFERENCE_STRATEGY": 2,
                 "PREDICTION_STRATEGY": 0,
                 "REVIEW_PERCENTAGE": 10,
@@ -71,7 +72,6 @@ Here is an example of how to use the script in Python:
                 "STABILITY": True,
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
-                "PREDICTIONS": 0,
                 "SHOW_LOG_INFO": False,
             }
 
