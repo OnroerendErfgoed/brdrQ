@@ -1,5 +1,5 @@
 
-# Documentation of QGIS Python plugin: FeatureAligner
+# Documentation of QGIS Python plugin brdrQ: FeatureAligner
 
 <img src="figures/featurealigner.png" width="100%" />
 
@@ -22,6 +22,7 @@ Additionally, you can:
 
 * Choice of the reference layer you want to align to (default ADP - current GRB parcels).
 * Choice of 'Public Domain' Strategy (exclude or include the Public Domain).
+* Processor: Choice of processing-algorithm. Best to use AlignerGeometryProcessor, as this is a wrapper that chooses the fastest available algorithm based on geometry-types: DieussaertGeometryProcessor for Polygon-to-Polygon and NetworkGeometryProcessor for all other geometry-type-combinations.
 * Threshold_overlap_percentage (default 50): fallback value for the algorithm if no relevant areas are detected.
 * Maximum relevant distance: Maximum distance (in meters) that can be used to search for predictions. (Prediction deviates at most by this value from the original).
 * Add brdr_formula: A field with a descriptive formula of the geometry is added to the result.
