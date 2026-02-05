@@ -32,5 +32,15 @@ How to add a Spatial Index in QGIS: Creating an index is a quick process that ca
 
 # Warnings/Errors
 
+## Installation error
+A: brdrQ needs brdr to do the processing. The right version of brdr will be installed automatically when installing brdrQ. In some cases this automatic install of brdr can fail. 
+A solution is to install the specific version of brdr manually into your QGIS environment:
+
+
+``` python
+pip install --user brdr==x.x.x
+```
+(where x.x.x is the specific version of brdr that is used by your brdrQ)
+
 ## CRS error
 A: Please check if the CRS is set on the thematic layer and reference layer, and they use the same projected CRS (in units: meter)

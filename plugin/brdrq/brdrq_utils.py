@@ -12,8 +12,13 @@ from brdr.processor import (
     SnapGeometryProcessor,
     TopologyProcessor,
 )
+from brdr.utils import (
+    write_featurecollection_to_geojson,
+    write_featurecollection_to_geopackage,
+)
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
 from qgis.core import QgsProcessingException
+from qgis.core import QgsProviderRegistry, QgsDataSourceUri
 from qgis.core import QgsRectangle
 from qgis.core import QgsSettings
 from qgis.core import QgsWkbTypes
@@ -43,7 +48,7 @@ from brdr.enums import (
     FullReferenceStrategy, ProcessorID,
 )
 from brdr.typings import ProcessResult
-from brdr.utils import write_geojson
+
 # TODO QGIS4
 from PyQt5.QtCore import pyqtSignal
 from qgis.PyQt.QtCore import Qt
@@ -474,17 +479,155 @@ def get_geojson_type(geojson):
     return [geojson.get("type", "Unknown")]
 
 
-def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
+def gpkg_layer_to_map(name, gpkg_path, layer_name, symbol, visible, group):
     """
-    Add a geojson to a QGIS-layer to add it to the TOC. If geojson has multiple types (point,line, polygon) these types are added seperately.
+    Laadt een specifieke laag uit een GeoPackage en voegt deze toe aan de TOC.
     """
-    geojson =geojson_to_multi(geojson)
-    feature_types = get_geojson_type(geojson)
+    qinst = QgsProject.instance()
+
+    # 1. Bestaande lagen met dezelfde naam verwijderen uit de TOC
+    lyrs = qinst.mapLayersByName(name)
+    root = qinst.layerTreeRoot()
+    for lyr in lyrs:
+        qinst.removeMapLayer(lyr.id())
+
+    # 2. Definieer de URI voor de GeoPackage laag
+    # De syntax is: pad_naar_gpkg|layername=naam_van_de_tabel
+    uri = f"{gpkg_path}|layername={layer_name}"
+
+    # 3. Maak de laag aan
+    vl = QgsVectorLayer(uri, name, "ogr")
+
+    if not vl.isValid():
+        print(f"Fout: Laag {layer_name} kon niet worden geladen uit {gpkg_path}")
+        return None
+
+    # 4. Styling (overgenomen uit je originele code)
+    if symbol is not None:
+        # Let op: get_symbol moet nu werken op de 'vl' of metadata,
+        # niet meer op de ruwe geojson dict.
+        if isinstance(symbol, str):
+            # Je zult je get_symbol functie wellicht iets moeten aanpassen
+            pass
+
+        if vl.renderer() is not None and isinstance(symbol, QgsSymbol):
+            vl.renderer().setSymbol(symbol)
+
+    # 5. Toevoegen aan de TOC op de juiste plek
+    qinst.addMapLayer(vl, False)
+    root.insertLayer(0, vl)
+
+    # 6. Zichtbaarheid instellen
+    node = root.findLayer(vl.id())
+    if node:
+        new_state = Qt.Checked if visible else Qt.Unchecked
+        node.setItemVisibilityChecked(new_state)
+
+    # 7. Verplaatsen naar groep en refreshen
+    move_to_group(vl, group)
+    vl.triggerRepaint()
+
+    if iface is not None:
+        iface.layerTreeView().refreshLayerSymbology(vl.id())
+
+    return vl
+
+
+def load_full_gpkg_with_styles(gpkg_path, group_name):
+    layers = get_all_layer_names_in_gpkg(gpkg_path)
+
+    for lyr_name in layers:
+        # Laad de laag in QGIS
+        vl = gpkg_layer_to_map(
+            name=lyr_name,
+            gpkg_path=gpkg_path,
+            layer_name=lyr_name,
+            symbol=None,  # We doen styling hieronder
+            visible=True,
+            group=group_name,
+        )
+
+        if vl and vl.isValid():
+            # Probeer stijl uit DB te laden
+            style_applied = apply_style_from_gpkg(vl)
+
+            if not style_applied:
+                # Optioneel: Fallback naar handmatige styling als er geen DB-stijl is
+                print(
+                    f"Geen stijl gevonden in GPKG voor {lyr_name}, gebruik standaard."
+                )
+
+
+def get_all_layer_names_in_gpkg(gpkg_path):
+    """
+    Geeft een lijst terug met alle tabelnamen (layers) in een GeoPackage.
+    """
+    metadata = QgsProviderRegistry.instance().providerMetadata("ogr")
+    # Gebruik de URI van de container om de sublagen te vinden
+    conn = metadata.decodeUri(gpkg_path)
+
+    # We gebruiken de OGR provider om de lagen te scannen
+    layer_list = []
+    source = QgsDataSourceUri(gpkg_path)
+
+    # Een slimme manier via de metadata van de provider:
+    options = metadata.querySublayers(gpkg_path)
+    for option in options:
+        layer_list.append(option.name())
+
+    return layer_list
+
+
+def load_full_gpkg_to_qgis(gpkg_path, group_name, visible=True):
+    """
+    Scant een GeoPackage en voegt elke laag toe aan een specifieke groep in de TOC.
+    """
+    layers = get_all_layer_names_in_gpkg(gpkg_path)
+
+    for lyr_name in layers:
+        # We gebruiken de naam van de laag uit de GPKG ook als displaynaam in QGIS
+        # Je kunt hier eventueel symboliek-logica toevoegen
+        gpkg_layer_to_map(
+            name=lyr_name,
+            gpkg_path=gpkg_path,
+            layer_name=lyr_name,
+            symbol=None,
+            visible=visible,
+            group=group_name,
+        )
+
+    print(f"Klaar! {len(layers)} lagen geladen uit {gpkg_path}")
+
+
+def apply_style_from_gpkg(layer):
+    """
+    Controleert of er een stijl is opgeslagen in de GeoPackage voor deze laag
+    en past de standaardstijl toe.
+    """
+    # Haal de lijst met stijlen op uit de database (GeoPackage)
+    # De methode geeft (aantal_stijlen, ids, namen, descriptions) terug
+    count, ids, names, descriptions = layer.listStylesInDatabase()
+
+    if count > 0:
+        # We laden de eerste stijl (meestal de 'default')
+        # Je kunt ook zoeken naar een specifieke naam in 'names'
+        layer.loadNamedStyle(layer.styleURI())
+        layer.triggerRepaint()
+        return True
+    return False
+
+
+def featurecollection_to_layer(name, featurecollection, symbol, visible, group, tempfolder):
+    """
+    Add a featurecollection to a QGIS-layer to add it to the TOC. If featurecollection has multiple types (point,line, polygon) these types are added seperately.
+    """
+    featurecollection =featurecollection_to_multi(featurecollection)
+    feature_types = get_geojson_type(featurecollection)
     if len(feature_types)>1:
         for x in feature_types:
             name_x = name +"_" + str(x)
-            geojson_x = filter_geojson_by_geometry_type(geojson,x)
-            geojson_to_layer(name_x, geojson_x, symbol, visible, group, tempfolder)
+            geojson_x = filter_geojson_by_geometry_type(featurecollection, x)
+            featurecollection_to_layer(name_x, geojson_x, symbol, visible, group, tempfolder)
         return
 
     qinst = QgsProject.instance()
@@ -497,13 +640,16 @@ def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
             qinst.removeMapLayer(lyr.id())
     if tempfolder is None or str(tempfolder) == "NULL" or str(tempfolder) == "":
         tempfolder = "tempfolder"
-    tempfilename = tempfolder + "/" + name + ".geojson"
-    write_geojson(tempfilename, geojson)
+    gpkg_path = tempfolder + "/brdrq.gpkg"
+    write_featurecollection_to_geopackage(gpkg_path, featurecollection, layer_name = name)
 
-    vl = QgsVectorLayer(tempfilename, name, "ogr")
+    uri = f"{gpkg_path}|layername={name}"
+
+    # 3. Maak de laag aan
+    vl = QgsVectorLayer(uri, name, "ogr")
     # styling
     if symbol is not None and isinstance(symbol,str):
-        symbol = get_symbol(geojson,symbol)
+        symbol = get_symbol(featurecollection, symbol)
     if symbol is not None and vl.renderer() is not None and isinstance(symbol,QgsSymbol):
         vl.renderer().setSymbol(symbol)
     # vl.setOpacity(0.5)
@@ -622,7 +768,7 @@ def get_workfolder(folderpath="", name="", temporary=False):
     return foldername
 
 
-def geojson_to_multi(geojson):
+def featurecollection_to_multi(geojson):
     """
     Transforms a geojson: Checks if there are single-geometry-features and transforms them into Multi-geometries, so all objects are of type 'Multi' (or null-geometry).
     It is important that geometry-type is consistent in QGIS to show and style the geojson-layer

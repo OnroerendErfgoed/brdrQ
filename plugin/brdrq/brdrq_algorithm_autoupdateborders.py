@@ -55,7 +55,7 @@ from qgis.core import QgsProject
 
 from .brdrq_utils import (
     geom_qgis_to_shapely,
-    geojson_to_layer,
+    featurecollection_to_layer,
     get_workfolder,
     GRB_TYPES,
     thematic_preparation,
@@ -478,7 +478,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         if "result_diff_min" in fcs_actualisation:
             result_diff_min = "result_diff_min"
             geojson_result_diff_min = fcs_actualisation[result_diff_min]
-            geojson_to_layer(
+            featurecollection_to_layer(
                 self.LAYER_RESULT_DIFF_MIN,
                 geojson_result_diff_min,
                 result_diff_min,
@@ -489,7 +489,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         if "result_diff_plus" in fcs_actualisation:
             result_diff_plus = "result_diff_plus"
             geojson_result_diff_plus = fcs_actualisation[result_diff_plus]
-            geojson_to_layer(
+            featurecollection_to_layer(
                 self.LAYER_RESULT_DIFF_PLUS,
                 geojson_result_diff_plus,
                 result_diff_plus,
@@ -500,7 +500,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         if "result_diff" in fcs_actualisation:
             result_diff = "result_diff"
             geojson_result_diff = fcs_actualisation[result_diff]
-            geojson_to_layer(
+            featurecollection_to_layer(
                 self.LAYER_RESULT_DIFF,
                 geojson_result_diff,
                 result_diff,
@@ -511,7 +511,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         result = "result"
         geojson_result = fcs_actualisation[result]
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT,
             geojson_result,
             result,

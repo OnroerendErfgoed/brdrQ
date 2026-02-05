@@ -60,7 +60,7 @@ from .brdrq_utils import (
     ENUM_OD_STRATEGY_OPTIONS,
     ADPF_VERSIONS,
     geom_qgis_to_shapely,
-    geojson_to_layer,
+    featurecollection_to_layer,
     get_workfolder,
     thematic_preparation,
     get_reference_params,
@@ -731,7 +731,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # MAKE TEMPORARY LAYERS
         if self.SELECTED_REFERENCE != 0:
             reference_geojson = aligner.reference_data.to_geojson()
-            geojson_to_layer(
+            featurecollection_to_layer(
                 self.LAYER_REFERENCE_NAME,
                 reference_geojson,
                 "reference",
@@ -742,7 +742,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         if self.SHOW_INTERMEDIATE_LAYERS:
             if "result_relevant_intersection" in fcs.keys():
-                geojson_to_layer(
+                featurecollection_to_layer(
                     self.LAYER_RELEVANT_INTERSECTION,
                     fcs["result_relevant_intersection"],
                     QgsStyle.defaultStyle().symbol("gradient green fill"),
@@ -751,7 +751,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                     self.WORKFOLDER,
                 )
             if "result_relevant_diff" in fcs.keys():
-                geojson_to_layer(
+                featurecollection_to_layer(
                     self.LAYER_RELEVANT_DIFFERENCE,
                     fcs["result_relevant_diff"],
                     QgsStyle.defaultStyle().symbol("gradient red fill"),
@@ -761,7 +761,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 )
         result_diff = "result_diff"
         geojson_result_diff = fcs[result_diff]
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT_DIFF,
             geojson_result_diff,
             result_diff,
@@ -771,7 +771,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         result_diff_plus = "result_diff_plus"
         geojson_result_diff_plus = fcs[result_diff_plus]
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT_DIFF_PLUS,
             geojson_result_diff_plus,
             result_diff_plus,
@@ -781,7 +781,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         result_diff_min = "result_diff_min"
         geojson_result_diff_min = fcs[result_diff_min]
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT_DIFF_MIN,
             geojson_result_diff_min,
             result_diff_min,
@@ -791,7 +791,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         result = "result"
         geojson_result = fcs[result]
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT,
             geojson_result,
             result,

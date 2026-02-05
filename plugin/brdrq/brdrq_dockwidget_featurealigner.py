@@ -48,7 +48,7 @@ from qgis.utils import OverrideCursor, iface
 from .brdrq_dockwidget_aligner import brdrQDockWidgetAligner
 from .brdrq_utils import (
     SelectTool,
-    geojson_to_layer,
+    featurecollection_to_layer,
     GRB_TYPES,
     ADPF_VERSIONS,
     geom_qgis_to_shapely,
@@ -446,7 +446,7 @@ class brdrQDockWidgetFeatureAligner(
         )
         result_diff = "result_diff"
         geojson_result_diff = fcs[result_diff]
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT_DIFF,
             geojson_result_diff,
             result_diff,
@@ -456,7 +456,7 @@ class brdrQDockWidgetFeatureAligner(
         )
         result_diff_plus = "result_diff_plus"
         geojson_result_diff_plus = fcs[result_diff_plus]
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT_DIFF_PLUS,
             geojson_result_diff_plus,
             result_diff_plus,
@@ -466,7 +466,7 @@ class brdrQDockWidgetFeatureAligner(
         )
         result_diff_min = "result_diff_min"
         geojson_result_diff_min = fcs[result_diff_min]
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT_DIFF_MIN,
             geojson_result_diff_min,
             result_diff_min,
@@ -476,7 +476,7 @@ class brdrQDockWidgetFeatureAligner(
         )
         result = "result"
         geojson_result = fcs[result]
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT,
             geojson_result,
             result,

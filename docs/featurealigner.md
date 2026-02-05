@@ -10,8 +10,9 @@
 3. View the prediction(s) for this aligned feature.
 
 Additionally, you can:
+
 * Switch between multiple predictions (via list, slider, or spinbox).
-* Request a brdr-chart of these features (relevant distance (m) vs. change (m²)).
+* Request a 'plot' of these predictions (relevant distance (m) vs. change (m²)).
 * Visualize the predicted relevant distances side by side.
 * Adjust the original geometry to the chosen prediction.
 * Reset the original geometry (only within a feature session, so if no other feature is selected).
