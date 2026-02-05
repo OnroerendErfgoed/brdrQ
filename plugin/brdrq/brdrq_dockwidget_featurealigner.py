@@ -132,6 +132,22 @@ class brdrQDockWidgetFeatureAligner(
             | QgsMapLayerProxyModel.LineLayer
             | QgsMapLayerProxyModel.PointLayer
         )
+        self.mMapLayerComboBox.setExcludedProviders(
+            [
+                "WFS",
+                "wfs",
+                "WCS",
+                "wcs",  # Web Coverage Service
+                "WMS",
+                "wms" ,
+                "OAPIF",
+                "oapif",
+                "ARCGISFEATURESERVER",
+                "arcgisfeatureserver",  # ArcGIS REST Feature Service
+                "ARCGISMAPSERVER",
+                "arcgismapserver",  # ArcGIS REST Map Service
+            ],
+        )
         # Load default (saved) layer
         saved_layer_id = read_setting(self.prefix, "theme_layer", None)
         theme_layer = get_valid_layer(saved_layer_id)
