@@ -5,6 +5,13 @@ from enum import Enum
 # TODO QGIS4
 from PyQt5.QtGui import QColor
 from brdr.be.grb.enums import GRBType
+from brdr.constants import (
+    SYMMETRICAL_AREA_CHANGE,
+    SYMMETRICAL_AREA_PERCENTAGE_CHANGE,
+    METADATA_FIELD_NAME,
+    STABILITY,
+    ID_THEME_FIELD_NAME,
+)
 from brdr.processor import (
     AlignerGeometryProcessor,
     DieussaertGeometryProcessor,
@@ -13,8 +20,11 @@ from brdr.processor import (
     TopologyProcessor,
 )
 from brdr.utils import (
-    write_featurecollection_to_geojson,
     write_featurecollection_to_geopackage,
+)
+from qgis.core import (
+    QgsCategorizedSymbolRenderer,
+    QgsRendererCategory,
 )
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
 from qgis.core import QgsProcessingException
@@ -50,7 +60,7 @@ from brdr.enums import (
 from brdr.typings import ProcessResult
 
 # TODO QGIS4
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, QVariant
 from qgis.PyQt.QtCore import Qt
 from qgis import processing
 from qgis.core import QgsField, QgsFeatureRequest, QgsProcessing
@@ -66,9 +76,10 @@ from qgis.core import (
     QgsLayerTreeGroup,
 )
 from qgis.core import QgsStyle
-from qgis.core import QgsVectorLayer
 from qgis.utils import iface
 from shapely import to_wkt, from_wkt, make_valid
+
+GPKG_FILENAME = "brdrq.gpkg"
 
 class Processor(str, Enum):
     """
@@ -640,7 +651,7 @@ def featurecollection_to_layer(name, featurecollection, symbol, visible, group, 
             qinst.removeMapLayer(lyr.id())
     if tempfolder is None or str(tempfolder) == "NULL" or str(tempfolder) == "":
         tempfolder = "tempfolder"
-    gpkg_path = tempfolder + "/brdrq.gpkg"
+    gpkg_path = tempfolder + "/" + GPKG_FILENAME
     write_featurecollection_to_geopackage(gpkg_path, featurecollection, layer_name = name)
 
     uri = f"{gpkg_path}|layername={name}"
@@ -709,9 +720,6 @@ def set_layer_visibility(layer: QgsMapLayer, visible: bool):
         layer_tree.setItemVisibilityChecked(visible)
     else:
         print("Layer not found in the layer tree.")
-
-
-from qgis.core import QgsProject
 
 
 def remove_layer_by_name(layer_name):
@@ -997,6 +1005,189 @@ def get_original_geometry(feature, fieldname):
     except:
         original_geometry = None
     return original_geometry
+
+from pathlib import Path
+from qgis.core import QgsVectorFileWriter, QgsProject, QgsVectorLayer
+
+
+def save_layer_to_gpkg(layer, gpkg_path, layer_name=None):
+    """
+    Writes a layer to  (existing) GeoPackage.
+    """
+    # 1. Clean Path
+    path_str = str(Path(gpkg_path))
+
+    # 2. Options
+    options = QgsVectorFileWriter.SaveVectorOptions()
+    options.driverName = "GPKG"
+    options.layerName = layer_name if layer_name else layer.name()
+
+    # --- EXPLICIT ENCODING ---
+    options.fileEncoding = "UTF-8"
+
+    #CRS from source-layer - default
+
+    # Check if exists
+    folder = os.path.dirname(path_str)
+    if folder and not os.path.exists(folder):
+        os.makedirs(folder, exist_ok=True)
+    if Path(path_str).exists():
+        options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
+    else:
+        options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
+
+    # 3. Write
+    return QgsVectorFileWriter.writeAsVectorFormatV3(
+        layer, path_str, QgsProject.instance().transformContext(), options
+    )
+
+
+
+def generate_correction_layer(input, result, correction_layer_name,id_theme_brdrq_fieldname,workfolder,review_percentage=5, add_metadata=False):
+
+    source_layer = input
+    results_layer = result
+
+    # Copy source layer to gpkg-layers
+
+    remove_layer_by_name(correction_layer_name)
+
+    path = os.path.join(workfolder, GPKG_FILENAME)
+
+    res = save_layer_to_gpkg(source_layer, path,correction_layer_name)
+    correction_layer = QgsVectorLayer(res[2] + "|layername=" + res[3], correction_layer_name, "ogr")
+
+    # Make a dictionary with ID to geometry from the resultslayer
+    id_geom_map = {}
+    id_diff_index_map = {}
+    id_diff_perc_index_map = {}
+    id_metadata_map = {}
+    ids_to_review = []
+    ids_to_align = []
+    ids_not_changed = []
+    stability_field_available = False
+    if is_field_in_layer(STABILITY, results_layer):
+        stability_field_available = True
+    for feat in results_layer.getFeatures():
+        key = feat[ID_THEME_FIELD_NAME]
+        if key in id_geom_map.keys():
+            # when key not unique and multiple predictions, the last prediction is added to the list and the status is set to review
+            ids_to_review.append(key)
+        id_geom_map[key] = feat.geometry()
+        if add_metadata:
+            id_metadata_map[key] = feat[METADATA_FIELD_NAME]
+        id_diff_index_map[key] = feat[SYMMETRICAL_AREA_CHANGE]
+        id_diff_perc_index_map[key] = feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE]
+        if stability_field_available and not feat[STABILITY]:
+            ids_to_align.append(key)
+        elif feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] > review_percentage:
+            ids_to_review.append(key)
+        elif feat[SYMMETRICAL_AREA_CHANGE] < 0.01:
+            ids_not_changed.append(key)
+
+    # 4. Update geometries in duplicated layer
+    correction_layer.startEditing()
+    correction_layer.dataProvider().addAttributes(
+        [
+            QgsField(METADATA_FIELD_NAME, QVariant.String),
+            QgsField(BRDRQ_STATE_FIELDNAME, QVariant.String),
+            QgsField(BRDRQ_ORIGINAL_WKT_FIELDNAME, QVariant.String),
+            QgsField(SYMMETRICAL_AREA_CHANGE, QVariant.Double),
+            QgsField(SYMMETRICAL_AREA_PERCENTAGE_CHANGE, QVariant.Double),
+        ]
+    )
+    correction_layer.updateFields()
+    for feat in correction_layer.getFeatures():
+        fid = feat[id_theme_brdrq_fieldname]
+        if add_metadata:
+            feat[METADATA_FIELD_NAME] = id_metadata_map[fid]
+        feat[SYMMETRICAL_AREA_CHANGE] = id_diff_index_map[fid]
+        feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] = id_diff_perc_index_map[fid]
+        feat[BRDRQ_ORIGINAL_WKT_FIELDNAME] = feat.geometry().asWkt()
+        state = str(BrdrQState.NONE.value)
+        if fid in id_geom_map and fid not in ids_to_align:
+            feat.setGeometry(id_geom_map[fid])
+            state = str(BrdrQState.AUTO_UPDATED.value)
+        if fid in ids_not_changed:
+            state = str(BrdrQState.NOT_CHANGED.value)
+        if fid in ids_to_review:
+            state = str(BrdrQState.TO_REVIEW.value)
+        if fid in ids_to_align:
+            feat[SYMMETRICAL_AREA_CHANGE] = -1
+            feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] = -1
+            state = str(BrdrQState.TO_UPDATE.value)
+        feat[BRDRQ_STATE_FIELDNAME] = state
+        correction_layer.updateFeature(feat)
+    correction_layer.commitChanges()
+
+    style_outputlayer(correction_layer, BRDRQ_STATE_FIELDNAME)
+    return correction_layer
+
+def style_outputlayer(layer, field_name):
+    # Define categories
+    categories = []
+
+    # Not changed
+    symbol_not_changed = QgsFillSymbol.createSimple(
+        {
+            "outline_color": "#b2df8a",
+            "outline_style": "solid",
+            "outline_width": "2",
+            "color": "transparent",
+        }
+    )
+    value = str(BrdrQState.NOT_CHANGED.value)
+    categories.append(QgsRendererCategory(value, symbol_not_changed, value))
+
+    # Auto-updated
+    symbol_auto = QgsFillSymbol.createSimple(
+        {
+            "outline_color": "green",
+            "outline_style": "solid",
+            "outline_width": "2",
+            "color": "transparent",
+        }
+    )
+    value = str(BrdrQState.AUTO_UPDATED.value)
+    categories.append(QgsRendererCategory(value, symbol_auto, value))
+    # manual update
+    symbol_manual_update = QgsFillSymbol.createSimple(
+        {
+            "outline_color": "blue",
+            "outline_style": "solid",
+            "outline_width": "2",
+            "color": "transparent",
+        }
+    )
+    value = str(BrdrQState.MANUAL_UPDATED.value)
+    categories.append(QgsRendererCategory(value, symbol_manual_update, value))
+    # To Review
+    symbol_review = QgsFillSymbol.createSimple(
+        {
+            "outline_color": "orange",
+            "outline_style": "solid",
+            "outline_width": "2",
+            "color": "transparent",
+        }
+    )
+    value = str(BrdrQState.TO_REVIEW.value)
+    categories.append(QgsRendererCategory(value, symbol_review, value))
+
+    symbol_todo = QgsFillSymbol.createSimple(
+        {
+            "outline_color": "red",
+            "outline_style": "solid",
+            "outline_width": "2",
+            "color": "transparent",
+        }
+    )
+    value = str(BrdrQState.TO_UPDATE.value)
+    categories.append(QgsRendererCategory(value, symbol_todo, value))
+
+    # Set Renderer
+    renderer = QgsCategorizedSymbolRenderer(field_name, categories)
+    layer.setRenderer(renderer)
+    layer.triggerRepaint()
 
 
 def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_crs):

@@ -10,7 +10,6 @@ from qgis.core import (
     QgsProject,
     QgsVectorLayer,
 )
-from qgis.core import QgsSettings
 from qgis.gui import QgsMapCanvas
 
 from .utilities import get_qgis_app
@@ -37,7 +36,6 @@ class TestAutoUpdateBorders(unittest.TestCase):
         # # Forceer het wegschrijven naar schijf/geheugen
         # self.settings.sync()
 
-
     def tearDown(self):
         QGISAPP.processingRegistry().removeProvider(self.provider)
         QgsProject.instance().clear()
@@ -62,6 +60,7 @@ class TestAutoUpdateBorders(unittest.TestCase):
                 "ENUM_OD_STRATEGY": 2,
                 "ENUM_PROCESSOR": 0,
                 "WORK_FOLDER": foldername,
+                "REVIEW_PERCENTAGE": 10,
                 "PREDICTION_STRATEGY": 1,
                 "FULL_REFERENCE_STRATEGY": 2,
                 "SHOW_LOG_INFO": True,
@@ -69,7 +68,7 @@ class TestAutoUpdateBorders(unittest.TestCase):
         )
 
         featurecount = layer_theme.featureCount()
-        assert len(output)==4
+        assert len(output)==5
         for o in output.values():
             assert isinstance(o,QgsVectorLayer)
             assert o.featureCount()==featurecount
@@ -106,6 +105,7 @@ class TestAutoUpdateBorders(unittest.TestCase):
                 "ENUM_OD_STRATEGY": 2,
                 "ENUM_PROCESSOR": 0,
                 "WORK_FOLDER": foldername,
+                "REVIEW_PERCENTAGE": 10,
                 "PREDICTION_STRATEGY": 1,
                 "FULL_REFERENCE_STRATEGY": 2,
                 "SHOW_LOG_INFO": True,
@@ -113,7 +113,7 @@ class TestAutoUpdateBorders(unittest.TestCase):
         )
 
         featurecount = layer_theme.featureCount()
-        assert len(output)==4
+        assert len(output)==5
         for o in output.values():
             assert isinstance(o,QgsVectorLayer)
             assert o.featureCount()==1

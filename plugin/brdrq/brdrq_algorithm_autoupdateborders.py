@@ -70,6 +70,9 @@ from .brdrq_utils import (
     write_setting,
     read_setting,
     get_valid_layer,
+    generate_correction_layer,
+    set_layer_visibility,
+    move_to_group,
 )
 
 
@@ -90,6 +93,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     CRS = None
     OD_STRATEGY = None
     THRESHOLD_OVERLAP_PERCENTAGE = None
+    REVIEW_PERCENTAGE = None  # default - features that changes more than this % wil be moved to review lisr
     RELEVANT_DISTANCE = None
     PROCESSOR = None
     WORKFOLDER = None
@@ -117,6 +121,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     LAYER_RESULT_DIFF_MIN = (
         PREFIX
         + "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
+    )
+    LAYER_CORRECTION = (
+        "CORRECTION"  # parameter that holds the TOC layername of the correction_layer
     )
     GROUP_LAYER = PREFIX + "GRB_UPDATE"
 
@@ -324,6 +331,17 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         self.addParameter(parameter)
 
+        parameter = QgsProcessingParameterNumber(
+            "REVIEW_PERCENTAGE",
+            '<br>REVIEW_PERCENTAGE (%)<br><i style="color: gray;">results with a higher change % move to review-list </i>',
+            type=QgsProcessingParameterNumber.Double,
+            defaultValue=self.default_review_percentage,
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
+
         parameter = QgsProcessingParameterBoolean(
             "SHOW_LOG_INFO",
             "Show extra logging (from brdr-log)",
@@ -361,6 +379,14 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingOutputVectorLayer(
                 "OUTPUT_RESULT_DIFF_MIN",
                 self.LAYER_RESULT_DIFF_MIN,
+                QgsProcessing.TypeVectorAnyGeometry,
+            )
+        )
+
+        self.addOutput(
+            QgsProcessingOutputVectorLayer(
+                "OUTPUT_CORRECTION",
+                self.LAYER_CORRECTION,
                 QgsProcessing.TypeVectorAnyGeometry,
             )
         )
@@ -530,19 +556,35 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         result_diff_min = QgsProject.instance().mapLayersByName(
             self.LAYER_RESULT_DIFF_MIN
         )[0]
+
+        correction_layer = None
+        if self.PREDICTION_STRATEGY != PredictionStrategy.ALL:
+            feedback.pushInfo("Generating correction layer")
+            try:
+                correction_layer = generate_correction_layer(thematic, result,id_theme_brdrq_fieldname=self.ID_THEME_BRDRQ_FIELDNAME,workfolder=self.WORKFOLDER, correction_layer_name = "CORRECTION" + self.SUFFIX,review_percentage=self.REVIEW_PERCENTAGE, add_metadata=True)
+                QgsProject.instance().addMapLayer(correction_layer)
+                set_layer_visibility(correction_layer, True)
+                move_to_group(correction_layer, self.GROUP_LAYER)
+            except Exception as e:
+                feedback.pushWarning(f"problem generating correction layer: {str(e)}")
+        else:
+            feedback.pushInfo(
+                "No correction layer generated when predictions with predictionStrategy ALL is activated"
+            )
+
         QgsProject.instance().reloadAllLayers()
         feedback.pushInfo("Resulting geometry calculated")
         feedback.setCurrentStep(6)
         if feedback.isCanceled():
             return {}
 
-        feedback.pushInfo("END PROCESSING")
-        feedback.pushInfo("EINDE: RESULTAAT BEREKEND")
+        feedback.pushInfo("END PROCESSING - Results calculated")
         return {
             "OUTPUT_RESULT": result,
             "OUTPUT_RESULT_DIFF": result_diff,
             "OUTPUT_RESULT_DIFF_PLUS": result_diff_plus,
             "OUTPUT_RESULT_DIFF_MIN": result_diff_min,
+            "OUTPUT_CORRECTION": correction_layer,
         }
 
     def read_default_settings(self):
@@ -559,6 +601,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "ENUM_PROCESSOR": 0,
             "ENUM_OD_STRATEGY": 3,
             "THRESHOLD_OVERLAP_PERCENTAGE": 50,
+            "REVIEW_PERCENTAGE": 10,
             "WORK_FOLDER": "brdrQ",
             "METADATA_FIELD": BASE_METADATA_FIELD_NAME,
             "SHOW_LOG_INFO": False,
@@ -581,6 +624,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "THRESHOLD_OVERLAP_PERCENTAGE"
         ]
         self.default_workfolder = self.params_default_dict["WORK_FOLDER"]
+        self.default_review_percentage = self.params_default_dict["REVIEW_PERCENTAGE"]
         self.default_metadata_field = self.params_default_dict["METADATA_FIELD"]
         self.default_extra_logging = self.params_default_dict["SHOW_LOG_INFO"]
 
@@ -619,6 +663,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.default_workfolder = read_setting(
             prefix, "default_workfolder", self.default_workfolder
         )
+        self.default_review_percentage = read_setting(
+            prefix, "default_review_percentage", self.default_review_percentage
+        )
         self.default_metadata_field = read_setting(
             prefix, "default_metadata_field", self.default_metadata_field
         )
@@ -654,6 +701,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.default_threshold_overlap_percentage,
         )
         write_setting(prefix, "default_workfolder", self.default_workfolder)
+        write_setting(
+            prefix, "default_review_percentage", self.default_review_percentage
+        )
         write_setting(prefix, "default_metadata_field", self.default_metadata_field)
         write_setting(prefix, "default_extra_logging", self.default_extra_logging)
 
@@ -666,6 +716,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.default_relevant_distance = parameters["RELEVANT_DISTANCE"]
         self.default_prediction_strategy = parameters["PREDICTION_STRATEGY"]
         self.default_full_reference_strategy = parameters["FULL_REFERENCE_STRATEGY"]
+        self.default_review_percentage = parameters["REVIEW_PERCENTAGE"]
         self.default_processor = parameters["ENUM_PROCESSOR"]
         self.default_od_strategy = parameters["ENUM_OD_STRATEGY"]
         self.default_threshold_overlap_percentage = parameters[
@@ -701,6 +752,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.ID_THEME_BRDRQ_FIELDNAME = self.default_theme_layer_id
 
         self.THRESHOLD_OVERLAP_PERCENTAGE = self.default_threshold_overlap_percentage
+        self.REVIEW_PERCENTAGE = self.default_review_percentage
         self.OD_STRATEGY = OpenDomainStrategy[
             ENUM_OD_STRATEGY_OPTIONS[self.default_od_strategy]
         ]
