@@ -101,8 +101,10 @@ class brdrQDockWidgetFeatureAligner(
         self.doubleSpinBox.setValue(0)
         # Clear the featurelist widget
         self.listWidget_features.clear()
+        self.listWidget_features.scrollToTop()
         # Clear the predictionlist
         self.listWidget_predictions.clear()
+        self.listWidget_predictions.scrollToTop()
 
         remove_group_layer(self.GROUP_LAYER)
         self.feature = None
