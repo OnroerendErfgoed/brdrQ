@@ -2,6 +2,7 @@ import os
 import unittest
 
 import processing
+from brdr.constants import METADATA_FIELD_NAME
 from processing.core.Processing import Processing
 from qgis.core import QgsMapLayer
 from qgis.core import QgsProcessingFeatureSourceDefinition
@@ -117,3 +118,36 @@ class TestAutoUpdateBorders(unittest.TestCase):
         for o in output.values():
             assert isinstance(o,QgsVectorLayer)
             assert o.featureCount()==1
+
+    def test_autoupdateborders_metadata(self):
+
+        foldername = QgsProcessingParameterFolderDestination(name="brdrQ").generateTemporaryDestination()
+
+        path = os.path.join(os.path.dirname(__file__), "themelayer_metadata.geojson")
+        themelayername = "themelayer_test_metadata"
+        layer_theme = QgsVectorLayer(path, themelayername)
+        QgsProject.instance().addMapLayer(layer_theme)
+        output = processing.run(
+            "brdrqprovider:brdrqautoupdateborders",
+            {
+                "INPUT_THEMATIC": themelayername,
+                "COMBOBOX_ID_THEME": "dossiernummer",
+                "ENUM_REFERENCE": 0,
+                "METADATA_FIELD": METADATA_FIELD_NAME,
+                "RELEVANT_DISTANCE": 5,
+                "THRESHOLD_OVERLAP_PERCENTAGE": 50,
+                "ENUM_OD_STRATEGY": 2,
+                "ENUM_PROCESSOR": 0,
+                "WORK_FOLDER": foldername,
+                "REVIEW_PERCENTAGE": 10,
+                "PREDICTION_STRATEGY": 1,
+                "FULL_REFERENCE_STRATEGY": 2,
+                "SHOW_LOG_INFO": True,
+            },
+        )
+
+        featurecount = layer_theme.featureCount()
+        assert len(output)==5
+        for o in output.values():
+            assert isinstance(o,QgsVectorLayer)
+            assert o.featureCount()==featurecount

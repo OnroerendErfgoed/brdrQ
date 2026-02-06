@@ -10,7 +10,7 @@ from brdr.constants import (
     SYMMETRICAL_AREA_PERCENTAGE_CHANGE,
     METADATA_FIELD_NAME,
     STABILITY,
-    ID_THEME_FIELD_NAME,
+    ID_THEME_FIELD_NAME, EVALUATION_FIELD_NAME,
 )
 from brdr.processor import (
     AlignerGeometryProcessor,
@@ -55,7 +55,7 @@ from brdr.enums import (
     OpenDomainStrategy,
     SnapStrategy,
     PredictionStrategy,
-    FullReferenceStrategy, ProcessorID,
+    FullReferenceStrategy, ProcessorID, Evaluation,
 )
 from brdr.typings import ProcessResult
 
@@ -1042,7 +1042,6 @@ def save_layer_to_gpkg(layer, gpkg_path, layer_name=None):
     )
 
 
-
 def generate_correction_layer(input, result, correction_layer_name,id_theme_brdrq_fieldname,workfolder,review_percentage=5, add_metadata=False):
 
     source_layer = input
@@ -1062,6 +1061,7 @@ def generate_correction_layer(input, result, correction_layer_name,id_theme_brdr
     id_diff_index_map = {}
     id_diff_perc_index_map = {}
     id_metadata_map = {}
+    id_evaluation_map = {}
     ids_to_review = []
     ids_to_align = []
     ids_not_changed = []
@@ -1078,7 +1078,20 @@ def generate_correction_layer(input, result, correction_layer_name,id_theme_brdr
             id_metadata_map[key] = feat[METADATA_FIELD_NAME]
         id_diff_index_map[key] = feat[SYMMETRICAL_AREA_CHANGE]
         id_diff_perc_index_map[key] = feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE]
-        if stability_field_available and not feat[STABILITY]:
+        try:
+            evaluation = Evaluation(feat[EVALUATION_FIELD_NAME])
+        except:
+            evaluation = Evaluation.NOT_EVALUATED
+        id_evaluation_map[key] = evaluation
+
+        if evaluation in (
+                Evaluation.NO_CHANGE,
+                Evaluation.EQUALITY_BY_ID,
+                Evaluation.EQUALITY_BY_FULL_REFERENCE,
+                Evaluation.EQUALITY_BY_ID_AND_FULL_REFERENCE
+        ):
+            pass
+        elif stability_field_available and not feat[STABILITY]:
             ids_to_align.append(key)
         elif feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] > review_percentage:
             ids_to_review.append(key)
@@ -1087,20 +1100,34 @@ def generate_correction_layer(input, result, correction_layer_name,id_theme_brdr
 
     # 4. Update geometries in duplicated layer
     correction_layer.startEditing()
-    correction_layer.dataProvider().addAttributes(
-        [
-            QgsField(METADATA_FIELD_NAME, QVariant.String),
-            QgsField(BRDRQ_STATE_FIELDNAME, QVariant.String),
-            QgsField(BRDRQ_ORIGINAL_WKT_FIELDNAME, QVariant.String),
-            QgsField(SYMMETRICAL_AREA_CHANGE, QVariant.Double),
-            QgsField(SYMMETRICAL_AREA_PERCENTAGE_CHANGE, QVariant.Double),
-        ]
-    )
+    fields_to_add = [
+        QgsField(METADATA_FIELD_NAME, QVariant.String),
+        QgsField(EVALUATION_FIELD_NAME, QVariant.String),
+        QgsField(BRDRQ_STATE_FIELDNAME, QVariant.String),
+        QgsField(BRDRQ_ORIGINAL_WKT_FIELDNAME, QVariant.String),
+        QgsField(SYMMETRICAL_AREA_CHANGE, QVariant.Double),
+        QgsField(SYMMETRICAL_AREA_PERCENTAGE_CHANGE, QVariant.Double),
+    ]
+
+    # Iterate fields
+    for field in fields_to_add:
+        # Check if exists
+        if correction_layer.fields().indexFromName(field.name()) == -1:
+            success = correction_layer.dataProvider().addAttributes([field])
+            if success:
+                print(f"Field '{field.name()}' succesfully added.")
+            else:
+                print(f"Error adding field '{field.name()}'.")
+        else:
+            print(f"Field '{field.name()}' already exists...")
+
+    # Update Fields-cache
     correction_layer.updateFields()
     for feat in correction_layer.getFeatures():
         fid = feat[id_theme_brdrq_fieldname]
         if add_metadata:
             feat[METADATA_FIELD_NAME] = id_metadata_map[fid]
+        feat[EVALUATION_FIELD_NAME] = id_evaluation_map[fid]
         feat[SYMMETRICAL_AREA_CHANGE] = id_diff_index_map[fid]
         feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] = id_diff_perc_index_map[fid]
         feat[BRDRQ_ORIGINAL_WKT_FIELDNAME] = feat.geometry().asWkt()
