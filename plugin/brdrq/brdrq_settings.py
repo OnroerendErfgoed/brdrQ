@@ -181,9 +181,12 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         ]
         if self.processor is None or self.processor not in Processor:
             default_processor = Processor.AlignerGeometryProcessor
-            processor_name = s.value(
-                "brdrq/processor", default_processor.name
-            )
+            ##!! we set the default processor always to the AlignerGeometryPeocessor
+            processor_name = default_processor.name
+            # processor_name = s.value(
+            #     "brdrq/processor", default_processor.name
+            # )
+
             if processor_name not in Processor.__members__:
                 processor_name = default_processor.name
             index = self.comboBox_processor.findText(

@@ -913,6 +913,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.default_full_reference_strategy = self.params_default_dict[
             "FULL_REFERENCE_STRATEGY"
         ]
+        ##!! we set the defaul processor always to the AlignerGeometryPeocessor
         self.default_processor = self.params_default_dict["ENUM_PROCESSOR"]
         self.default_od_strategy = self.params_default_dict["ENUM_OD_STRATEGY"]
         self.default_threshold_overlap_percentage = self.params_default_dict[
@@ -957,9 +958,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "default_full_reference_strategy",
             self.default_full_reference_strategy,
         )
-        self.default_processor = read_setting(
-            prefix, "default_processor", self.default_processor
-        )
+        ##!! we set the default processor always to the AlignerGeometryPeocessor
+        # self.default_processor = read_setting(
+        #     prefix, "default_processor", self.default_processor
+        # )
         self.default_od_strategy = read_setting(
             prefix, "default_od_strategy", self.default_od_strategy
         )

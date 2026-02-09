@@ -649,9 +649,11 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "default_full_reference_strategy",
             self.default_full_reference_strategy,
         )
-        self.default_processor = read_setting(
-            prefix, "default_processor", self.default_processor
-        )
+
+        ##!! we set the default processor always to the AlignerGeometryPeocessor
+        # self.default_processor = read_setting(
+        #     prefix, "default_processor", self.default_processor
+        # )
         self.default_od_strategy = read_setting(
             prefix, "default_od_strategy", self.default_od_strategy
         )
