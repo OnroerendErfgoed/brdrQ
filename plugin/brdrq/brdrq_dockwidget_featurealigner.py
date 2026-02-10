@@ -48,7 +48,7 @@ from qgis.utils import OverrideCursor, iface
 from .brdrq_dockwidget_aligner import brdrQDockWidgetAligner
 from .brdrq_utils import (
     SelectTool,
-    geojson_to_layer,
+    featurecollection_to_layer,
     GRB_TYPES,
     ADPF_VERSIONS,
     geom_qgis_to_shapely,
@@ -101,8 +101,10 @@ class brdrQDockWidgetFeatureAligner(
         self.doubleSpinBox.setValue(0)
         # Clear the featurelist widget
         self.listWidget_features.clear()
+        self.listWidget_features.scrollToTop()
         # Clear the predictionlist
         self.listWidget_predictions.clear()
+        self.listWidget_predictions.scrollToTop()
 
         remove_group_layer(self.GROUP_LAYER)
         self.feature = None
@@ -131,6 +133,22 @@ class brdrQDockWidgetFeatureAligner(
             QgsMapLayerProxyModel.PolygonLayer
             | QgsMapLayerProxyModel.LineLayer
             | QgsMapLayerProxyModel.PointLayer
+        )
+        self.mMapLayerComboBox.setExcludedProviders(
+            [
+                "WFS",
+                "wfs",
+                "WCS",
+                "wcs",  # Web Coverage Service
+                "WMS",
+                "wms" ,
+                "OAPIF",
+                "oapif",
+                "ARCGISFEATURESERVER",
+                "arcgisfeatureserver",  # ArcGIS REST Feature Service
+                "ARCGISMAPSERVER",
+                "arcgismapserver",  # ArcGIS REST Map Service
+            ],
         )
         # Load default (saved) layer
         saved_layer_id = read_setting(self.prefix, "theme_layer", None)
@@ -446,7 +464,7 @@ class brdrQDockWidgetFeatureAligner(
         )
         result_diff = "result_diff"
         geojson_result_diff = fcs[result_diff]
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT_DIFF,
             geojson_result_diff,
             result_diff,
@@ -456,7 +474,7 @@ class brdrQDockWidgetFeatureAligner(
         )
         result_diff_plus = "result_diff_plus"
         geojson_result_diff_plus = fcs[result_diff_plus]
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT_DIFF_PLUS,
             geojson_result_diff_plus,
             result_diff_plus,
@@ -466,7 +484,7 @@ class brdrQDockWidgetFeatureAligner(
         )
         result_diff_min = "result_diff_min"
         geojson_result_diff_min = fcs[result_diff_min]
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT_DIFF_MIN,
             geojson_result_diff_min,
             result_diff_min,
@@ -476,7 +494,7 @@ class brdrQDockWidgetFeatureAligner(
         )
         result = "result"
         geojson_result = fcs[result]
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT,
             geojson_result,
             result,

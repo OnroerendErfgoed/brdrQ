@@ -33,46 +33,25 @@ import sys
 from datetime import datetime
 
 # TODO QGIS4
-from PyQt5.QtCore import QVariant
 from brdr.be.grb.enums import GRBType
 from brdr.be.grb.loader import GRBFiscalParcelLoader, GRBActualLoader
 from brdr.configs import ProcessorConfig, AlignerConfig
-from brdr.constants import (
-    STABILITY,
-    SYMMETRICAL_AREA_CHANGE,
-    SYMMETRICAL_AREA_PERCENTAGE_CHANGE,
-    METADATA_FIELD_NAME,
-    ID_THEME_FIELD_NAME,
-)
 from brdr.geometry_utils import safe_unary_union
 from brdr.osm.loader import OSMLoader
-from qgis.core import (
-    QgsCategorizedSymbolRenderer,
-    QgsRendererCategory,
-    QgsFillSymbol,
-)
-from qgis.core import QgsField
 from qgis.core import QgsProcessingFeatureSourceDefinition
-from qgis.core import QgsVectorFileWriter, QgsVectorLayer
 
 from .brdrq_utils import (
     ENUM_REFERENCE_OPTIONS,
     ENUM_OD_STRATEGY_OPTIONS,
     ADPF_VERSIONS,
     geom_qgis_to_shapely,
-    geojson_to_layer,
+    featurecollection_to_layer,
     get_workfolder,
     thematic_preparation,
     get_reference_params,
     PREFIX_LOCAL_LAYER,
     DICT_ADPF_VERSIONS,
     move_to_group,
-    BRDRQ_STATE_FIELDNAME,
-    BrdrQState,
-    set_layer_visibility,
-    BRDRQ_ORIGINAL_WKT_FIELDNAME,
-    remove_layer_by_name,
-    is_field_in_layer,
     OSM_TYPES,
     DICT_OSM_TYPES,
     ENUM_FULL_REFERENCE_STRATEGY_OPTIONS,
@@ -83,6 +62,8 @@ from .brdrq_utils import (
     read_setting,
     write_setting,
     get_valid_layer,
+    generate_correction_layer,
+    set_layer_visibility,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -731,7 +712,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # MAKE TEMPORARY LAYERS
         if self.SELECTED_REFERENCE != 0:
             reference_geojson = aligner.reference_data.to_geojson()
-            geojson_to_layer(
+            featurecollection_to_layer(
                 self.LAYER_REFERENCE_NAME,
                 reference_geojson,
                 "reference",
@@ -742,7 +723,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         if self.SHOW_INTERMEDIATE_LAYERS:
             if "result_relevant_intersection" in fcs.keys():
-                geojson_to_layer(
+                featurecollection_to_layer(
                     self.LAYER_RELEVANT_INTERSECTION,
                     fcs["result_relevant_intersection"],
                     QgsStyle.defaultStyle().symbol("gradient green fill"),
@@ -751,7 +732,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                     self.WORKFOLDER,
                 )
             if "result_relevant_diff" in fcs.keys():
-                geojson_to_layer(
+                featurecollection_to_layer(
                     self.LAYER_RELEVANT_DIFFERENCE,
                     fcs["result_relevant_diff"],
                     QgsStyle.defaultStyle().symbol("gradient red fill"),
@@ -761,7 +742,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 )
         result_diff = "result_diff"
         geojson_result_diff = fcs[result_diff]
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT_DIFF,
             geojson_result_diff,
             result_diff,
@@ -771,7 +752,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         result_diff_plus = "result_diff_plus"
         geojson_result_diff_plus = fcs[result_diff_plus]
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT_DIFF_PLUS,
             geojson_result_diff_plus,
             result_diff_plus,
@@ -781,7 +762,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         result_diff_min = "result_diff_min"
         geojson_result_diff_min = fcs[result_diff_min]
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT_DIFF_MIN,
             geojson_result_diff_min,
             result_diff_min,
@@ -791,7 +772,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         result = "result"
         geojson_result = fcs[result]
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT,
             geojson_result,
             result,
@@ -812,14 +793,16 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         if not self.PREDICTIONS or self.PREDICTION_STRATEGY != PredictionStrategy.ALL:
             feedback.pushInfo("Generating correction layer")
             try:
-                correction_layer = self.generate_correction_layer(thematic, result)
-            except:
-                print("problem generating correction layer")
+                correction_layer = generate_correction_layer(thematic, result,id_theme_brdrq_fieldname=self.ID_THEME_BRDRQ_FIELDNAME,workfolder=self.WORKFOLDER, correction_layer_name = "CORRECTION" + self.SUFFIX,review_percentage=self.REVIEW_PERCENTAGE, add_metadata=self.ADD_METADATA)
+                QgsProject.instance().addMapLayer(correction_layer)
+                set_layer_visibility(correction_layer, True)
+                move_to_group(correction_layer, self.GROUP_LAYER)
+            except Exception as e:
+                feedback.pushWarning(f"problem generating correction layer: {str(e)}")
         else:
             feedback.pushInfo(
                 "No correction layer generated when predictions with predictionStrategy ALL is activated"
             )
-
         QgsProject.instance().reloadAllLayers()
         if feedback.isCanceled():
             return {}
@@ -832,162 +815,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "OUTPUT_RESULT_DIFF_MIN": result_diff_min,
             "OUTPUT_CORRECTION": correction_layer,
         }
-
-    def generate_correction_layer(self, input, result):
-
-        source_layer = input
-        results_layer = result
-
-        # Copy source layer to gpkg-layers
-        correction_layer_name = "CORRECTION" + self.SUFFIX
-        remove_layer_by_name(correction_layer_name)
-        correction_layer = self.generate_gpkg_layer(source_layer, correction_layer_name)
-
-        set_layer_visibility(correction_layer, True)
-        move_to_group(correction_layer, self.GROUP_LAYER)
-        QgsProject.instance().reloadAllLayers()
-
-        # Make a dictionary with ID to geometry from the resultslayer
-        id_geom_map = {}
-        id_diff_index_map = {}
-        id_diff_perc_index_map = {}
-        id_metadata_map = {}
-        ids_to_review = []
-        ids_to_align = []
-        ids_not_changed = []
-        stability_field_available = False
-        if is_field_in_layer(STABILITY, results_layer):
-            stability_field_available = True
-        for feat in results_layer.getFeatures():
-            key = feat[ID_THEME_FIELD_NAME]
-            if key in id_geom_map.keys():
-                # when key not unique and multiple predictions, the last prediction is added to the list and the status is set to review
-                ids_to_review.append(key)
-            id_geom_map[key] = feat.geometry()
-            if self.ADD_METADATA:
-                id_metadata_map[key] = feat[METADATA_FIELD_NAME]
-            id_diff_index_map[key] = feat[SYMMETRICAL_AREA_CHANGE]
-            id_diff_perc_index_map[key] = feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE]
-            if stability_field_available and not feat[STABILITY]:
-                ids_to_align.append(key)
-            elif feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] > self.REVIEW_PERCENTAGE:
-                ids_to_review.append(key)
-            elif feat[SYMMETRICAL_AREA_CHANGE] < 0.01:
-                ids_not_changed.append(key)
-
-        # 4. Update geometries in duplicated layer
-        correction_layer.startEditing()
-        correction_layer.dataProvider().addAttributes(
-            [
-                QgsField(METADATA_FIELD_NAME, QVariant.String),
-                QgsField(BRDRQ_STATE_FIELDNAME, QVariant.String),
-                QgsField(BRDRQ_ORIGINAL_WKT_FIELDNAME, QVariant.String),
-                QgsField(SYMMETRICAL_AREA_CHANGE, QVariant.Double),
-                QgsField(SYMMETRICAL_AREA_PERCENTAGE_CHANGE, QVariant.Double),
-            ]
-        )
-        correction_layer.updateFields()
-        for feat in correction_layer.getFeatures():
-            fid = feat[self.ID_THEME_BRDRQ_FIELDNAME]
-            if self.ADD_METADATA:
-                feat[METADATA_FIELD_NAME] = id_metadata_map[fid]
-            feat[SYMMETRICAL_AREA_CHANGE] = id_diff_index_map[fid]
-            feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] = id_diff_perc_index_map[fid]
-            feat[BRDRQ_ORIGINAL_WKT_FIELDNAME] = feat.geometry().asWkt()
-            state = str(BrdrQState.NONE.value)
-            if fid in id_geom_map and fid not in ids_to_align:
-                feat.setGeometry(id_geom_map[fid])
-                state = str(BrdrQState.AUTO_UPDATED.value)
-            if fid in ids_not_changed:
-                state = str(BrdrQState.NOT_CHANGED.value)
-            if fid in ids_to_review:
-                state = str(BrdrQState.TO_REVIEW.value)
-            if fid in ids_to_align:
-                feat[SYMMETRICAL_AREA_CHANGE] = -1
-                feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] = -1
-                state = str(BrdrQState.TO_UPDATE.value)
-            feat[BRDRQ_STATE_FIELDNAME] = state
-            correction_layer.updateFeature(feat)
-        correction_layer.commitChanges()
-
-        self.style_outputlayer(correction_layer, BRDRQ_STATE_FIELDNAME)
-        return correction_layer
-
-    def style_outputlayer(self, layer, field_name):
-        # Define categories
-        categories = []
-
-        # Not changed
-        symbol_not_changed = QgsFillSymbol.createSimple(
-            {
-                "outline_color": "#b2df8a",
-                "outline_style": "solid",
-                "outline_width": "2",
-                "color": "transparent",
-            }
-        )
-        value = str(BrdrQState.NOT_CHANGED.value)
-        categories.append(QgsRendererCategory(value, symbol_not_changed, value))
-
-        # Auto-updated
-        symbol_auto = QgsFillSymbol.createSimple(
-            {
-                "outline_color": "green",
-                "outline_style": "solid",
-                "outline_width": "2",
-                "color": "transparent",
-            }
-        )
-        value = str(BrdrQState.AUTO_UPDATED.value)
-        categories.append(QgsRendererCategory(value, symbol_auto, value))
-        # manual update
-        symbol_manual_update = QgsFillSymbol.createSimple(
-            {
-                "outline_color": "blue",
-                "outline_style": "solid",
-                "outline_width": "2",
-                "color": "transparent",
-            }
-        )
-        value = str(BrdrQState.MANUAL_UPDATED.value)
-        categories.append(QgsRendererCategory(value, symbol_manual_update, value))
-        # To Review
-        symbol_review = QgsFillSymbol.createSimple(
-            {
-                "outline_color": "orange",
-                "outline_style": "solid",
-                "outline_width": "2",
-                "color": "transparent",
-            }
-        )
-        value = str(BrdrQState.TO_REVIEW.value)
-        categories.append(QgsRendererCategory(value, symbol_review, value))
-
-        symbol_todo = QgsFillSymbol.createSimple(
-            {
-                "outline_color": "red",
-                "outline_style": "solid",
-                "outline_width": "2",
-                "color": "transparent",
-            }
-        )
-        value = str(BrdrQState.TO_UPDATE.value)
-        categories.append(QgsRendererCategory(value, symbol_todo, value))
-
-        # Set Renderer
-        renderer = QgsCategorizedSymbolRenderer(field_name, categories)
-        layer.setRenderer(renderer)
-        layer.triggerRepaint()
-
-    def generate_gpkg_layer(self, source_layer, layername) -> QgsVectorLayer:
-        file = layername + ".gpkg"
-        path = os.path.join(self.WORKFOLDER, file)
-        QgsVectorFileWriter.writeAsVectorFormat(
-            source_layer, path, "UTF-8", source_layer.crs(), "GPKG"
-        )
-        layer = QgsVectorLayer(path + "|layername=" + layername, layername, "ogr")
-        QgsProject.instance().addMapLayer(layer)
-        return layer
 
     def _reference_preparation(self, thematic_buffered, context, feedback, parameters):
         outputs = {}
@@ -1086,6 +913,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.default_full_reference_strategy = self.params_default_dict[
             "FULL_REFERENCE_STRATEGY"
         ]
+        ##!! we set the defaul processor always to the AlignerGeometryPeocessor
         self.default_processor = self.params_default_dict["ENUM_PROCESSOR"]
         self.default_od_strategy = self.params_default_dict["ENUM_OD_STRATEGY"]
         self.default_threshold_overlap_percentage = self.params_default_dict[
@@ -1130,9 +958,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "default_full_reference_strategy",
             self.default_full_reference_strategy,
         )
-        self.default_processor = read_setting(
-            prefix, "default_processor", self.default_processor
-        )
+        ##!! we set the default processor always to the AlignerGeometryPeocessor
+        # self.default_processor = read_setting(
+        #     prefix, "default_processor", self.default_processor
+        # )
         self.default_od_strategy = read_setting(
             prefix, "default_od_strategy", self.default_od_strategy
         )

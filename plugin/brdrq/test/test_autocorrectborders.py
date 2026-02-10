@@ -40,11 +40,9 @@ class TestAutoCorrectBorders(unittest.TestCase):
         # # Forceer het wegschrijven naar schijf/geheugen
         # self.settings.sync()
 
-
     def tearDown(self):
         QGISAPP.processingRegistry().removeProvider(self.provider)
         QgsProject.instance().clear()
-
 
     def test_autocorrectborders(self):
         # See https://gis.stackexchange.com/a/276979/4972 for a list of algorithms
@@ -406,3 +404,46 @@ class TestAutoCorrectBorders(unittest.TestCase):
                     "SHOW_LOG_INFO": False,
                 },
             )
+
+    def test_autocorrectborders_boom(self):
+        # See https://gis.stackexchange.com/a/276979/4972 for a list of algorithms
+        foldername = QgsProcessingParameterFolderDestination(name="brdrQ").generateTemporaryDestination()
+
+        path = os.path.join(os.path.dirname(__file__), "dossier_boom.geojson")
+        themelayername = "themelayer_test"
+        layer_theme = QgsVectorLayer(path, themelayername)
+        QgsProject.instance().addMapLayer(layer_theme)
+
+        output = processing.run(
+            "brdrqprovider:brdrqautocorrectborders",
+            {
+                "INPUT_THEMATIC": themelayername,
+                "COMBOBOX_ID_THEME": "dossiernummer",
+                "RELEVANT_DISTANCE": 10,
+                "ENUM_REFERENCE": 1,
+                "INPUT_REFERENCE": None,
+                "COMBOBOX_ID_REFERENCE": None,
+                "WORK_FOLDER": foldername,
+                "ENUM_OD_STRATEGY": 2,
+                "ENUM_PROCESSOR": 2,
+                "THRESHOLD_OVERLAP_PERCENTAGE": 50,
+                "FULL_REFERENCE_STRATEGY": 2,
+                "PREDICTION_STRATEGY": 0,
+                "REVIEW_PERCENTAGE": 10,
+                "ADD_METADATA": True,
+                "STABILITY": True,
+                "ADD_ATTRIBUTES": True,
+                "SHOW_INTERMEDIATE_LAYERS": True,
+                "PREDICTIONS": 0,
+                "SHOW_LOG_INFO": True,
+            },
+        )
+        featurecount = layer_theme.featureCount()
+        assert len(output)==5
+        for o in output.values():
+            for feature in o.getFeatures():
+                # Haal de geometrie op en converteer naar WKT
+                wkt = feature.geometry().asWkt()
+                print(wkt)
+            assert isinstance(o,QgsVectorLayer)
+            assert o.featureCount()==featurecount

@@ -49,7 +49,7 @@ from .brdrq_utils import (
     zoom_to_features,
     add_field_to_layer,
     geom_shapely_to_qgis,
-    geojson_to_layer,
+    featurecollection_to_layer,
     remove_group_layer,
     geom_qgis_to_shapely,
     GRB_TYPES,
@@ -288,7 +288,7 @@ class brdrQDockWidgetBulkAligner(
             resulttype=AlignerResultType.PROCESSRESULTS, add_metadata=self.metadata
         )
 
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT_DIFF,
             fcs["result_diff"],
             QgsStyle.defaultStyle().symbol("hashed black X"),
@@ -296,7 +296,7 @@ class brdrQDockWidgetBulkAligner(
             self.workinggroupname,
             self.tempfolder,
         )
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT_DIFF_PLUS,
             fcs["result_diff_plus"],
             QgsStyle.defaultStyle().symbol("hashed cgreen /"),
@@ -304,7 +304,7 @@ class brdrQDockWidgetBulkAligner(
             self.workinggroupname,
             self.tempfolder,
         )
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT_DIFF_MIN,
             fcs["result_diff_min"],
             QgsStyle.defaultStyle().symbol("hashed cred /"),
@@ -312,7 +312,7 @@ class brdrQDockWidgetBulkAligner(
             self.workinggroupname,
             self.tempfolder,
         )
-        geojson_to_layer(
+        featurecollection_to_layer(
             self.LAYER_RESULT,
             fcs["result"],
             QgsStyle.defaultStyle().symbol("outline green"),

@@ -5,6 +5,13 @@ from enum import Enum
 # TODO QGIS4
 from PyQt5.QtGui import QColor
 from brdr.be.grb.enums import GRBType
+from brdr.constants import (
+    SYMMETRICAL_AREA_CHANGE,
+    SYMMETRICAL_AREA_PERCENTAGE_CHANGE,
+    METADATA_FIELD_NAME,
+    STABILITY,
+    ID_THEME_FIELD_NAME, EVALUATION_FIELD_NAME,
+)
 from brdr.processor import (
     AlignerGeometryProcessor,
     DieussaertGeometryProcessor,
@@ -12,8 +19,16 @@ from brdr.processor import (
     SnapGeometryProcessor,
     TopologyProcessor,
 )
+from brdr.utils import (
+    write_featurecollection_to_geopackage,
+)
+from qgis.core import (
+    QgsCategorizedSymbolRenderer,
+    QgsRendererCategory,
+)
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
 from qgis.core import QgsProcessingException
+from qgis.core import QgsProviderRegistry, QgsDataSourceUri
 from qgis.core import QgsRectangle
 from qgis.core import QgsSettings
 from qgis.core import QgsWkbTypes
@@ -40,12 +55,12 @@ from brdr.enums import (
     OpenDomainStrategy,
     SnapStrategy,
     PredictionStrategy,
-    FullReferenceStrategy, ProcessorID,
+    FullReferenceStrategy, ProcessorID, Evaluation,
 )
 from brdr.typings import ProcessResult
-from brdr.utils import write_geojson
+
 # TODO QGIS4
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, QVariant
 from qgis.PyQt.QtCore import Qt
 from qgis import processing
 from qgis.core import QgsField, QgsFeatureRequest, QgsProcessing
@@ -61,9 +76,10 @@ from qgis.core import (
     QgsLayerTreeGroup,
 )
 from qgis.core import QgsStyle
-from qgis.core import QgsVectorLayer
 from qgis.utils import iface
 from shapely import to_wkt, from_wkt, make_valid
+
+GPKG_FILENAME = "brdrq.gpkg"
 
 class Processor(str, Enum):
     """
@@ -474,17 +490,155 @@ def get_geojson_type(geojson):
     return [geojson.get("type", "Unknown")]
 
 
-def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
+def gpkg_layer_to_map(name, gpkg_path, layer_name, symbol, visible, group):
     """
-    Add a geojson to a QGIS-layer to add it to the TOC. If geojson has multiple types (point,line, polygon) these types are added seperately.
+    Laadt een specifieke laag uit een GeoPackage en voegt deze toe aan de TOC.
     """
-    geojson =geojson_to_multi(geojson)
-    feature_types = get_geojson_type(geojson)
+    qinst = QgsProject.instance()
+
+    # 1. Bestaande lagen met dezelfde naam verwijderen uit de TOC
+    lyrs = qinst.mapLayersByName(name)
+    root = qinst.layerTreeRoot()
+    for lyr in lyrs:
+        qinst.removeMapLayer(lyr.id())
+
+    # 2. Definieer de URI voor de GeoPackage laag
+    # De syntax is: pad_naar_gpkg|layername=naam_van_de_tabel
+    uri = f"{gpkg_path}|layername={layer_name}"
+
+    # 3. Maak de laag aan
+    vl = QgsVectorLayer(uri, name, "ogr")
+
+    if not vl.isValid():
+        print(f"Fout: Laag {layer_name} kon niet worden geladen uit {gpkg_path}")
+        return None
+
+    # 4. Styling (overgenomen uit je originele code)
+    if symbol is not None:
+        # Let op: get_symbol moet nu werken op de 'vl' of metadata,
+        # niet meer op de ruwe geojson dict.
+        if isinstance(symbol, str):
+            # Je zult je get_symbol functie wellicht iets moeten aanpassen
+            pass
+
+        if vl.renderer() is not None and isinstance(symbol, QgsSymbol):
+            vl.renderer().setSymbol(symbol)
+
+    # 5. Toevoegen aan de TOC op de juiste plek
+    qinst.addMapLayer(vl, False)
+    root.insertLayer(0, vl)
+
+    # 6. Zichtbaarheid instellen
+    node = root.findLayer(vl.id())
+    if node:
+        new_state = Qt.Checked if visible else Qt.Unchecked
+        node.setItemVisibilityChecked(new_state)
+
+    # 7. Verplaatsen naar groep en refreshen
+    move_to_group(vl, group)
+    vl.triggerRepaint()
+
+    if iface is not None:
+        iface.layerTreeView().refreshLayerSymbology(vl.id())
+
+    return vl
+
+
+def load_full_gpkg_with_styles(gpkg_path, group_name):
+    layers = get_all_layer_names_in_gpkg(gpkg_path)
+
+    for lyr_name in layers:
+        # Laad de laag in QGIS
+        vl = gpkg_layer_to_map(
+            name=lyr_name,
+            gpkg_path=gpkg_path,
+            layer_name=lyr_name,
+            symbol=None,  # We doen styling hieronder
+            visible=True,
+            group=group_name,
+        )
+
+        if vl and vl.isValid():
+            # Probeer stijl uit DB te laden
+            style_applied = apply_style_from_gpkg(vl)
+
+            if not style_applied:
+                # Optioneel: Fallback naar handmatige styling als er geen DB-stijl is
+                print(
+                    f"Geen stijl gevonden in GPKG voor {lyr_name}, gebruik standaard."
+                )
+
+
+def get_all_layer_names_in_gpkg(gpkg_path):
+    """
+    Geeft een lijst terug met alle tabelnamen (layers) in een GeoPackage.
+    """
+    metadata = QgsProviderRegistry.instance().providerMetadata("ogr")
+    # Gebruik de URI van de container om de sublagen te vinden
+    conn = metadata.decodeUri(gpkg_path)
+
+    # We gebruiken de OGR provider om de lagen te scannen
+    layer_list = []
+    source = QgsDataSourceUri(gpkg_path)
+
+    # Een slimme manier via de metadata van de provider:
+    options = metadata.querySublayers(gpkg_path)
+    for option in options:
+        layer_list.append(option.name())
+
+    return layer_list
+
+
+def load_full_gpkg_to_qgis(gpkg_path, group_name, visible=True):
+    """
+    Scant een GeoPackage en voegt elke laag toe aan een specifieke groep in de TOC.
+    """
+    layers = get_all_layer_names_in_gpkg(gpkg_path)
+
+    for lyr_name in layers:
+        # We gebruiken de naam van de laag uit de GPKG ook als displaynaam in QGIS
+        # Je kunt hier eventueel symboliek-logica toevoegen
+        gpkg_layer_to_map(
+            name=lyr_name,
+            gpkg_path=gpkg_path,
+            layer_name=lyr_name,
+            symbol=None,
+            visible=visible,
+            group=group_name,
+        )
+
+    print(f"Klaar! {len(layers)} lagen geladen uit {gpkg_path}")
+
+
+def apply_style_from_gpkg(layer):
+    """
+    Controleert of er een stijl is opgeslagen in de GeoPackage voor deze laag
+    en past de standaardstijl toe.
+    """
+    # Haal de lijst met stijlen op uit de database (GeoPackage)
+    # De methode geeft (aantal_stijlen, ids, namen, descriptions) terug
+    count, ids, names, descriptions = layer.listStylesInDatabase()
+
+    if count > 0:
+        # We laden de eerste stijl (meestal de 'default')
+        # Je kunt ook zoeken naar een specifieke naam in 'names'
+        layer.loadNamedStyle(layer.styleURI())
+        layer.triggerRepaint()
+        return True
+    return False
+
+
+def featurecollection_to_layer(name, featurecollection, symbol, visible, group, tempfolder):
+    """
+    Add a featurecollection to a QGIS-layer to add it to the TOC. If featurecollection has multiple types (point,line, polygon) these types are added seperately.
+    """
+    featurecollection =featurecollection_to_multi(featurecollection)
+    feature_types = get_geojson_type(featurecollection)
     if len(feature_types)>1:
         for x in feature_types:
             name_x = name +"_" + str(x)
-            geojson_x = filter_geojson_by_geometry_type(geojson,x)
-            geojson_to_layer(name_x, geojson_x, symbol, visible, group, tempfolder)
+            geojson_x = filter_geojson_by_geometry_type(featurecollection, x)
+            featurecollection_to_layer(name_x, geojson_x, symbol, visible, group, tempfolder)
         return
 
     qinst = QgsProject.instance()
@@ -497,13 +651,16 @@ def geojson_to_layer(name, geojson, symbol, visible, group, tempfolder):
             qinst.removeMapLayer(lyr.id())
     if tempfolder is None or str(tempfolder) == "NULL" or str(tempfolder) == "":
         tempfolder = "tempfolder"
-    tempfilename = tempfolder + "/" + name + ".geojson"
-    write_geojson(tempfilename, geojson)
+    gpkg_path = tempfolder + "/" + GPKG_FILENAME
+    write_featurecollection_to_geopackage(gpkg_path, featurecollection, layer_name = name)
 
-    vl = QgsVectorLayer(tempfilename, name, "ogr")
+    uri = f"{gpkg_path}|layername={name}"
+
+    # 3. Maak de laag aan
+    vl = QgsVectorLayer(uri, name, "ogr")
     # styling
     if symbol is not None and isinstance(symbol,str):
-        symbol = get_symbol(geojson,symbol)
+        symbol = get_symbol(featurecollection, symbol)
     if symbol is not None and vl.renderer() is not None and isinstance(symbol,QgsSymbol):
         vl.renderer().setSymbol(symbol)
     # vl.setOpacity(0.5)
@@ -565,9 +722,6 @@ def set_layer_visibility(layer: QgsMapLayer, visible: bool):
         print("Layer not found in the layer tree.")
 
 
-from qgis.core import QgsProject
-
-
 def remove_layer_by_name(layer_name):
     """
     Removes a layer from the current QGIS project by its name.
@@ -622,7 +776,7 @@ def get_workfolder(folderpath="", name="", temporary=False):
     return foldername
 
 
-def geojson_to_multi(geojson):
+def featurecollection_to_multi(geojson):
     """
     Transforms a geojson: Checks if there are single-geometry-features and transforms them into Multi-geometries, so all objects are of type 'Multi' (or null-geometry).
     It is important that geometry-type is consistent in QGIS to show and style the geojson-layer
@@ -851,6 +1005,216 @@ def get_original_geometry(feature, fieldname):
     except:
         original_geometry = None
     return original_geometry
+
+from pathlib import Path
+from qgis.core import QgsVectorFileWriter, QgsProject, QgsVectorLayer
+
+
+def save_layer_to_gpkg(layer, gpkg_path, layer_name=None):
+    """
+    Writes a layer to  (existing) GeoPackage.
+    """
+    # 1. Clean Path
+    path_str = str(Path(gpkg_path))
+
+    # 2. Options
+    options = QgsVectorFileWriter.SaveVectorOptions()
+    options.driverName = "GPKG"
+    options.layerName = layer_name if layer_name else layer.name()
+
+    # --- EXPLICIT ENCODING ---
+    options.fileEncoding = "UTF-8"
+
+    #CRS from source-layer - default
+
+    # Check if exists
+    folder = os.path.dirname(path_str)
+    if folder and not os.path.exists(folder):
+        os.makedirs(folder, exist_ok=True)
+    if Path(path_str).exists():
+        options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
+    else:
+        options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
+
+    # 3. Write
+    return QgsVectorFileWriter.writeAsVectorFormatV3(
+        layer, path_str, QgsProject.instance().transformContext(), options
+    )
+
+
+def generate_correction_layer(input, result, correction_layer_name,id_theme_brdrq_fieldname,workfolder,review_percentage=5, add_metadata=False):
+
+    source_layer = input
+    results_layer = result
+
+    # Copy source layer to gpkg-layers
+
+    remove_layer_by_name(correction_layer_name)
+
+    path = os.path.join(workfolder, GPKG_FILENAME)
+
+    res = save_layer_to_gpkg(source_layer, path,correction_layer_name)
+    correction_layer = QgsVectorLayer(res[2] + "|layername=" + res[3], correction_layer_name, "ogr")
+
+    # Make a dictionary with ID to geometry from the resultslayer
+    id_geom_map = {}
+    id_diff_index_map = {}
+    id_diff_perc_index_map = {}
+    id_metadata_map = {}
+    id_evaluation_map = {}
+    ids_to_review = []
+    ids_to_align = []
+    ids_not_changed = []
+    stability_field_available = False
+    if is_field_in_layer(STABILITY, results_layer):
+        stability_field_available = True
+    for feat in results_layer.getFeatures():
+        key = feat[ID_THEME_FIELD_NAME]
+        if key in id_geom_map.keys():
+            # when key not unique and multiple predictions, the last prediction is added to the list and the status is set to review
+            ids_to_review.append(key)
+        id_geom_map[key] = feat.geometry()
+        if add_metadata:
+            id_metadata_map[key] = feat[METADATA_FIELD_NAME]
+        id_diff_index_map[key] = feat[SYMMETRICAL_AREA_CHANGE]
+        id_diff_perc_index_map[key] = feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE]
+        try:
+            evaluation = Evaluation(feat[EVALUATION_FIELD_NAME])
+        except:
+            evaluation = Evaluation.NOT_EVALUATED
+        id_evaluation_map[key] = evaluation
+
+        if evaluation in (
+                Evaluation.NO_CHANGE,
+                Evaluation.EQUALITY_BY_ID,
+                Evaluation.EQUALITY_BY_FULL_REFERENCE,
+                Evaluation.EQUALITY_BY_ID_AND_FULL_REFERENCE
+        ):
+            pass
+        elif stability_field_available and not feat[STABILITY]:
+            ids_to_align.append(key)
+        elif feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] > review_percentage:
+            ids_to_review.append(key)
+        elif feat[SYMMETRICAL_AREA_CHANGE] < 0.01:
+            ids_not_changed.append(key)
+
+    # 4. Update geometries in duplicated layer
+    correction_layer.startEditing()
+    fields_to_add = [
+        QgsField(METADATA_FIELD_NAME, QVariant.String),
+        QgsField(EVALUATION_FIELD_NAME, QVariant.String),
+        QgsField(BRDRQ_STATE_FIELDNAME, QVariant.String),
+        QgsField(BRDRQ_ORIGINAL_WKT_FIELDNAME, QVariant.String),
+        QgsField(SYMMETRICAL_AREA_CHANGE, QVariant.Double),
+        QgsField(SYMMETRICAL_AREA_PERCENTAGE_CHANGE, QVariant.Double),
+    ]
+
+    # Iterate fields
+    for field in fields_to_add:
+        # Check if exists
+        if correction_layer.fields().indexFromName(field.name()) == -1:
+            success = correction_layer.dataProvider().addAttributes([field])
+            if success:
+                print(f"Field '{field.name()}' succesfully added.")
+            else:
+                print(f"Error adding field '{field.name()}'.")
+        else:
+            print(f"Field '{field.name()}' already exists...")
+
+    # Update Fields-cache
+    correction_layer.updateFields()
+    for feat in correction_layer.getFeatures():
+        fid = feat[id_theme_brdrq_fieldname]
+        if add_metadata:
+            feat[METADATA_FIELD_NAME] = id_metadata_map[fid]
+        feat[EVALUATION_FIELD_NAME] = id_evaluation_map[fid]
+        feat[SYMMETRICAL_AREA_CHANGE] = id_diff_index_map[fid]
+        feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] = id_diff_perc_index_map[fid]
+        feat[BRDRQ_ORIGINAL_WKT_FIELDNAME] = feat.geometry().asWkt()
+        state = str(BrdrQState.NONE.value)
+        if fid in id_geom_map and fid not in ids_to_align:
+            feat.setGeometry(id_geom_map[fid])
+            state = str(BrdrQState.AUTO_UPDATED.value)
+        if fid in ids_not_changed:
+            state = str(BrdrQState.NOT_CHANGED.value)
+        if fid in ids_to_review:
+            state = str(BrdrQState.TO_REVIEW.value)
+        if fid in ids_to_align:
+            feat[SYMMETRICAL_AREA_CHANGE] = -1
+            feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] = -1
+            state = str(BrdrQState.TO_UPDATE.value)
+        feat[BRDRQ_STATE_FIELDNAME] = state
+        correction_layer.updateFeature(feat)
+    correction_layer.commitChanges()
+
+    style_outputlayer(correction_layer, BRDRQ_STATE_FIELDNAME)
+    return correction_layer
+
+def style_outputlayer(layer, field_name):
+    # Define categories
+    categories = []
+
+    # Not changed
+    symbol_not_changed = QgsFillSymbol.createSimple(
+        {
+            "outline_color": "#b2df8a",
+            "outline_style": "solid",
+            "outline_width": "2",
+            "color": "transparent",
+        }
+    )
+    value = str(BrdrQState.NOT_CHANGED.value)
+    categories.append(QgsRendererCategory(value, symbol_not_changed, value))
+
+    # Auto-updated
+    symbol_auto = QgsFillSymbol.createSimple(
+        {
+            "outline_color": "green",
+            "outline_style": "solid",
+            "outline_width": "2",
+            "color": "transparent",
+        }
+    )
+    value = str(BrdrQState.AUTO_UPDATED.value)
+    categories.append(QgsRendererCategory(value, symbol_auto, value))
+    # manual update
+    symbol_manual_update = QgsFillSymbol.createSimple(
+        {
+            "outline_color": "blue",
+            "outline_style": "solid",
+            "outline_width": "2",
+            "color": "transparent",
+        }
+    )
+    value = str(BrdrQState.MANUAL_UPDATED.value)
+    categories.append(QgsRendererCategory(value, symbol_manual_update, value))
+    # To Review
+    symbol_review = QgsFillSymbol.createSimple(
+        {
+            "outline_color": "orange",
+            "outline_style": "solid",
+            "outline_width": "2",
+            "color": "transparent",
+        }
+    )
+    value = str(BrdrQState.TO_REVIEW.value)
+    categories.append(QgsRendererCategory(value, symbol_review, value))
+
+    symbol_todo = QgsFillSymbol.createSimple(
+        {
+            "outline_color": "red",
+            "outline_style": "solid",
+            "outline_width": "2",
+            "color": "transparent",
+        }
+    )
+    value = str(BrdrQState.TO_UPDATE.value)
+    categories.append(QgsRendererCategory(value, symbol_todo, value))
+
+    # Set Renderer
+    renderer = QgsCategorizedSymbolRenderer(field_name, categories)
+    layer.setRenderer(renderer)
+    layer.triggerRepaint()
 
 
 def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_crs):

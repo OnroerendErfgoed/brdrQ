@@ -1,4 +1,14 @@
-# v0.17.0
+# v0.17.4
+
+- Upgrade to brdr release version 0.15.4
+- Added correction layer to GRB-Updater
+- FeatureAligner: Fixed list-slider
+- GRB-updater: fixed brdr_metadata
+- Improved brdr-installation
+- Results written to geopackage (writable) instead of GeoJson
+- FeatureAligner: Removed thematic web-layers from layer-combobox
+
+# v0.17.0-3
 
 - Upgrade to brdr release version 0.15.3 (stable API)
 - brdr_formula changed to linked (meta)data brdr_metadata: actuations & observations

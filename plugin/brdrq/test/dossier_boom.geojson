@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "dossier_boom",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::31370" } },
+"features": [
+{ "type": "Feature", "properties": { "fid": 15, "id": 15, "dossiernummer": "DOS_8C3B62", "dossierstatus": "uitgevoerd" }, "geometry": { "type": "MultiPolygon", "coordinates": [ [ [ [ 148943.0183, 198217.6252 ], [ 148948.150499999988824, 198220.5183 ], [ 148955.687, 198224.7668999999878 ], [ 148953.4021, 198228.8405 ], [ 148951.6887, 198227.874600000010105 ], [ 148945.8657, 198224.592 ], [ 148931.356999999989057, 198216.413 ], [ 148933.613000000012107, 198212.323 ], [ 148943.0183, 198217.6252 ] ] ] ] } }
+]
+}
