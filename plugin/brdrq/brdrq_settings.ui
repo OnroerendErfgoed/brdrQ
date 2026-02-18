@@ -18,7 +18,7 @@
     <rect>
      <x>10</x>
      <y>20</y>
-     <width>497</width>
+     <width>600</width>
      <height>511</height>
     </rect>
    </property>
@@ -58,7 +58,7 @@
       <item row="3" column="0">
        <widget class="QLabel" name="label_4">
         <property name="text">
-         <string>Open Domain Strategy</string>
+         <string>OpenDomain Strategy</string>
         </property>
        </widget>
       </item>
@@ -88,7 +88,7 @@
       <item row="5" column="0">
        <widget class="QLabel" name="label_10">
         <property name="text">
-         <string>Evaluation Strategy FULL</string>
+         <string>FullReference Strategy</string>
         </property>
        </widget>
       </item>
@@ -141,7 +141,7 @@
       <item row="9" column="0" colspan="2">
        <widget class="QgsCollapsibleGroupBox" name="collapsibleGroupBox">
         <property name="title">
-         <string>Snap-options  - only for Point &amp; LineString alignment</string>
+         <string>Snap-options  -  (for Points,LineStrings)</string>
         </property>
         <property name="checkable">
          <bool>false</bool>
