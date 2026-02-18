@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import QMessageBox
 # https://github.com/qgis/QGIS/issues/45646
 
 
-brdr_version = "0.15.4"
+brdr_version = "0.15.5"
 
 
 def find_python():
