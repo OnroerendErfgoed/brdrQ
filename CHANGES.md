@@ -1,3 +1,8 @@
+# v0.17.5
+
+- Upgrade to brdr release version 0.15.5
+- Improvement of NetworkGeometryProcessor for better stable results
+
 # v0.17.4
 
 - Upgrade to brdr release version 0.15.4
