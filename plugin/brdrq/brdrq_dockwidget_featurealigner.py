@@ -190,6 +190,9 @@ class brdrQDockWidgetFeatureAligner(
 
     def activate_selectTool(self):
         # print ("currentlayer:" + str (self.mMapLayerComboBox.currentLayer()))
+        if self.layer is None:
+            self.textEdit_output.setText("Please select a layer to align in the upper combobox")
+            return
         self.selectTool = SelectTool(self.iface, self.mMapLayerComboBox.currentLayer())
         self.formerMapTool = self.iface.mapCanvas().mapTool()
         self.iface.mapCanvas().setMapTool(self.selectTool)
@@ -250,7 +253,7 @@ class brdrQDockWidgetFeatureAligner(
         self.clearUserInterface()
         self.layer = self.mMapLayerComboBox.currentLayer()
         if self.layer is None:
-            self.textEdit_output.setText("Please select a layer")
+            self.textEdit_output.setText("Please select a layer to align in the upper combobox")
             return
         try:
             self.crs = self.layer.sourceCrs().authid()
@@ -287,6 +290,9 @@ class brdrQDockWidgetFeatureAligner(
         self.listFeatures(selection=data)
 
     def listFeatures(self, selection=None, features=None):
+        if self.layer is None:
+            self.textEdit_output.setText("Please select a layer to align in the upper combobox")
+            return
         self.clearUserInterface()
         if not features is None:
             self.listed_features = features
@@ -666,11 +672,17 @@ class brdrQDockWidgetFeatureAligner(
         )
 
     def change_geometry(self):
+        if self.layer is None:
+            self.textEdit_output.setText("Please select a layer to align in the upper combobox")
+            return
         self._change_geometry(self.layer)
         self.updateTextListWidgetItems()
         remove_group_layer(self.GROUP_LAYER)
 
     def reset_geometry(self):
+        if self.layer is None:
+            self.textEdit_output.setText("Please select a layer to align in the upper combobox")
+            return
         self._reset_geometry(self.layer)
         self.updateTextListWidgetItems()
         remove_group_layer(self.GROUP_LAYER)
