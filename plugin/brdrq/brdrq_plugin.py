@@ -196,7 +196,7 @@ class BrdrQPlugin(object):
         else:
             # print("QGIS uses system locale.")
             locale_code = QLocale.system().name()
-        if not locale_code or locale_code == "NULL":
+        if not locale_code or str(locale_code) == "NULL":
             print("fallback to system locale")
             locale_code = QLocale.system().name()
         locale_code = locale_code[:2]

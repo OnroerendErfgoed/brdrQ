@@ -1234,8 +1234,9 @@ def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_
         layer_reference_name = ref
         ref_suffix = str(ref)
     else:
+        print("idref: " + str(id_reference_fieldname))
         selected_reference = 0
-        if layer_reference is None or id_reference_fieldname is None or id_reference_fieldname == "NULL":
+        if layer_reference is None or id_reference_fieldname is None or str(id_reference_fieldname) == "NULL":
             raise QgsProcessingException(
                 "Please choose a REFERENCELAYER from the table of contents, and the associated unique REFERENCE ID"
             )
@@ -1270,7 +1271,7 @@ def thematic_preparation(input_thematic_layer, relevant_distance, context, feedb
     crs = (
         thematic.sourceCrs().authid()
     )  # set CRS for the calculations, based on the THEMATIC input layer
-    if crs is None or crs =='NULL':
+    if crs is None or str(crs) =="NULL":
         raise QgsProcessingException(
             "Thematic layer does not have a defined CRS attached to it. "
             "Please define a CRS to the Thematic layer, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"

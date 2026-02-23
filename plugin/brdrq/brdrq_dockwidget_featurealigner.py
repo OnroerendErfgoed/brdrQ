@@ -259,7 +259,7 @@ class brdrQDockWidgetFeatureAligner(
             self.crs = self.layer.sourceCrs().authid()
         except:
             self.crs = None
-        if self.crs is None or self.crs == "NULL" or self.crs == "":
+        if self.crs is None or str(self.crs) == "NULL" or str(self.crs) == "":
             iface.messageBar().pushWarning(
                 "CRS",
                 "CRS of the thematic layer is not defined. Please define a CRS to the thematic layer with units in meter",
@@ -597,7 +597,7 @@ class brdrQDockWidgetFeatureAligner(
                 reference_crs = self.reference_layer.sourceCrs().authid()
             except:
                 reference_crs = None
-            if reference_crs is None or reference_crs == "NULL" or reference_crs == "":
+            if reference_crs is None or str(reference_crs) == "NULL" or str(reference_crs) == "":
                 iface.messageBar().pushWarning(
                     "CRS",
                     "CRS of the local Reference Layer is not defined. Please define a CRS to the REFERENCE Layer with units in meter",
@@ -612,8 +612,8 @@ class brdrQDockWidgetFeatureAligner(
                 return None
             elif (
                 self.reference_id is None
-                or self.reference_id == "NULL"
-                or self.reference_id == ""
+                or str(self.reference_id) == "NULL"
+                or str(self.reference_id) == ""
                 or self.reference_id == -1
             ):
                 iface.messageBar().pushWarning(
