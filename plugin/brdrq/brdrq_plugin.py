@@ -114,12 +114,12 @@ class BrdrQPlugin(object):
         self.initProcessing()
 
         # Setup menu
-        icon_menu = QIcon(os.path.join(os.path.join(cmd_folder, "icon_base.png")))
+        icon_menu = QIcon(os.path.join(os.path.join(cmd_folder, "icon_base.svg")))
         self.brdrq_menu.setIcon(icon_menu)
         self.vector_menu.addMenu(self.brdrq_menu)
 
         # FEATUREALIGNER
-        icon = os.path.join(os.path.join(cmd_folder, "icon_featurealigner.png"))
+        icon = os.path.join(os.path.join(cmd_folder, "icon_featurealigner.svg"))
         action_featurepredictor = QAction(
             QIcon(icon), "Feature Aligner (individual predictions)", self.iface.mainWindow()
         )
@@ -134,7 +134,7 @@ class BrdrQPlugin(object):
 
         # AUTOCORRECTBORDERS
         icon_autocorrectborders = os.path.join(
-            os.path.join(cmd_folder, "icon_autocorrectborders.png")
+            os.path.join(cmd_folder, "icon_autocorrectborders.svg")
         )
         action_autocorrectborders = QAction(
             QIcon(icon_autocorrectborders),
@@ -150,7 +150,7 @@ class BrdrQPlugin(object):
 
         # AUTOUPDATEBORDERS -GRBUPDATER
         icon_autoupdateborders = os.path.join(
-            os.path.join(cmd_folder, "icon_grbupdater.png")
+            os.path.join(cmd_folder, "icon_grbupdater.svg")
         )
         action_autoupdateborders = QAction(
             QIcon(icon_autoupdateborders),
@@ -164,7 +164,7 @@ class BrdrQPlugin(object):
         self.actions.append(action_autoupdateborders)
 
         # INFO - VERSION
-        icon_info = os.path.join(os.path.join(cmd_folder, "icon_info.png"))
+        icon_info = os.path.join(os.path.join(cmd_folder, "icon_info.svg"))
         action_info = QAction(
             QIcon(icon_info),
             self.tr("About brdrQ"),
