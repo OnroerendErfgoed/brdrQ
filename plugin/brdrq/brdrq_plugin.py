@@ -118,6 +118,20 @@ class BrdrQPlugin(object):
         self.brdrq_menu.setIcon(icon_menu)
         self.vector_menu.addMenu(self.brdrq_menu)
 
+        # FEATUREALIGNER
+        icon = os.path.join(os.path.join(cmd_folder, "icon_featurealigner.png"))
+        action_featurepredictor = QAction(
+            QIcon(icon), "Feature Aligner (individual predictions)", self.iface.mainWindow()
+        )
+        action_featurepredictor.setObjectName("brdrq_featurealigner")
+        action_featurepredictor.triggered.connect(self.openDockFeatureAligner)
+        #
+
+        self.brdrq_menu.addAction(action_featurepredictor)
+
+        self.toolbar.addAction(action_featurepredictor)
+        self.actions.append(action_featurepredictor)
+
         # AUTOCORRECTBORDERS
         icon_autocorrectborders = os.path.join(
             os.path.join(cmd_folder, "icon_autocorrectborders.png")
@@ -133,30 +147,6 @@ class BrdrQPlugin(object):
         self.brdrq_menu.addAction(action_autocorrectborders)
         self.toolbar.addAction(action_autocorrectborders)
         self.actions.append(action_autocorrectborders)
-
-        # FEATUREPREDICTOR
-        icon = os.path.join(os.path.join(cmd_folder, "icon_featurealigner.png"))
-        action_featurepredictor = QAction(
-            QIcon(icon), "brdrQ - Feature Aligner (predictor)", self.iface.mainWindow()
-        )
-        action_featurepredictor.setObjectName("brdrq_featurepredictor")
-        action_featurepredictor.triggered.connect(self.openDockFeatureAligner)
-        #
-
-        self.brdrq_menu.addAction(action_featurepredictor)
-
-        self.toolbar.addAction(action_featurepredictor)
-        self.actions.append(action_featurepredictor)
-
-        # #BULKALIGNER
-        # icon_bulkaligner = os.path.join(os.path.join(cmd_folder, "icon_bulkaligner.png"))
-        # action_bulkaligner = QAction(
-        #     QIcon(icon_bulkaligner), "brdrQ - Bulk Aligner (predictor)", self.iface.mainWindow()
-        # )
-        # action_bulkaligner.triggered.connect(self.openDockBulkAligner)
-        # self.brdrq_menu.addAction(action_bulkaligner)
-        # self.toolbar.addAction(action_bulkaligner)
-        # self.actions.append(action_bulkaligner)
 
         # AUTOUPDATEBORDERS -GRBUPDATER
         icon_autoupdateborders = os.path.join(
@@ -177,7 +167,7 @@ class BrdrQPlugin(object):
         icon_info = os.path.join(os.path.join(cmd_folder, "icon_info.png"))
         action_info = QAction(
             QIcon(icon_info),
-            self.tr("brdrQ - version"),
+            self.tr("About brdrQ"),
             self.iface.mainWindow(),
         )
         action_info.setObjectName("brdrq_info")
@@ -214,7 +204,7 @@ class BrdrQPlugin(object):
         processing.execAlgorithmDialog("brdrqprovider:brdrqautocorrectborders")
 
     def openInfo(self):
-        self.dialog = VersionInfoDialog("brdrQ Version Info", self.metadata)
+        self.dialog = VersionInfoDialog("About brdrQ", self.metadata)
         self.dialog.open()
 
     def closeInfo(self):

@@ -3,6 +3,7 @@ import os
 import platform
 
 import brdr
+from PyQt5.QtGui import QIcon
 from qgis.PyQt.QtGui import QPixmap
 from qgis.PyQt.QtWidgets import QDialog, QLabel, QVBoxLayout, QHBoxLayout
 from qgis.core import Qgis
@@ -11,6 +12,9 @@ cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 class VersionInfoDialog(QDialog):
     def __init__(self,title,metadata):
         super().__init__()
+        plugin_dir = os.path.dirname(__file__)
+        icon_path = os.path.join(plugin_dir, 'icon_base.png')
+        self.setWindowIcon(QIcon(icon_path))
         self.setWindowTitle(title)
         self.metadata = metadata
         self.init_ui()
