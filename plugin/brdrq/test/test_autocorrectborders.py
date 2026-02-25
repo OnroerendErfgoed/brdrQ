@@ -32,7 +32,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
         #
         # # Reset specifiek jouw plugin/provider settings
         # # Gebruik de juiste prefix die jouw algoritme gebruikt
-        # prefix = "brdrqautocorrectborders/"
+        # prefix = "brdrqautocorrectborders"
         #
         # for key in self.settings.allKeys():
         #     if key.startswith(prefix):

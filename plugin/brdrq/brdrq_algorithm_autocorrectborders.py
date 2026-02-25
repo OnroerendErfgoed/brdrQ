@@ -436,9 +436,12 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterNumber(
             "THRESHOLD_OVERLAP_PERCENTAGE",
-            '<br>Threshold overlap percentage<br><i style="color: gray;">In the exceptional case that the algorithm cannot determine if a reference feature is relevant, this fallback-parameter is used to determine to include/exclude a reference based on overlap-percentage</i>',
-            type=QgsProcessingParameterNumber.Double,
+            '<br>Threshold overlap percentage (%)<br><i style="color: gray;">In the exceptional case that the algorithm cannot determine if a reference feature is relevant, this fallback-parameter is used to determine to include/exclude a reference based on overlap-percentage</i>',
+            type=QgsProcessingParameterNumber.Integer,
             defaultValue=self.default_threshold_overlap_percentage,
+            optional=False,
+            minValue=0,
+            maxValue=100,
         )
         parameter.setFlags(
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
@@ -460,8 +463,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter = QgsProcessingParameterNumber(
             "REVIEW_PERCENTAGE",
             '<br>REVIEW_PERCENTAGE (%)<br><i style="color: gray;">results with a higher change % move to review-list </i>',
-            type=QgsProcessingParameterNumber.Double,
+            type=QgsProcessingParameterNumber.Integer,
             defaultValue=self.default_review_percentage,
+            optional=False,
+            minValue=0,
+            maxValue=100,
         )
         parameter.setFlags(
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
@@ -874,8 +880,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     def read_default_settings(self):
         # print ('read_settings')
-        prefix = self.name() + "/"
-        project = QgsProject.instance()
+        prefix = self.name()
 
         # Initial default settings
         self.params_default_dict = {
@@ -944,9 +949,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.default_reference_layer_id = read_setting(
             prefix, "default_reference_layer_id", self.default_reference_layer_id
         )
-        self.default_relevant_distance = read_setting(
+        self.default_relevant_distance = float(read_setting(
             prefix, "relevant_distance", self.default_relevant_distance
-        )
+        ))
         self.default_predictions = read_setting(
             prefix, "default_predictions", self.default_predictions
         )
@@ -971,7 +976,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.default_threshold_overlap_percentage,
         )
         self.default_workfolder = read_setting(
-            prefix, "default_workfolder", self.default_workfolder
+            prefix, "default_workfolder", self.default_workfolder,scope="global"
         )
         self.default_review_percentage = read_setting(
             prefix, "default_review_percentage", self.default_review_percentage
@@ -999,7 +1004,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     def write_settings(self):
         # print ('write_settings')
-        prefix = self.name() + "/"
+        prefix = self.name()
 
         write_setting(prefix, "theme_layer", self.default_theme_layer)
         write_setting(prefix, "default_theme_layer_id", self.default_theme_layer_id)
@@ -1025,7 +1030,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "default_threshold_overlap_percentage",
             self.default_threshold_overlap_percentage,
         )
-        write_setting(prefix, "default_workfolder", self.default_workfolder)
+        write_setting(prefix, "default_workfolder", self.default_workfolder, scope="global")
         write_setting(
             prefix, "default_review_percentage", self.default_review_percentage
         )

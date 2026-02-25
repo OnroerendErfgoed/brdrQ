@@ -91,7 +91,7 @@ class brdrQDockWidgetFeatureAligner(
         # self.<objectname>, and you can use autoconnect slots - see
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
-        self.prefix = "brdrqfeaturealigner/"
+
         self.setupUi(self)
         self._initialize()
 
@@ -151,7 +151,7 @@ class brdrQDockWidgetFeatureAligner(
             ],
         )
         # Load default (saved) layer
-        saved_layer_id = read_setting(self.prefix, "theme_layer", None)
+        saved_layer_id = read_setting(self.settingsDialog.prefix, "theme_layer", None)
         theme_layer = get_valid_layer(saved_layer_id)
         self.mMapLayerComboBox.setLayer(theme_layer)
 
@@ -283,7 +283,7 @@ class brdrQDockWidgetFeatureAligner(
             )
             return
         # Write the layer_id to the settings
-        write_setting(self.prefix, "theme_layer", self.layer.id())
+        write_setting(self.settingsDialog.prefix, "theme_layer", self.layer.id())
 
         index = self.comboBox_selectfeatures.currentIndex()
         data = self.comboBox_selectfeatures.itemData(index)

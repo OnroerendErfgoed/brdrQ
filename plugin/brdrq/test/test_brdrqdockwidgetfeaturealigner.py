@@ -12,7 +12,7 @@ QGISAPP, CANVAS, IFACE, PARENT = get_qgis_app()
 Processing.initialize()
 
 
-class TestAutocorrectBorders(unittest.TestCase):
+class TestBrdrQDockWidgetFeatureAligner(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         print("setup TestClass")
