@@ -3,6 +3,9 @@ import json
 import os
 from enum import Enum
 
+from pathlib import Path
+from qgis.core import QgsVectorFileWriter, QgsProject, QgsVectorLayer
+
 # TODO QGIS4
 from PyQt5.QtGui import QColor
 from brdr.be.grb.enums import GRBType
@@ -1132,8 +1135,7 @@ def get_original_geometry(feature, fieldname):
         original_geometry = None
     return original_geometry
 
-from pathlib import Path
-from qgis.core import QgsVectorFileWriter, QgsProject, QgsVectorLayer
+
 
 
 def save_layer_to_gpkg(layer, gpkg_path, layer_name=None):

@@ -23,6 +23,8 @@
 """
 import webbrowser
 
+from brdr.constants import METADATA_FIELD_NAME
+from qgis.core import Qgis
 from qgis.core import edit
 
 from .brdrq_help import brdrQHelp
@@ -136,20 +138,45 @@ class brdrQDockWidgetAligner(object):
             result = self.dict_processresults[key][relevant_distance]
             resulting_geom = result["result"]
         else:
-            errormesssage = "Relevant_distance_result not calculated for: " + str(
-                relevant_distance
+            errormessage = f"Relevant_distance_result not calculated for: {str(relevant_distance)}.Error saving geometry"
+            print(errormessage)
+            self.iface.messageBar().pushMessage(
+                "Warning",
+                errormessage,
+                level=Qgis.Warning,
+                duration=5,
             )
-            print(errormesssage)
             return
         qgis_geom = geom_shapely_to_qgis(resulting_geom)
-        ix = layer.fields().indexOf(BRDRQ_STATE_FIELDNAME)
+
         with edit(layer):
             layer.changeGeometry(feat.id(), qgis_geom)
-            if ix >= 0:
-                layer.changeAttributeValue(
-                    feat.id(), ix, str(BrdrQState.MANUAL_UPDATED.value)
-                )
-        self.iface.messageBar().pushMessage("geometry saved")
+        try:
+            ix_brdrq_state = layer.fields().indexOf(BRDRQ_STATE_FIELDNAME)
+            ix_brdrq_original_wkt = layer.fields().indexOf(BRDRQ_ORIGINAL_WKT_FIELDNAME)
+            ix_brdr_metadata_fieldname = layer.fields().indexOf(METADATA_FIELD_NAME)
+            with edit(layer):
+                if ix_brdrq_state >= 0:
+                    layer.changeAttributeValue(
+                        feat.id(), ix_brdrq_state, str(BrdrQState.MANUAL_UPDATED.value)
+                    )
+                if ix_brdrq_original_wkt >= 0:
+                    layer.changeAttributeValue(
+                        feat.id(), ix_brdrq_original_wkt, str(feat[ix_brdrq_original_wkt])
+                    )
+                if ix_brdr_metadata_fieldname >= 0:
+                    layer.changeAttributeValue(
+                            feat.id(), ix_brdr_metadata_fieldname, str(result["metadata"]))
+        except:
+            errormessage = "state/original_wkt/metadata could not be updated, please check brdrq-columns for these data."
+            self.iface.messageBar().pushMessage(
+                "Warning",
+                errormessage,
+                level=Qgis.Warning,
+                duration=5,
+            )
+
+        self.iface.messageBar().pushMessage("geometry saved",duration=5,)
 
     def _reset_geometry(self, layer):
         if self._check_warn_edit_modus(layer):
@@ -165,21 +192,47 @@ class brdrQDockWidgetAligner(object):
                 result = self.dict_processresults[key][relevant_distance]
                 original_geometry = geom_shapely_to_qgis(result["result"])
             else:
-                errormesssage = (
+                errormessage = (
                     f"problem resetting for reldist {str(relevant_distance)}"
                 )
-                print(errormesssage)
+                print(errormessage)
+                self.iface.messageBar().pushMessage(
+                    "Warning",
+                    errormessage,
+                    level=Qgis.Warning,
+                    duration=5,
+                )
                 return
 
-        ix = layer.fields().indexOf(BRDRQ_STATE_FIELDNAME)
         with edit(layer):
             layer.changeGeometry(feat.id(), original_geometry)
-            if ix >= 0:
-                layer.changeAttributeValue(
-                    feat.id(), ix, str(BrdrQState.TO_UPDATE.value)
-                )
 
-        self.iface.messageBar().pushMessage("geometry reset")
+        try:
+            ix_brdrq_state = layer.fields().indexOf(BRDRQ_STATE_FIELDNAME)
+            ix_brdrq_original_wkt = layer.fields().indexOf(BRDRQ_ORIGINAL_WKT_FIELDNAME)
+            ix_brdr_metadata_fieldname = layer.fields().indexOf(METADATA_FIELD_NAME)
+            with edit(layer):
+                if ix_brdrq_state >= 0:
+                    layer.changeAttributeValue(
+                        feat.id(), ix_brdrq_state, str(BrdrQState.TO_UPDATE.value)
+                    )
+                if ix_brdrq_original_wkt >= 0:
+                    layer.changeAttributeValue(
+                        feat.id(), ix_brdrq_original_wkt, str(original_geometry.asWkt())
+                    )
+                if ix_brdr_metadata_fieldname >= 0:
+                    layer.changeAttributeValue(
+                        feat.id(), ix_brdr_metadata_fieldname, str({}))
+        except:
+            errormessage = "state/original_wkt/metadata could not be reset, please check brdrq-columns for these data."
+            self.iface.messageBar().pushMessage(
+                "Warning",
+                errormessage,
+                level=Qgis.Warning,
+                duration=5,
+            )
+
+        self.iface.messageBar().pushMessage("geometry reset",duration=5)
 
     def onSliderChange(self, index):
         print("onSliderChange: index -> " + str(index))
