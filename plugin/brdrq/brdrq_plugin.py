@@ -154,7 +154,7 @@ class BrdrQPlugin(object):
         )
         action_autoupdateborders = QAction(
             QIcon(icon_autoupdateborders),
-            "GRB Updater (bulk)",
+            "GRB Updater (bulk) - Flanders specific",
             self.iface.mainWindow(),
         )
         action_autoupdateborders.setObjectName("brdrq_autoupdateborders")
