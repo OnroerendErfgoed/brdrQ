@@ -317,23 +317,41 @@ class brdrQDockWidgetAligner(object):
         if feat is None:
             return
         key = feat.id()
-        show_map(
-            dict_results={key: self.dict_evaluated_predictions[key]},
-            dict_thematic={key: self.aligner.thematic_data[key].geometry},
-            dict_reference={
-                k: v.geometry for k, v in self.aligner.reference_data.features.items()
-            },
-        )
-        return
+        try:
+            show_map(
+                dict_results={key: self.dict_evaluated_predictions[key]},
+                dict_thematic={key: self.aligner.thematic_data[key].geometry},
+                dict_reference={
+                    k: v.geometry for k, v in self.aligner.reference_data.features.items()
+                },
+            )
+            return
+        except:
+            self.iface.messageBar().pushMessage(
+                "Warning",
+                "No visualisation available",
+                level=Qgis.Warning,
+                duration=5,
+            )
+            return
 
     def get_graphic(self):
-        feat = self.feature
-        if feat is None:
-            print("no feature")
+        try:
+            feat = self.feature
+            if feat is None:
+                print("no feature")
+                return
+            key = feat.id()
+            plot_series(self.relevant_distances, {key: self.diffs_dict[key]})
             return
-        key = feat.id()
-        plot_series(self.relevant_distances, {key: self.diffs_dict[key]})
-        return
+        except:
+            self.iface.messageBar().pushMessage(
+                "Warning",
+                "No plot available",
+                level=Qgis.Warning,
+                duration=5,
+            )
+            return
 
     def show_help_dialog(self):
         print("show help dialog")
