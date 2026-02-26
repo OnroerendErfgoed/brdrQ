@@ -3,6 +3,7 @@ import os
 import platform
 
 import brdr
+from PyQt5.QtGui import QIcon
 from qgis.PyQt.QtGui import QPixmap
 from qgis.PyQt.QtWidgets import QDialog, QLabel, QVBoxLayout, QHBoxLayout
 from qgis.core import Qgis
@@ -11,6 +12,9 @@ cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 class VersionInfoDialog(QDialog):
     def __init__(self,title,metadata):
         super().__init__()
+        plugin_dir = os.path.dirname(__file__)
+        icon_path = os.path.join(plugin_dir, 'icon_base.svg')
+        self.setWindowIcon(QIcon(icon_path))
         self.setWindowTitle(title)
         self.metadata = metadata
         self.init_ui()
@@ -20,9 +24,9 @@ class VersionInfoDialog(QDialog):
 
         # Version-information
 
-        brdrq_version_label = QLabel(f"<b>brdrQ Version:</b> {self.metadata.get("version")} - (<a href='https://onroerenderfgoed.github.io/brdrQ/'> brdrQ Documentation</a>)")
+        brdrq_version_label = QLabel(f"<b>brdrQ Version:</b> {self.metadata.get("version")} - (<a href='https://onroerenderfgoed.github.io/brdrQ/'>brdrQ Documentation</a>)")
         brdrq_version_label.setOpenExternalLinks(True)
-        brdr_version_label = QLabel(f"<b>brdr Version:</b> {brdr.__version__} - (<a href='https://onroerenderfgoed.github.io/brdr/'> brdr Documentation</a>)")
+        brdr_version_label = QLabel(f"<b>brdr Version:</b> {brdr.__version__} - (<a href='https://onroerenderfgoed.github.io/brdr/'>brdr Documentation</a>)")
         brdr_version_label.setOpenExternalLinks(True)
         qgis_version_label = QLabel(f"<b>QGIS Version:</b> {Qgis.QGIS_VERSION}")
         python_version_label = QLabel(f"<b>Python Version:</b> {platform.python_version()}")

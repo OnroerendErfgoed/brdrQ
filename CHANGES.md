@@ -1,3 +1,13 @@
+# v0.18.0
+
+- Updated icons for brdrQ [#248]
+- Correction layer adapted to support LineStrings [#223]
+- Added Loaders for BRK (nl) [#249]
+- Added filter to exclude empty geometries from the diff-layers [#256]
+- brdrQ-arameters saved in qgis-project [#242]
+- Possibility to autosave brdr_metadata in original layer by adding brdr_metadata-field [#241]
+- Several bugfixes for empty layers, CRS-incompatibility,... [#266]
+
 # v0.17.5
 
 - Upgrade to brdr release version 0.15.5

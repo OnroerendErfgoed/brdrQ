@@ -34,6 +34,8 @@ from brdr.configs import ProcessorConfig, AlignerConfig
 from brdr.constants import PREDICTION_SCORE, EVALUATION_FIELD_NAME, VERSION_DATE
 from brdr.enums import AlignerResultType
 from brdr.loader import DictLoader
+from brdr.nl.enums import BRKType
+from brdr.nl.loader import BRKLoader
 from brdr.osm.loader import OSMLoader
 from qgis import processing
 from qgis.PyQt import QtWidgets, uic
@@ -69,6 +71,8 @@ from .brdrq_utils import (
     write_setting,
     read_setting,
     get_valid_layer,
+    NL_TYPES,
+    DICT_NL_TYPES,
 )
 
 FORM_CLASS, _ = uic.loadUiType(
@@ -91,7 +95,7 @@ class brdrQDockWidgetFeatureAligner(
         # self.<objectname>, and you can use autoconnect slots - see
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
-        self.prefix = "brdrqfeaturealigner/"
+
         self.setupUi(self)
         self._initialize()
 
@@ -151,7 +155,7 @@ class brdrQDockWidgetFeatureAligner(
             ],
         )
         # Load default (saved) layer
-        saved_layer_id = read_setting(self.prefix, "theme_layer", None)
+        saved_layer_id = read_setting(self.settingsDialog.prefix, "theme_layer", None)
         theme_layer = get_valid_layer(saved_layer_id)
         self.mMapLayerComboBox.setLayer(theme_layer)
 
@@ -190,6 +194,9 @@ class brdrQDockWidgetFeatureAligner(
 
     def activate_selectTool(self):
         # print ("currentlayer:" + str (self.mMapLayerComboBox.currentLayer()))
+        if self.layer is None:
+            self.textEdit_output.setText("Please select a layer to align in the upper combobox")
+            return
         self.selectTool = SelectTool(self.iface, self.mMapLayerComboBox.currentLayer())
         self.formerMapTool = self.iface.mapCanvas().mapTool()
         self.iface.mapCanvas().setMapTool(self.selectTool)
@@ -250,16 +257,16 @@ class brdrQDockWidgetFeatureAligner(
         self.clearUserInterface()
         self.layer = self.mMapLayerComboBox.currentLayer()
         if self.layer is None:
-            self.textEdit_output.setText("Please select a layer")
+            self.textEdit_output.setText("Please select a layer to align in the upper combobox")
             return
         try:
             self.crs = self.layer.sourceCrs().authid()
         except:
             self.crs = None
-        if self.crs is None or self.crs == "NULL" or self.crs == "":
+        if self.crs is None or str(self.crs) == "NULL" or str(self.crs) == "":
             iface.messageBar().pushWarning(
                 "CRS",
-                "CRS of the thematic layer is not defined. Please define a CRS to the thematic layer with units in meter",
+                "CRS of the thematic layer is not defined. Please define a CRS to the thematic layer with units in meter"
             )
             self.layer = None
             self.mMapLayerComboBox.setLayer(self.layer)
@@ -280,13 +287,16 @@ class brdrQDockWidgetFeatureAligner(
             )
             return
         # Write the layer_id to the settings
-        write_setting(self.prefix, "theme_layer", self.layer.id())
+        write_setting(self.settingsDialog.prefix, "theme_layer", self.layer.id())
 
         index = self.comboBox_selectfeatures.currentIndex()
         data = self.comboBox_selectfeatures.itemData(index)
         self.listFeatures(selection=data)
 
     def listFeatures(self, selection=None, features=None):
+        if self.layer is None:
+            self.textEdit_output.setText("Please select a layer to align in the upper combobox")
+            return
         self.clearUserInterface()
         if not features is None:
             self.listed_features = features
@@ -566,24 +576,48 @@ class brdrQDockWidgetFeatureAligner(
         # Load reference data for the on-the fly reference versions
         reference_choice_id = DICT_REFERENCE_OPTIONS[self.reference_choice]
         if self.reference_choice in GRB_TYPES:
-            self.aligner.load_reference_data(
-                GRBActualLoader(
-                    grb_type=GRBType[reference_choice_id],
-                    partition=1000,
-                    aligner=self.aligner,
+            try:
+                self.aligner.load_reference_data(
+                    GRBActualLoader(
+                        grb_type=GRBType[reference_choice_id],
+                        partition=1000,
+                        aligner=self.aligner,
+                    )
                 )
-            )
+            except Exception as e:
+                iface.messageBar().pushWarning(
+                    "CRS",
+                    f"Reference layer 'BE - GRB' does not support CRS of current thematic layer: {str(e)}"
+                )
+                return None
         elif self.reference_choice in ADPF_VERSIONS:
-            self.aligner.load_reference_data(
-                GRBFiscalParcelLoader(
-                    year=reference_choice_id, aligner=self.aligner, partition=1000
+            try:
+                self.aligner.load_reference_data(
+                    GRBFiscalParcelLoader(
+                        year=reference_choice_id, aligner=self.aligner, partition=1000
+                    )
                 )
-            )
+            except Exception as e:
+                iface.messageBar().pushWarning(
+                    "CRS",
+                    f"Reference layer 'BE - GRB' does not support CRS of current thematic layer: {str(e)}")
+                return None
         elif self.reference_choice in OSM_TYPES:
             tags = DICT_OSM_TYPES[self.reference_choice]
             self.aligner.load_reference_data(
                 OSMLoader(osm_tags=tags, aligner=self.aligner)
             )
+
+        elif self.reference_choice in NL_TYPES:
+            try:
+                brk_type = BRKType[DICT_NL_TYPES[self.reference_choice]]
+                self.aligner.load_reference_data(BRKLoader(brk_type=brk_type, partition=1000, aligner=self.aligner))
+            except Exception as e:
+                iface.messageBar().pushWarning(
+                    "CRS",
+                    f"Reference layer 'NL - BRK' does not support CRS of current thematic layer: {str(e)}"
+                )
+                return None
         else:
             # Load local referencelayer
             # check the CRS of the local layer
@@ -591,7 +625,7 @@ class brdrQDockWidgetFeatureAligner(
                 reference_crs = self.reference_layer.sourceCrs().authid()
             except:
                 reference_crs = None
-            if reference_crs is None or reference_crs == "NULL" or reference_crs == "":
+            if reference_crs is None or str(reference_crs) == "NULL" or str(reference_crs) == "":
                 iface.messageBar().pushWarning(
                     "CRS",
                     "CRS of the local Reference Layer is not defined. Please define a CRS to the REFERENCE Layer with units in meter",
@@ -600,14 +634,14 @@ class brdrQDockWidgetFeatureAligner(
             elif reference_crs != self.crs:
                 iface.messageBar().pushWarning(
                     "CRS",
-                    "Thematic layer and ReferenceLayer are in a different CRS. "
+                    "Thematic layer and ReferenceLayer are in a different CRS." 
                     "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)",
                 )
                 return None
             elif (
                 self.reference_id is None
-                or self.reference_id == "NULL"
-                or self.reference_id == ""
+                or str(self.reference_id) == "NULL"
+                or str(self.reference_id) == ""
                 or self.reference_id == -1
             ):
                 iface.messageBar().pushWarning(
@@ -666,11 +700,17 @@ class brdrQDockWidgetFeatureAligner(
         )
 
     def change_geometry(self):
+        if self.layer is None:
+            self.textEdit_output.setText("Please select a layer to align in the upper combobox")
+            return
         self._change_geometry(self.layer)
         self.updateTextListWidgetItems()
         remove_group_layer(self.GROUP_LAYER)
 
     def reset_geometry(self):
+        if self.layer is None:
+            self.textEdit_output.setText("Please select a layer to align in the upper combobox")
+            return
         self._reset_geometry(self.layer)
         self.updateTextListWidgetItems()
         remove_group_layer(self.GROUP_LAYER)

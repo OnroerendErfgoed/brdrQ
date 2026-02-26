@@ -114,13 +114,27 @@ class BrdrQPlugin(object):
         self.initProcessing()
 
         # Setup menu
-        icon_menu = QIcon(os.path.join(os.path.join(cmd_folder, "icon_base.png")))
+        icon_menu = QIcon(os.path.join(os.path.join(cmd_folder, "icon_base.svg")))
         self.brdrq_menu.setIcon(icon_menu)
         self.vector_menu.addMenu(self.brdrq_menu)
 
+        # FEATUREALIGNER
+        icon = os.path.join(os.path.join(cmd_folder, "icon_featurealigner.svg"))
+        action_featurepredictor = QAction(
+            QIcon(icon), "Feature Aligner (individual predictions)", self.iface.mainWindow()
+        )
+        action_featurepredictor.setObjectName("brdrq_featurealigner")
+        action_featurepredictor.triggered.connect(self.openDockFeatureAligner)
+        #
+
+        self.brdrq_menu.addAction(action_featurepredictor)
+
+        self.toolbar.addAction(action_featurepredictor)
+        self.actions.append(action_featurepredictor)
+
         # AUTOCORRECTBORDERS
         icon_autocorrectborders = os.path.join(
-            os.path.join(cmd_folder, "icon_autocorrectborders.png")
+            os.path.join(cmd_folder, "icon_autocorrectborders.svg")
         )
         action_autocorrectborders = QAction(
             QIcon(icon_autocorrectborders),
@@ -134,37 +148,13 @@ class BrdrQPlugin(object):
         self.toolbar.addAction(action_autocorrectborders)
         self.actions.append(action_autocorrectborders)
 
-        # FEATUREPREDICTOR
-        icon = os.path.join(os.path.join(cmd_folder, "icon_featurealigner.png"))
-        action_featurepredictor = QAction(
-            QIcon(icon), "brdrQ - Feature Aligner (predictor)", self.iface.mainWindow()
-        )
-        action_featurepredictor.setObjectName("brdrq_featurepredictor")
-        action_featurepredictor.triggered.connect(self.openDockFeatureAligner)
-        #
-
-        self.brdrq_menu.addAction(action_featurepredictor)
-
-        self.toolbar.addAction(action_featurepredictor)
-        self.actions.append(action_featurepredictor)
-
-        # #BULKALIGNER
-        # icon_bulkaligner = os.path.join(os.path.join(cmd_folder, "icon_bulkaligner.png"))
-        # action_bulkaligner = QAction(
-        #     QIcon(icon_bulkaligner), "brdrQ - Bulk Aligner (predictor)", self.iface.mainWindow()
-        # )
-        # action_bulkaligner.triggered.connect(self.openDockBulkAligner)
-        # self.brdrq_menu.addAction(action_bulkaligner)
-        # self.toolbar.addAction(action_bulkaligner)
-        # self.actions.append(action_bulkaligner)
-
         # AUTOUPDATEBORDERS -GRBUPDATER
         icon_autoupdateborders = os.path.join(
-            os.path.join(cmd_folder, "icon_grbupdater.png")
+            os.path.join(cmd_folder, "icon_grbupdater.svg")
         )
         action_autoupdateborders = QAction(
             QIcon(icon_autoupdateborders),
-            "GRB Updater (bulk)",
+            "GRB Updater (bulk) - Flanders specific",
             self.iface.mainWindow(),
         )
         action_autoupdateborders.setObjectName("brdrq_autoupdateborders")
@@ -174,10 +164,10 @@ class BrdrQPlugin(object):
         self.actions.append(action_autoupdateborders)
 
         # INFO - VERSION
-        icon_info = os.path.join(os.path.join(cmd_folder, "icon_info.png"))
+        icon_info = os.path.join(os.path.join(cmd_folder, "icon_info.svg"))
         action_info = QAction(
             QIcon(icon_info),
-            self.tr("brdrQ - version"),
+            self.tr("About brdrQ"),
             self.iface.mainWindow(),
         )
         action_info.setObjectName("brdrq_info")
@@ -196,7 +186,7 @@ class BrdrQPlugin(object):
         else:
             # print("QGIS uses system locale.")
             locale_code = QLocale.system().name()
-        if not locale_code or locale_code == "NULL":
+        if not locale_code or str(locale_code) == "NULL":
             print("fallback to system locale")
             locale_code = QLocale.system().name()
         locale_code = locale_code[:2]
@@ -214,7 +204,7 @@ class BrdrQPlugin(object):
         processing.execAlgorithmDialog("brdrqprovider:brdrqautocorrectborders")
 
     def openInfo(self):
-        self.dialog = VersionInfoDialog("brdrQ Version Info", self.metadata)
+        self.dialog = VersionInfoDialog("About brdrQ", self.metadata)
         self.dialog.open()
 
     def closeInfo(self):

@@ -28,7 +28,6 @@ import numpy as np
 from brdr.enums import OpenDomainStrategy, SnapStrategy, FullReferenceStrategy
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
-from qgis.core import QgsSettings
 
 from .brdrq_utils import (
     ENUM_REFERENCE_OPTIONS,
@@ -37,6 +36,8 @@ from .brdrq_utils import (
     ENUM_SNAP_STRATEGY_OPTIONS,
     Processor,
     ENUM_PROCESSOR_OPTIONS,
+    read_setting,
+    write_setting,
 )
 
 FORM_CLASS, _ = uic.loadUiType(
@@ -57,6 +58,7 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        self.prefix = "brdrqfeaturealigner"
         self.minimum = 0
         self.maximum = 2500
         self.small_step = 10
@@ -126,15 +128,14 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.confirmed.emit()
 
     def update_settings(self):
-        s = QgsSettings()
+        # s = QgsSettings()
         if self.threshold_overlap_percentage is None:
-            self.threshold_overlap_percentage = int(
-                s.value("brdrq/threshold_overlap_percentage", 50)
-            )
+            self.threshold_overlap_percentage = int(read_setting(self.prefix, "threshold_overlap_percentage", 50))
             self.spinBox_threshold.setValue(self.threshold_overlap_percentage)
         self.threshold_overlap_percentage = self.spinBox_threshold.value()
+
         if self.max_rel_dist is None:
-            self.max_rel_dist = int(s.value("brdrq/max_rel_dist", 5))
+            self.max_rel_dist = int(read_setting(self.prefix, "max_rel_dist", 5))
             self.spinBox_max_relevant_distance.setValue(self.max_rel_dist)
         self.max_rel_dist = self.spinBox_max_relevant_distance.value()
         self.maximum = self.max_rel_dist * 100
@@ -148,7 +149,7 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         ]
         if self.od_strategy is None or self.od_strategy not in OpenDomainStrategy:
             default_od = OpenDomainStrategy.SNAP_ALL_SIDE
-            od_strategy_name = s.value("brdrq/od_strategy", default_od.name)
+            od_strategy_name = read_setting(self.prefix, "od_strategy", default_od.name)
             if od_strategy_name not in OpenDomainStrategy.__members__:
                 od_strategy_name = default_od.name
             index = self.comboBox_odstrategy.findText(
@@ -164,10 +165,7 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             or self.partial_snapping_strategy not in SnapStrategy
         ):
             default_partial_snapping_strategy = SnapStrategy.PREFER_VERTICES
-            partial_snapping_strategy_name = s.value(
-                "brdrq/partial_snapping_strategy",
-                default_partial_snapping_strategy.name,
-            )
+            partial_snapping_strategy_name = read_setting(self.prefix, "partial_snapping_strategy", default_partial_snapping_strategy.name)
             if partial_snapping_strategy_name not in SnapStrategy.__members__:
                 partial_snapping_strategy_name = default_partial_snapping_strategy.name
             index = self.comboBox_snapstrategy.findText(
@@ -181,7 +179,7 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         ]
         if self.processor is None or self.processor not in Processor:
             default_processor = Processor.AlignerGeometryProcessor
-            ##!! we set the default processor always to the AlignerGeometryPeocessor
+            ##!! we set the default processor always to the AlignerGeometryProcessor
             processor_name = default_processor.name
             # processor_name = s.value(
             #     "brdrq/processor", default_processor.name
@@ -199,8 +197,10 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
 
         if self.full_strategy is None or self.full_strategy not in FullReferenceStrategy:
             default_full_strategy = FullReferenceStrategy.PREFER_FULL_REFERENCE
-            full_strategy_name = s.value(
-                "brdrq/full_strategy", default_full_strategy.name
+            full_strategy_name = read_setting(
+                self.prefix,
+                "full_strategy",
+                default_full_strategy.name,
             )
             if full_strategy_name not in FullReferenceStrategy.__members__:
                 full_strategy_name = default_full_strategy.name
@@ -217,8 +217,10 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             or self.reference_choice not in ENUM_REFERENCE_OPTIONS
         ):
             default_reference_choice = ENUM_REFERENCE_OPTIONS[1]  # ADP
-            self.reference_choice = s.value(
-                "brdrq/reference_choice", default_reference_choice
+            self.reference_choice = read_setting(
+                self.prefix,
+                "reference_choice",
+                default_reference_choice,
             )
             if self.reference_choice not in ENUM_REFERENCE_OPTIONS:
                 self.reference_choice = default_reference_choice
@@ -229,9 +231,17 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         if (
             current_reference_layer_index == -1 or current_reference_layer_index == 0):  # :
             try:
-                self.reference_layer = s.value("brdrq/reference_layer", None)
+                self.reference_layer = read_setting(
+                    self.prefix,
+                    "reference_layer",
+                    None,
+                )
                 self.mMapLayerComboBox_reference.setLayer(self.reference_layer)
-                self.reference_id = s.value("brdrq/reference_id", 0)
+                self.reference_id = read_setting(
+                    self.prefix,
+                    "reference_id",
+                    0,
+                )
                 self.mFieldComboBox_reference.setField(self.reference_id)
             except:
                 self.mMapLayerComboBox_reference.setLayer(None)
@@ -240,7 +250,11 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.reference_id = self.mFieldComboBox_reference.currentField()
 
         if self.metadata is None:
-            self.metadata = int(s.value("brdrq/metadata", 0))
+            self.metadata = int(read_setting(
+                self.prefix,
+                "metadata",
+                0,
+            ))
             self.checkBox_metadata.setCheckState(self.metadata)
         self.metadata = self.checkBox_metadata.checkState()
 
@@ -255,9 +269,11 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.partial_snapping = False  # at this moment always set to false as this is not performant and not implemented in brdrQ
 
         if self.snap_max_segment_length is None:
-            self.snap_max_segment_length = int(
-                s.value("brdrq/snap_max_segment_length", 2)
-            )
+            self.snap_max_segment_length = int(read_setting(
+                self.prefix,
+                "snap_max_segment_length",
+                2,
+            ))
             self.spinBox_snap_max_segment_length.setValue(self.snap_max_segment_length)
         self.snap_max_segment_length = self.spinBox_snap_max_segment_length.value()
 
@@ -265,22 +281,24 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             f"settings updated: Reference choice={self.reference_choice} - od_strategy={self.od_strategy} - threshold overlap percenatge = {str(self.threshold_overlap_percentage)}"
         )
         # write settings
-        s.setValue(
-            "brdrq/threshold_overlap_percentage", self.threshold_overlap_percentage
+        write_setting(self.prefix,"threshold_overlap_percentage", self.threshold_overlap_percentage)
+        write_setting(self.prefix, "od_strategy", self.od_strategy.name)
+        write_setting(self.prefix, "reference_choice", self.reference_choice)
+        write_setting(self.prefix, "reference_id", self.reference_id)
+        write_setting(self.prefix, "reference_layer", self.reference_layer)
+        write_setting(self.prefix, "max_rel_dist", self.max_rel_dist)
+        write_setting(self.prefix, "metadata", self.metadata)
+        write_setting(self.prefix, "full_strategy", self.full_strategy.name)
+        write_setting(self.prefix, "processor", self.processor.name)
+        write_setting(self.prefix, "partial_snapping", self.partial_snapping)
+        write_setting(
+            self.prefix,
+            "partial_snapping_strategy",
+            self.partial_snapping_strategy.name,
         )
-        s.setValue("brdrq/od_strategy", self.od_strategy.name)
-        s.setValue("brdrq/reference_choice", self.reference_choice)
-        s.setValue("brdrq/reference_id", self.reference_id)
-        s.setValue("brdrq/reference_layer", self.reference_layer)
-        s.setValue("brdrq/max_rel_dist", self.max_rel_dist)
-        s.setValue("brdrq/metadata", self.metadata)
-        s.setValue("brdrq/full_strategy", self.full_strategy.name)
-        s.setValue("brdrq/processor", self.processor.name)
-        s.setValue("brdrq/partial_snapping", self.partial_snapping)
-        s.setValue(
-            "brdrq/partial_snapping_strategy", self.partial_snapping_strategy.name
+        write_setting(
+            self.prefix, "snap_max_segment_length", self.snap_max_segment_length
         )
-        s.setValue("brdrq/snap_max_segment_length", self.snap_max_segment_length)
         return
 
 

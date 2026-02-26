@@ -32,7 +32,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
         #
         # # Reset specifiek jouw plugin/provider settings
         # # Gebruik de juiste prefix die jouw algoritme gebruikt
-        # prefix = "brdrqautocorrectborders/"
+        # prefix = "brdrqautocorrectborders"
         #
         # for key in self.settings.allKeys():
         #     if key.startswith(prefix):
@@ -293,7 +293,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
         assert len(output)==5
         for o in output.values():
             assert isinstance(o,QgsVectorLayer)
-            assert o.featureCount()>=featurecount
+            assert o.featureCount()==featurecount
 
     def test_autocorrectborders_no_metadata(self):
         foldername = QgsProcessingParameterFolderDestination(name="brdrQ").generateTemporaryDestination()
@@ -329,7 +329,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
         assert len(output)==5
         for o in output.values():
             assert isinstance(o,QgsVectorLayer)
-            assert o.featureCount()>=featurecount
+            assert 0 < o.featureCount() <=featurecount
 
     def test_autocorrectborders_no_correctionlayer_created(self):
         foldername = QgsProcessingParameterFolderDestination(name="brdrQ").generateTemporaryDestination()
@@ -369,7 +369,10 @@ class TestAutoCorrectBorders(unittest.TestCase):
         assert output_layers[0] is None #correction_layer is None
         for o in output_layers[1:]:
             assert isinstance(o,QgsVectorLayer)
-            assert o.featureCount()>=featurecount
+            count = o.featureCount()
+            if count == -1:
+                count = sum(1 for _ in o.getFeatures())
+            assert 0<count<=featurecount
 
     def test_autocorrectborders_wrong_input(self):
         with self.assertRaises(QgsProcessingException):

@@ -1,6 +1,8 @@
 import copy
+import json
 import os
 from enum import Enum
+from pathlib import Path
 
 # TODO QGIS4
 from PyQt5.QtGui import QColor
@@ -10,8 +12,10 @@ from brdr.constants import (
     SYMMETRICAL_AREA_PERCENTAGE_CHANGE,
     METADATA_FIELD_NAME,
     STABILITY,
-    ID_THEME_FIELD_NAME, EVALUATION_FIELD_NAME,
+    ID_THEME_FIELD_NAME,
+    EVALUATION_FIELD_NAME,
 )
+from brdr.nl.enums import BRKType
 from brdr.processor import (
     AlignerGeometryProcessor,
     DieussaertGeometryProcessor,
@@ -22,15 +26,22 @@ from brdr.processor import (
 from brdr.utils import (
     write_featurecollection_to_geopackage,
 )
+from qgis.core import Qgis
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
     QgsRendererCategory,
 )
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
+from qgis.core import (
+    QgsLineSymbol,
+    QgsMarkerSymbol,
+)
 from qgis.core import QgsProcessingException
+from qgis.core import QgsProcessingFeatureSourceDefinition, QgsProperty
 from qgis.core import QgsProviderRegistry, QgsDataSourceUri
 from qgis.core import QgsRectangle
 from qgis.core import QgsSettings
+from qgis.core import QgsVectorFileWriter, QgsProject, QgsVectorLayer
 from qgis.core import QgsWkbTypes
 from qgis.gui import QgsMapTool
 from qgis.gui import QgsRubberBand
@@ -55,7 +66,9 @@ from brdr.enums import (
     OpenDomainStrategy,
     SnapStrategy,
     PredictionStrategy,
-    FullReferenceStrategy, ProcessorID, Evaluation,
+    FullReferenceStrategy,
+    ProcessorID,
+    Evaluation,
 )
 from brdr.typings import ProcessResult
 
@@ -81,15 +94,18 @@ from shapely import to_wkt, from_wkt, make_valid
 
 GPKG_FILENAME = "brdrq.gpkg"
 
+
 class Processor(str, Enum):
     """
     Enum for processors that can be used in brdrQ. Values based on the IDs in brdr.
     """
+
     AlignerGeometryProcessor = "2024:aligner2024a"
-    #DieussaertGeometryProcessor = "2024:dieussaert2024a"
+    # DieussaertGeometryProcessor = "2024:dieussaert2024a"
     SnapGeometryProcessor = "2024:snap2024a"
     NetworkGeometryProcessor = "2024:network2024a"
-    #TOPOLOGY = "2024:topology2024a"
+    # TOPOLOGY = "2024:topology2024a"
+
 
 class OsmType(dict, Enum):
     """
@@ -100,12 +116,15 @@ class OsmType(dict, Enum):
     osm_landuse = {"landuse": True}
     osm_streets = {"highway": True}
 
+
 SPLITTER = ":"
 PREFIX_LOCAL_LAYER = (
     "LOCREF"  # prefix for the TOC layername, when a local layer is used
 )
 LOCAL_REFERENCE_LAYER = (
-    PREFIX_LOCAL_LAYER + SPLITTER + " choose LOCAL LAYER and UNIQUE ID below"
+    PREFIX_LOCAL_LAYER
+    + SPLITTER
+    + " define LOCAL REF LAYER and UNIQUE ID in the next 2 fields"
 )
 
 DICT_REFERENCE_OPTIONS = dict()
@@ -114,27 +133,40 @@ DICT_REFERENCE_OPTIONS[LOCAL_REFERENCE_LAYER] = PREFIX_LOCAL_LAYER
 DICT_GRB_TYPES = dict()
 for e in GRBType:
     try:
-        DICT_GRB_TYPES[e.name + SPLITTER + " GRB " + e.value.split(" - ")[2]] = e.name
+        DICT_GRB_TYPES[
+            "BE - GRB - " + e.name + SPLITTER + " " + e.value.split(" - ")[2]
+        ] = e.name
 
     except:
-        DICT_GRB_TYPES[e.name + SPLITTER + " " + e.value] = e.name
+        DICT_GRB_TYPES["BE - GRB - " + e.name + SPLITTER + " " + e.value] = e.name
 DICT_ADPF_VERSIONS = dict()
 for x in [datetime.datetime.today().year - i for i in range(6)]:
-    DICT_ADPF_VERSIONS["Administratieve fiscale percelen" + SPLITTER + " " + str(x)] = x
+    DICT_ADPF_VERSIONS[
+        "BE - GRB - Administratieve fiscale percelen" + SPLITTER + " " + str(x)
+    ] = x
 
 DICT_OSM_TYPES = dict()
 for x in OsmType:
-    DICT_OSM_TYPES[x.name]=x.value
+    DICT_OSM_TYPES["OSM - " + x.name] = x.value
 
+# DICT_BE_TYPES = dict()
+# DICT_BE_TYPES["BE - Cadastral Parcels"]="BE_CADASTRAL"
+
+DICT_NL_TYPES = dict()
+for e in BRKType:
+    DICT_NL_TYPES["NL - BRK - " + e.value] = e.name
 
 DICT_REFERENCE_OPTIONS.update(DICT_GRB_TYPES)
 DICT_REFERENCE_OPTIONS.update(DICT_ADPF_VERSIONS)
 DICT_REFERENCE_OPTIONS.update(DICT_OSM_TYPES)
-
+# DICT_REFERENCE_OPTIONS.update(DICT_BE_TYPES)
+DICT_REFERENCE_OPTIONS.update(DICT_NL_TYPES)
 
 GRB_TYPES = list(DICT_GRB_TYPES.keys())
 ADPF_VERSIONS = list(DICT_ADPF_VERSIONS.keys())
 OSM_TYPES = list(DICT_OSM_TYPES.keys())
+# BE_TYPES = list(DICT_BE_TYPES.keys())
+NL_TYPES = list(DICT_NL_TYPES.keys())
 ENUM_REFERENCE_OPTIONS = list(DICT_REFERENCE_OPTIONS.keys())
 
 # ENUM for choosing the OD-strategy
@@ -152,7 +184,9 @@ ENUM_FULL_REFERENCE_STRATEGY_OPTIONS = [e.name for e in FullReferenceStrategy]
 ENUM_PREDICTION_STRATEGY_OPTIONS = [e.name for e in PredictionStrategy]
 
 # ENUM for choosing the Processing-algorithm
-ENUM_PROCESSOR_OPTIONS = [e.name for e in Processor]  # list with all processing-algorithm-options
+ENUM_PROCESSOR_OPTIONS = [
+    e.name for e in Processor
+]  # list with all processing-algorithm-options
 
 BRDRQ_ORIGINAL_WKT_FIELDNAME = "brdrq_original_wkt"
 BRDRQ_STATE_FIELDNAME = "brdrq_state"
@@ -171,14 +205,14 @@ class BrdrQState(str, Enum):
     NONE = "none"
 
 
-def get_processor_by_id(processor_id,config):
+def get_processor_by_id(processor_id, config):
     """
     Function that returns a Processor, based on the ID
     """
     # AlignerGeometryProcessor as default processor
     processor = AlignerGeometryProcessor(config=config)
     try:
-        processor_id=ProcessorID(processor_id)
+        processor_id = ProcessorID(processor_id)
     except ValueError:
         return processor
     if processor_id == ProcessorID.DIEUSSAERT:
@@ -192,62 +226,189 @@ def get_processor_by_id(processor_id,config):
     return processor
 
 
-def read_setting(prefix, key, fallback):
+def read_setting(prefix, key, fallback, scope="auto"):
     """
-    Reads a value with priority:
-    1. Current QGIS Project (Specific to this file)
-    2. QgsSettings (Global User Profile)
-    3. Fallback (Default value)
-    """
-    # # 1. Try to read from the Project file first
-    # # readEntry returns a tuple: (value, boolean_success)
-    # project_value, exists = QgsProject.instance().readEntry(prefix, key)
-    #
-    # if exists and project_value is not None:
-    #     return project_value
+    Reads a value based on the specified scope.
 
-    # 2. If not found in project, try QgsSettings (Global Profile)
-    settings = QgsSettings()
-    return settings.value(prefix + key, fallback)
-
-
-def write_setting(prefix, key, value):
-    """
-    Writes value to both the Project file and the Global User Profile.
+    :param prefix: The group or plugin prefix.
+    :param key: The specific setting name.
+    :param fallback: The default value if the setting is not found.
+    :param scope:
+        'auto'    -> Checks Project first, then Global (Default).
+        'project' -> Checks ONLY the current QGIS Project.
+        'global'  -> Checks ONLY the QgsSettings (User Profile).
     """
 
-    # # Convert complex QGIS objects to strings (usually the layer ID/Source)
-    # # 1. Unpack FeatureSourceDefinition
-    # if isinstance(value, QgsProcessingFeatureSourceDefinition):
-    #     value = value.source  # This might be a string OR a QgsProperty
-    #
-    # # 2. Extract value from QgsProperty (if it's a Property now or was originally)
-    # if isinstance(value, QgsProperty):
-    #     try:
-    #         value = value.asExpression()
-    #     except:
-    #         value = value.staticValue()
-    #
-    # # 3. Final cleanup for the Project XML
-    # if value is None:
-    #     QgsProject.instance().removeEntry(prefix, key)
-    #     # Also remove from settings to keep them synced
-    #     QgsSettings().remove(prefix + key)
-    #     return
-    #
-    # # 4. Save to both locations
-    # # We ensure value is converted to a string if it's not a basic type
-    # save_value = str(value) if not isinstance(value, (int, float, bool)) else value
-    #
-    # # 1. Write to the Project file
-    # QgsProject.instance().writeEntry(prefix, key, value)
+    # 1. Try to read from the Project file
+    if scope in ["auto", "project"]:
+        # readEntry returns a tuple: (value, boolean_success)
+        value, exists = QgsProject.instance().readEntry(prefix, key)
+        if exists and value is not None:
+            return deserialize_setting(value, fallback)
 
-    # 2. Write to QgsSettings (Global Profile)
-    settings = QgsSettings()
-    settings.setValue(prefix + key, value)
+    # 2. Try to read from Global Settings (QgsSettings)
+    if scope in ["auto", "global"]:
+        settings = QgsSettings()
+        # If scope is 'auto' and we reached here, it means the project entry didn't exist.
+        value = settings.value(f"{prefix}/{key}", fallback)
 
-    # # Sync to ensure the changes are written to the disk immediately
-    # settings.sync()
+        # If the global setting returns the fallback, we still pass it through
+        # deserialize_setting to ensure type consistency.
+        return deserialize_setting(value, fallback)
+
+    return fallback
+
+
+def write_setting(prefix, key, value, scope="both"):
+    """
+    Writes a value to the QGIS Project, Global Settings, or both.
+
+    :param prefix: The group or plugin prefix.
+    :param key: The specific setting name.
+    :param value: The value to be stored.
+    :param scope:
+        'both'    -> Writes to Project AND Global Settings (Default).
+        'project' -> Writes ONLY to the current QGIS Project.
+        'global'  -> Writes ONLY to QgsSettings (User Profile).
+    """
+
+    # 1. Prepare the value (serialize if it's not a primitive type)
+    if not isinstance(value, (str, int, bool)):
+        try:
+            serializable_data = serialize_value(value)
+            storage_value = json.dumps(serializable_data)
+        except Exception as e:
+            print(f"Error serializing key {key}: {e}")
+            return
+    else:
+        storage_value = value
+
+    # 2. Write to Project
+    if scope in ["both", "project"]:
+        try:
+            QgsProject.instance().writeEntry(prefix, key, storage_value)
+        except Exception as e:
+            print(f"Error writing key {key} to Project: {e}")
+
+    # 3. Write to Global Settings (QgsSettings)
+    if scope in ["both", "global"]:
+        try:
+            settings = QgsSettings()
+            settings.setValue(f"{prefix}/{key}", storage_value)
+        except Exception as e:
+            print(f"Error writing key {key} to Global Settings: {e}")
+
+    return
+
+
+def deserialize_setting(raw_value, default=None, enum_classes=None):
+    """
+    Converts a raw string (JSON) from QGIS back into objects.
+    Returns 'default' if the raw_value is empty or None.
+    """
+    # 1. Fallback if the value doesn't exist in the project
+    if raw_value is None or raw_value == "":
+        return default
+
+    # 2. If it's not our special JSON format, it's a standard type (str, int, bool)
+    if not isinstance(raw_value, str):
+        return raw_value
+    try:
+        data = json.loads(raw_value)
+        return _reconstruct_object(data, enum_classes)
+    except (json.JSONDecodeError, TypeError):
+        return raw_value
+
+
+def _reconstruct_object(data, enum_classes=None):
+    """Internal recursive function to rebuild objects."""
+    if not isinstance(data, dict) or "_type" not in data:
+        return data
+
+    obj_type = data.get("_type")
+
+    if obj_type == "qgs_property":
+        prop = QgsProperty()
+        prop.loadVariant(data.get("value"))
+        return prop
+
+    if obj_type == "enum":
+        val_name = data.get("value")
+        if enum_classes:
+            for cls in enum_classes.values():
+                if val_name in cls.__members__:
+                    return cls[val_name]
+        return val_name
+
+    if obj_type == "qgs_source_def":
+        source_val = data.get("source")
+        # Recursively rebuild if the source is also a complex object
+        if isinstance(source_val, dict) and "_type" in source_val:
+            source_val = _reconstruct_object(source_val, enum_classes)
+
+        source_def = QgsProcessingFeatureSourceDefinition(
+            source_val, data.get("selectedFeaturesOnly", False)
+        )
+        source_def.featureLimit = data.get("featureLimit", -1)
+        source_def.flags = QgsProcessingFeatureSourceDefinition.Flags(
+            data.get("flags", 0)
+        )
+        return source_def
+
+    return data.get("value", data)
+
+
+def serialize_value(value):
+    """Hulpfunctie om complexe QGIS objecten om te zetten naar JSON-vriendelijke dicts."""
+    if isinstance(value, float):
+        return str(value)
+    if isinstance(value, Enum):
+        return {"_type": "enum", "value": value.name}
+
+    if isinstance(value, QgsProperty):
+        return {"_type": "qgs_property", "value": value.toVariant()}
+
+    if isinstance(value, QgsProcessingFeatureSourceDefinition):
+        # Check of de source zelf een QgsProperty is!
+        source_val = value.source
+        if isinstance(source_val, QgsProperty):
+            source_val = serialize_value(source_val)  # Recursion
+
+        return {
+            "_type": "qgs_source_def",
+            "source": source_val,
+            "selectedFeaturesOnly": value.selectedFeaturesOnly,
+            "featureLimit": value.featureLimit,
+            "flags": int(value.flags),
+        }
+
+    return value
+
+
+def get_string_type(val):
+    try:
+        int(val)
+        return "integer"
+    except ValueError:
+        try:
+            float(val)
+            return "float"
+        except ValueError:
+            return "string"
+
+
+# def make_path_safe(path):
+#     """Vervangt het absolute pad door een placeholder als het binnen het project valt."""
+#     p_dir = QgsProject.instance().homePath()
+#     if path.startswith(p_dir):
+#         return path.replace(p_dir, "@project")
+#     return path
+#
+# def restore_path(safe_path):
+#     """Herstelt het pad naar de huidige machine-specifieke locatie."""
+#     if safe_path.startswith("@project"):
+#         return safe_path.replace("@project", QgsProject.instance().homePath())
+#     return safe_path
 
 
 def geom_shapely_to_qgis(geom_shapely):
@@ -299,7 +460,7 @@ def get_layer_by_name(layer_name):
         return None
 
 
-def zoom_to_features(features, iface, marge_factor=0.1,features_crs=None):
+def zoom_to_features(features, iface, marge_factor=0.1, features_crs=None):
     """
     Function to zoom to an array of features.
     Combines the bbox of the features and adds a margin around the feature
@@ -323,9 +484,15 @@ def zoom_to_features(features, iface, marge_factor=0.1,features_crs=None):
     if not features_crs is None:
         features_crs = QgsCoordinateReferenceSystem(features_crs)
     project_crs = QgsProject.instance().crs()
-    if not features_crs is None and not project_crs is None and features_crs!=project_crs:
+    if (
+        not features_crs is None
+        and not project_crs is None
+        and features_crs != project_crs
+    ):
         # Transformeer bbox naar project CRS
-        transform = QgsCoordinateTransform(features_crs, project_crs, QgsProject.instance())
+        transform = QgsCoordinateTransform(
+            features_crs, project_crs, QgsProject.instance()
+        )
         bbox_transformed = transform.transformBoundingBox(bbox)
     else:
         bbox_transformed = bbox
@@ -437,7 +604,7 @@ def get_symbol(geojson, resulttype):
     else:
         geometrytype = "MultiPolygon"
 
-    if geometrytype in ("Polygon","MultiPolygon"):
+    if geometrytype in ("Polygon", "MultiPolygon"):
         if resulttype == "result_diff":
             return QgsStyle.defaultStyle().symbol("hashed black X")
         elif resulttype == "result_diff_plus":
@@ -450,7 +617,7 @@ def get_symbol(geojson, resulttype):
             return QgsStyle.defaultStyle().symbol("outline black")
         else:
             return QgsStyle.defaultStyle().symbol("outline blue")
-    elif geometrytype in ("LineString","MultiLineString"):
+    elif geometrytype in ("LineString", "MultiLineString"):
         if resulttype == "result_diff":
             return QgsStyle.defaultStyle().symbol("topo railway")
         elif resulttype == "result_diff_plus":
@@ -463,7 +630,7 @@ def get_symbol(geojson, resulttype):
             return QgsStyle.defaultStyle().symbol("simple black line")
         else:
             return QgsStyle.defaultStyle().symbol("simple blue line")
-    elif geometrytype in ("Point","MultiPoint"):
+    elif geometrytype in ("Point", "MultiPoint"):
         if resulttype == "result_diff":
             return QgsStyle.defaultStyle().symbol("dot white")
         elif resulttype == "result_diff_plus":
@@ -628,17 +795,21 @@ def apply_style_from_gpkg(layer):
     return False
 
 
-def featurecollection_to_layer(name, featurecollection, symbol, visible, group, tempfolder):
+def featurecollection_to_layer(
+    name, featurecollection, symbol, visible, group, tempfolder
+):
     """
     Add a featurecollection to a QGIS-layer to add it to the TOC. If featurecollection has multiple types (point,line, polygon) these types are added seperately.
     """
-    featurecollection =featurecollection_to_multi(featurecollection)
+    featurecollection = featurecollection_to_multi(featurecollection)
     feature_types = get_geojson_type(featurecollection)
-    if len(feature_types)>1:
+    if len(feature_types) > 1:
         for x in feature_types:
-            name_x = name +"_" + str(x)
+            name_x = name + "_" + str(x)
             geojson_x = filter_geojson_by_geometry_type(featurecollection, x)
-            featurecollection_to_layer(name_x, geojson_x, symbol, visible, group, tempfolder)
+            featurecollection_to_layer(
+                name_x, geojson_x, symbol, visible, group, tempfolder
+            )
         return
 
     qinst = QgsProject.instance()
@@ -652,16 +823,20 @@ def featurecollection_to_layer(name, featurecollection, symbol, visible, group, 
     if tempfolder is None or str(tempfolder) == "NULL" or str(tempfolder) == "":
         tempfolder = "tempfolder"
     gpkg_path = tempfolder + "/" + GPKG_FILENAME
-    write_featurecollection_to_geopackage(gpkg_path, featurecollection, layer_name = name)
+    write_featurecollection_to_geopackage(gpkg_path, featurecollection, layer_name=name)
 
     uri = f"{gpkg_path}|layername={name}"
 
     # 3. Maak de laag aan
     vl = QgsVectorLayer(uri, name, "ogr")
     # styling
-    if symbol is not None and isinstance(symbol,str):
+    if symbol is not None and isinstance(symbol, str):
         symbol = get_symbol(featurecollection, symbol)
-    if symbol is not None and vl.renderer() is not None and isinstance(symbol,QgsSymbol):
+    if (
+        symbol is not None
+        and vl.renderer() is not None
+        and isinstance(symbol, QgsSymbol)
+    ):
         vl.renderer().setSymbol(symbol)
     # vl.setOpacity(0.5)
 
@@ -695,13 +870,15 @@ def filter_geojson_by_geometry_type(input_geojson, geometry_type):
 
     # Filter features by geometry type
     filtered_features = [
-        feature for feature in input_geojson.get("features", [])
+        feature
+        for feature in input_geojson.get("features", [])
         if feature.get("geometry", {}).get("type") == geometry_type
     ]
     output_geojson = copy.deepcopy(input_geojson)
     output_geojson["features"] = filtered_features
     # Create new GeoJSON structure
     return output_geojson
+
 
 def set_layer_visibility(layer: QgsMapLayer, visible: bool):
     """
@@ -944,9 +1121,14 @@ def get_valid_layer(layer_id_or_name):
     Checks if the layer_id exists in the current project.
     Returns the layer object if valid, otherwise returns None.
     """
-    if layer_id_or_name is None or not layer_id_or_name or layer_id_or_name==-1 or not isinstance(layer_id_or_name,str):
+    if (
+        layer_id_or_name is None
+        or not layer_id_or_name
+        or layer_id_or_name == -1
+        or not isinstance(layer_id_or_name, str)
+    ):
         return None
-    project=QgsProject.instance()
+    project = QgsProject.instance()
     # Zoek de laag in het huidige project
     layer = project.mapLayer((layer_id_or_name))
 
@@ -1006,9 +1188,6 @@ def get_original_geometry(feature, fieldname):
         original_geometry = None
     return original_geometry
 
-from pathlib import Path
-from qgis.core import QgsVectorFileWriter, QgsProject, QgsVectorLayer
-
 
 def save_layer_to_gpkg(layer, gpkg_path, layer_name=None):
     """
@@ -1025,7 +1204,7 @@ def save_layer_to_gpkg(layer, gpkg_path, layer_name=None):
     # --- EXPLICIT ENCODING ---
     options.fileEncoding = "UTF-8"
 
-    #CRS from source-layer - default
+    # CRS from source-layer - default
 
     # Check if exists
     folder = os.path.dirname(path_str)
@@ -1042,7 +1221,15 @@ def save_layer_to_gpkg(layer, gpkg_path, layer_name=None):
     )
 
 
-def generate_correction_layer(input, result, correction_layer_name,id_theme_brdrq_fieldname,workfolder,review_percentage=5, add_metadata=False):
+def generate_correction_layer(
+    input,
+    result,
+    correction_layer_name,
+    id_theme_brdrq_fieldname,
+    workfolder,
+    review_percentage=5,
+    add_metadata=False,
+):
 
     source_layer = input
     results_layer = result
@@ -1053,8 +1240,12 @@ def generate_correction_layer(input, result, correction_layer_name,id_theme_brdr
 
     path = os.path.join(workfolder, GPKG_FILENAME)
 
-    res = save_layer_to_gpkg(source_layer, path,correction_layer_name)
-    correction_layer = QgsVectorLayer(res[2] + "|layername=" + res[3], correction_layer_name, "ogr")
+    res = save_layer_to_gpkg(source_layer, path, correction_layer_name)
+    correction_layer = QgsVectorLayer(
+        res[2] + "|layername=" + res[3], correction_layer_name, "ogr"
+    )
+
+    geom_type = correction_layer.geometryType()
 
     # Make a dictionary with ID to geometry from the resultslayer
     id_geom_map = {}
@@ -1070,10 +1261,11 @@ def generate_correction_layer(input, result, correction_layer_name,id_theme_brdr
         stability_field_available = True
     for feat in results_layer.getFeatures():
         key = feat[ID_THEME_FIELD_NAME]
+        geom = feat.geometry()
         if key in id_geom_map.keys():
             # when key not unique and multiple predictions, the last prediction is added to the list and the status is set to review
             ids_to_review.append(key)
-        id_geom_map[key] = feat.geometry()
+        id_geom_map[key] = geom
         if add_metadata:
             id_metadata_map[key] = feat[METADATA_FIELD_NAME]
         id_diff_index_map[key] = feat[SYMMETRICAL_AREA_CHANGE]
@@ -1083,14 +1275,28 @@ def generate_correction_layer(input, result, correction_layer_name,id_theme_brdr
         except:
             evaluation = Evaluation.NOT_EVALUATED
         id_evaluation_map[key] = evaluation
-
-        if evaluation in (
-                Evaluation.NO_CHANGE,
-                Evaluation.EQUALITY_BY_ID,
-                Evaluation.EQUALITY_BY_FULL_REFERENCE,
-                Evaluation.EQUALITY_BY_ID_AND_FULL_REFERENCE
+        if evaluation == Evaluation.NO_CHANGE:
+            ids_not_changed.append(key)
+        elif evaluation in (
+            Evaluation.EQUALITY_BY_ID,
+            Evaluation.EQUALITY_BY_FULL_REFERENCE,
+            Evaluation.EQUALITY_BY_ID_AND_FULL_REFERENCE,
         ):
             pass
+        elif geom is None or geom.isEmpty():
+            ids_to_align.append(key)
+        elif (
+            geom_type != Qgis.GeometryType.Polygon
+            and stability_field_available
+            and not feat[STABILITY]
+        ):
+            ids_to_align.append(key)
+        elif (
+            geom_type != Qgis.GeometryType.Polygon
+            and stability_field_available
+            and feat[STABILITY]
+        ):
+            ids_to_review.append(key)
         elif stability_field_available and not feat[STABILITY]:
             ids_to_align.append(key)
         elif feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] > review_percentage:
@@ -1150,68 +1356,77 @@ def generate_correction_layer(input, result, correction_layer_name,id_theme_brdr
     style_outputlayer(correction_layer, BRDRQ_STATE_FIELDNAME)
     return correction_layer
 
+
 def style_outputlayer(layer, field_name):
-    # Define categories
+    # Determine the geometry type (Point=0, Line=1, Polygon=2)
+    geom_type = layer.geometryType()
+
+    # Configuration for each state
+    state_config = {
+        str(BrdrQState.NOT_CHANGED.value): {
+            "color": "#b2df8a",
+            "width": "0.6",
+            "size": "2.0",
+        },
+        str(BrdrQState.AUTO_UPDATED.value): {
+            "color": "green",
+            "width": "0.8",
+            "size": "3.0",
+        },
+        str(BrdrQState.MANUAL_UPDATED.value): {
+            "color": "blue",
+            "width": "0.8",
+            "size": "3.0",
+        },
+        str(BrdrQState.TO_REVIEW.value): {
+            "color": "orange",
+            "width": "1.0",
+            "size": "4.0",
+        },
+        str(BrdrQState.TO_UPDATE.value): {
+            "color": "red",
+            "width": "1.0",
+            "size": "4.0",
+        },
+    }
+
     categories = []
 
-    # Not changed
-    symbol_not_changed = QgsFillSymbol.createSimple(
-        {
-            "outline_color": "#b2df8a",
-            "outline_style": "solid",
-            "outline_width": "2",
-            "color": "transparent",
-        }
-    )
-    value = str(BrdrQState.NOT_CHANGED.value)
-    categories.append(QgsRendererCategory(value, symbol_not_changed, value))
+    for value, settings in state_config.items():
+        if geom_type == Qgis.GeometryType.Polygon:
+            symbol = QgsFillSymbol.createSimple(
+                {
+                    "outline_color": settings["color"],
+                    "outline_style": "solid",
+                    "outline_width": settings["width"],
+                    "color": "transparent",
+                }
+            )
+        elif geom_type == Qgis.GeometryType.Line:
+            symbol = QgsLineSymbol.createSimple(
+                {
+                    "line_color": settings["color"],
+                    "line_style": "solid",
+                    "line_width": settings["width"],
+                }
+            )
+        elif geom_type == Qgis.GeometryType.Point:
+            # Point settings: colored circle with a white outline for contrast
+            symbol = QgsMarkerSymbol.createSimple(
+                {
+                    "name": "circle",
+                    "color": settings["color"],
+                    "outline_color": "white",
+                    "size": settings["size"],
+                    "outline_width": "0.4",
+                }
+            )
+        else:
+            continue
 
-    # Auto-updated
-    symbol_auto = QgsFillSymbol.createSimple(
-        {
-            "outline_color": "green",
-            "outline_style": "solid",
-            "outline_width": "2",
-            "color": "transparent",
-        }
-    )
-    value = str(BrdrQState.AUTO_UPDATED.value)
-    categories.append(QgsRendererCategory(value, symbol_auto, value))
-    # manual update
-    symbol_manual_update = QgsFillSymbol.createSimple(
-        {
-            "outline_color": "blue",
-            "outline_style": "solid",
-            "outline_width": "2",
-            "color": "transparent",
-        }
-    )
-    value = str(BrdrQState.MANUAL_UPDATED.value)
-    categories.append(QgsRendererCategory(value, symbol_manual_update, value))
-    # To Review
-    symbol_review = QgsFillSymbol.createSimple(
-        {
-            "outline_color": "orange",
-            "outline_style": "solid",
-            "outline_width": "2",
-            "color": "transparent",
-        }
-    )
-    value = str(BrdrQState.TO_REVIEW.value)
-    categories.append(QgsRendererCategory(value, symbol_review, value))
+        categories.append(QgsRendererCategory(value, symbol, value))
 
-    symbol_todo = QgsFillSymbol.createSimple(
-        {
-            "outline_color": "red",
-            "outline_style": "solid",
-            "outline_width": "2",
-            "color": "transparent",
-        }
-    )
-    value = str(BrdrQState.TO_UPDATE.value)
-    categories.append(QgsRendererCategory(value, symbol_todo, value))
-
-    # Set Renderer
+    # Apply the Categorized Renderer
     renderer = QgsCategorizedSymbolRenderer(field_name, categories)
     layer.setRenderer(renderer)
     layer.triggerRepaint()
@@ -1229,13 +1444,18 @@ def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_
         selected_reference = ref
         layer_reference_name = ref
         ref_suffix = str(ref_id)
-    elif ref in OSM_TYPES:
+    elif ref in (OSM_TYPES + NL_TYPES):  # BE_TYPES +
         selected_reference = ref
         layer_reference_name = ref
         ref_suffix = str(ref)
     else:
+        print("idref: " + str(id_reference_fieldname))
         selected_reference = 0
-        if layer_reference is None or id_reference_fieldname is None or id_reference_fieldname == "NULL":
+        if (
+            layer_reference is None
+            or id_reference_fieldname is None
+            or str(id_reference_fieldname) == "NULL"
+        ):
             raise QgsProcessingException(
                 "Please choose a REFERENCELAYER from the table of contents, and the associated unique REFERENCE ID"
             )
@@ -1247,6 +1467,30 @@ def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_
                 "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"
             )
     return selected_reference, layer_reference_name, ref_suffix
+
+
+def setFilterOnLayer(layername, filter):
+    layer = get_layer_by_name(layername)
+    if not layer is None:
+        layer.setSubsetString(filter)
+    return
+
+
+def remove_empty_features_from_diff_layers(layers_to_filter):
+    supported_geom_types = [Qgis.GeometryType.Line, Qgis.GeometryType.Polygon]
+    filter = (
+        f"brdr_perimeter != 0"  # we use brdr_perimeter so it works for polygons & lines
+    )
+    for lyr in layers_to_filter:
+        if not lyr:
+            continue
+        try:
+            g_type = get_layer_by_name(lyr).geometryType()
+        except:
+            g_type = Qgis.GeometryType.Unknown
+
+        if g_type in supported_geom_types:
+            setFilterOnLayer(lyr, filter)
 
 
 def thematic_preparation(input_thematic_layer, relevant_distance, context, feedback):
@@ -1270,7 +1514,7 @@ def thematic_preparation(input_thematic_layer, relevant_distance, context, feedb
     crs = (
         thematic.sourceCrs().authid()
     )  # set CRS for the calculations, based on the THEMATIC input layer
-    if crs is None or crs =='NULL':
+    if crs is None or str(crs) == "NULL":
         raise QgsProcessingException(
             "Thematic layer does not have a defined CRS attached to it. "
             "Please define a CRS to the Thematic layer, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"
@@ -1316,7 +1560,6 @@ def thematic_preparation(input_thematic_layer, relevant_distance, context, feedb
 import matplotlib
 
 matplotlib.use("Qt5Agg")
-
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 

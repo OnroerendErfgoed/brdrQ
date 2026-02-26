@@ -37,6 +37,8 @@ from brdr.be.grb.enums import GRBType
 from brdr.be.grb.loader import GRBFiscalParcelLoader, GRBActualLoader
 from brdr.configs import ProcessorConfig, AlignerConfig
 from brdr.geometry_utils import safe_unary_union
+from brdr.nl.enums import BRKType
+from brdr.nl.loader import BRKLoader
 from brdr.osm.loader import OSMLoader
 from qgis.core import QgsProcessingFeatureSourceDefinition
 
@@ -64,6 +66,9 @@ from .brdrq_utils import (
     get_valid_layer,
     generate_correction_layer,
     set_layer_visibility,
+    remove_empty_features_from_diff_layers,
+    NL_TYPES,
+    DICT_NL_TYPES,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -436,9 +441,12 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         parameter = QgsProcessingParameterNumber(
             "THRESHOLD_OVERLAP_PERCENTAGE",
-            '<br>Threshold overlap percentage<br><i style="color: gray;">In the exceptional case that the algorithm cannot determine if a reference feature is relevant, this fallback-parameter is used to determine to include/exclude a reference based on overlap-percentage</i>',
-            type=QgsProcessingParameterNumber.Double,
+            '<br>Threshold overlap percentage (%)<br><i style="color: gray;">In the exceptional case that the algorithm cannot determine if a reference feature is relevant, this fallback-parameter is used to determine to include/exclude a reference based on overlap-percentage</i>',
+            type=QgsProcessingParameterNumber.Integer,
             defaultValue=self.default_threshold_overlap_percentage,
+            optional=False,
+            minValue=0,
+            maxValue=100,
         )
         parameter.setFlags(
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
@@ -460,8 +468,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         parameter = QgsProcessingParameterNumber(
             "REVIEW_PERCENTAGE",
             '<br>REVIEW_PERCENTAGE (%)<br><i style="color: gray;">results with a higher change % move to review-list </i>',
-            type=QgsProcessingParameterNumber.Double,
+            type=QgsProcessingParameterNumber.Integer,
             defaultValue=self.default_review_percentage,
+            optional=False,
+            minValue=0,
+            maxValue=100,
         )
         parameter.setFlags(
             parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
@@ -639,6 +650,26 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         elif self.SELECTED_REFERENCE in OSM_TYPES:
             tags = DICT_OSM_TYPES[self.SELECTED_REFERENCE]
             aligner.load_reference_data(OSMLoader(osm_tags=tags, aligner=aligner))
+        # elif self.SELECTED_REFERENCE in BE_TYPES:
+        #     try:
+        #
+        #         loader = WFSReferenceLoader(
+        #             url="https://ccff02.minfin.fgov.be/geoservices/arcgis/services/WMS/Cadastral_LayersWFS/MapServer/WFSServer",
+        #             id_property="CaPaKey",
+        #             typename="CL:Cadastral_parcel",
+        #             aligner=aligner,
+        #             partition=1000,
+        #             limit=500,
+        #         )
+        #         aligner.load_reference_data(loader)
+        #     except Exception as e:
+        #         raise QgsProcessingException(e)
+        elif self.SELECTED_REFERENCE in NL_TYPES:
+            try:
+                brk_type = BRKType[DICT_NL_TYPES[self.SELECTED_REFERENCE]]
+                aligner.load_reference_data(BRKLoader(brk_type=brk_type, partition=1000, aligner=aligner))
+            except Exception as e:
+                raise QgsProcessingException(e)
         else:
             aligner.load_reference_data(
                 GRBActualLoader(
@@ -781,6 +812,14 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.WORKFOLDER,
         )
 
+        # FILTER empty geometries out of diff layers
+        # This does not work for points so we do not add filter for point-layers
+        remove_empty_features_from_diff_layers([
+            self.LAYER_RESULT_DIFF_MIN,
+            self.LAYER_RESULT_DIFF_PLUS,
+            self.LAYER_RESULT_DIFF,
+        ])
+
         result = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
         result_diff = QgsProject.instance().mapLayersByName(self.LAYER_RESULT_DIFF)[0]
         result_diff_plus = QgsProject.instance().mapLayersByName(
@@ -789,6 +828,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         result_diff_min = QgsProject.instance().mapLayersByName(
             self.LAYER_RESULT_DIFF_MIN
         )[0]
+
         correction_layer = None
         if not self.PREDICTIONS or self.PREDICTION_STRATEGY != PredictionStrategy.ALL:
             feedback.pushInfo("Generating correction layer")
@@ -874,8 +914,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     def read_default_settings(self):
         # print ('read_settings')
-        prefix = self.name() + "/"
-        project = QgsProject.instance()
+        prefix = self.name()
 
         # Initial default settings
         self.params_default_dict = {
@@ -944,9 +983,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.default_reference_layer_id = read_setting(
             prefix, "default_reference_layer_id", self.default_reference_layer_id
         )
-        self.default_relevant_distance = read_setting(
+        self.default_relevant_distance = float(read_setting(
             prefix, "relevant_distance", self.default_relevant_distance
-        )
+        ))
         self.default_predictions = read_setting(
             prefix, "default_predictions", self.default_predictions
         )
@@ -971,7 +1010,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.default_threshold_overlap_percentage,
         )
         self.default_workfolder = read_setting(
-            prefix, "default_workfolder", self.default_workfolder
+            prefix, "default_workfolder", self.default_workfolder,scope="global"
         )
         self.default_review_percentage = read_setting(
             prefix, "default_review_percentage", self.default_review_percentage
@@ -999,7 +1038,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     def write_settings(self):
         # print ('write_settings')
-        prefix = self.name() + "/"
+        prefix = self.name()
 
         write_setting(prefix, "theme_layer", self.default_theme_layer)
         write_setting(prefix, "default_theme_layer_id", self.default_theme_layer_id)
@@ -1025,7 +1064,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "default_threshold_overlap_percentage",
             self.default_threshold_overlap_percentage,
         )
-        write_setting(prefix, "default_workfolder", self.default_workfolder)
+        write_setting(prefix, "default_workfolder", self.default_workfolder, scope="global")
         write_setting(
             prefix, "default_review_percentage", self.default_review_percentage
         )
