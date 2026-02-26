@@ -31,6 +31,10 @@ from qgis.core import (
     QgsRendererCategory,
 )
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
+from qgis.core import (
+    QgsLineSymbol,
+    QgsMarkerSymbol,
+)
 from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingFeatureSourceDefinition, QgsProperty
 from qgis.core import QgsProviderRegistry, QgsDataSourceUri
@@ -1192,6 +1196,8 @@ def generate_correction_layer(input, result, correction_layer_name,id_theme_brdr
     res = save_layer_to_gpkg(source_layer, path,correction_layer_name)
     correction_layer = QgsVectorLayer(res[2] + "|layername=" + res[3], correction_layer_name, "ogr")
 
+    geom_type = correction_layer.geometryType()
+
     # Make a dictionary with ID to geometry from the resultslayer
     id_geom_map = {}
     id_diff_index_map = {}
@@ -1206,10 +1212,11 @@ def generate_correction_layer(input, result, correction_layer_name,id_theme_brdr
         stability_field_available = True
     for feat in results_layer.getFeatures():
         key = feat[ID_THEME_FIELD_NAME]
+        geom=feat.geometry()
         if key in id_geom_map.keys():
             # when key not unique and multiple predictions, the last prediction is added to the list and the status is set to review
             ids_to_review.append(key)
-        id_geom_map[key] = feat.geometry()
+        id_geom_map[key] = geom
         if add_metadata:
             id_metadata_map[key] = feat[METADATA_FIELD_NAME]
         id_diff_index_map[key] = feat[SYMMETRICAL_AREA_CHANGE]
@@ -1219,7 +1226,6 @@ def generate_correction_layer(input, result, correction_layer_name,id_theme_brdr
         except:
             evaluation = Evaluation.NOT_EVALUATED
         id_evaluation_map[key] = evaluation
-
         if evaluation in (
                 Evaluation.NO_CHANGE,
                 Evaluation.EQUALITY_BY_ID,
@@ -1227,6 +1233,12 @@ def generate_correction_layer(input, result, correction_layer_name,id_theme_brdr
                 Evaluation.EQUALITY_BY_ID_AND_FULL_REFERENCE
         ):
             pass
+        elif geom is None or geom.isEmpty():
+            ids_to_align.append(key)
+        elif geom_type!= Qgis.GeometryType.Polygon and stability_field_available and not feat[STABILITY]:
+            ids_to_align.append(key)
+        elif geom_type!= Qgis.GeometryType.Polygon and stability_field_available and feat[STABILITY]:
+            ids_to_review.append(key)
         elif stability_field_available and not feat[STABILITY]:
             ids_to_align.append(key)
         elif feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] > review_percentage:
@@ -1286,68 +1298,79 @@ def generate_correction_layer(input, result, correction_layer_name,id_theme_brdr
     style_outputlayer(correction_layer, BRDRQ_STATE_FIELDNAME)
     return correction_layer
 
+
+
+
 def style_outputlayer(layer, field_name):
-    # Define categories
+    # Determine the geometry type (Point=0, Line=1, Polygon=2)
+    geom_type = layer.geometryType()
+
+    # Configuration for each state
+    state_config = {
+        str(BrdrQState.NOT_CHANGED.value): {
+            "color": "#b2df8a",
+            "width": "0.6",
+            "size": "2.0",
+        },
+        str(BrdrQState.AUTO_UPDATED.value): {
+            "color": "green",
+            "width": "0.8",
+            "size": "3.0",
+        },
+        str(BrdrQState.MANUAL_UPDATED.value): {
+            "color": "blue",
+            "width": "0.8",
+            "size": "3.0",
+        },
+        str(BrdrQState.TO_REVIEW.value): {
+            "color": "orange",
+            "width": "1.0",
+            "size": "4.0",
+        },
+        str(BrdrQState.TO_UPDATE.value): {
+            "color": "red",
+            "width": "1.0",
+            "size": "4.0",
+        },
+    }
+
     categories = []
 
-    # Not changed
-    symbol_not_changed = QgsFillSymbol.createSimple(
-        {
-            "outline_color": "#b2df8a",
-            "outline_style": "solid",
-            "outline_width": "2",
-            "color": "transparent",
-        }
-    )
-    value = str(BrdrQState.NOT_CHANGED.value)
-    categories.append(QgsRendererCategory(value, symbol_not_changed, value))
+    for value, settings in state_config.items():
+        if geom_type == Qgis.GeometryType.Polygon:
+            symbol = QgsFillSymbol.createSimple(
+                {
+                    "outline_color": settings["color"],
+                    "outline_style": "solid",
+                    "outline_width": settings["width"],
+                    "color": "transparent",
+                }
+            )
+        elif geom_type == Qgis.GeometryType.Line:
+            symbol = QgsLineSymbol.createSimple(
+                {
+                    "line_color": settings["color"],
+                    "line_style": "solid",
+                    "line_width": settings["width"],
+                }
+            )
+        elif geom_type == Qgis.GeometryType.Point:
+            # Point settings: colored circle with a white outline for contrast
+            symbol = QgsMarkerSymbol.createSimple(
+                {
+                    "name": "circle",
+                    "color": settings["color"],
+                    "outline_color": "white",
+                    "size": settings["size"],
+                    "outline_width": "0.4",
+                }
+            )
+        else:
+            continue
 
-    # Auto-updated
-    symbol_auto = QgsFillSymbol.createSimple(
-        {
-            "outline_color": "green",
-            "outline_style": "solid",
-            "outline_width": "2",
-            "color": "transparent",
-        }
-    )
-    value = str(BrdrQState.AUTO_UPDATED.value)
-    categories.append(QgsRendererCategory(value, symbol_auto, value))
-    # manual update
-    symbol_manual_update = QgsFillSymbol.createSimple(
-        {
-            "outline_color": "blue",
-            "outline_style": "solid",
-            "outline_width": "2",
-            "color": "transparent",
-        }
-    )
-    value = str(BrdrQState.MANUAL_UPDATED.value)
-    categories.append(QgsRendererCategory(value, symbol_manual_update, value))
-    # To Review
-    symbol_review = QgsFillSymbol.createSimple(
-        {
-            "outline_color": "orange",
-            "outline_style": "solid",
-            "outline_width": "2",
-            "color": "transparent",
-        }
-    )
-    value = str(BrdrQState.TO_REVIEW.value)
-    categories.append(QgsRendererCategory(value, symbol_review, value))
+        categories.append(QgsRendererCategory(value, symbol, value))
 
-    symbol_todo = QgsFillSymbol.createSimple(
-        {
-            "outline_color": "red",
-            "outline_style": "solid",
-            "outline_width": "2",
-            "color": "transparent",
-        }
-    )
-    value = str(BrdrQState.TO_UPDATE.value)
-    categories.append(QgsRendererCategory(value, symbol_todo, value))
-
-    # Set Renderer
+    # Apply the Categorized Renderer
     renderer = QgsCategorizedSymbolRenderer(field_name, categories)
     layer.setRenderer(renderer)
     layer.triggerRepaint()
