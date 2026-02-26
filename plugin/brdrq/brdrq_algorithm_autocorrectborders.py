@@ -64,6 +64,7 @@ from .brdrq_utils import (
     get_valid_layer,
     generate_correction_layer,
     set_layer_visibility,
+    remove_empty_features_from_diff_layers,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -787,6 +788,14 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.WORKFOLDER,
         )
 
+        # FILTER empty geometries out of diff layers
+        # This does not work for points so we do not add filter for point-layers
+        remove_empty_features_from_diff_layers([
+            self.LAYER_RESULT_DIFF_MIN,
+            self.LAYER_RESULT_DIFF_PLUS,
+            self.LAYER_RESULT_DIFF,
+        ])
+
         result = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
         result_diff = QgsProject.instance().mapLayersByName(self.LAYER_RESULT_DIFF)[0]
         result_diff_plus = QgsProject.instance().mapLayersByName(
@@ -795,6 +804,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         result_diff_min = QgsProject.instance().mapLayersByName(
             self.LAYER_RESULT_DIFF_MIN
         )[0]
+
+
+
         correction_layer = None
         if not self.PREDICTIONS or self.PREDICTION_STRATEGY != PredictionStrategy.ALL:
             feedback.pushInfo("Generating correction layer")

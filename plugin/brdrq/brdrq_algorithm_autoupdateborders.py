@@ -73,6 +73,7 @@ from .brdrq_utils import (
     generate_correction_layer,
     set_layer_visibility,
     move_to_group,
+    remove_empty_features_from_diff_layers,
 )
 
 
@@ -540,6 +541,14 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 self.GROUP_LAYER,
                 self.WORKFOLDER,
             )
+
+        # FILTER empty geometries out of diff layers
+        # This does not work for points so we do not add filter for point-layers
+        remove_empty_features_from_diff_layers([
+            self.LAYER_RESULT_DIFF_MIN,
+            self.LAYER_RESULT_DIFF_PLUS,
+            self.LAYER_RESULT_DIFF,
+        ])
 
         result = "result"
         geojson_result = fcs_actualisation[result]

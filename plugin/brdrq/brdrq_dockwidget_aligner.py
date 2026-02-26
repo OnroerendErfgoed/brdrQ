@@ -39,6 +39,7 @@ from .brdrq_utils import (
     BRDRQ_STATE_FIELDNAME,
     BrdrQState,
     get_original_geometry,
+    setFilterOnLayer,
 )
 
 
@@ -265,17 +266,13 @@ class brdrQDockWidgetAligner(object):
 
     def setFilterOnLayers(self, value):
         filter = f"brdr_relevant_distance = {value}"
-        self._setFilterOnLayer(self.LAYER_RESULT, filter)
-        self._setFilterOnLayer(self.LAYER_RESULT_DIFF, filter)
-        self._setFilterOnLayer(self.LAYER_RESULT_DIFF_MIN, filter)
-        self._setFilterOnLayer(self.LAYER_RESULT_DIFF_PLUS, filter)
+        setFilterOnLayer(self.LAYER_RESULT, filter)
+        setFilterOnLayer(self.LAYER_RESULT_DIFF, filter)
+        setFilterOnLayer(self.LAYER_RESULT_DIFF_MIN, filter)
+        setFilterOnLayer(self.LAYER_RESULT_DIFF_PLUS, filter)
         return
 
-    def _setFilterOnLayer(self, layername, filter):
-        layer = get_layer_by_name(layername)
-        if not layer is None:
-            layer.setSubsetString(filter)
-        return
+
 
     def get_wkt(self):
         feat = self.feature

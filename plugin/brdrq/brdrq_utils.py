@@ -2,9 +2,7 @@ import copy
 import json
 import os
 from enum import Enum
-
 from pathlib import Path
-from qgis.core import QgsVectorFileWriter, QgsProject, QgsVectorLayer
 
 # TODO QGIS4
 from PyQt5.QtGui import QColor
@@ -26,6 +24,7 @@ from brdr.processor import (
 from brdr.utils import (
     write_featurecollection_to_geopackage,
 )
+from qgis.core import Qgis
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
     QgsRendererCategory,
@@ -36,6 +35,7 @@ from qgis.core import QgsProcessingFeatureSourceDefinition, QgsProperty
 from qgis.core import QgsProviderRegistry, QgsDataSourceUri
 from qgis.core import QgsRectangle
 from qgis.core import QgsSettings
+from qgis.core import QgsVectorFileWriter, QgsProject, QgsVectorLayer
 from qgis.core import QgsWkbTypes
 from qgis.gui import QgsMapTool
 from qgis.gui import QgsRubberBand
@@ -110,7 +110,7 @@ PREFIX_LOCAL_LAYER = (
     "LOCREF"  # prefix for the TOC layername, when a local layer is used
 )
 LOCAL_REFERENCE_LAYER = (
-    PREFIX_LOCAL_LAYER + SPLITTER + " choose LOCAL LAYER and UNIQUE ID below"
+    PREFIX_LOCAL_LAYER + SPLITTER + " define LOCAL REF LAYER and UNIQUE ID in the next 2 fields"
 )
 
 DICT_REFERENCE_OPTIONS = dict()
@@ -1136,8 +1136,6 @@ def get_original_geometry(feature, fieldname):
     return original_geometry
 
 
-
-
 def save_layer_to_gpkg(layer, gpkg_path, layer_name=None):
     """
     Writes a layer to  (existing) GeoPackage.
@@ -1377,6 +1375,27 @@ def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_
             )
     return selected_reference, layer_reference_name, ref_suffix
 
+def setFilterOnLayer(layername, filter):
+    layer = get_layer_by_name(layername)
+    if not layer is None:
+        layer.setSubsetString(filter)
+    return
+
+def remove_empty_features_from_diff_layers(layers_to_filter):
+    supported_geom_types = [Qgis.GeometryType.Line, Qgis.GeometryType.Polygon]
+    filter = (
+        f"brdr_perimeter != 0"  # we use brdr_perimeter so it works for polygons & lines
+    )
+    for lyr in layers_to_filter:
+        if not lyr:
+            continue
+        try:
+            g_type = get_layer_by_name(lyr).geometryType()
+        except:
+            g_type = Qgis.GeometryType.Unknown
+
+        if g_type in supported_geom_types:
+            setFilterOnLayer(lyr, filter)
 
 def thematic_preparation(input_thematic_layer, relevant_distance, context, feedback):
     input_thematic_name = "thematic_preparation"
@@ -1445,10 +1464,8 @@ def thematic_preparation(input_thematic_layer, relevant_distance, context, feedb
 import matplotlib
 
 matplotlib.use("Qt5Agg")
-
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-
 
 class MplCanvas(FigureCanvasQTAgg):
 
@@ -1457,9 +1474,7 @@ class MplCanvas(FigureCanvasQTAgg):
         self.axes = fig.add_subplot(111)
         super(MplCanvas, self).__init__(fig)
 
-
 from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify
-
 
 class SelectTool(QgsMapToolIdentifyFeature):
     featuresIdentified = pyqtSignal(object)
