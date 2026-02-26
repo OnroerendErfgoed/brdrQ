@@ -37,6 +37,8 @@ from brdr.be.grb.enums import GRBType
 from brdr.be.grb.loader import GRBFiscalParcelLoader, GRBActualLoader
 from brdr.configs import ProcessorConfig, AlignerConfig
 from brdr.geometry_utils import safe_unary_union
+from brdr.nl.enums import BRKType
+from brdr.nl.loader import BRKLoader
 from brdr.osm.loader import OSMLoader
 from qgis.core import QgsProcessingFeatureSourceDefinition
 
@@ -65,6 +67,8 @@ from .brdrq_utils import (
     generate_correction_layer,
     set_layer_visibility,
     remove_empty_features_from_diff_layers,
+    NL_TYPES,
+    DICT_NL_TYPES,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -646,6 +650,26 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         elif self.SELECTED_REFERENCE in OSM_TYPES:
             tags = DICT_OSM_TYPES[self.SELECTED_REFERENCE]
             aligner.load_reference_data(OSMLoader(osm_tags=tags, aligner=aligner))
+        # elif self.SELECTED_REFERENCE in BE_TYPES:
+        #     try:
+        #
+        #         loader = WFSReferenceLoader(
+        #             url="https://ccff02.minfin.fgov.be/geoservices/arcgis/services/WMS/Cadastral_LayersWFS/MapServer/WFSServer",
+        #             id_property="CaPaKey",
+        #             typename="CL:Cadastral_parcel",
+        #             aligner=aligner,
+        #             partition=1000,
+        #             limit=500,
+        #         )
+        #         aligner.load_reference_data(loader)
+        #     except Exception as e:
+        #         raise QgsProcessingException(e)
+        elif self.SELECTED_REFERENCE in NL_TYPES:
+            try:
+                brk_type = BRKType[DICT_NL_TYPES[self.SELECTED_REFERENCE]]
+                aligner.load_reference_data(BRKLoader(brk_type=brk_type, partition=1000, aligner=aligner))
+            except Exception as e:
+                raise QgsProcessingException(e)
         else:
             aligner.load_reference_data(
                 GRBActualLoader(
@@ -804,8 +828,6 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         result_diff_min = QgsProject.instance().mapLayersByName(
             self.LAYER_RESULT_DIFF_MIN
         )[0]
-
-
 
         correction_layer = None
         if not self.PREDICTIONS or self.PREDICTION_STRATEGY != PredictionStrategy.ALL:
