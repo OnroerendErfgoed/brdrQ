@@ -12,7 +12,8 @@ from brdr.constants import (
     SYMMETRICAL_AREA_PERCENTAGE_CHANGE,
     METADATA_FIELD_NAME,
     STABILITY,
-    ID_THEME_FIELD_NAME, EVALUATION_FIELD_NAME,
+    ID_THEME_FIELD_NAME,
+    EVALUATION_FIELD_NAME,
 )
 from brdr.nl.enums import BRKType
 from brdr.processor import (
@@ -65,7 +66,9 @@ from brdr.enums import (
     OpenDomainStrategy,
     SnapStrategy,
     PredictionStrategy,
-    FullReferenceStrategy, ProcessorID, Evaluation,
+    FullReferenceStrategy,
+    ProcessorID,
+    Evaluation,
 )
 from brdr.typings import ProcessResult
 
@@ -91,15 +94,18 @@ from shapely import to_wkt, from_wkt, make_valid
 
 GPKG_FILENAME = "brdrq.gpkg"
 
+
 class Processor(str, Enum):
     """
     Enum for processors that can be used in brdrQ. Values based on the IDs in brdr.
     """
+
     AlignerGeometryProcessor = "2024:aligner2024a"
-    #DieussaertGeometryProcessor = "2024:dieussaert2024a"
+    # DieussaertGeometryProcessor = "2024:dieussaert2024a"
     SnapGeometryProcessor = "2024:snap2024a"
     NetworkGeometryProcessor = "2024:network2024a"
-    #TOPOLOGY = "2024:topology2024a"
+    # TOPOLOGY = "2024:topology2024a"
+
 
 class OsmType(dict, Enum):
     """
@@ -110,12 +116,15 @@ class OsmType(dict, Enum):
     osm_landuse = {"landuse": True}
     osm_streets = {"highway": True}
 
+
 SPLITTER = ":"
 PREFIX_LOCAL_LAYER = (
     "LOCREF"  # prefix for the TOC layername, when a local layer is used
 )
 LOCAL_REFERENCE_LAYER = (
-    PREFIX_LOCAL_LAYER + SPLITTER + " define LOCAL REF LAYER and UNIQUE ID in the next 2 fields"
+    PREFIX_LOCAL_LAYER
+    + SPLITTER
+    + " define LOCAL REF LAYER and UNIQUE ID in the next 2 fields"
 )
 
 DICT_REFERENCE_OPTIONS = dict()
@@ -124,17 +133,21 @@ DICT_REFERENCE_OPTIONS[LOCAL_REFERENCE_LAYER] = PREFIX_LOCAL_LAYER
 DICT_GRB_TYPES = dict()
 for e in GRBType:
     try:
-        DICT_GRB_TYPES["BE - GRB - " + e.name + SPLITTER + " " + e.value.split(" - ")[2]] = e.name
+        DICT_GRB_TYPES[
+            "BE - GRB - " + e.name + SPLITTER + " " + e.value.split(" - ")[2]
+        ] = e.name
 
     except:
         DICT_GRB_TYPES["BE - GRB - " + e.name + SPLITTER + " " + e.value] = e.name
 DICT_ADPF_VERSIONS = dict()
 for x in [datetime.datetime.today().year - i for i in range(6)]:
-    DICT_ADPF_VERSIONS["BE - GRB - Administratieve fiscale percelen" + SPLITTER + " " + str(x)] = x
+    DICT_ADPF_VERSIONS[
+        "BE - GRB - Administratieve fiscale percelen" + SPLITTER + " " + str(x)
+    ] = x
 
 DICT_OSM_TYPES = dict()
 for x in OsmType:
-    DICT_OSM_TYPES["OSM - " + x.name]=x.value
+    DICT_OSM_TYPES["OSM - " + x.name] = x.value
 
 # DICT_BE_TYPES = dict()
 # DICT_BE_TYPES["BE - Cadastral Parcels"]="BE_CADASTRAL"
@@ -171,7 +184,9 @@ ENUM_FULL_REFERENCE_STRATEGY_OPTIONS = [e.name for e in FullReferenceStrategy]
 ENUM_PREDICTION_STRATEGY_OPTIONS = [e.name for e in PredictionStrategy]
 
 # ENUM for choosing the Processing-algorithm
-ENUM_PROCESSOR_OPTIONS = [e.name for e in Processor]  # list with all processing-algorithm-options
+ENUM_PROCESSOR_OPTIONS = [
+    e.name for e in Processor
+]  # list with all processing-algorithm-options
 
 BRDRQ_ORIGINAL_WKT_FIELDNAME = "brdrq_original_wkt"
 BRDRQ_STATE_FIELDNAME = "brdrq_state"
@@ -190,14 +205,14 @@ class BrdrQState(str, Enum):
     NONE = "none"
 
 
-def get_processor_by_id(processor_id,config):
+def get_processor_by_id(processor_id, config):
     """
     Function that returns a Processor, based on the ID
     """
     # AlignerGeometryProcessor as default processor
     processor = AlignerGeometryProcessor(config=config)
     try:
-        processor_id=ProcessorID(processor_id)
+        processor_id = ProcessorID(processor_id)
     except ValueError:
         return processor
     if processor_id == ProcessorID.DIEUSSAERT:
@@ -357,17 +372,18 @@ def serialize_value(value):
         # Check of de source zelf een QgsProperty is!
         source_val = value.source
         if isinstance(source_val, QgsProperty):
-            source_val = serialize_value(source_val) # Recursion
+            source_val = serialize_value(source_val)  # Recursion
 
         return {
             "_type": "qgs_source_def",
             "source": source_val,
             "selectedFeaturesOnly": value.selectedFeaturesOnly,
             "featureLimit": value.featureLimit,
-            "flags": int(value.flags)
+            "flags": int(value.flags),
         }
 
     return value
+
 
 def get_string_type(val):
     try:
@@ -379,6 +395,7 @@ def get_string_type(val):
             return "float"
         except ValueError:
             return "string"
+
 
 # def make_path_safe(path):
 #     """Vervangt het absolute pad door een placeholder als het binnen het project valt."""
@@ -392,6 +409,7 @@ def get_string_type(val):
 #     if safe_path.startswith("@project"):
 #         return safe_path.replace("@project", QgsProject.instance().homePath())
 #     return safe_path
+
 
 def geom_shapely_to_qgis(geom_shapely):
     """
@@ -442,7 +460,7 @@ def get_layer_by_name(layer_name):
         return None
 
 
-def zoom_to_features(features, iface, marge_factor=0.1,features_crs=None):
+def zoom_to_features(features, iface, marge_factor=0.1, features_crs=None):
     """
     Function to zoom to an array of features.
     Combines the bbox of the features and adds a margin around the feature
@@ -466,9 +484,15 @@ def zoom_to_features(features, iface, marge_factor=0.1,features_crs=None):
     if not features_crs is None:
         features_crs = QgsCoordinateReferenceSystem(features_crs)
     project_crs = QgsProject.instance().crs()
-    if not features_crs is None and not project_crs is None and features_crs!=project_crs:
+    if (
+        not features_crs is None
+        and not project_crs is None
+        and features_crs != project_crs
+    ):
         # Transformeer bbox naar project CRS
-        transform = QgsCoordinateTransform(features_crs, project_crs, QgsProject.instance())
+        transform = QgsCoordinateTransform(
+            features_crs, project_crs, QgsProject.instance()
+        )
         bbox_transformed = transform.transformBoundingBox(bbox)
     else:
         bbox_transformed = bbox
@@ -580,7 +604,7 @@ def get_symbol(geojson, resulttype):
     else:
         geometrytype = "MultiPolygon"
 
-    if geometrytype in ("Polygon","MultiPolygon"):
+    if geometrytype in ("Polygon", "MultiPolygon"):
         if resulttype == "result_diff":
             return QgsStyle.defaultStyle().symbol("hashed black X")
         elif resulttype == "result_diff_plus":
@@ -593,7 +617,7 @@ def get_symbol(geojson, resulttype):
             return QgsStyle.defaultStyle().symbol("outline black")
         else:
             return QgsStyle.defaultStyle().symbol("outline blue")
-    elif geometrytype in ("LineString","MultiLineString"):
+    elif geometrytype in ("LineString", "MultiLineString"):
         if resulttype == "result_diff":
             return QgsStyle.defaultStyle().symbol("topo railway")
         elif resulttype == "result_diff_plus":
@@ -606,7 +630,7 @@ def get_symbol(geojson, resulttype):
             return QgsStyle.defaultStyle().symbol("simple black line")
         else:
             return QgsStyle.defaultStyle().symbol("simple blue line")
-    elif geometrytype in ("Point","MultiPoint"):
+    elif geometrytype in ("Point", "MultiPoint"):
         if resulttype == "result_diff":
             return QgsStyle.defaultStyle().symbol("dot white")
         elif resulttype == "result_diff_plus":
@@ -771,17 +795,21 @@ def apply_style_from_gpkg(layer):
     return False
 
 
-def featurecollection_to_layer(name, featurecollection, symbol, visible, group, tempfolder):
+def featurecollection_to_layer(
+    name, featurecollection, symbol, visible, group, tempfolder
+):
     """
     Add a featurecollection to a QGIS-layer to add it to the TOC. If featurecollection has multiple types (point,line, polygon) these types are added seperately.
     """
-    featurecollection =featurecollection_to_multi(featurecollection)
+    featurecollection = featurecollection_to_multi(featurecollection)
     feature_types = get_geojson_type(featurecollection)
-    if len(feature_types)>1:
+    if len(feature_types) > 1:
         for x in feature_types:
-            name_x = name +"_" + str(x)
+            name_x = name + "_" + str(x)
             geojson_x = filter_geojson_by_geometry_type(featurecollection, x)
-            featurecollection_to_layer(name_x, geojson_x, symbol, visible, group, tempfolder)
+            featurecollection_to_layer(
+                name_x, geojson_x, symbol, visible, group, tempfolder
+            )
         return
 
     qinst = QgsProject.instance()
@@ -795,16 +823,20 @@ def featurecollection_to_layer(name, featurecollection, symbol, visible, group, 
     if tempfolder is None or str(tempfolder) == "NULL" or str(tempfolder) == "":
         tempfolder = "tempfolder"
     gpkg_path = tempfolder + "/" + GPKG_FILENAME
-    write_featurecollection_to_geopackage(gpkg_path, featurecollection, layer_name = name)
+    write_featurecollection_to_geopackage(gpkg_path, featurecollection, layer_name=name)
 
     uri = f"{gpkg_path}|layername={name}"
 
     # 3. Maak de laag aan
     vl = QgsVectorLayer(uri, name, "ogr")
     # styling
-    if symbol is not None and isinstance(symbol,str):
+    if symbol is not None and isinstance(symbol, str):
         symbol = get_symbol(featurecollection, symbol)
-    if symbol is not None and vl.renderer() is not None and isinstance(symbol,QgsSymbol):
+    if (
+        symbol is not None
+        and vl.renderer() is not None
+        and isinstance(symbol, QgsSymbol)
+    ):
         vl.renderer().setSymbol(symbol)
     # vl.setOpacity(0.5)
 
@@ -838,13 +870,15 @@ def filter_geojson_by_geometry_type(input_geojson, geometry_type):
 
     # Filter features by geometry type
     filtered_features = [
-        feature for feature in input_geojson.get("features", [])
+        feature
+        for feature in input_geojson.get("features", [])
         if feature.get("geometry", {}).get("type") == geometry_type
     ]
     output_geojson = copy.deepcopy(input_geojson)
     output_geojson["features"] = filtered_features
     # Create new GeoJSON structure
     return output_geojson
+
 
 def set_layer_visibility(layer: QgsMapLayer, visible: bool):
     """
@@ -1087,9 +1121,14 @@ def get_valid_layer(layer_id_or_name):
     Checks if the layer_id exists in the current project.
     Returns the layer object if valid, otherwise returns None.
     """
-    if layer_id_or_name is None or not layer_id_or_name or layer_id_or_name==-1 or not isinstance(layer_id_or_name,str):
+    if (
+        layer_id_or_name is None
+        or not layer_id_or_name
+        or layer_id_or_name == -1
+        or not isinstance(layer_id_or_name, str)
+    ):
         return None
-    project=QgsProject.instance()
+    project = QgsProject.instance()
     # Zoek de laag in het huidige project
     layer = project.mapLayer((layer_id_or_name))
 
@@ -1165,7 +1204,7 @@ def save_layer_to_gpkg(layer, gpkg_path, layer_name=None):
     # --- EXPLICIT ENCODING ---
     options.fileEncoding = "UTF-8"
 
-    #CRS from source-layer - default
+    # CRS from source-layer - default
 
     # Check if exists
     folder = os.path.dirname(path_str)
@@ -1182,7 +1221,15 @@ def save_layer_to_gpkg(layer, gpkg_path, layer_name=None):
     )
 
 
-def generate_correction_layer(input, result, correction_layer_name,id_theme_brdrq_fieldname,workfolder,review_percentage=5, add_metadata=False):
+def generate_correction_layer(
+    input,
+    result,
+    correction_layer_name,
+    id_theme_brdrq_fieldname,
+    workfolder,
+    review_percentage=5,
+    add_metadata=False,
+):
 
     source_layer = input
     results_layer = result
@@ -1193,8 +1240,10 @@ def generate_correction_layer(input, result, correction_layer_name,id_theme_brdr
 
     path = os.path.join(workfolder, GPKG_FILENAME)
 
-    res = save_layer_to_gpkg(source_layer, path,correction_layer_name)
-    correction_layer = QgsVectorLayer(res[2] + "|layername=" + res[3], correction_layer_name, "ogr")
+    res = save_layer_to_gpkg(source_layer, path, correction_layer_name)
+    correction_layer = QgsVectorLayer(
+        res[2] + "|layername=" + res[3], correction_layer_name, "ogr"
+    )
 
     geom_type = correction_layer.geometryType()
 
@@ -1212,7 +1261,7 @@ def generate_correction_layer(input, result, correction_layer_name,id_theme_brdr
         stability_field_available = True
     for feat in results_layer.getFeatures():
         key = feat[ID_THEME_FIELD_NAME]
-        geom=feat.geometry()
+        geom = feat.geometry()
         if key in id_geom_map.keys():
             # when key not unique and multiple predictions, the last prediction is added to the list and the status is set to review
             ids_to_review.append(key)
@@ -1226,18 +1275,27 @@ def generate_correction_layer(input, result, correction_layer_name,id_theme_brdr
         except:
             evaluation = Evaluation.NOT_EVALUATED
         id_evaluation_map[key] = evaluation
-        if evaluation in (
-                Evaluation.NO_CHANGE,
-                Evaluation.EQUALITY_BY_ID,
-                Evaluation.EQUALITY_BY_FULL_REFERENCE,
-                Evaluation.EQUALITY_BY_ID_AND_FULL_REFERENCE
+        if evaluation == Evaluation.NO_CHANGE:
+            ids_not_changed.append(key)
+        elif evaluation in (
+            Evaluation.EQUALITY_BY_ID,
+            Evaluation.EQUALITY_BY_FULL_REFERENCE,
+            Evaluation.EQUALITY_BY_ID_AND_FULL_REFERENCE,
         ):
             pass
         elif geom is None or geom.isEmpty():
             ids_to_align.append(key)
-        elif geom_type!= Qgis.GeometryType.Polygon and stability_field_available and not feat[STABILITY]:
+        elif (
+            geom_type != Qgis.GeometryType.Polygon
+            and stability_field_available
+            and not feat[STABILITY]
+        ):
             ids_to_align.append(key)
-        elif geom_type!= Qgis.GeometryType.Polygon and stability_field_available and feat[STABILITY]:
+        elif (
+            geom_type != Qgis.GeometryType.Polygon
+            and stability_field_available
+            and feat[STABILITY]
+        ):
             ids_to_review.append(key)
         elif stability_field_available and not feat[STABILITY]:
             ids_to_align.append(key)
@@ -1297,8 +1355,6 @@ def generate_correction_layer(input, result, correction_layer_name,id_theme_brdr
 
     style_outputlayer(correction_layer, BRDRQ_STATE_FIELDNAME)
     return correction_layer
-
-
 
 
 def style_outputlayer(layer, field_name):
@@ -1388,14 +1444,18 @@ def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_
         selected_reference = ref
         layer_reference_name = ref
         ref_suffix = str(ref_id)
-    elif ref in (OSM_TYPES + NL_TYPES):#BE_TYPES +
+    elif ref in (OSM_TYPES + NL_TYPES):  # BE_TYPES +
         selected_reference = ref
         layer_reference_name = ref
         ref_suffix = str(ref)
     else:
         print("idref: " + str(id_reference_fieldname))
         selected_reference = 0
-        if layer_reference is None or id_reference_fieldname is None or str(id_reference_fieldname) == "NULL":
+        if (
+            layer_reference is None
+            or id_reference_fieldname is None
+            or str(id_reference_fieldname) == "NULL"
+        ):
             raise QgsProcessingException(
                 "Please choose a REFERENCELAYER from the table of contents, and the associated unique REFERENCE ID"
             )
@@ -1408,11 +1468,13 @@ def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_
             )
     return selected_reference, layer_reference_name, ref_suffix
 
+
 def setFilterOnLayer(layername, filter):
     layer = get_layer_by_name(layername)
     if not layer is None:
         layer.setSubsetString(filter)
     return
+
 
 def remove_empty_features_from_diff_layers(layers_to_filter):
     supported_geom_types = [Qgis.GeometryType.Line, Qgis.GeometryType.Polygon]
@@ -1429,6 +1491,7 @@ def remove_empty_features_from_diff_layers(layers_to_filter):
 
         if g_type in supported_geom_types:
             setFilterOnLayer(lyr, filter)
+
 
 def thematic_preparation(input_thematic_layer, relevant_distance, context, feedback):
     input_thematic_name = "thematic_preparation"
@@ -1451,7 +1514,7 @@ def thematic_preparation(input_thematic_layer, relevant_distance, context, feedb
     crs = (
         thematic.sourceCrs().authid()
     )  # set CRS for the calculations, based on the THEMATIC input layer
-    if crs is None or str(crs) =="NULL":
+    if crs is None or str(crs) == "NULL":
         raise QgsProcessingException(
             "Thematic layer does not have a defined CRS attached to it. "
             "Please define a CRS to the Thematic layer, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)"
@@ -1500,6 +1563,7 @@ matplotlib.use("Qt5Agg")
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
+
 class MplCanvas(FigureCanvasQTAgg):
 
     def __init__(self, parent=None, width=5, height=4, dpi=100):
@@ -1507,7 +1571,9 @@ class MplCanvas(FigureCanvasQTAgg):
         self.axes = fig.add_subplot(111)
         super(MplCanvas, self).__init__(fig)
 
+
 from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify
+
 
 class SelectTool(QgsMapToolIdentifyFeature):
     featuresIdentified = pyqtSignal(object)
