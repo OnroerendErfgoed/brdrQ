@@ -266,7 +266,7 @@ class brdrQDockWidgetFeatureAligner(
         if self.crs is None or str(self.crs) == "NULL" or str(self.crs) == "":
             iface.messageBar().pushWarning(
                 "CRS",
-                "CRS of the thematic layer is not defined. Please define a CRS to the thematic layer with units in meter",
+                "CRS of the thematic layer is not defined. Please define a CRS to the thematic layer with units in meter"
             )
             self.layer = None
             self.mMapLayerComboBox.setLayer(self.layer)
@@ -587,8 +587,7 @@ class brdrQDockWidgetFeatureAligner(
             except Exception as e:
                 iface.messageBar().pushWarning(
                     "CRS",
-                    "Reference layer 'BE - GRB' does not support CRS of current thematic layer. ",
-                    str(e),
+                    f"Reference layer 'BE - GRB' does not support CRS of current thematic layer: {str(e)}"
                 )
                 return None
         elif self.reference_choice in ADPF_VERSIONS:
@@ -601,9 +600,7 @@ class brdrQDockWidgetFeatureAligner(
             except Exception as e:
                 iface.messageBar().pushWarning(
                     "CRS",
-                    "Reference layer 'BE - GRB' does not support CRS of current thematic layer. ",
-                    str(e),
-                )
+                    f"Reference layer 'BE - GRB' does not support CRS of current thematic layer: {str(e)}")
                 return None
         elif self.reference_choice in OSM_TYPES:
             tags = DICT_OSM_TYPES[self.reference_choice]
@@ -618,8 +615,7 @@ class brdrQDockWidgetFeatureAligner(
             except Exception as e:
                 iface.messageBar().pushWarning(
                     "CRS",
-                    "Reference layer 'NL - BRK' does not support CRS of current thematic layer. ",
-                    str(e),
+                    f"Reference layer 'NL - BRK' does not support CRS of current thematic layer: {str(e)}"
                 )
                 return None
         else:
@@ -638,7 +634,7 @@ class brdrQDockWidgetFeatureAligner(
             elif reference_crs != self.crs:
                 iface.messageBar().pushWarning(
                     "CRS",
-                    "Thematic layer and ReferenceLayer are in a different CRS. "
+                    "Thematic layer and ReferenceLayer are in a different CRS." 
                     "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)",
                 )
                 return None
