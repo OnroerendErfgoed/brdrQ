@@ -176,7 +176,7 @@ class brdrQDockWidgetAligner(object):
                 level=Qgis.Warning,
                 duration=5,
             )
-
+        layer.triggerRepaint()
         self.iface.messageBar().pushMessage("geometry saved",duration=5,)
 
     def _reset_geometry(self, layer):
@@ -232,7 +232,7 @@ class brdrQDockWidgetAligner(object):
                 level=Qgis.Warning,
                 duration=5,
             )
-
+        layer.triggerRepaint()
         self.iface.messageBar().pushMessage("geometry reset",duration=5)
 
     def onSliderChange(self, index):
