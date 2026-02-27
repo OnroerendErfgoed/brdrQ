@@ -1,3 +1,7 @@
+# v0.18.1
+
+- Updated UI of FeatureAligner: cleaned + icons
+
 # v0.18.0
 
 - Updated icons for brdrQ [#248]
