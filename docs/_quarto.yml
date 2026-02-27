@@ -8,11 +8,11 @@ website:
     left:
       - text: Home
         href: index.qmd
-      - text: Autocorrectborders
-        href: autocorrectborders.md
       - text: FeatureAligner
         href: featurealigner.md
-      - text: Autoupdateborders
+      - text: Autocorrectborders (BULK)
+        href: autocorrectborders.md
+      - text: GRB Updater (BULK - Flanders specific)
         href: autoupdateborders.md
       - text: Q & A
         href: qa.qmd
