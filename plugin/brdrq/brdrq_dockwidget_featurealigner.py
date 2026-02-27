@@ -97,6 +97,22 @@ class brdrQDockWidgetFeatureAligner(
         # #widgets-and-dialogs-with-auto-connect
 
         self.setupUi(self)
+        from qgis.core import QgsApplication
+
+        icon_map = {
+            self.pushButton_save: "/mActionFileSave.svg",
+            self.pushButton_reset: "/mActionUndo.svg",
+            self.pushButton_help: "/mActionHelpContents.svg",
+            self.pushButton_grafiek: "/mActionCalculateField.svg",
+            self.pushButton_visualisatie: "/mActionShowAllLayers.svg",
+            self.pushButton_settings: "/mActionOptions.svg",
+            self.pushButton_select: "/mActionSelect.svg",
+        }
+
+        for button, icon_name in icon_map.items():
+            button.setIcon(QgsApplication.getThemeIcon(icon_name))
+            # button.setIconSize(QtCore.QSize(18, 18))
+
         self._initialize()
 
     def clearUserInterface(self):
