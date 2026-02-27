@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="a" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <style>
+      .b {
+        fill: #4ea000;
+      }
+
+      .c {
+        fill: #c90606;
+      }
+    </style>
+  </defs>
+  <rect class="c" x=".4" y=".49" width="525.19" height="640" rx="50" ry="50"/>
+  <circle class="c" cx="469.73" cy="341.82" r="341.33"/>
+  <rect class="b" x=".4" y="341.82" width="682.67" height="682.67" rx="49.99" ry="49.99"/>
+  <circle class="b" cx="683.06" cy="683.16" r="341.33"/>
+  <rect class="b" x=".4" y="341.82" width="159.32" height="130.13"/>
+  <rect class="b" x="618.81" y="341.82" width="64.26" height="682.67"/>
+</svg>
