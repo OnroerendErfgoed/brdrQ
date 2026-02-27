@@ -98,16 +98,16 @@ ul.task-list li input[type="checkbox"] {
 <span class="menu-text">Home</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./autocorrectborders.html"> 
-<span class="menu-text">Autocorrectborders</span></a>
-  </li>  
-  <li class="nav-item">
     <a class="nav-link" href="./featurealigner.html"> 
 <span class="menu-text">FeatureAligner</span></a>
   </li>  
   <li class="nav-item">
+    <a class="nav-link" href="./autocorrectborders.html"> 
+<span class="menu-text">Autocorrectborders (BULK)</span></a>
+  </li>  
+  <li class="nav-item">
     <a class="nav-link" href="./autoupdateborders.html"> 
-<span class="menu-text">Autoupdateborders</span></a>
+<span class="menu-text">GRB Updater (BULK - Flanders specific)</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="./qa.html"> 
@@ -162,6 +162,7 @@ ul.task-list li input[type="checkbox"] {
 
 <section id="welcome-to-the-brdrq-documentation-page" class="level1">
 <h1>Welcome to the brdrQ-Documentation page</h1>
+<p><img src="figures/icon_base_large.png" width="50"></p>
 <section id="introduction" class="level2">
 <h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
 <p><strong>brdrQ</strong> is a QGIS plugin designed to align geometries with reference data. It helps users correct spatial discrepancies adjusting geometries to match reference sources using <a href="https://github.com/OnroerendErfgoed/brdr"><code>brdr</code></a>.</p>
@@ -178,15 +179,16 @@ ul.task-list li input[type="checkbox"] {
 <p>This plugin provides tools to align geometries to reference data.</p>
 <p>here you can find links to the different tools that are currently provided:</p>
 <ul>
-<li><a href="./autocorrectborders.html">Autocorrectborders</a> - Bulk alignment to reference layer</li>
 <li><a href="./featurealigner.html">Feature aligner</a> - Feature-by-feature alignment with predictions</li>
-<li><a href="./autoupdateborders.html">Autoupdateborders</a> - Bulk alignment to latest GRB (Flanders - Belgium) based on predictions and provenance</li>
+<li><a href="./autocorrectborders.html">Autocorrectborders (BULK)</a> - Bulk alignment of your data to a reference layer</li>
+<li><a href="./autoupdateborders.html">GRB Updater (BULK)</a> - Bulk alignment to latest GRB (Flanders - Belgium) based on predictions and provenance</li>
 </ul>
 </section>
 <section id="possible-workflow" class="level2">
 <h2 class="anchored" data-anchor-id="possible-workflow">Possible workflow</h2>
+<p>The tools can be used separately or in combination with each other:</p>
 <ol type="1">
-<li>Use <a href="./autocorrectborders.html">Autocorrectborders</a> to align your thematic data to a reference layer. A CORRECTION_ layer is returned that indicates the brdrq_state of the alignment.</li>
+<li>Use <a href="./autocorrectborders.html">Autocorrectborders (BULK)</a> to align your thematic data to a reference layer. A CORRECTION_ layer is returned that indicates the brdrq_state of the alignment.</li>
 <li>Use <a href="./featurealigner.html">Feature aligner</a> on the CORRECTION_ layer to review/update features that are not automatically updated, according the ‘brdrq_state’ (to_review, to_update).</li>
 </ol>
 
