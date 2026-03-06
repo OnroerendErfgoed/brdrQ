@@ -37,11 +37,11 @@ from brdr.loader import DictLoader
 from brdr.nl.enums import BRKType
 from brdr.nl.loader import BRKLoader
 from brdr.osm.loader import OSMLoader
-from qgis import processing
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.core import QgsFeature, QgsWkbTypes, QgsVectorLayer, QgsProject
+from qgis.core import QgsFeatureRequest
 from qgis.core import QgsMapLayerProxyModel
 from qgis.gui import QgsMapToolPan
 from qgis.gui import QgsRubberBand
@@ -666,22 +666,46 @@ class brdrQDockWidgetFeatureAligner(
                     "Please provide the Unique ID-fieldname of the reference layer (SETTINGS)",
                 )
                 return None
-            # Load reference-layer into a shapely_dict:
+
+            # # create temp feat layer
+            # type_str = QgsWkbTypes.displayString(self.layer.wkbType())
+            # crs_authid = self.layer.crs().authid()
+            # uri = f"{type_str}?crs={crs_authid}"
+            # temp_layer = QgsVectorLayer(uri, "temp_layer", "memory")
+            # temp_layer_data = temp_layer.dataProvider()
+            # temp_layer_data.addFeatures([feat])
+            #
+            # # Load reference-layer into a shapely_dict:
+            # dict_reference = {}
+            # processing.run(
+            #     "native:selectwithindistance",
+            #     {
+            #         "INPUT": self.reference_layer,
+            #         "REFERENCE": temp_layer,
+            #         "DISTANCE": 2 * self.maximum / 100,
+            #         "METHOD": 0,
+            #     },
+            # )
+            # features = self.reference_layer.selectedFeatures()
+            # for current, feature in enumerate(features):
+            #     id_reference = feature.attribute(self.reference_id)
+            #     dict_reference[id_reference] = geom_qgis_to_shapely(feature.geometry())
+            # self.reference_layer.removeSelection()
+
+            # 1. calculate extra buffer
+            dist = 2 * self.maximum / 100
+            # 2. Get search extent
+            search_geometry = feat.geometry().buffer(dist, 5)
+            search_extent = search_geometry.boundingBox()
+            request = QgsFeatureRequest().setFilterRect(search_extent)
             dict_reference = {}
-            processing.run(
-                "native:selectwithindistance",
-                {
-                    "INPUT": self.reference_layer,
-                    "REFERENCE": self.layer,
-                    "DISTANCE": 2 * self.maximum / 100,
-                    "METHOD": 0,
-                },
-            )
-            features = self.reference_layer.selectedFeatures()
-            for current, feature in enumerate(features):
-                id_reference = feature.attribute(self.reference_id)
-                dict_reference[id_reference] = geom_qgis_to_shapely(feature.geometry())
-            self.reference_layer.removeSelection()
+            # Fill dict_reference
+            for ref_feat in self.reference_layer.getFeatures(request):
+                if ref_feat.geometry().distance(feat.geometry()) <= dist:
+                    id_reference = ref_feat.attribute(self.reference_id)
+                    dict_reference[id_reference] = geom_qgis_to_shapely(
+                        ref_feat.geometry()
+                    )
             self.aligner.load_reference_data(DictLoader(dict_reference))
             self.aligner.name_reference_id = self.reference_id
             self.aligner.reference_data.source["source"] = PREFIX_LOCAL_LAYER
