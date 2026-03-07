@@ -379,7 +379,7 @@ class brdrQDockWidgetAligner(object):
         return
 
     def loadSettings(self):
-        self.settingsDialog.update_settings()
+        self.settingsDialog.update_settings(initial=False)
         self.threshold_overlap_percentage = (
             self.settingsDialog.threshold_overlap_percentage
         )
