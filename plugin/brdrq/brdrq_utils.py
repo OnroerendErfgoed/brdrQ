@@ -39,6 +39,7 @@ from qgis.core import (
 from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingFeatureSourceDefinition, QgsProperty
 from qgis.core import QgsProviderRegistry, QgsDataSourceUri
+from qgis.core import QgsRasterLayer
 from qgis.core import QgsRectangle
 from qgis.core import QgsSettings
 from qgis.core import QgsVectorFileWriter, QgsProject, QgsVectorLayer
