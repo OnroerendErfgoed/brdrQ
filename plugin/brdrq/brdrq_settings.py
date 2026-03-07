@@ -105,8 +105,8 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         )
         self.buttonBox_settings.accepted.connect(self.push_settings_ok)
 
-        # Load initial settings into tool (same as pushing OK in settings Dialog)
-        self.update_settings()
+        # Load initial settings into tool (similar to pushing OK in settings Dialog)
+        self.update_settings(initial=True)
         return
 
     def update_reference_choice(self, index):
@@ -124,10 +124,13 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
 
     def push_settings_ok(self):
         print("push settings ok")
-        self.update_settings()
+        self.update_settings(initial=False)
         self.confirmed.emit()
 
-    def update_settings(self):
+    def update_settings(self,initial=False):
+        """
+        'initial' = True when settings-window is created initially
+        """
         # s = QgsSettings()
         if self.threshold_overlap_percentage is None:
             self.threshold_overlap_percentage = int(read_setting(self.prefix, "threshold_overlap_percentage", 50))
@@ -227,25 +230,27 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             index = self.comboBox_referencelayer.findText(self.reference_choice)
             self.comboBox_referencelayer.setCurrentIndex(index)
         self.reference_choice = self.comboBox_referencelayer.currentText()
-        current_reference_layer_index = self.mMapLayerComboBox_reference.currentIndex()
-        if (
-            current_reference_layer_index == -1 or current_reference_layer_index == 0):  # :
-            try:
-                self.reference_layer = read_setting(
-                    self.prefix,
-                    "reference_layer",
-                    None,
-                )
-                self.mMapLayerComboBox_reference.setLayer(self.reference_layer)
-                self.reference_id = read_setting(
-                    self.prefix,
-                    "reference_id",
-                    0,
-                )
-                self.mFieldComboBox_reference.setField(self.reference_id)
-            except:
-                self.mMapLayerComboBox_reference.setLayer(None)
-                self.mFieldComboBox_reference.setField(None)
+
+        if not initial:
+            self.reference_layer = self.mMapLayerComboBox_reference.currentLayer()
+        if self.reference_layer is None:
+            self.reference_layer = read_setting(
+                self.prefix,
+                "reference_layer",
+                None,
+            )
+        self.mMapLayerComboBox_reference.setLayer(self.reference_layer)
+        if not initial:
+            self.reference_id = self.mFieldComboBox_reference.currentField()
+        if self.reference_id is None:
+            self.reference_id = read_setting(
+                self.prefix,
+                "reference_id",
+                None,
+            )
+        self.mFieldComboBox_reference.setLayer(self.reference_layer)
+        self.mFieldComboBox_reference.setField(self.reference_id)
+
         self.reference_layer = self.mMapLayerComboBox_reference.currentLayer()
         self.reference_id = self.mFieldComboBox_reference.currentField()
 
@@ -268,14 +273,15 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         # )
         self.partial_snapping = False  # at this moment always set to false as this is not performant and not implemented in brdrQ
 
-        if self.snap_max_segment_length is None:
-            self.snap_max_segment_length = int(read_setting(
-                self.prefix,
-                "snap_max_segment_length",
-                2,
-            ))
-            self.spinBox_snap_max_segment_length.setValue(self.snap_max_segment_length)
-        self.snap_max_segment_length = self.spinBox_snap_max_segment_length.value()
+        # if self.snap_max_segment_length is None:
+        #     self.snap_max_segment_length = int(read_setting(
+        #         self.prefix,
+        #         "snap_max_segment_length",
+        #         2,
+        #     ))
+        #     self.spinBox_snap_max_segment_length.setValue(self.snap_max_segment_length)
+        # self.snap_max_segment_length = self.spinBox_snap_max_segment_length.value()
+        self.snap_max_segment_length = 2
 
         print(
             f"settings updated: Reference choice={self.reference_choice} - od_strategy={self.od_strategy} - threshold overlap percenatge = {str(self.threshold_overlap_percentage)}"
@@ -284,21 +290,22 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         write_setting(self.prefix,"threshold_overlap_percentage", self.threshold_overlap_percentage)
         write_setting(self.prefix, "od_strategy", self.od_strategy.name)
         write_setting(self.prefix, "reference_choice", self.reference_choice)
-        write_setting(self.prefix, "reference_id", self.reference_id)
         write_setting(self.prefix, "reference_layer", self.reference_layer)
+        write_setting(self.prefix, "reference_id", self.reference_id)
         write_setting(self.prefix, "max_rel_dist", self.max_rel_dist)
         write_setting(self.prefix, "metadata", self.metadata)
         write_setting(self.prefix, "full_strategy", self.full_strategy.name)
         write_setting(self.prefix, "processor", self.processor.name)
-        write_setting(self.prefix, "partial_snapping", self.partial_snapping)
         write_setting(
             self.prefix,
             "partial_snapping_strategy",
             self.partial_snapping_strategy.name,
         )
-        write_setting(
-            self.prefix, "snap_max_segment_length", self.snap_max_segment_length
-        )
+        # write_setting(self.prefix, "partial_snapping", self.partial_snapping)
+
+        # write_setting(
+        #     self.prefix, "snap_max_segment_length", self.snap_max_segment_length
+        # )
         return
 
 
