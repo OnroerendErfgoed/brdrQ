@@ -40,6 +40,7 @@ from brdr.osm.loader import OSMLoader
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal
+from qgis.core import Qgis
 from qgis.core import QgsFeature, QgsWkbTypes, QgsVectorLayer, QgsProject
 from qgis.core import QgsFeatureRequest
 from qgis.core import QgsMapLayerProxyModel
@@ -280,16 +281,21 @@ class brdrQDockWidgetFeatureAligner(
         except:
             self.crs = None
         if self.crs is None or str(self.crs) == "NULL" or str(self.crs) == "":
-            iface.messageBar().pushWarning(
+            iface.messageBar().pushMessage(
                 "CRS",
-                "CRS of the thematic layer is not defined. Please define a CRS to the thematic layer with units in meter"
+                "CRS of the thematic layer is not defined. Please define a CRS to the thematic layer with units in meter",
+                level=Qgis.Warning,
+                duration=5,
             )
             self.layer = None
             self.mMapLayerComboBox.setLayer(self.layer)
             return
         if self._check_warn_edit_modus(self.layer):
-            iface.messageBar().pushWarning(
-                "Edit-session", "Please close edit-session of layer"
+            iface.messageBar().pushMessage(
+                "Edit-session",
+                "Please close edit-session of layer",
+                level=Qgis.Warning,
+                duration=5,
             )
             self.layer = None
             self.mMapLayerComboBox.setLayer(self.layer)
@@ -601,9 +607,11 @@ class brdrQDockWidgetFeatureAligner(
                     )
                 )
             except Exception as e:
-                iface.messageBar().pushWarning(
+                iface.messageBar().pushMessage(
                     "CRS",
-                    f"Reference layer 'BE - GRB' does not support CRS of current thematic layer: {str(e)}"
+                    f"Reference layer 'BE - GRB' does not support CRS of current thematic layer: {str(e)}",
+                    level=Qgis.Warning,
+                    duration=5,
                 )
                 return None
         elif self.reference_choice in ADPF_VERSIONS:
@@ -614,9 +622,12 @@ class brdrQDockWidgetFeatureAligner(
                     )
                 )
             except Exception as e:
-                iface.messageBar().pushWarning(
+                iface.messageBar().pushMessage(
                     "CRS",
-                    f"Reference layer 'BE - GRB' does not support CRS of current thematic layer: {str(e)}")
+                    f"Reference layer 'BE - GRB' does not support CRS of current thematic layer: {str(e)}",
+                    level=Qgis.Warning,
+                    duration=5,
+                )
                 return None
         elif self.reference_choice in OSM_TYPES:
             tags = DICT_OSM_TYPES[self.reference_choice]
@@ -629,9 +640,11 @@ class brdrQDockWidgetFeatureAligner(
                 brk_type = BRKType[DICT_NL_TYPES[self.reference_choice]]
                 self.aligner.load_reference_data(BRKLoader(brk_type=brk_type, partition=1000, aligner=self.aligner))
             except Exception as e:
-                iface.messageBar().pushWarning(
+                iface.messageBar().pushMessage(
                     "CRS",
-                    f"Reference layer 'NL - BRK' does not support CRS of current thematic layer: {str(e)}"
+                    f"Reference layer 'NL - BRK' does not support CRS of current thematic layer: {str(e)}",
+                    level=Qgis.Warning,
+                    duration=5,
                 )
                 return None
         else:
@@ -642,16 +655,20 @@ class brdrQDockWidgetFeatureAligner(
             except:
                 reference_crs = None
             if reference_crs is None or str(reference_crs) == "NULL" or str(reference_crs) == "":
-                iface.messageBar().pushWarning(
+                iface.messageBar().pushMessage(
                     "CRS",
                     "CRS of the local Reference Layer is not defined. Please define a CRS to the REFERENCE Layer with units in meter",
+                    level=Qgis.Warning,
+                    duration=5,
                 )
                 return None
             elif reference_crs != self.crs:
-                iface.messageBar().pushWarning(
+                iface.messageBar().pushMessage(
                     "CRS",
-                    "Thematic layer and ReferenceLayer are in a different CRS." 
+                    "Thematic layer and ReferenceLayer are in a different CRS."
                     "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)",
+                    level=Qgis.Warning,
+                    duration=5,
                 )
                 return None
             elif (
@@ -660,10 +677,12 @@ class brdrQDockWidgetFeatureAligner(
                 or str(self.reference_id) == ""
                 or self.reference_id == -1
             ):
-                iface.messageBar().pushWarning(
+                iface.messageBar().pushMessage(
                     "Reference ID",
                     "Reference ID not selected: "
                     "Please provide the Unique ID-fieldname of the reference layer (SETTINGS)",
+                    level=Qgis.Warning,
+                    duration=5,
                 )
                 return None
 
