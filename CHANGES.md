@@ -1,3 +1,8 @@
+# v0.18.2
+
+- FeatureAligner: bugfix when using local reference layer [#282]
+- FeatureAligner: bugfix when using WFS/OGC Feature API as local reference layer [#283]
+
 # v0.18.1
 
 - Updated UI of FeatureAligner: cleaned + icons
