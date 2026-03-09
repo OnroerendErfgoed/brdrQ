@@ -37,11 +37,12 @@ from brdr.loader import DictLoader
 from brdr.nl.enums import BRKType
 from brdr.nl.loader import BRKLoader
 from brdr.osm.loader import OSMLoader
-from qgis import processing
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal
+from qgis.core import Qgis
 from qgis.core import QgsFeature, QgsWkbTypes, QgsVectorLayer, QgsProject
+from qgis.core import QgsFeatureRequest
 from qgis.core import QgsMapLayerProxyModel
 from qgis.gui import QgsMapToolPan
 from qgis.gui import QgsRubberBand
@@ -280,16 +281,21 @@ class brdrQDockWidgetFeatureAligner(
         except:
             self.crs = None
         if self.crs is None or str(self.crs) == "NULL" or str(self.crs) == "":
-            iface.messageBar().pushWarning(
+            iface.messageBar().pushMessage(
                 "CRS",
-                "CRS of the thematic layer is not defined. Please define a CRS to the thematic layer with units in meter"
+                "CRS of the thematic layer is not defined. Please define a CRS to the thematic layer with units in meter",
+                level=Qgis.Warning,
+                duration=5,
             )
             self.layer = None
             self.mMapLayerComboBox.setLayer(self.layer)
             return
         if self._check_warn_edit_modus(self.layer):
-            iface.messageBar().pushWarning(
-                "Edit-session", "Please close edit-session of layer"
+            iface.messageBar().pushMessage(
+                "Edit-session",
+                "Please close edit-session of layer",
+                level=Qgis.Warning,
+                duration=5,
             )
             self.layer = None
             self.mMapLayerComboBox.setLayer(self.layer)
@@ -601,9 +607,11 @@ class brdrQDockWidgetFeatureAligner(
                     )
                 )
             except Exception as e:
-                iface.messageBar().pushWarning(
+                iface.messageBar().pushMessage(
                     "CRS",
-                    f"Reference layer 'BE - GRB' does not support CRS of current thematic layer: {str(e)}"
+                    f"Reference layer 'BE - GRB' does not support CRS of current thematic layer: {str(e)}",
+                    level=Qgis.Warning,
+                    duration=5,
                 )
                 return None
         elif self.reference_choice in ADPF_VERSIONS:
@@ -614,9 +622,12 @@ class brdrQDockWidgetFeatureAligner(
                     )
                 )
             except Exception as e:
-                iface.messageBar().pushWarning(
+                iface.messageBar().pushMessage(
                     "CRS",
-                    f"Reference layer 'BE - GRB' does not support CRS of current thematic layer: {str(e)}")
+                    f"Reference layer 'BE - GRB' does not support CRS of current thematic layer: {str(e)}",
+                    level=Qgis.Warning,
+                    duration=5,
+                )
                 return None
         elif self.reference_choice in OSM_TYPES:
             tags = DICT_OSM_TYPES[self.reference_choice]
@@ -629,9 +640,11 @@ class brdrQDockWidgetFeatureAligner(
                 brk_type = BRKType[DICT_NL_TYPES[self.reference_choice]]
                 self.aligner.load_reference_data(BRKLoader(brk_type=brk_type, partition=1000, aligner=self.aligner))
             except Exception as e:
-                iface.messageBar().pushWarning(
+                iface.messageBar().pushMessage(
                     "CRS",
-                    f"Reference layer 'NL - BRK' does not support CRS of current thematic layer: {str(e)}"
+                    f"Reference layer 'NL - BRK' does not support CRS of current thematic layer: {str(e)}",
+                    level=Qgis.Warning,
+                    duration=5,
                 )
                 return None
         else:
@@ -642,16 +655,20 @@ class brdrQDockWidgetFeatureAligner(
             except:
                 reference_crs = None
             if reference_crs is None or str(reference_crs) == "NULL" or str(reference_crs) == "":
-                iface.messageBar().pushWarning(
+                iface.messageBar().pushMessage(
                     "CRS",
                     "CRS of the local Reference Layer is not defined. Please define a CRS to the REFERENCE Layer with units in meter",
+                    level=Qgis.Warning,
+                    duration=5,
                 )
                 return None
             elif reference_crs != self.crs:
-                iface.messageBar().pushWarning(
+                iface.messageBar().pushMessage(
                     "CRS",
-                    "Thematic layer and ReferenceLayer are in a different CRS." 
+                    "Thematic layer and ReferenceLayer are in a different CRS."
                     "Please provide them in the same CRS, with units in meter (f.e. For Belgium in EPSG:31370 or EPSG:3812)",
+                    level=Qgis.Warning,
+                    duration=5,
                 )
                 return None
             elif (
@@ -660,28 +677,54 @@ class brdrQDockWidgetFeatureAligner(
                 or str(self.reference_id) == ""
                 or self.reference_id == -1
             ):
-                iface.messageBar().pushWarning(
+                iface.messageBar().pushMessage(
                     "Reference ID",
                     "Reference ID not selected: "
                     "Please provide the Unique ID-fieldname of the reference layer (SETTINGS)",
+                    level=Qgis.Warning,
+                    duration=5,
                 )
                 return None
-            # Load reference-layer into a shapely_dict:
+
+            # # create temp feat layer
+            # type_str = QgsWkbTypes.displayString(self.layer.wkbType())
+            # crs_authid = self.layer.crs().authid()
+            # uri = f"{type_str}?crs={crs_authid}"
+            # temp_layer = QgsVectorLayer(uri, "temp_layer", "memory")
+            # temp_layer_data = temp_layer.dataProvider()
+            # temp_layer_data.addFeatures([feat])
+            #
+            # # Load reference-layer into a shapely_dict:
+            # dict_reference = {}
+            # processing.run(
+            #     "native:selectwithindistance",
+            #     {
+            #         "INPUT": self.reference_layer,
+            #         "REFERENCE": temp_layer,
+            #         "DISTANCE": 2 * self.maximum / 100,
+            #         "METHOD": 0,
+            #     },
+            # )
+            # features = self.reference_layer.selectedFeatures()
+            # for current, feature in enumerate(features):
+            #     id_reference = feature.attribute(self.reference_id)
+            #     dict_reference[id_reference] = geom_qgis_to_shapely(feature.geometry())
+            # self.reference_layer.removeSelection()
+
+            # 1. calculate extra buffer
+            dist = 2 * self.maximum / 100
+            # 2. Get search extent
+            search_geometry = feat.geometry().buffer(dist, 5)
+            search_extent = search_geometry.boundingBox()
+            request = QgsFeatureRequest().setFilterRect(search_extent)
             dict_reference = {}
-            processing.run(
-                "native:selectwithindistance",
-                {
-                    "INPUT": self.reference_layer,
-                    "REFERENCE": self.layer,
-                    "DISTANCE": 2 * self.maximum / 100,
-                    "METHOD": 0,
-                },
-            )
-            features = self.reference_layer.selectedFeatures()
-            for current, feature in enumerate(features):
-                id_reference = feature.attribute(self.reference_id)
-                dict_reference[id_reference] = geom_qgis_to_shapely(feature.geometry())
-            self.reference_layer.removeSelection()
+            # Fill dict_reference
+            for ref_feat in self.reference_layer.getFeatures(request):
+                if ref_feat.geometry().distance(feat.geometry()) <= dist:
+                    id_reference = ref_feat.attribute(self.reference_id)
+                    dict_reference[id_reference] = geom_qgis_to_shapely(
+                        ref_feat.geometry()
+                    )
             self.aligner.load_reference_data(DictLoader(dict_reference))
             self.aligner.name_reference_id = self.reference_id
             self.aligner.reference_data.source["source"] = PREFIX_LOCAL_LAYER

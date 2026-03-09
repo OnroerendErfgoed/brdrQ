@@ -120,7 +120,10 @@ class brdrQDockWidgetAligner(object):
     def _check_warn_edit_modus(self, layer):
         if layer.isEditable():
             msg = "This layer is in edit-modus. Please close edit-modus before using the feature-aligner"
-            self.iface.messageBar().pushWarning("Warning", msg)
+            self.iface.messageBar().pushMessage("Warning",
+                                                    msg,
+                                                    level=Qgis.Warning,
+                                                    duration=5,)
             return True
         else:
             return False
@@ -376,7 +379,7 @@ class brdrQDockWidgetAligner(object):
         return
 
     def loadSettings(self):
-        self.settingsDialog.update_settings()
+        self.settingsDialog.update_settings(initial=False)
         self.threshold_overlap_percentage = (
             self.settingsDialog.threshold_overlap_percentage
         )

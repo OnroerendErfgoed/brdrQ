@@ -39,6 +39,7 @@ from qgis.core import (
 from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingFeatureSourceDefinition, QgsProperty
 from qgis.core import QgsProviderRegistry, QgsDataSourceUri
+from qgis.core import QgsRasterLayer
 from qgis.core import QgsRectangle
 from qgis.core import QgsSettings
 from qgis.core import QgsVectorFileWriter, QgsProject, QgsVectorLayer
@@ -321,11 +322,40 @@ def deserialize_setting(raw_value, default=None, enum_classes=None):
 
 
 def _reconstruct_object(data, enum_classes=None):
-    """Internal recursive function to rebuild objects."""
+    """Internal recursive function to rebuild QGIS objects from serialized dicts."""
     if not isinstance(data, dict) or "_type" not in data:
         return data
 
     obj_type = data.get("_type")
+
+    # --- QGS LAYER RECONSTRUCTION ---
+    if obj_type == "qgs_layer":
+        layer_id = data.get("id")
+        layer_name = data.get("name")
+        source = data.get("source")
+        provider = data.get("provider")
+        layer_type = data.get("layer_type")
+
+        # 1. Try to find the layer in the current open project (safest)
+        project = QgsProject.instance()
+        layer = project.mapLayer(layer_id)
+
+        if not layer:
+            # Search by name if ID doesn't match (e.g., after project restart)
+            layers_by_name = project.mapLayersByName(layer_name)
+            if layers_by_name:
+                layer = layers_by_name[0]
+
+        # 2. Optional: If layer isn't in project, try to load it from source
+        if not layer and source and provider:
+            if layer_type == "vector":
+                layer = QgsVectorLayer(source, layer_name, provider)
+            elif layer_type == "raster":
+                layer = QgsRasterLayer(source, layer_name, provider)
+
+            # Note: The layer is now loaded in memory but not added to the legend!
+
+        return layer if layer and layer.isValid() else None
 
     if obj_type == "qgs_property":
         prop = QgsProperty()
@@ -342,7 +372,7 @@ def _reconstruct_object(data, enum_classes=None):
 
     if obj_type == "qgs_source_def":
         source_val = data.get("source")
-        # Recursively rebuild if the source is also a complex object
+        # Recursion works for layers nested inside source definitions
         if isinstance(source_val, dict) and "_type" in source_val:
             source_val = _reconstruct_object(source_val, enum_classes)
 
@@ -358,21 +388,35 @@ def _reconstruct_object(data, enum_classes=None):
     return data.get("value", data)
 
 
+
 def serialize_value(value):
-    """Hulpfunctie om complexe QGIS objecten om te zetten naar JSON-vriendelijke dicts."""
+    """Helper function to convert complex QGIS objects into JSON-friendly dicts."""
     if isinstance(value, float):
+        # Converting to string to avoid floating point precision issues in some JSON parsers
         return str(value)
+
     if isinstance(value, Enum):
         return {"_type": "enum", "value": value.name}
 
     if isinstance(value, QgsProperty):
         return {"_type": "qgs_property", "value": value.toVariant()}
 
+    # Support for QgsVectorLayer and other MapLayers
+    if isinstance(value, QgsMapLayer):
+        return {
+            "_type": "qgs_layer",
+            "id": value.id(),
+            "name": value.name(),
+            "source": value.source(),
+            "provider": value.dataProvider().name() if value.dataProvider() else None,
+            "layer_type": "vector" if isinstance(value, QgsVectorLayer) else "raster",
+        }
+
     if isinstance(value, QgsProcessingFeatureSourceDefinition):
-        # Check of de source zelf een QgsProperty is!
         source_val = value.source
-        if isinstance(source_val, QgsProperty):
-            source_val = serialize_value(source_val)  # Recursion
+        # Recursively handle if the source is a layer or a property
+        if isinstance(source_val, (QgsProperty, QgsMapLayer)):
+            source_val = serialize_value(source_val)
 
         return {
             "_type": "qgs_source_def",
@@ -396,19 +440,6 @@ def get_string_type(val):
         except ValueError:
             return "string"
 
-
-# def make_path_safe(path):
-#     """Vervangt het absolute pad door een placeholder als het binnen het project valt."""
-#     p_dir = QgsProject.instance().homePath()
-#     if path.startswith(p_dir):
-#         return path.replace(p_dir, "@project")
-#     return path
-#
-# def restore_path(safe_path):
-#     """Herstelt het pad naar de huidige machine-specifieke locatie."""
-#     if safe_path.startswith("@project"):
-#         return safe_path.replace("@project", QgsProject.instance().homePath())
-#     return safe_path
 
 
 def geom_shapely_to_qgis(geom_shapely):
