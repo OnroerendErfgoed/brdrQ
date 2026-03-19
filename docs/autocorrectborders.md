@@ -1,8 +1,14 @@
 # Documentation of QGIS Python plugin brdrQ -  Autocorrectborders
 
-<img src="figures/autocorrectborders.png" width="50%" />
+
+## Video
+
+{{< video src="figures/brdrQ_autocorrectborders_bulk.mp4" muted width="600" height="400" title="BrdrQ Autocorrectborders Demo" >}}
+
 
 ## Description
+
+<img src="figures/autocorrectborders.png" width="50%" />
 
 The processing algorithm, named **Autocorrectborders**, is developed to automatically adjust thematic boundaries to
 reference boundaries. It searches for relevant overlap between thematic boundaries and reference boundaries, and creates
