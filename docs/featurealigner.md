@@ -1,10 +1,14 @@
 
 # Documentation of QGIS Python plugin brdrQ: FeatureAligner
 
-<img src="figures/featurealigner.png" width="100%" />
+## Video
 
+{{< video src="figures/brdrQ_featurealigner.mp4" muted width="600" height="400" title="BrdrQ FeatureAligner Demo" >}}
 
 ## Instructions
+
+<img src="figures/featurealigner.png" width="50%" />
+
 0. Choose the settings for the alignment (reference layer,...)
 1. Select the thematic layer you want to align.
 2. Select a feature from the list or via 'Select feature(s) on map'.
