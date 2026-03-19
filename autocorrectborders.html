@@ -76,6 +76,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="site_libs/bootstrap/bootstrap-edcaa40554d619375bb68c2fe310b353.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="site_libs/quarto-contrib/videojs/video.min.js"></script>
+<link href="site_libs/quarto-contrib/videojs/video-js.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -195,6 +197,7 @@ window.Quarto = {
   <ul>
   <li><a href="#documentation-of-qgis-python-plugin-brdrq---autocorrectborders" id="toc-documentation-of-qgis-python-plugin-brdrq---autocorrectborders" class="nav-link active" data-scroll-target="#documentation-of-qgis-python-plugin-brdrq---autocorrectborders">Documentation of QGIS Python plugin brdrQ - Autocorrectborders</a>
   <ul class="collapse">
+  <li><a href="#video" id="toc-video" class="nav-link" data-scroll-target="#video">Video</a></li>
   <li><a href="#description" id="toc-description" class="nav-link" data-scroll-target="#description">Description</a></li>
   <li><a href="#input-parameters" id="toc-input-parameters" class="nav-link" data-scroll-target="#input-parameters">Input Parameters</a></li>
   <li><a href="#output-parameters" id="toc-output-parameters" class="nav-link" data-scroll-target="#output-parameters">Output Parameters</a></li>
@@ -213,9 +216,13 @@ window.Quarto = {
 
 <section id="documentation-of-qgis-python-plugin-brdrq---autocorrectborders" class="level1">
 <h1>Documentation of QGIS Python plugin brdrQ - Autocorrectborders</h1>
-<p><img src="figures/autocorrectborders.png" width="50%"></p>
+<section id="video" class="level2">
+<h2 class="anchored" data-anchor-id="video">Video</h2>
+<div class="quarto-video"><video id="video_shortcode_videojs_video1" width="600" height="400" class="video-js vjs-default-skin " controls="" preload="auto" data-setup="{}" title="BrdrQ Autocorrectborders Demo"><source src="figures/brdrQ_autocorrectborders_bulk.mp4"></video></div>
+</section>
 <section id="description" class="level2">
 <h2 class="anchored" data-anchor-id="description">Description</h2>
+<p><img src="figures/autocorrectborders.png" width="50%"></p>
 <p>The processing algorithm, named <strong>Autocorrectborders</strong>, is developed to automatically adjust thematic boundaries to reference boundaries. It searches for relevant overlap between thematic boundaries and reference boundaries, and creates a resulting boundary based on the relevant overlapping areas.</p>
 </section>
 <section id="input-parameters" class="level2">
@@ -910,6 +917,7 @@ window.Quarto = {
   });
   </script>
 </div> <!-- /content -->
+<script>videojs(video_shortcode_videojs_video1);</script>
 
 
 
