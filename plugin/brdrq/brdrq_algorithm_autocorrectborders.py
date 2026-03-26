@@ -820,14 +820,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.LAYER_RESULT_DIFF,
         ])
 
-        result = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
-        result_diff = QgsProject.instance().mapLayersByName(self.LAYER_RESULT_DIFF)[0]
-        result_diff_plus = QgsProject.instance().mapLayersByName(
-            self.LAYER_RESULT_DIFF_PLUS
-        )[0]
-        result_diff_min = QgsProject.instance().mapLayersByName(
-            self.LAYER_RESULT_DIFF_MIN
-        )[0]
+        result = self._get_output_layer(self.LAYER_RESULT)
+        result_diff = self._get_output_layer(self.LAYER_RESULT_DIFF)
+        result_diff_plus = self._get_output_layer(self.LAYER_RESULT_DIFF_PLUS)
+        result_diff_min = self._get_output_layer(self.LAYER_RESULT_DIFF_MIN)
 
         correction_layer = None
         if not self.PREDICTIONS or self.PREDICTION_STRATEGY != PredictionStrategy.ALL:
@@ -855,6 +851,14 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "OUTPUT_RESULT_DIFF_MIN": result_diff_min,
             "OUTPUT_CORRECTION": correction_layer,
         }
+
+    def _get_output_layer(self, layer_name):
+        layers = QgsProject.instance().mapLayersByName(layer_name)
+        if not layers:
+            raise QgsProcessingException(
+                f"Expected output layer '{layer_name}' was not created."
+            )
+        return layers[0]
 
     def _reference_preparation(self, thematic_buffered, context, feedback, parameters):
         outputs = {}
@@ -1097,6 +1101,20 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.default_add_attributes = parameters["ADD_ATTRIBUTES"]
         self.default_intermediate_layers = parameters["SHOW_INTERMEDIATE_LAYERS"]
         self.default_extra_logging = parameters["SHOW_LOG_INFO"]
+
+        # Reset run-specific names so repeated runs on the same instance do not
+        # keep appending suffixes.
+        cls = type(self)
+        self.SUFFIX = ""
+        self.GROUP_LAYER = cls.GROUP_LAYER
+        self.GROUP_LAYER_ACTUAL = cls.GROUP_LAYER_ACTUAL
+        self.LAYER_RESULT = cls.LAYER_RESULT
+        self.LAYER_RESULT_DIFF = cls.LAYER_RESULT_DIFF
+        self.LAYER_RESULT_DIFF_PLUS = cls.LAYER_RESULT_DIFF_PLUS
+        self.LAYER_RESULT_DIFF_MIN = cls.LAYER_RESULT_DIFF_MIN
+        self.LAYER_RELEVANT_INTERSECTION = cls.LAYER_RELEVANT_INTERSECTION
+        self.LAYER_RELEVANT_DIFFERENCE = cls.LAYER_RELEVANT_DIFFERENCE
+        self.LAYER_REFERENCE_NAME = cls.LAYER_REFERENCE_NAME
 
         # WORKFOLDER
         wrkfldr = self.default_workfolder

@@ -44,7 +44,13 @@ def pipinstall_by_subprocess(python_exe,package):
         try:
             pipinstall_in_libs(python_exe,package)
         except:
-            QMessageBox.error(None, "Error", f"This plugin needs external dependency '{package}', automatically installed for Windows. For Linux/Mac, the correct version ({package}) has to be installed manually")
+            QMessageBox.critical(
+                None,
+                "Dependency Error",
+                f"This plugin needs external dependency '{package}'. "
+                f"Automatic installation is only supported on Windows. "
+                f"For Linux/Mac, install {package} manually.",
+            )
 
     else:
         try:

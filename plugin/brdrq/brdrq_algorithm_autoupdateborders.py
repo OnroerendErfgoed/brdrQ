@@ -563,14 +563,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         feedback.pushInfo("Resulting geometry calculated")
         feedback.pushInfo("END ACTUALISATION")
-        result = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
-        result_diff = QgsProject.instance().mapLayersByName(self.LAYER_RESULT_DIFF)[0]
-        result_diff_plus = QgsProject.instance().mapLayersByName(
-            self.LAYER_RESULT_DIFF_PLUS
-        )[0]
-        result_diff_min = QgsProject.instance().mapLayersByName(
-            self.LAYER_RESULT_DIFF_MIN
-        )[0]
+        result = self._get_output_layer(self.LAYER_RESULT)
+        result_diff = self._get_output_layer(self.LAYER_RESULT_DIFF)
+        result_diff_plus = self._get_output_layer(self.LAYER_RESULT_DIFF_PLUS)
+        result_diff_min = self._get_output_layer(self.LAYER_RESULT_DIFF_MIN)
 
         correction_layer = None
         if self.PREDICTION_STRATEGY != PredictionStrategy.ALL:
@@ -601,6 +597,14 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "OUTPUT_RESULT_DIFF_MIN": result_diff_min,
             "OUTPUT_CORRECTION": correction_layer,
         }
+
+    def _get_output_layer(self, layer_name):
+        layers = QgsProject.instance().mapLayersByName(layer_name)
+        if not layers:
+            raise QgsProcessingException(
+                f"Expected output layer '{layer_name}' was not created."
+            )
+        return layers[0]
 
     def read_default_settings(self):
         # print ('read_settings')
@@ -742,6 +746,16 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.default_workfolder = parameters["WORK_FOLDER"]
         self.default_metadata_field = parameters["METADATA_FIELD"]
         self.default_extra_logging = parameters["SHOW_LOG_INFO"]
+
+        # Reset run-specific names so repeated runs on the same instance do not
+        # keep appending suffixes.
+        cls = type(self)
+        self.SUFFIX = ""
+        self.LAYER_RESULT = cls.LAYER_RESULT
+        self.LAYER_RESULT_DIFF = cls.LAYER_RESULT_DIFF
+        self.LAYER_RESULT_DIFF_PLUS = cls.LAYER_RESULT_DIFF_PLUS
+        self.LAYER_RESULT_DIFF_MIN = cls.LAYER_RESULT_DIFF_MIN
+        self.GROUP_LAYER = cls.GROUP_LAYER
 
         wrkfldr = self.default_workfolder
         if wrkfldr is None or str(wrkfldr) == "" or str(wrkfldr) == "NULL":
