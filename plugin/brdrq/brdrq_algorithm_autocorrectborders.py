@@ -839,7 +839,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             feedback.pushInfo(
                 "No correction layer generated when predictions with predictionStrategy ALL is activated"
             )
-        QgsProject.instance().reloadAllLayers()
+        for layer in [result, result_diff, result_diff_plus, result_diff_min, correction_layer]:
+            if layer is not None:
+                layer.reload()
+                layer.triggerRepaint()
         if feedback.isCanceled():
             return {}
         feedback.pushInfo("END: RESULTS CALCULATED")

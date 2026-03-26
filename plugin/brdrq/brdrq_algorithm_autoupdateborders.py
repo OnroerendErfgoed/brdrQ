@@ -423,24 +423,25 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # Load thematic into a shapely_dict:
         dict_thematic = {}
         dict_thematic_properties = {}
-        features = thematic.getFeatures()
-
-        for current, feature in enumerate(features):
+        metadata_field_name = self.METADATA_FIELDNAME
+        for feature in thematic.getFeatures():
             if feedback.isCanceled():
                 return {}
 
             id_theme = feature.attribute(self.ID_THEME_BRDRQ_FIELDNAME)
             dict_thematic[id_theme] = geom_qgis_to_shapely(feature.geometry())
-            # dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
-            attributes = feature.attributeMap()
             attributes_dict = {}
-            for key, value in attributes.items():
-                if isinstance(value, QDate):
-                    attributes_dict[key] = value.toPyDate()
-                elif isinstance(value, QDateTime):
-                    attributes_dict[key] = value.toPyDateTime()
-                else:
-                    attributes_dict[key] = value
+            # The actualisation flow expects the thematic identifier to be present
+            # in GeoJSON properties.
+            attributes_dict[self.ID_THEME_BRDRQ_FIELDNAME] = id_theme
+            # Autoupdate only needs metadata for better prediction quality.
+            if metadata_field_name:
+                metadata_value = feature.attribute(metadata_field_name)
+                if isinstance(metadata_value, QDate):
+                    metadata_value = metadata_value.toPyDate()
+                elif isinstance(metadata_value, QDateTime):
+                    metadata_value = metadata_value.toPyDateTime()
+                attributes_dict[metadata_field_name] = metadata_value
             dict_thematic_properties[id_theme] = attributes_dict
 
         # Aligner IMPLEMENTATION
@@ -583,7 +584,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 "No correction layer generated when predictions with predictionStrategy ALL is activated"
             )
 
-        QgsProject.instance().reloadAllLayers()
+        for layer in [result, result_diff, result_diff_plus, result_diff_min, correction_layer]:
+            if layer is not None:
+                layer.reload()
+                layer.triggerRepaint()
         feedback.pushInfo("Resulting geometry calculated")
         feedback.setCurrentStep(6)
         if feedback.isCanceled():
