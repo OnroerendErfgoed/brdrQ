@@ -36,11 +36,11 @@ Additionally, you can:
     * ONLY_FULL_REFERENCE: Only predictions with a full reference overlap are shown.
     * PREFER_FULL_REFERENCE: Predictions with a full reference overlap get a higher score, others are still shown.
     * NO_FULL_REFERENCE: No distinction is made between predictions with or without full reference overlap.
-* SNAP OPTIONS: only used when geometry is processed by the NetworkGeometryAligner (Line or Points):
+* SNAP OPTIONS: only used when geometry is processed by the NetworkGeometryAligner/SnapGeometryProcessor (Line or Points):
   * **SnapStrategy**:
     * NO_PREFERENCE: does not prefer real vertices when searching for a solution
     * PREFER_VERTICES: tries to move the result to real vertices of the reference data if they are within relevant distance
+    * PREFER_ENDS_AND_ANGLES: tries to move the result to end vertices or 'angles' of the reference data if they are within relevant distance
     * ONLY_VERTICES: uses only real vertices of the reference data (or not, if not found)
-  * Segmentize: <No effect, can be ignored>
 
 
