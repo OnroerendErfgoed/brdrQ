@@ -13,7 +13,7 @@ analysis).
 
 ### Input Parameters
 
-- **Thematic Layer**: A (MULTI)POLYGON layer with EPSG:31370 or EPSG:3812 coordinates and a unique ID.
+- **Thematic Layer**: A vector layer (polygon, line, or point) with EPSG:31370 or EPSG:3812 coordinates and a unique ID.
     - **Default**: No default value, must be provided by the user.
     - **Optional**: No.
 
@@ -22,24 +22,20 @@ analysis).
     - **Default**: No default value, must be provided by the user.
     - **Optional**: No.
 
-- **Reference Layer**: A (MULTI)POLYGON layer with EPSG:31370 or EPSG:3812 coordinates. Combobox to choose which
-  referencelayer will be used. There is a choice between on-the-fly
-  downloadable referencelayers from GRB, or to use your own local REFERENCELAYER.
-    - The local referencelayer and unique reference ID has to be choosen from the TOC:
-    - The on-the-fly downloads are only
-      possible for smaller areas.
+- **Reference Layer**: Combobox to choose which GRB referencelayer will be used (on-the-fly download).
+    - The on-the-fly downloads are only possible for smaller areas.
 
         - ADP: (on-the-fly download) - Actual administrative parcels from GRB (Grootschalig Referentie Bestand)
         - GBG: (on-the-fly download) - Actual buildings from GRB
         - KNW: (on-the-fly download) - Actual artwork from GRB
         - (Note: the on-the-fly downloads are only possible for a subset or small area of thematic objects as this
-          results in downloading this reference-area. When using brdrQ for bigger areas a local reference layer is necessary)
+          results in downloading this reference-area.)
 
     - **Default**: ADP (parcels)
     - **Optional**: no
 
 
-- **Max Relevant Distance (meters)**: Positive (decimal) number in meters. This is the maximum distance by which the original boundary is maximally shifted to align with the reference layer when searching for predictions. The algorithm uses all relevent distances from 0 to 'max' with steps of 10cm in between.
+- **Relevant Distance (meters)**: Positive (decimal) number in meters. This is the maximum distance by which the original boundary is maximally shifted to align with the reference layer when searching for predictions. The algorithm uses all relevant distances from 0 to 'max' with steps of 10cm in between.
   - **Default**: 3 (meters)
   - **Optional**: No.
 
@@ -58,20 +54,33 @@ analysis).
 
 ### ADVANCED INPUT PARAMETERS
 
-- **FULL Strategy** Choice that determines the score of the predictions based on a full overlap with reference polygons:
+- **FULL_REFERENCE_STRATEGY**: Choice that determines the score of predictions based on full overlap with reference polygons:
     - ONLY_FULL: Only predictions with a full reference overlap are shown.
     - PREFER_FULL: Predictions with a full reference overlap get a higher score, others are still shown.
     - NO_FULL: No distinction is made between predictions with or without full reference overlap.
     - **Default**: None
     - **Optional**: yes.
 
-Evaluation Strategy FULL: Choice that determines the score of the predictions based on a full overlap with reference
-polygons:
+- **ENUM_OD_STRATEGY**: Strategy for handling parts of the geometry not covered by reference features (= Open Domain).
+    - **Default**: `SNAP_ALL_SIDE`
+    - **Optional**: yes.
 
-- **SNAP_STRATEGY**: Strategy for snapping to reference vertices. Options: `NO_PREFERENCE`, `PREFER_VERTICES`, `ONLY_VERTICES`.
+- **ENUM_SNAP_STRATEGY**: Strategy for snapping to reference vertices. Options: `NO_PREFERENCE`, `PREFER_VERTICES`, `ONLY_VERTICES`.
   This parameter only applies to `NetworkGeometryProcessor` and `SnapGeometryProcessor`, typically for line and point workflows.
   For polygon workflows this setting has no effect.
     - **Default**: `PREFER_VERTICES`
+    - **Optional**: yes.
+
+- **ENUM_PROCESSOR**: Choice of processing algorithm. Recommended is `AlignerGeometryProcessor` (wrapper that chooses the fastest algorithm based on geometry types).
+    - **Default**: `AlignerGeometryProcessor`
+    - **Optional**: yes.
+
+- **THRESHOLD_OVERLAP_PERCENTAGE (0-100)**: Fallback overlap threshold used in edge cases where relevance cannot be determined.
+    - **Default**: `50`
+    - **Optional**: yes.
+
+- **REVIEW_PERCENTAGE (0-100)**: Results with change percentage above this threshold are categorized for review.
+    - **Default**: `10`
     - **Optional**: yes.
 
 - **WORKING FOLDER**: Folder to save the resulting geojson-files. By default empty, resulting in saving the
@@ -80,8 +89,7 @@ polygons:
     - **Default**: By default, the output will be saved in a local folder on your machine.
     - **Optional**: yes.
 
-- **brdr_formula_field** Attribute-field of the thematic layer with a former brdr_formula.(=metadata of former
-  alignment). When this information is provided it is used to make a better prediction.
+- **METADATA_FIELD**: Attribute field of the thematic layer containing former `brdr_metadata`. When provided, it is used for better prediction quality.
     - **Default**: None
     - **Optional**: yes.
 

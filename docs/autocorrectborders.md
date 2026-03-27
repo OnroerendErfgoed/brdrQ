@@ -20,7 +20,7 @@ The script requires the following input parameters:
 
 | Parameter                                  | Description                                                                                                                                                                                                                                                                                                                                                                                                                                      | Default                                                                                       | Optional |
 |--------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|----------|
-| Thematic Layer                             | A (MULTI)POLYGON layer with a projected CRS (unit: meter) and a unique ID.                                                                                                                                                                                                                                                                                                                                                                       | No default value, must be provided by the user.                                               | No.      |
+| Thematic Layer                             | A vector layer (polygon, line, or point) with a projected CRS (unit: meter) and a unique ID.                                                                                                                                                                                                                                                                                                                                                     | No default value, must be provided by the user.                                               | No.      |
 | Thematic ID                                | Textual or numeric ID of the thematic layer used as a reference to the objects. This must be unique.                                                                                                                                                                                                                                                                                                                                             | No default value, must be provided by the user.                                               | No.      |
 | SELECT Reference Layer:                    | Selection of REFERENCE LAYER: The user can choose between a LOCAL REFERENCE LAYER (see parameters below), or on-the fly reference layers from GRB (Flanders, Belgium)                                                                                                                                                                                                                                                                            | LOCREF: use of a LOCAL REFERENCE LAYER                                                        | Yes.     |
 | Reference Layer (when LOCREF selected)     | A (MULTI)POLYGON layer with the same projected CRS (unit: meter).                                                                                                                                                                                                                                                                                                                                                                                | No default value, must be provided by the user.                                               | Yes.     |
@@ -52,7 +52,7 @@ The script generates a GROUP layer with several output layers in the TOC:
   geometry
 
 The name includes which 'RELEVANT_DISTANCE (X)' and 'REFERENCE (Y)' is used
-<img src="docs/figures/output.png" width="100%" />
+<img src="figures/output.png" width="100%" />
 
 ## Example of Usage
 
@@ -77,7 +77,6 @@ Here is an example of how to use the script in Python:
                 "PREDICTION_STRATEGY": 0,
                 "REVIEW_PERCENTAGE": 10,
                 "ADD_METADATA": True,
-                "STABILITY": True,
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
                 "SHOW_LOG_INFO": False,
