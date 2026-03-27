@@ -28,6 +28,7 @@ import os
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QListWidgetItem
 from brdr.aligner import Aligner
+from brdr.be.be import BeCadastralParcelLoader
 from brdr.be.grb.enums import GRBType
 from brdr.be.grb.loader import GRBActualLoader, GRBFiscalParcelLoader
 from brdr.configs import ProcessorConfig, AlignerConfig
@@ -74,6 +75,7 @@ from .brdrq_utils import (
     get_valid_layer,
     NL_TYPES,
     DICT_NL_TYPES,
+    BE_TYPES,
 )
 
 FORM_CLASS, _ = uic.loadUiType(
@@ -634,7 +636,17 @@ class brdrQDockWidgetFeatureAligner(
             self.aligner.load_reference_data(
                 OSMLoader(osm_tags=tags, aligner=self.aligner)
             )
-
+        elif self.reference_choice in BE_TYPES:
+            try:
+                self.aligner.load_reference_data(BeCadastralParcelLoader(partition=1000, aligner=self.aligner))
+            except Exception as e:
+                iface.messageBar().pushMessage(
+                    "CRS",
+                    f"Reference layer 'BE - Cadastral parcels' does not support CRS of current thematic layer: {str(e)}",
+                    level=Qgis.Warning,
+                    duration=5,
+                )
+                return None
         elif self.reference_choice in NL_TYPES:
             try:
                 brk_type = BRKType[DICT_NL_TYPES[self.reference_choice]]

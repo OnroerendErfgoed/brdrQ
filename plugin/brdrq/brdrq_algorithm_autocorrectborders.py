@@ -32,6 +32,7 @@ import os
 import sys
 from datetime import datetime
 
+from brdr.be.be import BeCadastralParcelLoader
 # TODO QGIS4
 from brdr.be.grb.enums import GRBType
 from brdr.be.grb.loader import GRBFiscalParcelLoader, GRBActualLoader
@@ -69,6 +70,7 @@ from .brdrq_utils import (
     remove_empty_features_from_diff_layers,
     NL_TYPES,
     DICT_NL_TYPES,
+    BE_TYPES,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -650,20 +652,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         elif self.SELECTED_REFERENCE in OSM_TYPES:
             tags = DICT_OSM_TYPES[self.SELECTED_REFERENCE]
             aligner.load_reference_data(OSMLoader(osm_tags=tags, aligner=aligner))
-        # elif self.SELECTED_REFERENCE in BE_TYPES:
-        #     try:
-        #
-        #         loader = WFSReferenceLoader(
-        #             url="https://ccff02.minfin.fgov.be/geoservices/arcgis/services/WMS/Cadastral_LayersWFS/MapServer/WFSServer",
-        #             id_property="CaPaKey",
-        #             typename="CL:Cadastral_parcel",
-        #             aligner=aligner,
-        #             partition=1000,
-        #             limit=500,
-        #         )
-        #         aligner.load_reference_data(loader)
-        #     except Exception as e:
-        #         raise QgsProcessingException(e)
+        elif self.SELECTED_REFERENCE in BE_TYPES:
+            try:
+                aligner.load_reference_data(BeCadastralParcelLoader(partition=1000, aligner=aligner))
+            except Exception as e:
+                raise QgsProcessingException(e)
         elif self.SELECTED_REFERENCE in NL_TYPES:
             try:
                 brk_type = BRKType[DICT_NL_TYPES[self.SELECTED_REFERENCE]]

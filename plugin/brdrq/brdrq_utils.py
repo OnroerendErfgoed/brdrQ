@@ -150,8 +150,8 @@ DICT_OSM_TYPES = dict()
 for x in OsmType:
     DICT_OSM_TYPES["OSM - " + x.name] = x.value
 
-# DICT_BE_TYPES = dict()
-# DICT_BE_TYPES["BE - Cadastral Parcels"]="BE_CADASTRAL"
+DICT_BE_TYPES = dict()
+DICT_BE_TYPES["BE - Cadastral Parcels"]="BE_CADASTRAL_PARCELS"
 
 DICT_NL_TYPES = dict()
 for e in BRKType:
@@ -160,13 +160,13 @@ for e in BRKType:
 DICT_REFERENCE_OPTIONS.update(DICT_GRB_TYPES)
 DICT_REFERENCE_OPTIONS.update(DICT_ADPF_VERSIONS)
 DICT_REFERENCE_OPTIONS.update(DICT_OSM_TYPES)
-# DICT_REFERENCE_OPTIONS.update(DICT_BE_TYPES)
+DICT_REFERENCE_OPTIONS.update(DICT_BE_TYPES)
 DICT_REFERENCE_OPTIONS.update(DICT_NL_TYPES)
 
 GRB_TYPES = list(DICT_GRB_TYPES.keys())
 ADPF_VERSIONS = list(DICT_ADPF_VERSIONS.keys())
 OSM_TYPES = list(DICT_OSM_TYPES.keys())
-# BE_TYPES = list(DICT_BE_TYPES.keys())
+BE_TYPES = list(DICT_BE_TYPES.keys())
 NL_TYPES = list(DICT_NL_TYPES.keys())
 ENUM_REFERENCE_OPTIONS = list(DICT_REFERENCE_OPTIONS.keys())
 
@@ -1497,7 +1497,7 @@ def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_
         selected_reference = ref
         layer_reference_name = ref
         ref_suffix = str(ref_id)
-    elif ref in (OSM_TYPES + NL_TYPES):  # BE_TYPES +
+    elif ref in (BE_TYPES + OSM_TYPES + NL_TYPES):  #
         selected_reference = ref
         layer_reference_name = ref
         ref_suffix = str(ref)
