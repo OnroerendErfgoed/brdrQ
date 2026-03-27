@@ -33,7 +33,7 @@ from brdr.aligner import Aligner
 from brdr.be.grb.grb import update_featurecollection_to_actual_grb
 from brdr.configs import ProcessorConfig, AlignerConfig
 from brdr.constants import BASE_METADATA_FIELD_NAME
-from brdr.enums import OpenDomainStrategy, FullReferenceStrategy
+from brdr.enums import OpenDomainStrategy, FullReferenceStrategy, SnapStrategy
 from brdr.loader import DictLoader
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QDate, QDateTime
@@ -63,6 +63,7 @@ from .brdrq_utils import (
     PredictionStrategy,
     ENUM_FULL_REFERENCE_STRATEGY_OPTIONS,
     ENUM_OD_STRATEGY_OPTIONS,
+    ENUM_SNAP_STRATEGY_OPTIONS,
     get_reference_params,
     get_processor_by_id,
     Processor,
@@ -93,6 +94,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     GRB_TYPE = None
     CRS = None
     OD_STRATEGY = None
+    SNAP_STRATEGY = None
     THRESHOLD_OVERLAP_PERCENTAGE = None
     REVIEW_PERCENTAGE = None  # default - features that changes more than this % wil be moved to review lisr
     RELEVANT_DISTANCE = None
@@ -297,6 +299,17 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         self.addParameter(parameter)
 
+        parameter = QgsProcessingParameterEnum(
+            "ENUM_SNAP_STRATEGY",
+            '<br>Snap Strategy<br><i style="color: gray;">Strategy for snapping to reference vertices when processing line/point geometries</i>',
+            options=ENUM_SNAP_STRATEGY_OPTIONS,
+            defaultValue=self.default_snap_strategy,
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
+
         parameter = QgsProcessingParameterNumber(
             "THRESHOLD_OVERLAP_PERCENTAGE",
             '<br>Threshold overlap percentage<br><i style="color: gray;">In the exceptional case that the algorithm cannot determine if a reference feature is relevant, this fallback-parameter is used to determine to include/exclude a reference based on overlap-percentage</i>',
@@ -457,6 +470,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         processor_config.threshold_overlap_percentage = (
             self.THRESHOLD_OVERLAP_PERCENTAGE
         )
+        processor_config.snap_strategy = self.SNAP_STRATEGY
         processor = get_processor_by_id(
             processor_id=self.PROCESSOR.value, config=processor_config
         )
@@ -623,6 +637,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "FULL_REFERENCE_STRATEGY": 2,
             "ENUM_PROCESSOR": 0,
             "ENUM_OD_STRATEGY": 3,
+            "ENUM_SNAP_STRATEGY": 1,
             "THRESHOLD_OVERLAP_PERCENTAGE": 50,
             "REVIEW_PERCENTAGE": 10,
             "WORK_FOLDER": "brdrQ",
@@ -643,6 +658,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         ]
         self.default_processor = self.params_default_dict["ENUM_PROCESSOR"]
         self.default_od_strategy = self.params_default_dict["ENUM_OD_STRATEGY"]
+        self.default_snap_strategy = self.params_default_dict["ENUM_SNAP_STRATEGY"]
         self.default_threshold_overlap_percentage = self.params_default_dict[
             "THRESHOLD_OVERLAP_PERCENTAGE"
         ]
@@ -679,6 +695,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # )
         self.default_od_strategy = read_setting(
             prefix, "default_od_strategy", self.default_od_strategy
+        )
+        self.default_snap_strategy = read_setting(
+            prefix, "default_snap_strategy", self.default_snap_strategy
         )
         self.default_threshold_overlap_percentage = read_setting(
             prefix,
@@ -720,6 +739,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         write_setting(prefix, "default_processor", self.default_processor)
         write_setting(prefix, "default_od_strategy", self.default_od_strategy)
+        write_setting(prefix, "default_snap_strategy", self.default_snap_strategy)
         write_setting(
             prefix,
             "default_threshold_overlap_percentage",
@@ -744,6 +764,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.default_review_percentage = parameters["REVIEW_PERCENTAGE"]
         self.default_processor = parameters["ENUM_PROCESSOR"]
         self.default_od_strategy = parameters["ENUM_OD_STRATEGY"]
+        self.default_snap_strategy = parameters["ENUM_SNAP_STRATEGY"]
         self.default_threshold_overlap_percentage = parameters[
             "THRESHOLD_OVERLAP_PERCENTAGE"
         ]
@@ -790,6 +811,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.REVIEW_PERCENTAGE = self.default_review_percentage
         self.OD_STRATEGY = OpenDomainStrategy[
             ENUM_OD_STRATEGY_OPTIONS[self.default_od_strategy]
+        ]
+        self.SNAP_STRATEGY = SnapStrategy[
+            ENUM_SNAP_STRATEGY_OPTIONS[self.default_snap_strategy]
         ]
         self.PROCESSOR = Processor[ENUM_PROCESSOR_OPTIONS[self.default_processor]]
         self.FULL_REFERENCE_STRATEGY = FullReferenceStrategy[

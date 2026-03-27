@@ -68,6 +68,12 @@ analysis).
 Evaluation Strategy FULL: Choice that determines the score of the predictions based on a full overlap with reference
 polygons:
 
+- **SNAP_STRATEGY**: Strategy for snapping to reference vertices. Options: `NO_PREFERENCE`, `PREFER_VERTICES`, `ONLY_VERTICES`.
+  This parameter only applies to `NetworkGeometryProcessor` and `SnapGeometryProcessor`, typically for line and point workflows.
+  For polygon workflows this setting has no effect.
+    - **Default**: `PREFER_VERTICES`
+    - **Optional**: yes.
+
 - **WORKING FOLDER**: Folder to save the resulting geojson-files. By default empty, resulting in saving the
   geojson-files in
   a default folder on your machine.
@@ -104,11 +110,16 @@ output = processing.run(
         "INPUT_THEMATIC": themelayername,
         "COMBOBOX_ID_THEME": "theme_identifier",
         "ENUM_REFERENCE": 0,
-        "FORMULA_FIELD": "",
-        "MAX_RELEVANT_DISTANCE": 5,
+        "METADATA_FIELD": "",
+        "RELEVANT_DISTANCE": 5,
         "WORK_FOLDER": "",
+        "ENUM_OD_STRATEGY": 2,
+        "ENUM_SNAP_STRATEGY": 1,
+        "ENUM_PROCESSOR": 0,
+        "THRESHOLD_OVERLAP_PERCENTAGE": 50,
+        "REVIEW_PERCENTAGE": 10,
         "PREDICTION_STRATEGY": 2,
-        "FULL_STRATEGY": 2,
+        "FULL_REFERENCE_STRATEGY": 2,
         "SHOW_LOG_INFO": True,
     },
 )
