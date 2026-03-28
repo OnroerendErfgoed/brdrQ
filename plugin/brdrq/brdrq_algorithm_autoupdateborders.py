@@ -29,9 +29,7 @@ THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 from datetime import datetime
 
-from brdr.aligner import Aligner
 from brdr.be.grb.grb import update_featurecollection_to_actual_grb
-from brdr.configs import ProcessorConfig, AlignerConfig
 from brdr.constants import BASE_METADATA_FIELD_NAME
 from brdr.enums import OpenDomainStrategy, FullReferenceStrategy, SnapStrategy
 from brdr.loader import DictLoader
@@ -40,7 +38,6 @@ from qgis.PyQt.QtCore import QDate, QDateTime
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
 from qgis.core import QgsProcessingException
-from qgis.core import QgsProcessingFeatureSourceDefinition
 from qgis.core import QgsProcessingMultiStepFeedback
 from qgis.core import QgsProcessingOutputVectorLayer
 from qgis.core import QgsProcessingParameterBoolean
@@ -75,6 +72,24 @@ from .brdrq_utils import (
     set_layer_visibility,
     move_to_group,
     remove_empty_features_from_diff_layers,
+)
+from .brdrq_algorithm_common import (
+    add_boolean_parameter,
+    add_enum_parameter,
+    add_feature_source_parameter,
+    add_field_parameter,
+    add_file_parameter,
+    add_number_parameter,
+    add_standard_result_outputs,
+    apply_saved_settings,
+    assign_parameter_values,
+    build_aligner,
+    build_processor,
+    get_log_feedback,
+    get_prediction_strategy_options,
+    initialize_default_attributes,
+    resolve_thematic_layer_and_crs,
+    write_saved_settings,
 )
 
 
@@ -216,199 +231,131 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.read_default_settings()
 
         # standard parameters
-        parameter = QgsProcessingParameterFeatureSource(
-            self.INPUT_THEMATIC,
-            '<b>THEMATIC DATA</b><br><i style="color: gray;">Choose your thematic layer to align and its unique ID</i><br><br>Thematic Layer',
-            [QgsProcessing.TypeVectorAnyGeometry],
-            defaultValue=self.default_theme_layer,
+        add_feature_source_parameter(
+            algorithm=self,
+            name=self.INPUT_THEMATIC,
+            description='<b>THEMATIC DATA</b><br><i style="color: gray;">Choose your thematic layer to align and its unique ID</i><br><br>Thematic Layer',
+            geometry_types=[QgsProcessing.TypeVectorAnyGeometry],
+            default_value=self.default_theme_layer,
         )
-        parameter.setFlags(parameter.flags())
-        self.addParameter(parameter)
-
-        parameter = QgsProcessingParameterField(
-            "COMBOBOX_ID_THEME",
-            "Thematic ID (unique!)",
-            defaultValue=self.default_theme_layer_id,
-            parentLayerParameterName=self.INPUT_THEMATIC,
+        add_field_parameter(
+            algorithm=self,
+            name="COMBOBOX_ID_THEME",
+            description="Thematic ID (unique!)",
+            default_value=self.default_theme_layer_id,
+            parent_layer_parameter_name=self.INPUT_THEMATIC,
         )
-        parameter.setFlags(parameter.flags())
-        self.addParameter(parameter)
-
-        parameter = QgsProcessingParameterEnum(
-            "ENUM_REFERENCE",
-            '<br><b>REFERENCE DATA</b><br><i style="color: gray;">Choose the GRB reference data. The data will be downloaded on-the-fly </i>',
+        add_enum_parameter(
+            algorithm=self,
+            name="ENUM_REFERENCE",
+            description='<br><b>REFERENCE DATA</b><br><i style="color: gray;">Choose the GRB reference data. The data will be downloaded on-the-fly </i>',
             options=GRB_TYPES,
-            defaultValue=self.default_reference,  # Index of the default option (e.g., 'Option A')
+            default_value=self.default_reference,
         )
-        parameter.setFlags(parameter.flags())
-        self.addParameter(parameter)
-
-        parameter = QgsProcessingParameterNumber(
-            "RELEVANT_DISTANCE",
-            '<br><b>RELEVANT DISTANCE (units: meter)</b><br><i style="color: gray;">This distance in meters determines what the max amount of change will be allowed when aligning your data</i><br><br>Relevant distance (m)',
-            type=QgsProcessingParameterNumber.Double,
-            defaultValue=self.default_relevant_distance,
+        add_number_parameter(
+            algorithm=self,
+            name="RELEVANT_DISTANCE",
+            description='<br><b>RELEVANT DISTANCE (units: meter)</b><br><i style="color: gray;">This distance in meters determines what the max amount of change will be allowed when aligning your data</i><br><br>Relevant distance (m)',
+            number_type=QgsProcessingParameterNumber.Double,
+            default_value=self.default_relevant_distance,
         )
-        parameter.setFlags(parameter.flags())
-        self.addParameter(parameter)
 
         # ADVANCED INPUT
-        parameter = QgsProcessingParameterEnum(
-            "PREDICTION_STRATEGY",
-            '<br><b>PREDICTION-SETTINGS</b><br><i style="color: gray;">The prediction strategy determines which predictions are returned in the output: All predictions, only the BEST prediction, or the ORIGINAL if there are multiple predictions</i>Prediction Strategy',
+        add_enum_parameter(
+            algorithm=self,
+            name="PREDICTION_STRATEGY",
+            description='<br><b>PREDICTION-SETTINGS</b><br><i style="color: gray;">The prediction strategy determines which predictions are returned in the output: All predictions, only the BEST prediction, or the ORIGINAL if there are multiple predictions</i>Prediction Strategy',
             options=ENUM_PREDICTION_STRATEGY_OPTIONS,
-            defaultValue=self.default_prediction_strategy,
+            default_value=self.default_prediction_strategy,
+            advanced=True,
         )
-        parameter.setFlags(
-            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
-        )
-
-        self.addParameter(parameter)
-
-        parameter = QgsProcessingParameterEnum(
-            "FULL_REFERENCE_STRATEGY",
-            '<br>Full Reference Strategy<br><i style="color: gray;">When using Predictions, the Full Reference strategy determines how predictions are handled that are fully covered by reference-data </i>',
+        add_enum_parameter(
+            algorithm=self,
+            name="FULL_REFERENCE_STRATEGY",
+            description='<br>Full Reference Strategy<br><i style="color: gray;">When using Predictions, the Full Reference strategy determines how predictions are handled that are fully covered by reference-data </i>',
             options=ENUM_FULL_REFERENCE_STRATEGY_OPTIONS,
-            defaultValue=self.default_full_reference_strategy,
-            # optional=True,
+            default_value=self.default_full_reference_strategy,
+            advanced=True,
         )
-        parameter.setFlags(
-            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
-        )
-        self.addParameter(parameter)
-
-        parameter = QgsProcessingParameterEnum(
-            "ENUM_PROCESSOR",
-            '<br><b>PROCESSOR_SETTINGS</b><br><i style="color: gray;">These settings determine the Processor (algorithm) & Processing-parameters to execute the alignment</i><br><br>Processor',
+        add_enum_parameter(
+            algorithm=self,
+            name="ENUM_PROCESSOR",
+            description='<br><b>PROCESSOR_SETTINGS</b><br><i style="color: gray;">These settings determine the Processor (algorithm) & Processing-parameters to execute the alignment</i><br><br>Processor',
             options=ENUM_PROCESSOR_OPTIONS,
-            defaultValue=self.default_processor,  # Index of the default option (e.g., 'ALIGNER')
+            default_value=self.default_processor,
+            advanced=True,
         )
-        parameter.setFlags(
-            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
-        )
-        self.addParameter(parameter)
-
-        parameter = QgsProcessingParameterEnum(
-            "ENUM_OD_STRATEGY",
-            '<br>Open Domain Strategy<br><i style="color: gray;">Strategy how the processing-algorithm handles the parts that are not covered by reference features (=Open Domain). You can choose to Exclude, Leave it AS IS, or ALIGN it to the reference features</i>',
+        add_enum_parameter(
+            algorithm=self,
+            name="ENUM_OD_STRATEGY",
+            description='<br>Open Domain Strategy<br><i style="color: gray;">Strategy how the processing-algorithm handles the parts that are not covered by reference features (=Open Domain). You can choose to Exclude, Leave it AS IS, or ALIGN it to the reference features</i>',
             options=ENUM_OD_STRATEGY_OPTIONS,
-            defaultValue=self.default_od_strategy,  # Index of the default option (e.g., 'SNAP_ALL_SIDE')
+            default_value=self.default_od_strategy,
+            advanced=True,
         )
-        parameter.setFlags(
-            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
-        )
-        self.addParameter(parameter)
-
-        parameter = QgsProcessingParameterEnum(
-            "ENUM_SNAP_STRATEGY",
-            '<br>Snap Strategy<br><i style="color: gray;">Strategy for snapping to reference vertices when processing line/point geometries</i>',
+        add_enum_parameter(
+            algorithm=self,
+            name="ENUM_SNAP_STRATEGY",
+            description='<br>Snap Strategy<br><i style="color: gray;">Strategy for snapping to reference vertices when processing line/point geometries</i>',
             options=ENUM_SNAP_STRATEGY_OPTIONS,
-            defaultValue=self.default_snap_strategy,
+            default_value=self.default_snap_strategy,
+            advanced=True,
         )
-        parameter.setFlags(
-            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        add_number_parameter(
+            algorithm=self,
+            name="THRESHOLD_OVERLAP_PERCENTAGE",
+            description='<br>Threshold overlap percentage<br><i style="color: gray;">In the exceptional case that the algorithm cannot determine if a reference feature is relevant, this fallback-parameter is used to determine to include/exclude a reference based on overlap-percentage</i>',
+            number_type=QgsProcessingParameterNumber.Integer,
+            default_value=self.default_threshold_overlap_percentage,
+            min_value=0,
+            max_value=100,
+            advanced=True,
         )
-        self.addParameter(parameter)
-
-        parameter = QgsProcessingParameterNumber(
-            "THRESHOLD_OVERLAP_PERCENTAGE",
-            '<br>Threshold overlap percentage<br><i style="color: gray;">In the exceptional case that the algorithm cannot determine if a reference feature is relevant, this fallback-parameter is used to determine to include/exclude a reference based on overlap-percentage</i>',
-            type=QgsProcessingParameterNumber.Integer,
-            defaultValue=self.default_threshold_overlap_percentage,
-            optional=False,
-            minValue=0,
-            maxValue=100,
-        )
-        parameter.setFlags(
-            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
-        )
-        self.addParameter(parameter)
-
-        parameter = QgsProcessingParameterField(
-            "METADATA_FIELD",
-            "brdr_metadata field (optional; field that holds brdr_metadata, used for a better prediction)",  # (if empty, metadata will not be used)
-            defaultValue=self.default_metadata_field,
-            parentLayerParameterName=self.INPUT_THEMATIC,
+        add_field_parameter(
+            algorithm=self,
+            name="METADATA_FIELD",
+            description="brdr_metadata field (optional; field that holds brdr_metadata, used for a better prediction)",
+            default_value=self.default_metadata_field,
+            parent_layer_parameter_name=self.INPUT_THEMATIC,
             optional=True,
+            advanced=True,
         )
-        parameter.setFlags(
-            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
-        )
-        self.addParameter(parameter)
-
-        parameter = QgsProcessingParameterFile(
-            "WORK_FOLDER",
-            '<br><b>OUTPUT SETTINGS</b><br><i style="color: gray;"> Settings to determine how the output will appear</i><br><br>Work Folder',
+        add_file_parameter(
+            algorithm=self,
+            name="WORK_FOLDER",
+            description='<br><b>OUTPUT SETTINGS</b><br><i style="color: gray;"> Settings to determine how the output will appear</i><br><br>Work Folder',
             behavior=QgsProcessingParameterFile.Folder,
-            defaultValue=self.default_workfolder,
+            default_value=self.default_workfolder,
             optional=True,
+            advanced=True,
         )
-        parameter.setFlags(
-            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        add_number_parameter(
+            algorithm=self,
+            name="REVIEW_PERCENTAGE",
+            description='<br>REVIEW_PERCENTAGE (%)<br><i style="color: gray;">results with a higher change % move to review-list </i>',
+            number_type=QgsProcessingParameterNumber.Integer,
+            default_value=self.default_review_percentage,
+            min_value=0,
+            max_value=100,
+            advanced=True,
         )
-        self.addParameter(parameter)
-
-        parameter = QgsProcessingParameterNumber(
-            "REVIEW_PERCENTAGE",
-            '<br>REVIEW_PERCENTAGE (%)<br><i style="color: gray;">results with a higher change % move to review-list </i>',
-            type=QgsProcessingParameterNumber.Integer,
-            defaultValue=self.default_review_percentage,
-            optional=False,
-            minValue=0,
-            maxValue=100,
+        add_boolean_parameter(
+            algorithm=self,
+            name="SHOW_LOG_INFO",
+            description="Show extra logging (from brdr-log)",
+            default_value=self.default_extra_logging,
+            advanced=True,
         )
-        parameter.setFlags(
-            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
-        )
-        self.addParameter(parameter)
-
-        parameter = QgsProcessingParameterBoolean(
-            "SHOW_LOG_INFO",
-            "Show extra logging (from brdr-log)",
-            defaultValue=self.default_extra_logging,
-        )
-        parameter.setFlags(
-            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
-        )
-        self.addParameter(parameter)
 
         # OUTPUT
 
-        self.addOutput(
-            QgsProcessingOutputVectorLayer(
-                "OUTPUT_RESULT",
-                self.LAYER_RESULT,
-                QgsProcessing.TypeVectorAnyGeometry,
-            )
-        )
-        self.addOutput(
-            QgsProcessingOutputVectorLayer(
-                "OUTPUT_RESULT_DIFF",
-                self.LAYER_RESULT_DIFF,
-                QgsProcessing.TypeVectorAnyGeometry,
-            )
-        )
-        self.addOutput(
-            QgsProcessingOutputVectorLayer(
-                "OUTPUT_RESULT_DIFF_PLUS",
-                self.LAYER_RESULT_DIFF_PLUS,
-                QgsProcessing.TypeVectorAnyGeometry,
-            )
-        )
-        self.addOutput(
-            QgsProcessingOutputVectorLayer(
-                "OUTPUT_RESULT_DIFF_MIN",
-                self.LAYER_RESULT_DIFF_MIN,
-                QgsProcessing.TypeVectorAnyGeometry,
-            )
-        )
-
-        self.addOutput(
-            QgsProcessingOutputVectorLayer(
-                "OUTPUT_CORRECTION",
-                self.LAYER_CORRECTION,
-                QgsProcessing.TypeVectorAnyGeometry,
-            )
+        add_standard_result_outputs(
+            algorithm=self,
+            layer_result=self.LAYER_RESULT,
+            layer_result_diff=self.LAYER_RESULT_DIFF,
+            layer_result_diff_plus=self.LAYER_RESULT_DIFF_PLUS,
+            layer_result_diff_min=self.LAYER_RESULT_DIFF_MIN,
+            layer_correction=self.LAYER_CORRECTION,
         )
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -458,31 +405,22 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             dict_thematic_properties[id_theme] = attributes_dict
 
         # Aligner IMPLEMENTATION
-        if self.SHOW_LOG_INFO:
-            log_info = feedback
-        else:
-            log_info = None
-
-        processor_config = ProcessorConfig()
-        processor_config.od_strategy = self.OD_STRATEGY
-        processor_config.multi_as_single_modus = self.MULTI_AS_SINGLE_MODUS
-        processor_config.correction_distance = self.CORR_DISTANCE
-        processor_config.threshold_overlap_percentage = (
-            self.THRESHOLD_OVERLAP_PERCENTAGE
+        log_info = get_log_feedback(self.SHOW_LOG_INFO, feedback)
+        processor = build_processor(
+            processor_enum=self.PROCESSOR,
+            od_strategy=self.OD_STRATEGY,
+            snap_strategy=self.SNAP_STRATEGY,
+            multi_as_single_modus=self.MULTI_AS_SINGLE_MODUS,
+            correction_distance=self.CORR_DISTANCE,
+            threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
+            get_processor_by_id_fn=get_processor_by_id,
         )
-        processor_config.snap_strategy = self.SNAP_STRATEGY
-        processor = get_processor_by_id(
-            processor_id=self.PROCESSOR.value, config=processor_config
-        )
-        aligner_config = AlignerConfig()
-        aligner_config.log_metadata = True
-        aligner_config.add_observations = True
-
-        aligner = Aligner(
+        aligner = build_aligner(
             feedback=log_info,
             crs=self.CRS,
             processor=processor,
-            config=aligner_config,
+            log_metadata=True,
+            add_observations=True,
         )
         aligner.load_thematic_data(
             DictLoader(
@@ -493,17 +431,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         feedback.pushInfo("START ACTUALISATION")
 
-        if self.PREDICTION_STRATEGY == PredictionStrategy.BEST:
-            max_predictions = 1
-            multi_to_best_prediction = True
-        elif self.PREDICTION_STRATEGY == PredictionStrategy.ALL:
-            max_predictions = -1
-            multi_to_best_prediction = False
-        elif self.PREDICTION_STRATEGY == PredictionStrategy.ORIGINAL:
-            max_predictions = 1
-            multi_to_best_prediction = False
-        else:
-            raise Exception("Unknown PREDICTION_STRATEGY")
+        max_predictions, multi_to_best_prediction = get_prediction_strategy_options(
+            self.PREDICTION_STRATEGY
+        )
         fcs_actualisation = update_featurecollection_to_actual_grb(
             fc,
             id_theme_fieldname=self.ID_THEME_BRDRQ_FIELDNAME,
@@ -645,76 +575,46 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "SHOW_LOG_INFO": False,
         }
 
-        # Read from default dict first
-        self.default_theme_layer = self.params_default_dict[self.INPUT_THEMATIC]
-        self.default_theme_layer_id = self.params_default_dict["COMBOBOX_ID_THEME"]
-        self.default_reference = self.params_default_dict["ENUM_REFERENCE"]
-        self.default_relevant_distance = self.params_default_dict["RELEVANT_DISTANCE"]
-        self.default_prediction_strategy = self.params_default_dict[
-            "PREDICTION_STRATEGY"
-        ]
-        self.default_full_reference_strategy = self.params_default_dict[
-            "FULL_REFERENCE_STRATEGY"
-        ]
-        self.default_processor = self.params_default_dict["ENUM_PROCESSOR"]
-        self.default_od_strategy = self.params_default_dict["ENUM_OD_STRATEGY"]
-        self.default_snap_strategy = self.params_default_dict["ENUM_SNAP_STRATEGY"]
-        self.default_threshold_overlap_percentage = self.params_default_dict[
-            "THRESHOLD_OVERLAP_PERCENTAGE"
-        ]
-        self.default_workfolder = self.params_default_dict["WORK_FOLDER"]
-        self.default_review_percentage = self.params_default_dict["REVIEW_PERCENTAGE"]
-        self.default_metadata_field = self.params_default_dict["METADATA_FIELD"]
-        self.default_extra_logging = self.params_default_dict["SHOW_LOG_INFO"]
+        initialize_default_attributes(
+            self,
+            [
+                ("default_theme_layer", self.INPUT_THEMATIC),
+                ("default_theme_layer_id", "COMBOBOX_ID_THEME"),
+                ("default_reference", "ENUM_REFERENCE"),
+                ("default_relevant_distance", "RELEVANT_DISTANCE"),
+                ("default_prediction_strategy", "PREDICTION_STRATEGY"),
+                ("default_full_reference_strategy", "FULL_REFERENCE_STRATEGY"),
+                ("default_processor", "ENUM_PROCESSOR"),
+                ("default_od_strategy", "ENUM_OD_STRATEGY"),
+                ("default_snap_strategy", "ENUM_SNAP_STRATEGY"),
+                ("default_threshold_overlap_percentage", "THRESHOLD_OVERLAP_PERCENTAGE"),
+                ("default_workfolder", "WORK_FOLDER"),
+                ("default_review_percentage", "REVIEW_PERCENTAGE"),
+                ("default_metadata_field", "METADATA_FIELD"),
+                ("default_extra_logging", "SHOW_LOG_INFO"),
+            ],
+        )
 
         # READ FROM SAVED SETTINGS
-        self.default_theme_layer = read_setting(
-            prefix, "theme_layer", self.default_theme_layer
-        )
-        self.default_theme_layer_id = read_setting(
-            prefix, "default_theme_layer_id", self.default_theme_layer_id
-        )
-        self.default_reference = read_setting(
-            prefix, "default_reference", self.default_reference
-        )
-        self.default_relevant_distance = float(read_setting(
-            prefix, "relevant_distance", self.default_relevant_distance
-        ))
-        self.default_prediction_strategy = read_setting(
-            prefix, "default_prediction_strategy", self.default_prediction_strategy
-        )
-        self.default_full_reference_strategy = read_setting(
+        apply_saved_settings(
+            self,
             prefix,
-            "default_full_reference_strategy",
-            self.default_full_reference_strategy,
-        )
-
-        ##!! we set the default processor always to the AlignerGeometryPeocessor
-        # self.default_processor = read_setting(
-        #     prefix, "default_processor", self.default_processor
-        # )
-        self.default_od_strategy = read_setting(
-            prefix, "default_od_strategy", self.default_od_strategy
-        )
-        self.default_snap_strategy = read_setting(
-            prefix, "default_snap_strategy", self.default_snap_strategy
-        )
-        self.default_threshold_overlap_percentage = read_setting(
-            prefix,
-            "default_threshold_overlap_percentage",
-            self.default_threshold_overlap_percentage,
-        )
-        self.default_workfolder = read_setting(
-            prefix, "default_workfolder", self.default_workfolder,scope="global"
-        )
-        self.default_review_percentage = read_setting(
-            prefix, "default_review_percentage", self.default_review_percentage
-        )
-        self.default_metadata_field = read_setting(
-            prefix, "default_metadata_field", self.default_metadata_field
-        )
-        self.default_extra_logging = read_setting(
-            prefix, "default_extra_logging", self.default_extra_logging
+            [
+                ("default_theme_layer", "theme_layer"),
+                ("default_theme_layer_id", "default_theme_layer_id"),
+                ("default_reference", "default_reference"),
+                ("default_relevant_distance", "relevant_distance", float),
+                ("default_prediction_strategy", "default_prediction_strategy"),
+                ("default_full_reference_strategy", "default_full_reference_strategy"),
+                ("default_od_strategy", "default_od_strategy"),
+                ("default_snap_strategy", "default_snap_strategy"),
+                ("default_threshold_overlap_percentage", "default_threshold_overlap_percentage"),
+                ("default_workfolder", "default_workfolder", None, "global"),
+                ("default_review_percentage", "default_review_percentage"),
+                ("default_metadata_field", "default_metadata_field"),
+                ("default_extra_logging", "default_extra_logging"),
+            ],
+            read_setting,
         )
 
         # Validate defaults
@@ -725,52 +625,51 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # print ('write_settings')
         prefix = self.name()
 
-        write_setting(prefix, "theme_layer", self.default_theme_layer)
-        write_setting(prefix, "default_theme_layer_id", self.default_theme_layer_id)
-        write_setting(prefix, "default_reference", self.default_reference)
-        write_setting(prefix, "relevant_distance", self.default_relevant_distance)
-        write_setting(
-            prefix, "default_prediction_strategy", self.default_prediction_strategy
-        )
-        write_setting(
+        write_saved_settings(
+            self,
             prefix,
-            "default_full_reference_strategy",
-            self.default_full_reference_strategy,
+            [
+                ("default_theme_layer", "theme_layer"),
+                ("default_theme_layer_id", "default_theme_layer_id"),
+                ("default_reference", "default_reference"),
+                ("default_relevant_distance", "relevant_distance"),
+                ("default_prediction_strategy", "default_prediction_strategy"),
+                ("default_full_reference_strategy", "default_full_reference_strategy"),
+                ("default_processor", "default_processor"),
+                ("default_od_strategy", "default_od_strategy"),
+                ("default_snap_strategy", "default_snap_strategy"),
+                ("default_threshold_overlap_percentage", "default_threshold_overlap_percentage"),
+                ("default_workfolder", "default_workfolder", "global"),
+                ("default_review_percentage", "default_review_percentage"),
+                ("default_metadata_field", "default_metadata_field"),
+                ("default_extra_logging", "default_extra_logging"),
+            ],
+            write_setting,
         )
-        write_setting(prefix, "default_processor", self.default_processor)
-        write_setting(prefix, "default_od_strategy", self.default_od_strategy)
-        write_setting(prefix, "default_snap_strategy", self.default_snap_strategy)
-        write_setting(
-            prefix,
-            "default_threshold_overlap_percentage",
-            self.default_threshold_overlap_percentage,
-        )
-        write_setting(prefix, "default_workfolder", self.default_workfolder,scope="global")
-        write_setting(
-            prefix, "default_review_percentage", self.default_review_percentage
-        )
-        write_setting(prefix, "default_metadata_field", self.default_metadata_field)
-        write_setting(prefix, "default_extra_logging", self.default_extra_logging)
 
     def prepare_parameters(self, parameters, context):
 
         # PARAMETER PREPARATION
-        self.default_theme_layer = parameters[self.INPUT_THEMATIC]
-        self.default_theme_layer_id = parameters["COMBOBOX_ID_THEME"]
-        self.default_reference = parameters["ENUM_REFERENCE"]
-        self.default_relevant_distance = parameters["RELEVANT_DISTANCE"]
-        self.default_prediction_strategy = parameters["PREDICTION_STRATEGY"]
-        self.default_full_reference_strategy = parameters["FULL_REFERENCE_STRATEGY"]
-        self.default_review_percentage = parameters["REVIEW_PERCENTAGE"]
-        self.default_processor = parameters["ENUM_PROCESSOR"]
-        self.default_od_strategy = parameters["ENUM_OD_STRATEGY"]
-        self.default_snap_strategy = parameters["ENUM_SNAP_STRATEGY"]
-        self.default_threshold_overlap_percentage = parameters[
-            "THRESHOLD_OVERLAP_PERCENTAGE"
-        ]
-        self.default_workfolder = parameters["WORK_FOLDER"]
-        self.default_metadata_field = parameters["METADATA_FIELD"]
-        self.default_extra_logging = parameters["SHOW_LOG_INFO"]
+        assign_parameter_values(
+            self,
+            parameters,
+            [
+                ("default_theme_layer", self.INPUT_THEMATIC),
+                ("default_theme_layer_id", "COMBOBOX_ID_THEME"),
+                ("default_reference", "ENUM_REFERENCE"),
+                ("default_relevant_distance", "RELEVANT_DISTANCE"),
+                ("default_prediction_strategy", "PREDICTION_STRATEGY"),
+                ("default_full_reference_strategy", "FULL_REFERENCE_STRATEGY"),
+                ("default_review_percentage", "REVIEW_PERCENTAGE"),
+                ("default_processor", "ENUM_PROCESSOR"),
+                ("default_od_strategy", "ENUM_OD_STRATEGY"),
+                ("default_snap_strategy", "ENUM_SNAP_STRATEGY"),
+                ("default_threshold_overlap_percentage", "THRESHOLD_OVERLAP_PERCENTAGE"),
+                ("default_workfolder", "WORK_FOLDER"),
+                ("default_metadata_field", "METADATA_FIELD"),
+                ("default_extra_logging", "SHOW_LOG_INFO"),
+            ],
+        )
 
         # Reset run-specific names so repeated runs on the same instance do not
         # keep appending suffixes.
@@ -789,22 +688,13 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         self.RELEVANT_DISTANCE = self.default_relevant_distance
 
-        if isinstance(self.default_theme_layer, QgsProcessingFeatureSourceDefinition):
-            self.LAYER_THEMATIC = self.default_theme_layer
-            crs = (
-                QgsProject.instance()
-                .mapLayer(self.default_theme_layer.toVariant()["source"]["val"])
-                .sourceCrs()
-                .authid()
-            )
-        else:
-            self.LAYER_THEMATIC = self.parameterAsVectorLayer(
-                parameters, self.INPUT_THEMATIC, context
-            )
-            crs = (
-                self.LAYER_THEMATIC.sourceCrs().authid()
-            )  # set CRS for the calculations, based on the THEMATIC input layer
-        self.CRS = crs
+        self.LAYER_THEMATIC, self.CRS = resolve_thematic_layer_and_crs(
+            algorithm=self,
+            default_theme_layer=self.default_theme_layer,
+            parameters=parameters,
+            input_thematic=self.INPUT_THEMATIC,
+            context=context,
+        )
         self.ID_THEME_BRDRQ_FIELDNAME = self.default_theme_layer_id
 
         self.THRESHOLD_OVERLAP_PERCENTAGE = self.default_threshold_overlap_percentage
