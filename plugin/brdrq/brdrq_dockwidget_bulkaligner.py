@@ -147,7 +147,7 @@ class brdrQDockWidgetBulkAligner(
         root = qinst.layerTreeRoot()
         layer = self.mMapLayerComboBox.currentLayer()
         # create a new layer from all features
-        if self.checkBox_only_selected.checkState():
+        if self.checkBox_only_selected.isChecked():
             new_layer = layer.materialize(
                 QgsFeatureRequest().setFilterFids(layer.selectedFeatureIds())
             )
@@ -386,7 +386,7 @@ class brdrQDockWidgetBulkAligner(
         self.clearUserInterface()
         for f in self.getWorkingFeatures():
             item = f"ID: *{str(f.id())}*, Attributes: {f[BRDRQ_STATE_FIELDNAME]}"
-            if self.checkBox_only_manual.checkState() == 2 and not "to_check" in item:
+            if self.checkBox_only_manual.isChecked() and "to_check" not in item:
                 continue
             self.listWidget_features.addItem(item)
 

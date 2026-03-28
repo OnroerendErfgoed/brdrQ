@@ -91,6 +91,8 @@ from qgis.utils import iface
 from shapely import to_wkt, from_wkt, make_valid
 from .qt_compat import (
     is_return_or_enter_key,
+    map_mouse_event_pos,
+    map_mouse_event_xy,
     qgs_field_type_double,
     qgs_field_type_string,
     qt_checkstate_checked,
@@ -1647,8 +1649,9 @@ class SelectTool(QgsMapToolIdentifyFeature):
         QgsMapToolIdentifyFeature.__init__(self, self.canvas, self.layer)
 
     def canvasPressEvent(self, event):
+        x, y = map_mouse_event_xy(event)
         identified_features = self.identify(
-            event.x(), event.y(), [self.layer], QgsMapToolIdentify.TopDownAll
+            x, y, [self.layer], QgsMapToolIdentify.TopDownAll
         )
         identified_features = [f.mFeature for f in identified_features]
         self.featuresIdentified.emit(identified_features)
@@ -1669,7 +1672,7 @@ class PolygonSelectTool(QgsMapTool):
         self.rubber_band.setWidth(2)
 
     def canvasPressEvent(self, event):
-        point = self.toMapCoordinates(event.pos())
+        point = self.toMapCoordinates(map_mouse_event_pos(event))
         self.points.append(point)
         self.rubber_band.addPoint(point, True)
 

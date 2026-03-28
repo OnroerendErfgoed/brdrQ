@@ -137,6 +137,41 @@ def is_return_or_enter_key(key):
     return key in candidates
 
 
+def map_mouse_event_xy(event):
+    """
+    Return screen x/y from QgsMapMouseEvent across QGIS 3/4.
+    """
+    if hasattr(event, "x") and hasattr(event, "y"):
+        return int(event.x()), int(event.y())
+
+    if hasattr(event, "position"):
+        pos = event.position()
+        return int(pos.x()), int(pos.y())
+
+    if hasattr(event, "pos"):
+        pos = event.pos()
+        return int(pos.x()), int(pos.y())
+
+    raise AttributeError("Unsupported mouse event API: cannot extract x/y")
+
+
+def map_mouse_event_pos(event):
+    """
+    Return a QPoint-like screen position from QgsMapMouseEvent across QGIS 3/4.
+    """
+    if hasattr(event, "position"):
+        pos = event.position()
+        # Qt6 can return QPointF; convert to integer QPoint when available.
+        if hasattr(pos, "toPoint"):
+            return pos.toPoint()
+        return pos
+
+    if hasattr(event, "pos"):
+        return event.pos()
+
+    raise AttributeError("Unsupported mouse event API: cannot extract pos")
+
+
 def get_vector_menu(iface):
     """
     Get the Vector menu from QgsInterface with safe fallbacks for API differences.
