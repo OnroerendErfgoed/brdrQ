@@ -1,0 +1,3 @@
+Running tests for qgis4
+
+powershell -ExecutionPolicy Bypass -File .\run-tests-qgis4.ps1 -Suite smoke -Mode perfile -QgisPython "C:\Program Files\QGIS 4.0.0\bin\python.exe"

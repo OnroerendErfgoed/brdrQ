@@ -264,15 +264,18 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.reference_id = self.mFieldComboBox_reference.currentField()
 
         if self.metadata is None:
-            self.metadata = int(
-                read_setting(
-                    self.prefix,
-                    "metadata",
-                    0,
-                )
+            metadata_setting = read_setting(
+                self.prefix,
+                "metadata",
+                0,
             )
-            self.checkBox_metadata.setCheckState(self.metadata)
-        self.metadata = self.checkBox_metadata.checkState()
+            # Backward compatible with historical int-based values (0/2).
+            if isinstance(metadata_setting, bool):
+                self.metadata = metadata_setting
+            else:
+                self.metadata = bool(int(metadata_setting))
+            self.checkBox_metadata.setChecked(self.metadata)
+        self.metadata = self.checkBox_metadata.isChecked()
 
         # if self.partial_snapping is None:
         #     self.partial_snapping = int(s.value("brdrq/partial_snapping", 0))
