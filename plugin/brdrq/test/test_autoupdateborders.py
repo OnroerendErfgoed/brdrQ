@@ -59,6 +59,7 @@ class TestAutoUpdateBorders(unittest.TestCase):
                 "RELEVANT_DISTANCE": 5,
                 "THRESHOLD_OVERLAP_PERCENTAGE": 50,
                 "ENUM_OD_STRATEGY": 2,
+                "ENUM_SNAP_STRATEGY": 1,
                 "ENUM_PROCESSOR": 0,
                 "WORK_FOLDER": foldername,
                 "REVIEW_PERCENTAGE": 10,
@@ -104,6 +105,7 @@ class TestAutoUpdateBorders(unittest.TestCase):
                 "RELEVANT_DISTANCE": 5,
                 "THRESHOLD_OVERLAP_PERCENTAGE": 50,
                 "ENUM_OD_STRATEGY": 2,
+                "ENUM_SNAP_STRATEGY": 1,
                 "ENUM_PROCESSOR": 0,
                 "WORK_FOLDER": foldername,
                 "REVIEW_PERCENTAGE": 10,
@@ -137,6 +139,7 @@ class TestAutoUpdateBorders(unittest.TestCase):
                 "RELEVANT_DISTANCE": 5,
                 "THRESHOLD_OVERLAP_PERCENTAGE": 50,
                 "ENUM_OD_STRATEGY": 2,
+                "ENUM_SNAP_STRATEGY": 1,
                 "ENUM_PROCESSOR": 0,
                 "WORK_FOLDER": foldername,
                 "REVIEW_PERCENTAGE": 10,
@@ -151,3 +154,4 @@ class TestAutoUpdateBorders(unittest.TestCase):
         for o in output.values():
             assert isinstance(o,QgsVectorLayer)
             assert 0<o.featureCount()<=featurecount
+

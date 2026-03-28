@@ -150,8 +150,8 @@ DICT_OSM_TYPES = dict()
 for x in OsmType:
     DICT_OSM_TYPES["OSM - " + x.name] = x.value
 
-# DICT_BE_TYPES = dict()
-# DICT_BE_TYPES["BE - Cadastral Parcels"]="BE_CADASTRAL"
+DICT_BE_TYPES = dict()
+DICT_BE_TYPES["BE - Cadastral Parcels"]="BE_CADASTRAL_PARCELS"
 
 DICT_NL_TYPES = dict()
 for e in BRKType:
@@ -160,13 +160,13 @@ for e in BRKType:
 DICT_REFERENCE_OPTIONS.update(DICT_GRB_TYPES)
 DICT_REFERENCE_OPTIONS.update(DICT_ADPF_VERSIONS)
 DICT_REFERENCE_OPTIONS.update(DICT_OSM_TYPES)
-# DICT_REFERENCE_OPTIONS.update(DICT_BE_TYPES)
+DICT_REFERENCE_OPTIONS.update(DICT_BE_TYPES)
 DICT_REFERENCE_OPTIONS.update(DICT_NL_TYPES)
 
 GRB_TYPES = list(DICT_GRB_TYPES.keys())
 ADPF_VERSIONS = list(DICT_ADPF_VERSIONS.keys())
 OSM_TYPES = list(DICT_OSM_TYPES.keys())
-# BE_TYPES = list(DICT_BE_TYPES.keys())
+BE_TYPES = list(DICT_BE_TYPES.keys())
 NL_TYPES = list(DICT_NL_TYPES.keys())
 ENUM_REFERENCE_OPTIONS = list(DICT_REFERENCE_OPTIONS.keys())
 
@@ -1293,7 +1293,7 @@ def generate_correction_layer(
     for feat in results_layer.getFeatures():
         key = feat[ID_THEME_FIELD_NAME]
         geom = feat.geometry()
-        if key in id_geom_map.keys():
+        if key in id_geom_map:
             # when key not unique and multiple predictions, the last prediction is added to the list and the status is set to review
             ids_to_review.append(key)
         id_geom_map[key] = geom
@@ -1336,7 +1336,6 @@ def generate_correction_layer(
             ids_not_changed.append(key)
 
     # 4. Update geometries in duplicated layer
-    correction_layer.startEditing()
     fields_to_add = [
         QgsField(METADATA_FIELD_NAME, QVariant.String),
         QgsField(EVALUATION_FIELD_NAME, QVariant.String),
@@ -1360,29 +1359,52 @@ def generate_correction_layer(
 
     # Update Fields-cache
     correction_layer.updateFields()
+    field_idx = {
+        METADATA_FIELD_NAME: correction_layer.fields().indexFromName(METADATA_FIELD_NAME),
+        EVALUATION_FIELD_NAME: correction_layer.fields().indexFromName(EVALUATION_FIELD_NAME),
+        BRDRQ_STATE_FIELDNAME: correction_layer.fields().indexFromName(BRDRQ_STATE_FIELDNAME),
+        BRDRQ_ORIGINAL_WKT_FIELDNAME: correction_layer.fields().indexFromName(BRDRQ_ORIGINAL_WKT_FIELDNAME),
+        SYMMETRICAL_AREA_CHANGE: correction_layer.fields().indexFromName(SYMMETRICAL_AREA_CHANGE),
+        SYMMETRICAL_AREA_PERCENTAGE_CHANGE: correction_layer.fields().indexFromName(SYMMETRICAL_AREA_PERCENTAGE_CHANGE),
+    }
+
+    attr_changes = {}
+    geometry_changes = {}
     for feat in correction_layer.getFeatures():
-        fid = feat[id_theme_brdrq_fieldname]
-        if add_metadata:
-            feat[METADATA_FIELD_NAME] = id_metadata_map[fid]
-        feat[EVALUATION_FIELD_NAME] = id_evaluation_map[fid]
-        feat[SYMMETRICAL_AREA_CHANGE] = id_diff_index_map[fid]
-        feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] = id_diff_perc_index_map[fid]
-        feat[BRDRQ_ORIGINAL_WKT_FIELDNAME] = feat.geometry().asWkt()
+        theme_id = feat[id_theme_brdrq_fieldname]
+        provider_fid = feat.id()
+
         state = str(BrdrQState.NONE.value)
-        if fid in id_geom_map and fid not in ids_to_align:
-            feat.setGeometry(id_geom_map[fid])
+        diff_value = id_diff_index_map[theme_id]
+        diff_perc_value = id_diff_perc_index_map[theme_id]
+
+        if theme_id in id_geom_map and theme_id not in ids_to_align:
+            geometry_changes[provider_fid] = id_geom_map[theme_id]
             state = str(BrdrQState.AUTO_UPDATED.value)
-        if fid in ids_not_changed:
+        if theme_id in ids_not_changed:
             state = str(BrdrQState.NOT_CHANGED.value)
-        if fid in ids_to_review:
+        if theme_id in ids_to_review:
             state = str(BrdrQState.TO_REVIEW.value)
-        if fid in ids_to_align:
-            feat[SYMMETRICAL_AREA_CHANGE] = -1
-            feat[SYMMETRICAL_AREA_PERCENTAGE_CHANGE] = -1
+        if theme_id in ids_to_align:
+            diff_value = -1
+            diff_perc_value = -1
             state = str(BrdrQState.TO_UPDATE.value)
-        feat[BRDRQ_STATE_FIELDNAME] = state
-        correction_layer.updateFeature(feat)
-    correction_layer.commitChanges()
+
+        attrs = {
+            field_idx[EVALUATION_FIELD_NAME]: str(id_evaluation_map[theme_id].value),
+            field_idx[SYMMETRICAL_AREA_CHANGE]: diff_value,
+            field_idx[SYMMETRICAL_AREA_PERCENTAGE_CHANGE]: diff_perc_value,
+            field_idx[BRDRQ_ORIGINAL_WKT_FIELDNAME]: feat.geometry().asWkt(),
+            field_idx[BRDRQ_STATE_FIELDNAME]: state,
+        }
+        if add_metadata:
+            attrs[field_idx[METADATA_FIELD_NAME]] = id_metadata_map[theme_id]
+        attr_changes[provider_fid] = attrs
+
+    provider = correction_layer.dataProvider()
+    provider.changeAttributeValues(attr_changes)
+    if geometry_changes:
+        provider.changeGeometryValues(geometry_changes)
 
     style_outputlayer(correction_layer, BRDRQ_STATE_FIELDNAME)
     return correction_layer
@@ -1475,7 +1497,7 @@ def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_
         selected_reference = ref
         layer_reference_name = ref
         ref_suffix = str(ref_id)
-    elif ref in (OSM_TYPES + NL_TYPES):  # BE_TYPES +
+    elif ref in (BE_TYPES + OSM_TYPES + NL_TYPES):  #
         selected_reference = ref
         layer_reference_name = ref
         ref_suffix = str(ref)

@@ -1,3 +1,10 @@
+# v0.19.0
+
+- Upgrade to brdr release version 0.15.6 (performance improvement)
+- Added Loader for Cadastral Parcels (be) [#274]
+- update UI settings window for snapStrategy [#288]
+- Added SnapStrategy PREFER_ENDS_AND_ANGLES when aligning lines and points [#275]
+
 # v0.18.2
 
 - FeatureAligner: bugfix when using local reference layer [#282]

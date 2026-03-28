@@ -78,6 +78,7 @@ class BrdrQPlugin(object):
         self.iface = iface
         self.dockwidget_featurealigner = None
         self.dockwidget_bulkaligner = None
+        self.dialog = None
         self.actions = []
         self.toolbar = self.iface.addToolBar(pluginname)
         self.toolbar.setObjectName(pluginname)

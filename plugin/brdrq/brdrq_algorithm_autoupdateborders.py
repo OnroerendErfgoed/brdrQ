@@ -33,7 +33,7 @@ from brdr.aligner import Aligner
 from brdr.be.grb.grb import update_featurecollection_to_actual_grb
 from brdr.configs import ProcessorConfig, AlignerConfig
 from brdr.constants import BASE_METADATA_FIELD_NAME
-from brdr.enums import OpenDomainStrategy, FullReferenceStrategy
+from brdr.enums import OpenDomainStrategy, FullReferenceStrategy, SnapStrategy
 from brdr.loader import DictLoader
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QDate, QDateTime
@@ -63,6 +63,7 @@ from .brdrq_utils import (
     PredictionStrategy,
     ENUM_FULL_REFERENCE_STRATEGY_OPTIONS,
     ENUM_OD_STRATEGY_OPTIONS,
+    ENUM_SNAP_STRATEGY_OPTIONS,
     get_reference_params,
     get_processor_by_id,
     Processor,
@@ -93,6 +94,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     GRB_TYPE = None
     CRS = None
     OD_STRATEGY = None
+    SNAP_STRATEGY = None
     THRESHOLD_OVERLAP_PERCENTAGE = None
     REVIEW_PERCENTAGE = None  # default - features that changes more than this % wil be moved to review lisr
     RELEVANT_DISTANCE = None
@@ -297,6 +299,17 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         self.addParameter(parameter)
 
+        parameter = QgsProcessingParameterEnum(
+            "ENUM_SNAP_STRATEGY",
+            '<br>Snap Strategy<br><i style="color: gray;">Strategy for snapping to reference vertices when processing line/point geometries</i>',
+            options=ENUM_SNAP_STRATEGY_OPTIONS,
+            defaultValue=self.default_snap_strategy,
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
+
         parameter = QgsProcessingParameterNumber(
             "THRESHOLD_OVERLAP_PERCENTAGE",
             '<br>Threshold overlap percentage<br><i style="color: gray;">In the exceptional case that the algorithm cannot determine if a reference feature is relevant, this fallback-parameter is used to determine to include/exclude a reference based on overlap-percentage</i>',
@@ -423,24 +436,25 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # Load thematic into a shapely_dict:
         dict_thematic = {}
         dict_thematic_properties = {}
-        features = thematic.getFeatures()
-
-        for current, feature in enumerate(features):
+        metadata_field_name = self.METADATA_FIELDNAME
+        for feature in thematic.getFeatures():
             if feedback.isCanceled():
                 return {}
 
             id_theme = feature.attribute(self.ID_THEME_BRDRQ_FIELDNAME)
             dict_thematic[id_theme] = geom_qgis_to_shapely(feature.geometry())
-            # dict_thematic_properties[id_theme] = feature.__geo_interface__["properties"]
-            attributes = feature.attributeMap()
             attributes_dict = {}
-            for key, value in attributes.items():
-                if isinstance(value, QDate):
-                    attributes_dict[key] = value.toPyDate()
-                elif isinstance(value, QDateTime):
-                    attributes_dict[key] = value.toPyDateTime()
-                else:
-                    attributes_dict[key] = value
+            # The actualisation flow expects the thematic identifier to be present
+            # in GeoJSON properties.
+            attributes_dict[self.ID_THEME_BRDRQ_FIELDNAME] = id_theme
+            # Autoupdate only needs metadata for better prediction quality.
+            if metadata_field_name:
+                metadata_value = feature.attribute(metadata_field_name)
+                if isinstance(metadata_value, QDate):
+                    metadata_value = metadata_value.toPyDate()
+                elif isinstance(metadata_value, QDateTime):
+                    metadata_value = metadata_value.toPyDateTime()
+                attributes_dict[metadata_field_name] = metadata_value
             dict_thematic_properties[id_theme] = attributes_dict
 
         # Aligner IMPLEMENTATION
@@ -456,6 +470,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         processor_config.threshold_overlap_percentage = (
             self.THRESHOLD_OVERLAP_PERCENTAGE
         )
+        processor_config.snap_strategy = self.SNAP_STRATEGY
         processor = get_processor_by_id(
             processor_id=self.PROCESSOR.value, config=processor_config
         )
@@ -563,14 +578,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         feedback.pushInfo("Resulting geometry calculated")
         feedback.pushInfo("END ACTUALISATION")
-        result = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
-        result_diff = QgsProject.instance().mapLayersByName(self.LAYER_RESULT_DIFF)[0]
-        result_diff_plus = QgsProject.instance().mapLayersByName(
-            self.LAYER_RESULT_DIFF_PLUS
-        )[0]
-        result_diff_min = QgsProject.instance().mapLayersByName(
-            self.LAYER_RESULT_DIFF_MIN
-        )[0]
+        result = self._get_output_layer(self.LAYER_RESULT)
+        result_diff = self._get_output_layer(self.LAYER_RESULT_DIFF)
+        result_diff_plus = self._get_output_layer(self.LAYER_RESULT_DIFF_PLUS)
+        result_diff_min = self._get_output_layer(self.LAYER_RESULT_DIFF_MIN)
 
         correction_layer = None
         if self.PREDICTION_STRATEGY != PredictionStrategy.ALL:
@@ -587,7 +598,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 "No correction layer generated when predictions with predictionStrategy ALL is activated"
             )
 
-        QgsProject.instance().reloadAllLayers()
+        for layer in [result, result_diff, result_diff_plus, result_diff_min, correction_layer]:
+            if layer is not None:
+                layer.reload()
+                layer.triggerRepaint()
         feedback.pushInfo("Resulting geometry calculated")
         feedback.setCurrentStep(6)
         if feedback.isCanceled():
@@ -602,6 +616,14 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "OUTPUT_CORRECTION": correction_layer,
         }
 
+    def _get_output_layer(self, layer_name):
+        layers = QgsProject.instance().mapLayersByName(layer_name)
+        if not layers:
+            raise QgsProcessingException(
+                f"Expected output layer '{layer_name}' was not created."
+            )
+        return layers[0]
+
     def read_default_settings(self):
         # print ('read_settings')
         prefix = self.name()
@@ -615,6 +637,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "FULL_REFERENCE_STRATEGY": 2,
             "ENUM_PROCESSOR": 0,
             "ENUM_OD_STRATEGY": 3,
+            "ENUM_SNAP_STRATEGY": 1,
             "THRESHOLD_OVERLAP_PERCENTAGE": 50,
             "REVIEW_PERCENTAGE": 10,
             "WORK_FOLDER": "brdrQ",
@@ -635,6 +658,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         ]
         self.default_processor = self.params_default_dict["ENUM_PROCESSOR"]
         self.default_od_strategy = self.params_default_dict["ENUM_OD_STRATEGY"]
+        self.default_snap_strategy = self.params_default_dict["ENUM_SNAP_STRATEGY"]
         self.default_threshold_overlap_percentage = self.params_default_dict[
             "THRESHOLD_OVERLAP_PERCENTAGE"
         ]
@@ -671,6 +695,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # )
         self.default_od_strategy = read_setting(
             prefix, "default_od_strategy", self.default_od_strategy
+        )
+        self.default_snap_strategy = read_setting(
+            prefix, "default_snap_strategy", self.default_snap_strategy
         )
         self.default_threshold_overlap_percentage = read_setting(
             prefix,
@@ -712,6 +739,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         write_setting(prefix, "default_processor", self.default_processor)
         write_setting(prefix, "default_od_strategy", self.default_od_strategy)
+        write_setting(prefix, "default_snap_strategy", self.default_snap_strategy)
         write_setting(
             prefix,
             "default_threshold_overlap_percentage",
@@ -736,12 +764,23 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.default_review_percentage = parameters["REVIEW_PERCENTAGE"]
         self.default_processor = parameters["ENUM_PROCESSOR"]
         self.default_od_strategy = parameters["ENUM_OD_STRATEGY"]
+        self.default_snap_strategy = parameters["ENUM_SNAP_STRATEGY"]
         self.default_threshold_overlap_percentage = parameters[
             "THRESHOLD_OVERLAP_PERCENTAGE"
         ]
         self.default_workfolder = parameters["WORK_FOLDER"]
         self.default_metadata_field = parameters["METADATA_FIELD"]
         self.default_extra_logging = parameters["SHOW_LOG_INFO"]
+
+        # Reset run-specific names so repeated runs on the same instance do not
+        # keep appending suffixes.
+        cls = type(self)
+        self.SUFFIX = ""
+        self.LAYER_RESULT = cls.LAYER_RESULT
+        self.LAYER_RESULT_DIFF = cls.LAYER_RESULT_DIFF
+        self.LAYER_RESULT_DIFF_PLUS = cls.LAYER_RESULT_DIFF_PLUS
+        self.LAYER_RESULT_DIFF_MIN = cls.LAYER_RESULT_DIFF_MIN
+        self.GROUP_LAYER = cls.GROUP_LAYER
 
         wrkfldr = self.default_workfolder
         if wrkfldr is None or str(wrkfldr) == "" or str(wrkfldr) == "NULL":
@@ -772,6 +811,9 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.REVIEW_PERCENTAGE = self.default_review_percentage
         self.OD_STRATEGY = OpenDomainStrategy[
             ENUM_OD_STRATEGY_OPTIONS[self.default_od_strategy]
+        ]
+        self.SNAP_STRATEGY = SnapStrategy[
+            ENUM_SNAP_STRATEGY_OPTIONS[self.default_snap_strategy]
         ]
         self.PROCESSOR = Processor[ENUM_PROCESSOR_OPTIONS[self.default_processor]]
         self.FULL_REFERENCE_STRATEGY = FullReferenceStrategy[

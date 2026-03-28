@@ -32,6 +32,7 @@ import os
 import sys
 from datetime import datetime
 
+from brdr.be.be import BeCadastralParcelLoader
 # TODO QGIS4
 from brdr.be.grb.enums import GRBType
 from brdr.be.grb.loader import GRBFiscalParcelLoader, GRBActualLoader
@@ -45,6 +46,7 @@ from qgis.core import QgsProcessingFeatureSourceDefinition
 from .brdrq_utils import (
     ENUM_REFERENCE_OPTIONS,
     ENUM_OD_STRATEGY_OPTIONS,
+    ENUM_SNAP_STRATEGY_OPTIONS,
     ADPF_VERSIONS,
     geom_qgis_to_shapely,
     featurecollection_to_layer,
@@ -69,6 +71,7 @@ from .brdrq_utils import (
     remove_empty_features_from_diff_layers,
     NL_TYPES,
     DICT_NL_TYPES,
+    BE_TYPES,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -99,6 +102,7 @@ from brdr.aligner import Aligner
 from brdr.loader import DictLoader
 from brdr.enums import (
     OpenDomainStrategy,
+    SnapStrategy,
     AlignerResultType,
     FullReferenceStrategy,
     PredictionStrategy,
@@ -163,6 +167,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     # ALIGNER parameters
     OD_STRATEGY = None  # default OD_STRATEGY for the aligner,updated by user-choice
+    SNAP_STRATEGY = None
     FULL_REFERENCE_STRATEGY = None
     PREDICTION_STRATEGY = None
     PROCESSOR = None
@@ -439,6 +444,17 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         self.addParameter(parameter)
 
+        parameter = QgsProcessingParameterEnum(
+            "ENUM_SNAP_STRATEGY",
+            '<br>Snap Strategy<br><i style="color: gray;">Strategy for snapping to reference vertices when processing line/point geometries</i>',
+            options=ENUM_SNAP_STRATEGY_OPTIONS,
+            defaultValue=self.default_snap_strategy,
+        )
+        parameter.setFlags(
+            parameter.flags() | QgsProcessingParameterDefinition.FlagAdvanced
+        )
+        self.addParameter(parameter)
+
         parameter = QgsProcessingParameterNumber(
             "THRESHOLD_OVERLAP_PERCENTAGE",
             '<br>Threshold overlap percentage (%)<br><i style="color: gray;">In the exceptional case that the algorithm cannot determine if a reference feature is relevant, this fallback-parameter is used to determine to include/exclude a reference based on overlap-percentage</i>',
@@ -612,6 +628,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         processor_config.threshold_overlap_percentage = (
             self.THRESHOLD_OVERLAP_PERCENTAGE
         )
+        processor_config.snap_strategy = self.SNAP_STRATEGY
         processor = get_processor_by_id(
             processor_id=self.PROCESSOR.value, config=processor_config
         )
@@ -650,20 +667,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         elif self.SELECTED_REFERENCE in OSM_TYPES:
             tags = DICT_OSM_TYPES[self.SELECTED_REFERENCE]
             aligner.load_reference_data(OSMLoader(osm_tags=tags, aligner=aligner))
-        # elif self.SELECTED_REFERENCE in BE_TYPES:
-        #     try:
-        #
-        #         loader = WFSReferenceLoader(
-        #             url="https://ccff02.minfin.fgov.be/geoservices/arcgis/services/WMS/Cadastral_LayersWFS/MapServer/WFSServer",
-        #             id_property="CaPaKey",
-        #             typename="CL:Cadastral_parcel",
-        #             aligner=aligner,
-        #             partition=1000,
-        #             limit=500,
-        #         )
-        #         aligner.load_reference_data(loader)
-        #     except Exception as e:
-        #         raise QgsProcessingException(e)
+        elif self.SELECTED_REFERENCE in BE_TYPES:
+            try:
+                aligner.load_reference_data(BeCadastralParcelLoader(partition=1000, aligner=aligner))
+            except Exception as e:
+                raise QgsProcessingException(e)
         elif self.SELECTED_REFERENCE in NL_TYPES:
             try:
                 brk_type = BRKType[DICT_NL_TYPES[self.SELECTED_REFERENCE]]
@@ -820,14 +828,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             self.LAYER_RESULT_DIFF,
         ])
 
-        result = QgsProject.instance().mapLayersByName(self.LAYER_RESULT)[0]
-        result_diff = QgsProject.instance().mapLayersByName(self.LAYER_RESULT_DIFF)[0]
-        result_diff_plus = QgsProject.instance().mapLayersByName(
-            self.LAYER_RESULT_DIFF_PLUS
-        )[0]
-        result_diff_min = QgsProject.instance().mapLayersByName(
-            self.LAYER_RESULT_DIFF_MIN
-        )[0]
+        result = self._get_output_layer(self.LAYER_RESULT)
+        result_diff = self._get_output_layer(self.LAYER_RESULT_DIFF)
+        result_diff_plus = self._get_output_layer(self.LAYER_RESULT_DIFF_PLUS)
+        result_diff_min = self._get_output_layer(self.LAYER_RESULT_DIFF_MIN)
 
         correction_layer = None
         if not self.PREDICTIONS or self.PREDICTION_STRATEGY != PredictionStrategy.ALL:
@@ -843,7 +847,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             feedback.pushInfo(
                 "No correction layer generated when predictions with predictionStrategy ALL is activated"
             )
-        QgsProject.instance().reloadAllLayers()
+        for layer in [result, result_diff, result_diff_plus, result_diff_min, correction_layer]:
+            if layer is not None:
+                layer.reload()
+                layer.triggerRepaint()
         if feedback.isCanceled():
             return {}
         feedback.pushInfo("END: RESULTS CALCULATED")
@@ -855,6 +862,14 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "OUTPUT_RESULT_DIFF_MIN": result_diff_min,
             "OUTPUT_CORRECTION": correction_layer,
         }
+
+    def _get_output_layer(self, layer_name):
+        layers = QgsProject.instance().mapLayersByName(layer_name)
+        if not layers:
+            raise QgsProcessingException(
+                f"Expected output layer '{layer_name}' was not created."
+            )
+        return layers[0]
 
     def _reference_preparation(self, thematic_buffered, context, feedback, parameters):
         outputs = {}
@@ -929,6 +944,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "FULL_REFERENCE_STRATEGY": 2,
             "ENUM_PROCESSOR": 0,
             "ENUM_OD_STRATEGY": 3,
+            "ENUM_SNAP_STRATEGY": 1,
             "THRESHOLD_OVERLAP_PERCENTAGE": 50,
             "WORK_FOLDER": "brdrQ",
             "REVIEW_PERCENTAGE": 10,
@@ -955,6 +971,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         ##!! we set the defaul processor always to the AlignerGeometryPeocessor
         self.default_processor = self.params_default_dict["ENUM_PROCESSOR"]
         self.default_od_strategy = self.params_default_dict["ENUM_OD_STRATEGY"]
+        self.default_snap_strategy = self.params_default_dict["ENUM_SNAP_STRATEGY"]
         self.default_threshold_overlap_percentage = self.params_default_dict[
             "THRESHOLD_OVERLAP_PERCENTAGE"
         ]
@@ -1003,6 +1020,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         # )
         self.default_od_strategy = read_setting(
             prefix, "default_od_strategy", self.default_od_strategy
+        )
+        self.default_snap_strategy = read_setting(
+            prefix, "default_snap_strategy", self.default_snap_strategy
         )
         self.default_threshold_overlap_percentage = read_setting(
             prefix,
@@ -1059,6 +1079,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         write_setting(prefix, "default_processor", self.default_processor)
         write_setting(prefix, "default_od_strategy", self.default_od_strategy)
+        write_setting(prefix, "default_snap_strategy", self.default_snap_strategy)
         write_setting(
             prefix,
             "default_threshold_overlap_percentage",
@@ -1088,6 +1109,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.default_full_reference_strategy = parameters["FULL_REFERENCE_STRATEGY"]
         self.default_processor = parameters["ENUM_PROCESSOR"]
         self.default_od_strategy = parameters["ENUM_OD_STRATEGY"]
+        self.default_snap_strategy = parameters["ENUM_SNAP_STRATEGY"]
         self.default_threshold_overlap_percentage = parameters[
             "THRESHOLD_OVERLAP_PERCENTAGE"
         ]
@@ -1097,6 +1119,20 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.default_add_attributes = parameters["ADD_ATTRIBUTES"]
         self.default_intermediate_layers = parameters["SHOW_INTERMEDIATE_LAYERS"]
         self.default_extra_logging = parameters["SHOW_LOG_INFO"]
+
+        # Reset run-specific names so repeated runs on the same instance do not
+        # keep appending suffixes.
+        cls = type(self)
+        self.SUFFIX = ""
+        self.GROUP_LAYER = cls.GROUP_LAYER
+        self.GROUP_LAYER_ACTUAL = cls.GROUP_LAYER_ACTUAL
+        self.LAYER_RESULT = cls.LAYER_RESULT
+        self.LAYER_RESULT_DIFF = cls.LAYER_RESULT_DIFF
+        self.LAYER_RESULT_DIFF_PLUS = cls.LAYER_RESULT_DIFF_PLUS
+        self.LAYER_RESULT_DIFF_MIN = cls.LAYER_RESULT_DIFF_MIN
+        self.LAYER_RELEVANT_INTERSECTION = cls.LAYER_RELEVANT_INTERSECTION
+        self.LAYER_RELEVANT_DIFFERENCE = cls.LAYER_RELEVANT_DIFFERENCE
+        self.LAYER_REFERENCE_NAME = cls.LAYER_REFERENCE_NAME
 
         # WORKFOLDER
         wrkfldr = self.default_workfolder
@@ -1128,6 +1164,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.REVIEW_PERCENTAGE = self.default_review_percentage
         self.OD_STRATEGY = OpenDomainStrategy[
             ENUM_OD_STRATEGY_OPTIONS[self.default_od_strategy]
+        ]
+        self.SNAP_STRATEGY = SnapStrategy[
+            ENUM_SNAP_STRATEGY_OPTIONS[self.default_snap_strategy]
         ]
         self.PROCESSOR = Processor[ENUM_PROCESSOR_OPTIONS[self.default_processor]]
         self.FULL_REFERENCE_STRATEGY = FullReferenceStrategy[
