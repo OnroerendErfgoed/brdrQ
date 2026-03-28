@@ -24,9 +24,8 @@
 
 import os
 
-# TODO QGIS4
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QListWidgetItem
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtWidgets import QListWidgetItem
 from brdr.aligner import Aligner
 from brdr.be.be import BeCadastralParcelLoader
 from brdr.be.grb.enums import GRBType
@@ -39,17 +38,23 @@ from brdr.nl.enums import BRKType
 from brdr.nl.loader import BRKLoader
 from brdr.osm.loader import OSMLoader
 from qgis.PyQt import QtWidgets, uic
-from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.core import Qgis
 from qgis.core import QgsFeature, QgsWkbTypes, QgsVectorLayer, QgsProject
 from qgis.core import QgsFeatureRequest
-from qgis.core import QgsMapLayerProxyModel
 from qgis.gui import QgsMapToolPan
 from qgis.gui import QgsRubberBand
 from qgis.utils import OverrideCursor, iface
 
 from .brdrq_dockwidget_aligner import brdrQDockWidgetAligner
+from .qt_compat import (
+    map_layer_filter_line,
+    map_layer_filter_point,
+    map_layer_filter_polygon,
+    qt_right_dock_widget_area,
+    qt_wait_cursor,
+    set_map_layer_combo_filters,
+)
 from .brdrq_utils import (
     SelectTool,
     featurecollection_to_layer,
@@ -152,10 +157,11 @@ class brdrQDockWidgetFeatureAligner(
         self.horizontalSlider.sliderMoved.connect(self.onSliderChange)
         self.doubleSpinBox.valueChanged.connect(self.onSpinboxChange)
 
-        self.mMapLayerComboBox.setFilters(
-            QgsMapLayerProxyModel.PolygonLayer
-            | QgsMapLayerProxyModel.LineLayer
-            | QgsMapLayerProxyModel.PointLayer
+        set_map_layer_combo_filters(
+            self.mMapLayerComboBox,
+            map_layer_filter_polygon()
+            | map_layer_filter_line()
+            | map_layer_filter_point()
         )
         self.mMapLayerComboBox.setExcludedProviders(
             [
@@ -179,7 +185,7 @@ class brdrQDockWidgetFeatureAligner(
         self.mMapLayerComboBox.setLayer(theme_layer)
 
         # show the dockwidget
-        self.iface.addDockWidget(Qt.RightDockWidgetArea, self)
+        self.iface.addDockWidget(qt_right_dock_widget_area(), self)
         #
         self.layer = self.mMapLayerComboBox.currentLayer()
         self.settingsDialog.confirmed.connect(self.startDock)
@@ -380,7 +386,7 @@ class brdrQDockWidgetFeatureAligner(
         self.progressBar.setValue(0)
         self.listWidget_predictions.clear()
         self.textEdit_output.setText("")
-        with OverrideCursor(Qt.WaitCursor):
+        with OverrideCursor(qt_wait_cursor()):
             self._onFeatureChange(currentItem)
         self.progressBar.setValue(100)
 
@@ -811,3 +817,4 @@ class brdrQDockWidgetFeatureAligner(
 
 def __init__():
     pass
+

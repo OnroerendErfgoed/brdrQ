@@ -4,8 +4,7 @@ import os
 from enum import Enum
 from pathlib import Path
 
-# TODO QGIS4
-from PyQt5.QtGui import QColor
+from qgis.PyQt.QtGui import QColor
 from brdr.be.grb.enums import GRBType
 from brdr.constants import (
     SYMMETRICAL_AREA_CHANGE,
@@ -73,9 +72,7 @@ from brdr.enums import (
 )
 from brdr.typings import ProcessResult
 
-# TODO QGIS4
-from PyQt5.QtCore import pyqtSignal, QVariant
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import pyqtSignal
 from qgis import processing
 from qgis.core import QgsField, QgsFeatureRequest, QgsProcessing
 from qgis.core import QgsProcessingParameterFolderDestination
@@ -92,6 +89,13 @@ from qgis.core import (
 from qgis.core import QgsStyle
 from qgis.utils import iface
 from shapely import to_wkt, from_wkt, make_valid
+from .qt_compat import (
+    is_return_or_enter_key,
+    qgs_field_type_double,
+    qgs_field_type_string,
+    qt_checkstate_checked,
+    qt_checkstate_unchecked,
+)
 
 GPKG_FILENAME = "brdrq.gpkg"
 
@@ -499,10 +503,15 @@ def zoom_to_features(features, iface, marge_factor=0.1, features_crs=None):
     # Calculate the combined bounding box
     if features is None or len(features) == 0:
         return
-    bbox = QgsRectangle()
-    bbox.setMinimal()  # Start met een lege bbox
+    bbox = None
     for feat in features:
-        bbox.combineExtentWith(feat.geometry().boundingBox())
+        feat_bbox = feat.geometry().boundingBox()
+        if bbox is None:
+            bbox = QgsRectangle(feat_bbox)
+        else:
+            bbox.combineExtentWith(feat_bbox)
+    if bbox is None:
+        return
 
     # Add a margin to the bbox
     width = bbox.width()
@@ -729,7 +738,7 @@ def gpkg_layer_to_map(name, gpkg_path, layer_name, symbol, visible, group):
     # 6. Zichtbaarheid instellen
     node = root.findLayer(vl.id())
     if node:
-        new_state = Qt.Checked if visible else Qt.Unchecked
+        new_state = qt_checkstate_checked() if visible else qt_checkstate_unchecked()
         node.setItemVisibilityChecked(new_state)
 
     # 7. Verplaatsen naar groep en refreshen
@@ -880,7 +889,7 @@ def featurecollection_to_layer(
 
     node = root.findLayer(vl.id())
     if node:
-        new_state = Qt.Checked if visible else Qt.Unchecked
+        new_state = qt_checkstate_checked() if visible else qt_checkstate_unchecked()
         node.setItemVisibilityChecked(new_state)
 
     move_to_group(vl, group)
@@ -1337,12 +1346,12 @@ def generate_correction_layer(
 
     # 4. Update geometries in duplicated layer
     fields_to_add = [
-        QgsField(METADATA_FIELD_NAME, QVariant.String),
-        QgsField(EVALUATION_FIELD_NAME, QVariant.String),
-        QgsField(BRDRQ_STATE_FIELDNAME, QVariant.String),
-        QgsField(BRDRQ_ORIGINAL_WKT_FIELDNAME, QVariant.String),
-        QgsField(SYMMETRICAL_AREA_CHANGE, QVariant.Double),
-        QgsField(SYMMETRICAL_AREA_PERCENTAGE_CHANGE, QVariant.Double),
+        QgsField(METADATA_FIELD_NAME, qgs_field_type_string()),
+        QgsField(EVALUATION_FIELD_NAME, qgs_field_type_string()),
+        QgsField(BRDRQ_STATE_FIELDNAME, qgs_field_type_string()),
+        QgsField(BRDRQ_ORIGINAL_WKT_FIELDNAME, qgs_field_type_string()),
+        QgsField(SYMMETRICAL_AREA_CHANGE, qgs_field_type_double()),
+        QgsField(SYMMETRICAL_AREA_PERCENTAGE_CHANGE, qgs_field_type_double()),
     ]
 
     # Iterate fields
@@ -1665,7 +1674,7 @@ class PolygonSelectTool(QgsMapTool):
         self.rubber_band.addPoint(point, True)
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Return and len(self.points) >= 3:
+        if is_return_or_enter_key(event.key()) and len(self.points) >= 3:
             polygon_geom = QgsGeometry.fromPolygonXY([self.points])
             self.on_polygon_finished(
                 polygon_geom, self.layer, self.canvas
@@ -1683,3 +1692,4 @@ class PolygonSelectTool(QgsMapTool):
     def reset(self):
         self.points = []
         self.rubber_band.reset(QgsWkbTypes.PolygonGeometry)
+

@@ -33,7 +33,6 @@ import sys
 from datetime import datetime
 
 from brdr.be.be import BeCadastralParcelLoader
-# TODO QGIS4
 from brdr.be.grb.enums import GRBType
 from brdr.be.grb.loader import GRBFiscalParcelLoader, GRBActualLoader
 from brdr.geometry_utils import safe_unary_union

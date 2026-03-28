@@ -25,9 +25,9 @@ __copyright__ = (
 
 import logging
 from typing import List
-#TODO QGIS4
-from PyQt5.QtCore import QObject, pyqtSlot, pyqtSignal, QSize
-from PyQt5.QtWidgets import QToolBar, QMenu
+# Test shim imports through qgis.PyQt so it works on both Qt5/Qt6-based QGIS.
+from qgis.PyQt.QtCore import QObject, pyqtSlot, pyqtSignal, QSize
+from qgis.PyQt.QtWidgets import QToolBar, QMenu
 from qgis.PyQt.QtWidgets import QDockWidget
 from qgis.core import QgsProject, QgsMapLayer
 from qgis.gui import QgsLayerTreeView
@@ -240,3 +240,4 @@ class QgisInterface(QObject):
         Return the QgsLayerTreeView
         """
         return QgsLayerTreeView()
+

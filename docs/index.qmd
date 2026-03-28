@@ -21,6 +21,15 @@ format: html
 
 This plugin provides tools to align geometries to reference data.
 
+## QGIS compatibility
+
+`brdrQ` is currently maintained to run on both:
+
+* QGIS 3 (Qt5 / `qgis.PyQt`)
+* QGIS 4 (Qt6 / `qgis.PyQt`)
+
+Compatibility wrappers are used in the plugin code for API differences (for example Qt enums and map-layer filter enums).
+
 here you can find links to the different tools that are currently provided:
 
 * [Feature aligner](featurealigner.md) - Feature-by-feature alignment with predictions

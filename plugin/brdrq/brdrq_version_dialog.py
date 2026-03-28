@@ -3,7 +3,7 @@ import os
 import platform
 
 import brdr
-from PyQt5.QtGui import QIcon
+from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtGui import QPixmap
 from qgis.PyQt.QtWidgets import QDialog, QLabel, QVBoxLayout, QHBoxLayout
 from qgis.core import Qgis
@@ -59,3 +59,4 @@ class VersionInfoDialog(QDialog):
 
         layout.addLayout(image_layout)
         self.setLayout(layout)
+

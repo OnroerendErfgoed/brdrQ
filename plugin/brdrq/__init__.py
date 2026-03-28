@@ -26,6 +26,8 @@ __author__ = "Karel Dieussaert / Onroerend Erfgoed"
 __date__ = "2024-10-11"
 __copyright__ = "(C) 2024 by Karel Dieussaert / Onroerend Erfgoed"
 
+from .qt_compat import dialog_exec
+
 
 # noinspection PyPep8Naming
 def classFactory(iface):  # pylint: disable=invalid-name
@@ -57,8 +59,8 @@ def classFactory(iface):  # pylint: disable=invalid-name
 
 
 def qgis_version_compatibility(iface):
-    from PyQt5.QtWidgets import QMessageBox
-    from qgis._core import Qgis
+    from qgis.PyQt.QtWidgets import QMessageBox
+    from qgis.core import Qgis
 
     # 1. Define requirements
     min_qgis = (3, 36, 0)
@@ -78,7 +80,7 @@ def qgis_version_compatibility(iface):
         QMessageBox.critical(
             iface.mainWindow(),
             "brdrQ-Plugin Load Error",
-            f"This plugin requires QGIS3 version {min_qgis} or higher. You are running {current_qgis}.",
+            f"This plugin requires QGIS {req_str} or higher. You are running {cur_str}.",
         )
         return False  # QGIS will handle this gracefully as a load failure
     return True
@@ -86,7 +88,7 @@ def qgis_version_compatibility(iface):
 
 def python_version_compatibility(iface):
     import sys
-    from PyQt5.QtWidgets import QMessageBox
+    from qgis.PyQt.QtWidgets import QMessageBox
 
     # 1. Define minimum Python version (e.g., 3.11)
     # Using a tuple makes comparison easy: (3, 11, 0) > (3, 9, 5)
@@ -95,7 +97,7 @@ def python_version_compatibility(iface):
 
     req_str = ".".join(map(str, required_python))
     cur_str = ".".join(map(str, current_python))
-    print(f"¨Python required{req_str} & current{cur_str}")
+    print(f"Python required {req_str} & current {cur_str}")
 
     # 2. Perform the check
     if current_python < required_python:
@@ -116,8 +118,7 @@ def python_version_compatibility(iface):
 
 
 def show_error_dialog(e):
-    # TODO QGIS4
-    from PyQt5.QtWidgets import QMessageBox
+    from qgis.PyQt.QtWidgets import QMessageBox
 
     msg = QMessageBox()
     msg.setIcon(QMessageBox.Critical)
@@ -127,4 +128,5 @@ def show_error_dialog(e):
         f"Please restart QGIS and retry.<br>If the problem persists, try to upgrade the plugin or the QGIS-version.<br>If it still persists you can log the issue at: <a href='https://github.com/OnroerendErfgoed/brdrQ/issues'>https://github.com/OnroerendErfgoed/brdrQ/issues</a>.<br>Error-message: {e} "
     )
     msg.setStandardButtons(QMessageBox.Ok)
-    msg.exec_()
+    dialog_exec(msg)
+

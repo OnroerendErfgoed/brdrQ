@@ -1,0 +1,54 @@
+name: PyQGIS4 Checker
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - "plugin/brdrq/**"
+      - ".github/workflows/pyqgis4-checker.yml"
+  workflow_dispatch:
+
+jobs:
+  pyqgis4-checker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run pyqgis4-checker
+        run: |
+          set -euxo pipefail
+          IMAGE="ghcr.io/qgis/pyqgis4-checker:latest"
+          docker pull "$IMAGE"
+          docker run --rm --platform linux/amd64 \
+            -v "${GITHUB_WORKSPACE}:/workspace" \
+            -w /workspace \
+            "$IMAGE" \
+            /bin/bash -lc '
+              set -euxo pipefail
+              CHECKER=""
+              for candidate in pyqgis4-checker pyqgis4_checker qgis4-checker; do
+                if command -v "$candidate" >/dev/null 2>&1; then
+                  CHECKER="$candidate"
+                  break
+                fi
+              done
+
+              if [ -z "$CHECKER" ]; then
+                echo "Unable to find checker executable in image." | tee pyqgis4-checker.log
+                echo "Known binaries containing checker:" | tee -a pyqgis4-checker.log
+                (compgen -c | grep -i checker || true) | sort -u | tee -a pyqgis4-checker.log
+                exit 1
+              fi
+
+              "$CHECKER" /workspace/plugin/brdrq | tee pyqgis4-checker.log
+            '
+
+      - name: Upload checker report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyqgis4-checker-log
+          path: pyqgis4-checker.log
