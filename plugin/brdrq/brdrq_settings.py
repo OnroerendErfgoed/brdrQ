@@ -127,13 +127,15 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.update_settings(initial=False)
         self.confirmed.emit()
 
-    def update_settings(self,initial=False):
+    def update_settings(self, initial=False):
         """
         'initial' = True when settings-window is created initially
         """
         # s = QgsSettings()
         if self.threshold_overlap_percentage is None:
-            self.threshold_overlap_percentage = int(read_setting(self.prefix, "threshold_overlap_percentage", 50))
+            self.threshold_overlap_percentage = int(
+                read_setting(self.prefix, "threshold_overlap_percentage", 50)
+            )
             self.spinBox_threshold.setValue(self.threshold_overlap_percentage)
         self.threshold_overlap_percentage = self.spinBox_threshold.value()
 
@@ -168,7 +170,11 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             or self.partial_snapping_strategy not in SnapStrategy
         ):
             default_partial_snapping_strategy = SnapStrategy.PREFER_VERTICES
-            partial_snapping_strategy_name = read_setting(self.prefix, "partial_snapping_strategy", default_partial_snapping_strategy.name)
+            partial_snapping_strategy_name = read_setting(
+                self.prefix,
+                "partial_snapping_strategy",
+                default_partial_snapping_strategy.name,
+            )
             if partial_snapping_strategy_name not in SnapStrategy.__members__:
                 partial_snapping_strategy_name = default_partial_snapping_strategy.name
             index = self.comboBox_snapstrategy.findText(
@@ -190,15 +196,16 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
 
             if processor_name not in Processor.__members__:
                 processor_name = default_processor.name
-            index = self.comboBox_processor.findText(
-                Processor[processor_name].name
-            )
+            index = self.comboBox_processor.findText(Processor[processor_name].name)
             if index == -1:
                 index = 0
             self.comboBox_processor.setCurrentIndex(index)
         self.processor = Processor[self.comboBox_processor.currentText()]
 
-        if self.full_strategy is None or self.full_strategy not in FullReferenceStrategy:
+        if (
+            self.full_strategy is None
+            or self.full_strategy not in FullReferenceStrategy
+        ):
             default_full_strategy = FullReferenceStrategy.PREFER_FULL_REFERENCE
             full_strategy_name = read_setting(
                 self.prefix,
@@ -213,7 +220,9 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             if index == -1:
                 index = 0
             self.comboBox_fullstrategy.setCurrentIndex(index)
-        self.full_strategy = FullReferenceStrategy[self.comboBox_fullstrategy.currentText()]
+        self.full_strategy = FullReferenceStrategy[
+            self.comboBox_fullstrategy.currentText()
+        ]
 
         if (
             self.reference_choice is None
@@ -255,11 +264,13 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.reference_id = self.mFieldComboBox_reference.currentField()
 
         if self.metadata is None:
-            self.metadata = int(read_setting(
-                self.prefix,
-                "metadata",
-                0,
-            ))
+            self.metadata = int(
+                read_setting(
+                    self.prefix,
+                    "metadata",
+                    0,
+                )
+            )
             self.checkBox_metadata.setCheckState(self.metadata)
         self.metadata = self.checkBox_metadata.checkState()
 
@@ -287,7 +298,11 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             f"settings updated: Reference choice={self.reference_choice} - od_strategy={self.od_strategy} - threshold overlap percenatge = {str(self.threshold_overlap_percentage)}"
         )
         # write settings
-        write_setting(self.prefix,"threshold_overlap_percentage", self.threshold_overlap_percentage)
+        write_setting(
+            self.prefix,
+            "threshold_overlap_percentage",
+            self.threshold_overlap_percentage,
+        )
         write_setting(self.prefix, "od_strategy", self.od_strategy.name)
         write_setting(self.prefix, "reference_choice", self.reference_choice)
         write_setting(self.prefix, "reference_layer", self.reference_layer)

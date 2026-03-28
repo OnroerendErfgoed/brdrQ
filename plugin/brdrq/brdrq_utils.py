@@ -4,7 +4,6 @@ import os
 from enum import Enum
 from pathlib import Path
 
-from qgis.PyQt.QtGui import QColor
 from brdr.be.grb.enums import GRBType
 from brdr.constants import (
     SYMMETRICAL_AREA_CHANGE,
@@ -25,6 +24,7 @@ from brdr.processor import (
 from brdr.utils import (
     write_featurecollection_to_geopackage,
 )
+from qgis.PyQt.QtGui import QColor
 from qgis.core import Qgis
 from qgis.core import (
     QgsCategorizedSymbolRenderer,

@@ -35,10 +35,10 @@ import os
 import sys
 
 import brdr
-from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QMenu
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication, QLocale, QTranslator, QSettings
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QAction, QMenu
 from qgis.core import Qgis
 from qgis.core import QgsApplication
 

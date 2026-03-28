@@ -40,15 +40,6 @@ from qgis.core import QgsStyle
 from qgis.utils import OverrideCursor
 
 from .brdrq_dockwidget_aligner import brdrQDockWidgetAligner
-from .qt_compat import (
-    map_layer_filter_polygon,
-    qgs_field_type_string,
-    qt_checkstate_checked,
-    qt_checkstate_unchecked,
-    qt_right_dock_widget_area,
-    qt_wait_cursor,
-    set_map_layer_combo_filters,
-)
 from .brdrq_utils import (
     move_to_group,
     zoom_to_features,
@@ -61,6 +52,15 @@ from .brdrq_utils import (
     ADPF_VERSIONS,
     BRDRQ_STATE_FIELDNAME,
     BrdrQState,
+)
+from .qt_compat import (
+    map_layer_filter_polygon,
+    qgs_field_type_string,
+    qt_checkstate_checked,
+    qt_checkstate_unchecked,
+    qt_right_dock_widget_area,
+    qt_wait_cursor,
+    set_map_layer_combo_filters,
 )
 
 FORM_CLASS, _ = uic.loadUiType(

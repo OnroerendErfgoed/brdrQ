@@ -83,12 +83,6 @@ from qgis.core import QgsFeatureRequest
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
 from qgis.core import QgsProcessingMultiStepFeedback
-from qgis.core import QgsProcessingOutputVectorLayer
-from qgis.core import QgsProcessingParameterBoolean
-from qgis.core import QgsProcessingParameterDefinition
-from qgis.core import QgsProcessingParameterEnum
-from qgis.core import QgsProcessingParameterFeatureSource
-from qgis.core import QgsProcessingParameterField
 from qgis.core import QgsProcessingParameterFile
 from qgis.core import QgsProcessingParameterNumber
 from qgis.core import QgsProcessingException

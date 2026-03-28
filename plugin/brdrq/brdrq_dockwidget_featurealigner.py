@@ -24,8 +24,6 @@
 
 import os
 
-from qgis.PyQt.QtGui import QColor
-from qgis.PyQt.QtWidgets import QListWidgetItem
 from brdr.aligner import Aligner
 from brdr.be.be import BeCadastralParcelLoader
 from brdr.be.grb.enums import GRBType
@@ -39,6 +37,8 @@ from brdr.nl.loader import BRKLoader
 from brdr.osm.loader import OSMLoader
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtWidgets import QListWidgetItem
 from qgis.core import Qgis
 from qgis.core import QgsFeature, QgsWkbTypes, QgsVectorLayer, QgsProject
 from qgis.core import QgsFeatureRequest
@@ -47,14 +47,6 @@ from qgis.gui import QgsRubberBand
 from qgis.utils import OverrideCursor, iface
 
 from .brdrq_dockwidget_aligner import brdrQDockWidgetAligner
-from .qt_compat import (
-    map_layer_filter_line,
-    map_layer_filter_point,
-    map_layer_filter_polygon,
-    qt_right_dock_widget_area,
-    qt_wait_cursor,
-    set_map_layer_combo_filters,
-)
 from .brdrq_utils import (
     SelectTool,
     featurecollection_to_layer,
@@ -81,6 +73,14 @@ from .brdrq_utils import (
     NL_TYPES,
     DICT_NL_TYPES,
     BE_TYPES,
+)
+from .qt_compat import (
+    map_layer_filter_line,
+    map_layer_filter_point,
+    map_layer_filter_polygon,
+    qt_right_dock_widget_area,
+    qt_wait_cursor,
+    set_map_layer_combo_filters,
 )
 
 FORM_CLASS, _ = uic.loadUiType(

@@ -39,17 +39,30 @@ from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
 from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingMultiStepFeedback
-from qgis.core import QgsProcessingOutputVectorLayer
-from qgis.core import QgsProcessingParameterBoolean
-from qgis.core import QgsProcessingParameterEnum, QgsProcessingParameterDefinition
+from qgis.core import QgsProcessingParameterFile
 from qgis.core import (
-    QgsProcessingParameterFeatureSource,
-    QgsProcessingParameterField,
     QgsProcessingParameterNumber,
 )
-from qgis.core import QgsProcessingParameterFile
 from qgis.core import QgsProject
 
+from .brdrq_algorithm_common import (
+    add_boolean_parameter,
+    add_enum_parameter,
+    add_feature_source_parameter,
+    add_field_parameter,
+    add_file_parameter,
+    add_number_parameter,
+    add_standard_result_outputs,
+    apply_saved_settings,
+    assign_parameter_values,
+    build_aligner,
+    build_processor,
+    get_log_feedback,
+    get_prediction_strategy_options,
+    initialize_default_attributes,
+    resolve_thematic_layer_and_crs,
+    write_saved_settings,
+)
 from .brdrq_utils import (
     geom_qgis_to_shapely,
     featurecollection_to_layer,
@@ -72,24 +85,6 @@ from .brdrq_utils import (
     set_layer_visibility,
     move_to_group,
     remove_empty_features_from_diff_layers,
-)
-from .brdrq_algorithm_common import (
-    add_boolean_parameter,
-    add_enum_parameter,
-    add_feature_source_parameter,
-    add_field_parameter,
-    add_file_parameter,
-    add_number_parameter,
-    add_standard_result_outputs,
-    apply_saved_settings,
-    assign_parameter_values,
-    build_aligner,
-    build_processor,
-    get_log_feedback,
-    get_prediction_strategy_options,
-    initialize_default_attributes,
-    resolve_thematic_layer_and_crs,
-    write_saved_settings,
 )
 
 

@@ -5,6 +5,7 @@ import subprocess
 import sys
 
 from qgis.PyQt.QtWidgets import QMessageBox
+
 from .qt_compat import dialog_exec
 
 # helper function to find embedded python
