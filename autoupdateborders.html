@@ -2,13 +2,16 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.8.27">
+<meta name="generator" content="quarto-1.9.36">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
 <title>autoupdateborders – brdrQ - Aligning borders with QGIS</title>
 <style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
 div.columns{display: flex; gap: min(4vw, 1.5em);}
@@ -67,15 +70,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <meta name="quarto:offset" content="./">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="site_libs/quarto-html/anchor.min.js"></script>
 <link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-f1aadacce99040138bbb613f9330654f.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dbc92dda8186f57fa2e333fbb71d6a9d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-edcaa40554d619375bb68c2fe310b353.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-4fb5ef05a860c8bf409e4f2b79d95a28.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -196,7 +198,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="input-parameters" class="level3">
 <h3 class="anchored" data-anchor-id="input-parameters">Input Parameters</h3>
 <ul>
-<li><p><strong>Thematic Layer</strong>: A (MULTI)POLYGON layer with EPSG:31370 or EPSG:3812 coordinates and a unique ID.</p>
+<li><p><strong>Thematic Layer</strong>: A vector layer (polygon, line, or point) with EPSG:31370 or EPSG:3812 coordinates and a unique ID.</p>
 <ul>
 <li><strong>Default</strong>: No default value, must be provided by the user.</li>
 <li><strong>Optional</strong>: No.</li>
@@ -206,20 +208,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><strong>Default</strong>: No default value, must be provided by the user.</li>
 <li><strong>Optional</strong>: No.</li>
 </ul></li>
-<li><p><strong>Reference Layer</strong>: A (MULTI)POLYGON layer with EPSG:31370 or EPSG:3812 coordinates. Combobox to choose which referencelayer will be used. There is a choice between on-the-fly downloadable referencelayers from GRB, or to use your own local REFERENCELAYER.</p>
+<li><p><strong>Reference Layer</strong>: Combobox to choose which GRB referencelayer will be used (on-the-fly download).</p>
 <ul>
-<li><p>The local referencelayer and unique reference ID has to be choosen from the TOC:</p></li>
 <li><p>The on-the-fly downloads are only possible for smaller areas.</p>
 <ul>
 <li>ADP: (on-the-fly download) - Actual administrative parcels from GRB (Grootschalig Referentie Bestand)</li>
 <li>GBG: (on-the-fly download) - Actual buildings from GRB</li>
 <li>KNW: (on-the-fly download) - Actual artwork from GRB</li>
-<li>(Note: the on-the-fly downloads are only possible for a subset or small area of thematic objects as this results in downloading this reference-area. When using brdrQ for bigger areas a local reference layer is necessary)</li>
+<li>(Note: the on-the-fly downloads are only possible for a subset or small area of thematic objects as this results in downloading this reference-area.)</li>
 </ul></li>
 <li><p><strong>Default</strong>: ADP (parcels)</p></li>
 <li><p><strong>Optional</strong>: no</p></li>
 </ul></li>
-<li><p><strong>Max Relevant Distance (meters)</strong>: Positive (decimal) number in meters. This is the maximum distance by which the original boundary is maximally shifted to align with the reference layer when searching for predictions. The algorithm uses all relevent distances from 0 to ‘max’ with steps of 10cm in between.</p>
+<li><p><strong>Relevant Distance (meters)</strong>: Positive (decimal) number in meters. This is the maximum distance by which the original boundary is maximally shifted to align with the reference layer when searching for predictions. The algorithm uses all relevant distances from 0 to ‘max’ with steps of 10cm in between.</p>
 <ul>
 <li><strong>Default</strong>: 3 (meters)</li>
 <li><strong>Optional</strong>: No.</li>
@@ -237,7 +238,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="advanced-input-parameters" class="level3">
 <h3 class="anchored" data-anchor-id="advanced-input-parameters">ADVANCED INPUT PARAMETERS</h3>
 <ul>
-<li><strong>FULL Strategy</strong> Choice that determines the score of the predictions based on a full overlap with reference polygons:
+<li><strong>FULL_REFERENCE_STRATEGY</strong>: Choice that determines the score of predictions based on full overlap with reference polygons:
 <ul>
 <li>ONLY_FULL: Only predictions with a full reference overlap are shown.</li>
 <li>PREFER_FULL: Predictions with a full reference overlap get a higher score, others are still shown.</li>
@@ -245,15 +246,37 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><strong>Default</strong>: None</li>
 <li><strong>Optional</strong>: yes.</li>
 </ul></li>
-</ul>
-<p>Evaluation Strategy FULL: Choice that determines the score of the predictions based on a full overlap with reference polygons:</p>
+<li><strong>ENUM_OD_STRATEGY</strong>: Strategy for handling parts of the geometry not covered by reference features (= Open Domain).
 <ul>
+<li><strong>Default</strong>: <code>SNAP_ALL_SIDE</code></li>
+<li><strong>Optional</strong>: yes.</li>
+</ul></li>
+<li><strong>ENUM_SNAP_STRATEGY</strong>: Strategy for snapping to reference vertices. Options: <code>NO_PREFERENCE</code>, <code>PREFER_VERTICES</code>, <code>ONLY_VERTICES</code>. This parameter only applies to <code>NetworkGeometryProcessor</code> and <code>SnapGeometryProcessor</code>, typically for line and point workflows. For polygon workflows this setting has no effect.
+<ul>
+<li><strong>Default</strong>: <code>PREFER_VERTICES</code></li>
+<li><strong>Optional</strong>: yes.</li>
+</ul></li>
+<li><strong>ENUM_PROCESSOR</strong>: Choice of processing algorithm. Recommended is <code>AlignerGeometryProcessor</code> (wrapper that chooses the fastest algorithm based on geometry types).
+<ul>
+<li><strong>Default</strong>: <code>AlignerGeometryProcessor</code></li>
+<li><strong>Optional</strong>: yes.</li>
+</ul></li>
+<li><strong>THRESHOLD_OVERLAP_PERCENTAGE (0-100)</strong>: Fallback overlap threshold used in edge cases where relevance cannot be determined.
+<ul>
+<li><strong>Default</strong>: <code>50</code></li>
+<li><strong>Optional</strong>: yes.</li>
+</ul></li>
+<li><strong>REVIEW_PERCENTAGE (0-100)</strong>: Results with change percentage above this threshold are categorized for review.
+<ul>
+<li><strong>Default</strong>: <code>10</code></li>
+<li><strong>Optional</strong>: yes.</li>
+</ul></li>
 <li><strong>WORKING FOLDER</strong>: Folder to save the resulting geojson-files. By default empty, resulting in saving the geojson-files in a default folder on your machine.
 <ul>
 <li><strong>Default</strong>: By default, the output will be saved in a local folder on your machine.</li>
 <li><strong>Optional</strong>: yes.</li>
 </ul></li>
-<li><strong>brdr_formula_field</strong> Attribute-field of the thematic layer with a former brdr_formula.(=metadata of former alignment). When this information is provided it is used to make a better prediction.
+<li><strong>METADATA_FIELD</strong>: Attribute field of the thematic layer containing former <code>brdr_metadata</code>. When provided, it is used for better prediction quality.
 <ul>
 <li><strong>Default</strong>: None</li>
 <li><strong>Optional</strong>: yes.</li>
@@ -286,15 +309,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">"INPUT_THEMATIC"</span>: themelayername,</span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="st">"COMBOBOX_ID_THEME"</span>: <span class="st">"theme_identifier"</span>,</span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="st">"ENUM_REFERENCE"</span>: <span class="dv">0</span>,</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="st">"FORMULA_FIELD"</span>: <span class="st">""</span>,</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="st">"MAX_RELEVANT_DISTANCE"</span>: <span class="dv">5</span>,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="st">"METADATA_FIELD"</span>: <span class="st">""</span>,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="st">"RELEVANT_DISTANCE"</span>: <span class="dv">5</span>,</span>
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>        <span class="st">"WORK_FOLDER"</span>: <span class="st">""</span>,</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        <span class="st">"PREDICTION_STRATEGY"</span>: <span class="dv">2</span>,</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        <span class="st">"FULL_STRATEGY"</span>: <span class="dv">2</span>,</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        <span class="st">"SHOW_LOG_INFO"</span>: <span class="va">True</span>,</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    },</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        <span class="st">"ENUM_OD_STRATEGY"</span>: <span class="dv">2</span>,</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        <span class="st">"ENUM_SNAP_STRATEGY"</span>: <span class="dv">1</span>,</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        <span class="st">"ENUM_PROCESSOR"</span>: <span class="dv">0</span>,</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        <span class="st">"THRESHOLD_OVERLAP_PERCENTAGE"</span>: <span class="dv">50</span>,</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        <span class="st">"REVIEW_PERCENTAGE"</span>: <span class="dv">10</span>,</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        <span class="st">"PREDICTION_STRATEGY"</span>: <span class="dv">2</span>,</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        <span class="st">"FULL_REFERENCE_STRATEGY"</span>: <span class="dv">2</span>,</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>        <span class="st">"SHOW_LOG_INFO"</span>: <span class="va">True</span>,</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    },</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>
