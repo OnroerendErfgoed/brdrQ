@@ -167,11 +167,10 @@ class brdrQDockWidgetBulkAligner(
 
         root.insertLayer(0, new_layer)
 
-        node = root.findLayer(new_layer.id())
-        if node:
-            node.setItemVisibilityChecked(bool(visible))
         groupname = str(new_layer.name()) + "_brdrQ_evaluation"
-        move_to_group(new_layer, groupname)
+        moved_node, _ = move_to_group(new_layer, groupname)
+        if moved_node is not None and hasattr(moved_node, "setItemVisibilityChecked"):
+            moved_node.setItemVisibilityChecked(bool(visible))
         symbol = QgsStyle.defaultStyle().symbol("outline blue")
         renderer = new_layer.renderer()
         if symbol is not None and renderer is not None:

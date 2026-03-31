@@ -604,12 +604,18 @@ def move_to_group(thing, group, pos=0, expanded=False):
 
     group_object = tree.findGroup(group_name)
 
-    if not group_object:
+    if group_object is None:
         group_object = tree.insertGroup(0, group_name)
 
     # do the move
+    original_visibility = True
+    if hasattr(node_object, "itemVisibilityChecked"):
+        original_visibility = bool(node_object.itemVisibilityChecked())
+
     node_object_clone = node_object.clone()
     node_object_clone.setExpanded(expanded)
+    if hasattr(node_object_clone, "setItemVisibilityChecked"):
+        node_object_clone.setItemVisibilityChecked(original_visibility)
     group_object.insertChildNode(pos, node_object_clone)
 
     parent = node_object.parent()
@@ -735,13 +741,12 @@ def gpkg_layer_to_map(name, gpkg_path, layer_name, symbol, visible, group):
     qinst.addMapLayer(vl, False)
     root.insertLayer(0, vl)
 
-    # 6. Zichtbaarheid instellen
-    node = root.findLayer(vl.id())
-    if node:
-        node.setItemVisibilityChecked(bool(visible))
+    # 6. Verplaatsen naar groep en pas daarna zichtbaarheid instellen op de clone
+    moved_node, _ = move_to_group(vl, group)
+    if moved_node is not None and hasattr(moved_node, "setItemVisibilityChecked"):
+        moved_node.setItemVisibilityChecked(bool(visible))
 
-    # 7. Verplaatsen naar groep en refreshen
-    move_to_group(vl, group)
+    # 7. Refreshen
     vl.triggerRepaint()
 
     if iface is not None:
@@ -886,11 +891,10 @@ def featurecollection_to_layer(
 
     root.insertLayer(0, vl)
 
-    node = root.findLayer(vl.id())
-    if node:
-        node.setItemVisibilityChecked(bool(visible))
+    moved_node, _ = move_to_group(vl, group)
+    if moved_node is not None and hasattr(moved_node, "setItemVisibilityChecked"):
+        moved_node.setItemVisibilityChecked(bool(visible))
 
-    move_to_group(vl, group)
     vl.triggerRepaint()
     if iface is not None:
         iface.layerTreeView().refreshLayerSymbology(vl.id())
@@ -931,8 +935,8 @@ def set_layer_visibility(layer: QgsMapLayer, visible: bool):
         return
 
     layer_tree = QgsProject.instance().layerTreeRoot().findLayer(layer.id())
-    if layer_tree:
-        layer_tree.setItemVisibilityChecked(visible)
+    if layer_tree is not None:
+        layer_tree.setItemVisibilityChecked(bool(visible))
     else:
         print("Layer not found in the layer tree.")
 
