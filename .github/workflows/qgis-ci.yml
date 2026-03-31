@@ -52,6 +52,8 @@ jobs:
               . /tmp/qgis-ci-venv/bin/activate
               python -m pip install --upgrade pip
               python -m pip install --upgrade pytest brdr==0.15.6
+              export QGIS_PREFIX_PATH=/usr
+              export PYTHONPATH="/usr/share/qgis/python:/usr/share/qgis/python/plugins:${PYTHONPATH:-}"
               TESTS="plugin/brdrq/test/test_init.py \
                      plugin/brdrq/test/test_toolbar.py \
                      plugin/brdrq/test/test_utils.py \
