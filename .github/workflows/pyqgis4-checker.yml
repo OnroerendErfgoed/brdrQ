@@ -22,6 +22,24 @@ jobs:
           set -euxo pipefail
           IMAGE="ghcr.io/qgis/pyqgis4-checker:main"
           docker pull "$IMAGE"
+          LOGFILE="${GITHUB_WORKSPACE}/pyqgis4-checker.log"
+
+          # First try: use the image default entrypoint (most reliable when command name is unknown).
+          set +e
+          docker run --rm --platform linux/amd64 \
+            -v "${GITHUB_WORKSPACE}:/workspace" \
+            -w /workspace \
+            "$IMAGE" \
+            /workspace/plugin/brdrq >"$LOGFILE" 2>&1
+          ENTRYPOINT_EXIT=$?
+          set -e
+
+          if [ "$ENTRYPOINT_EXIT" -eq 0 ]; then
+            cat "$LOGFILE"
+            exit 0
+          fi
+
+          # Fallback: run inside container and try known command/module names.
           docker run --rm --platform linux/amd64 \
             -v "${GITHUB_WORKSPACE}:/workspace" \
             -w /workspace \
@@ -36,15 +54,23 @@ jobs:
                 fi
               done
 
-              if [ -z "$CHECKER" ]; then
-                echo "Unable to find checker executable in image." | tee pyqgis4-checker.log
-                echo "Known binaries containing checker:" | tee -a pyqgis4-checker.log
-                (compgen -c | grep -i checker || true) | sort -u | tee -a pyqgis4-checker.log
-                exit 1
+              if [ -n "$CHECKER" ]; then
+                "$CHECKER" /workspace/plugin/brdrq
+                exit 0
               fi
 
-              "$CHECKER" /workspace/plugin/brdrq | tee pyqgis4-checker.log
-            '
+              for module in pyqgis4_checker pyqgis4checker qgis4_checker; do
+                if python3 -c "import ${module}" >/dev/null 2>&1; then
+                  python3 -m "$module" /workspace/plugin/brdrq
+                  exit 0
+                fi
+              done
+
+              echo "Unable to find checker executable or module in image."
+              echo "Known binaries containing checker:"
+              (compgen -c | grep -i checker || true) | sort -u
+              exit 1
+            ' | tee "$LOGFILE"
 
       - name: Upload checker report
         if: always()
