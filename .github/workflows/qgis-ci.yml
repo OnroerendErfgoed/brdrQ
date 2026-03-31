@@ -47,16 +47,18 @@ jobs:
                 echo "No Python interpreter found in container"
                 exit 127
               fi
-              "$PYBIN" -m pip --version >/dev/null 2>&1 || (apt-get update && apt-get install -y python3-pip)
-              "$PYBIN" -m pip install --break-system-packages --upgrade pytest brdr==0.15.6 || \
-                "$PYBIN" -m pip install --upgrade pytest brdr==0.15.6
+              "$PYBIN" -m venv /tmp/qgis-ci-venv >/dev/null 2>&1 || \
+                (apt-get update && apt-get install -y python3-venv && "$PYBIN" -m venv /tmp/qgis-ci-venv)
+              . /tmp/qgis-ci-venv/bin/activate
+              python -m pip install --upgrade pip
+              python -m pip install --upgrade pytest brdr==0.15.6
               TESTS="plugin/brdrq/test/test_init.py \
                      plugin/brdrq/test/test_toolbar.py \
                      plugin/brdrq/test/test_utils.py \
                      plugin/brdrq/test/test_brdrqdockwidgetfeaturealigner.py"
               if command -v xvfb-run >/dev/null 2>&1; then
-                xvfb-run -a "$PYBIN" -m pytest -q $TESTS
+                xvfb-run -a python -m pytest -q $TESTS
               else
-                "$PYBIN" -m pytest -q $TESTS
+                python -m pytest -q $TESTS
               fi
             '
