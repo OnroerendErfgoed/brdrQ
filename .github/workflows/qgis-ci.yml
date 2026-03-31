@@ -47,8 +47,8 @@ jobs:
                 echo "No Python interpreter found in container"
                 exit 127
               fi
-              "$PYBIN" -m venv /tmp/qgis-ci-venv >/dev/null 2>&1 || \
-                (apt-get update && apt-get install -y python3-venv && "$PYBIN" -m venv /tmp/qgis-ci-venv)
+              "$PYBIN" -m venv --system-site-packages /tmp/qgis-ci-venv >/dev/null 2>&1 || \
+                (apt-get update && apt-get install -y python3-venv && "$PYBIN" -m venv --system-site-packages /tmp/qgis-ci-venv)
               . /tmp/qgis-ci-venv/bin/activate
               python -m pip install --upgrade pip
               python -m pip install --upgrade pytest brdr==0.15.6
