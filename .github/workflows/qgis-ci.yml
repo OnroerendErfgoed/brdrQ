@@ -47,10 +47,9 @@ jobs:
                 echo "No Python interpreter found in container"
                 exit 127
               fi
-              "$PYBIN" -m ensurepip --upgrade || true
-              "$PYBIN" -m pip install --upgrade pip
-              "$PYBIN" -m pip install --upgrade pytest brdr==0.15.6 || \
-                "$PYBIN" -m pip install --break-system-packages --upgrade pytest brdr==0.15.6
+              "$PYBIN" -m pip --version >/dev/null 2>&1 || (apt-get update && apt-get install -y python3-pip)
+              "$PYBIN" -m pip install --break-system-packages --upgrade pytest brdr==0.15.6 || \
+                "$PYBIN" -m pip install --upgrade pytest brdr==0.15.6
               TESTS="plugin/brdrq/test/test_init.py \
                      plugin/brdrq/test/test_toolbar.py \
                      plugin/brdrq/test/test_utils.py \
