@@ -56,8 +56,6 @@ from .brdrq_utils import (
 from .qt_compat import (
     map_layer_filter_polygon,
     qgs_field_type_string,
-    qt_checkstate_checked,
-    qt_checkstate_unchecked,
     qt_right_dock_widget_area,
     qt_wait_cursor,
     set_map_layer_combo_filters,
@@ -171,10 +169,7 @@ class brdrQDockWidgetBulkAligner(
 
         node = root.findLayer(new_layer.id())
         if node:
-            new_state = (
-                qt_checkstate_checked() if visible else qt_checkstate_unchecked()
-            )
-            node.setItemVisibilityChecked(new_state)
+            node.setItemVisibilityChecked(bool(visible))
         groupname = str(new_layer.name()) + "_brdrQ_evaluation"
         move_to_group(new_layer, groupname)
         symbol = QgsStyle.defaultStyle().symbol("outline blue")

@@ -95,8 +95,6 @@ from .qt_compat import (
     map_mouse_event_xy,
     qgs_field_type_double,
     qgs_field_type_string,
-    qt_checkstate_checked,
-    qt_checkstate_unchecked,
 )
 
 GPKG_FILENAME = "brdrq.gpkg"
@@ -740,8 +738,7 @@ def gpkg_layer_to_map(name, gpkg_path, layer_name, symbol, visible, group):
     # 6. Zichtbaarheid instellen
     node = root.findLayer(vl.id())
     if node:
-        new_state = qt_checkstate_checked() if visible else qt_checkstate_unchecked()
-        node.setItemVisibilityChecked(new_state)
+        node.setItemVisibilityChecked(bool(visible))
 
     # 7. Verplaatsen naar groep en refreshen
     move_to_group(vl, group)
@@ -891,8 +888,7 @@ def featurecollection_to_layer(
 
     node = root.findLayer(vl.id())
     if node:
-        new_state = qt_checkstate_checked() if visible else qt_checkstate_unchecked()
-        node.setItemVisibilityChecked(new_state)
+        node.setItemVisibilityChecked(bool(visible))
 
     move_to_group(vl, group)
     vl.triggerRepaint()
