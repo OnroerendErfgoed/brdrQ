@@ -20,7 +20,7 @@ jobs:
       - name: Run pyqgis4-checker
         run: |
           set -euxo pipefail
-          IMAGE="ghcr.io/qgis/pyqgis4-checker:latest"
+          IMAGE="ghcr.io/qgis/pyqgis4-checker:main"
           docker pull "$IMAGE"
           docker run --rm --platform linux/amd64 \
             -v "${GITHUB_WORKSPACE}:/workspace" \
