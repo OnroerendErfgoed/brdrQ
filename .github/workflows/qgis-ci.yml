@@ -18,9 +18,9 @@ jobs:
       matrix:
         include:
           - name: qgis3
-            image: ghcr.io/qgis/qgis:release-3_44
+            image: qgis/qgis:3.44
           - name: qgis4
-            image: ghcr.io/qgis/qgis-qt6-unstable:main
+            image: qgis/qgis:nightly
 
     steps:
       - name: Checkout
@@ -39,17 +39,25 @@ jobs:
             "$IMAGE" \
             /bin/bash -lc '
               set -euxo pipefail
-              python3 -m ensurepip --upgrade || true
-              python3 -m pip install --upgrade pip
-              python3 -m pip install --upgrade pytest brdr==0.15.6 || \
-                python3 -m pip install --break-system-packages --upgrade pytest brdr==0.15.6
+              if command -v python3 >/dev/null 2>&1; then
+                PYBIN=python3
+              elif command -v python >/dev/null 2>&1; then
+                PYBIN=python
+              else
+                echo "No Python interpreter found in container"
+                exit 127
+              fi
+              "$PYBIN" -m ensurepip --upgrade || true
+              "$PYBIN" -m pip install --upgrade pip
+              "$PYBIN" -m pip install --upgrade pytest brdr==0.15.6 || \
+                "$PYBIN" -m pip install --break-system-packages --upgrade pytest brdr==0.15.6
               TESTS="plugin/brdrq/test/test_init.py \
                      plugin/brdrq/test/test_toolbar.py \
                      plugin/brdrq/test/test_utils.py \
                      plugin/brdrq/test/test_brdrqdockwidgetfeaturealigner.py"
               if command -v xvfb-run >/dev/null 2>&1; then
-                xvfb-run -a python3 -m pytest -q $TESTS
+                xvfb-run -a "$PYBIN" -m pytest -q $TESTS
               else
-                python3 -m pytest -q $TESTS
+                "$PYBIN" -m pytest -q $TESTS
               fi
             '
