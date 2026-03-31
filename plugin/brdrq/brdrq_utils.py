@@ -60,8 +60,6 @@ except:
 import datetime
 from math import ceil
 
-import geopandas as gpd
-import matplotlib.pyplot as plt
 from brdr.enums import (
     OpenDomainStrategy,
     SnapStrategy,
@@ -1035,6 +1033,9 @@ def _make_map(ax, processresult, thematic_dict, reference_dict):
     , so it can be used in matplotlib
     """
     try:
+        import geopandas as gpd
+        import matplotlib.pyplot as plt
+
         dicts = _processresult_to_dicts(processresult)
         results = dicts[0]
         results_diff_pos = dicts[2]
@@ -1113,6 +1114,8 @@ def show_map(
     """
     Show results on a map
     """
+    import matplotlib.pyplot as plt
+
     dict_results_by_distance = {}
     for theme_id, dist_result in dict_results.items():
         for rel_dist, processresults in dist_result.items():
@@ -1146,6 +1149,8 @@ def plot_series(
     ylabel="difference (m²)",
     title="Relevant distance vs difference",
 ):
+    import matplotlib.pyplot as plt
+
     for key in dictionary:
         if len(dictionary[key]) == len(series):
             lst_diffs = list(dictionary[key].values())
@@ -1621,19 +1626,39 @@ def thematic_preparation(input_thematic_layer, relevant_distance, context, feedb
 
 
 # https://www.pythonguis.com/tutorials/plotting-matplotlib/
-import matplotlib
+try:
+    import matplotlib
 
-matplotlib.use("Qt5Agg")
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-from matplotlib.figure import Figure
+    try:
+        matplotlib.use("QtAgg")
+    except Exception:
+        matplotlib.use("Qt5Agg")
+
+    try:
+        from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+    except Exception:
+        from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+    from matplotlib.figure import Figure
+except Exception:
+    FigureCanvasQTAgg = None
+    Figure = None
 
 
-class MplCanvas(FigureCanvasQTAgg):
+if FigureCanvasQTAgg is not None and Figure is not None:
 
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = fig.add_subplot(111)
-        super(MplCanvas, self).__init__(fig)
+    class MplCanvas(FigureCanvasQTAgg):
+
+        def __init__(self, parent=None, width=5, height=4, dpi=100):
+            fig = Figure(figsize=(width, height), dpi=dpi)
+            self.axes = fig.add_subplot(111)
+            super(MplCanvas, self).__init__(fig)
+
+else:
+
+    class MplCanvas:
+
+        def __init__(self, parent=None, width=5, height=4, dpi=100):
+            raise RuntimeError("Matplotlib Qt backend is not available")
 
 
 from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify
