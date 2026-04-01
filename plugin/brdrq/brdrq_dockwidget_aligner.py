@@ -97,8 +97,10 @@ class brdrQDockWidgetAligner(object):
         self.LAYER_RESULT_DIFF_MIN = "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
 
         self.helpDialog = brdrQHelp()
+        self._is_closing = False
 
     def closeEvent(self, event):
+        self._is_closing = True
         self.closingPlugin.emit()
         event.accept()
 
@@ -246,6 +248,8 @@ class brdrQDockWidgetAligner(object):
         self.iface.messageBar().pushMessage("geometry reset", duration=5)
 
     def onSliderChange(self, index):
+        if self._is_closing:
+            return
         print("onSliderChange: index -> " + str(index))
         value = self.relevant_distances[index]
         value = round(value, self.settingsDialog.DECIMAL)
@@ -253,10 +257,16 @@ class brdrQDockWidgetAligner(object):
         return
 
     def onSpinboxChange(self, value):
+        if self._is_closing:
+            return
+        if self.relevant_distances is None:
+            return
         value = round(value, self.settingsDialog.DECIMAL)
         index = self.relevant_distances.index(value)
         self.horizontalSlider.setValue(index)
         print("onSpinboxChange: value -> " + str(value))
+        if self.feature is None or self.dict_processresults is None:
+            return
 
         layer_result = get_layer_by_name(self.LAYER_RESULT)
         layer_result_diff = get_layer_by_name(self.LAYER_RESULT_DIFF)
@@ -268,6 +278,8 @@ class brdrQDockWidgetAligner(object):
             or layer_result_diff_min is None
             or layer_result_diff_plus is None
         ):
+            if self.aligner_result is None:
+                return
             self.add_results_to_grouplayer()
         self.setFilterOnLayers(value)
 

@@ -163,7 +163,9 @@ class brdrQDockWidgetFeatureAligner(
         self._last_selected_feature_row = -1
         # Clear progressbar
         self.progressBar.setValue(0)
+        spinbox_blocker = QSignalBlocker(self.doubleSpinBox)
         self.doubleSpinBox.setValue(0)
+        del spinbox_blocker
         self.labelFeatures.setText("Features:")
         # Clear the featurelist widget
         self.tableFeatures.clearContents()
@@ -607,10 +609,28 @@ class brdrQDockWidgetFeatureAligner(
         """Cleanup necessary items here when plugin dockwidget is closed"""
         print("onClosePlugin")
         print("** CLOSING brdrQ")
+        self._is_closing = True
+        try:
+            self._featureFilterTimer.stop()
+        except Exception:
+            pass
+        # Disconnect active signals to avoid callbacks while QGIS is shutting down.
+        for signal_obj, handler in (
+            (self.mMapLayerComboBox.layerChanged, self.themeLayerChanged),
+            (self.tableFeatures.itemSelectionChanged, self.onFeatureSelectionChanged),
+            (self.tablePredictions.itemSelectionChanged, self.onPredictionSelectionChanged),
+            (self.horizontalSlider.sliderMoved, self.onSliderChange),
+            (self.doubleSpinBox.valueChanged, self.onSpinboxChange),
+            (self.settingsDialog.confirmed, self.startDock),
+            (self.closingPlugin, self.onClosePlugin),
+        ):
+            try:
+                signal_obj.disconnect(handler)
+            except Exception:
+                pass
         remove_group_layer(self.GROUP_LAYER)
         # disconnects
         print("** disconnect dockwidget")
-        self.closingPlugin.disconnect(self.onClosePlugin)
 
     def activate_selectTool(self):
         # print ("currentlayer:" + str (self.mMapLayerComboBox.currentLayer()))
@@ -672,6 +692,8 @@ class brdrQDockWidgetFeatureAligner(
         self.listFeatures(features=partial_features)
 
     def themeLayerChanged(self):
+        if self._is_closing:
+            return
         print("themelayer changed")
         # reset interface by clearing list, progress_bar
         self.clearUserInterface()
@@ -958,6 +980,8 @@ class brdrQDockWidgetFeatureAligner(
         return
 
     def add_results_to_grouplayer(self):
+        if self._is_closing:
+            return
         print("adding results")
         if self.aligner is None:
             return
