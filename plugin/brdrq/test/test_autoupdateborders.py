@@ -1,4 +1,4 @@
-import os
+﻿import os
 import unittest
 
 import processing
@@ -65,7 +65,7 @@ class TestAutoUpdateBorders(unittest.TestCase):
                 "REVIEW_PERCENTAGE": 10,
                 "PREDICTION_STRATEGY": 1,
                 "FULL_REFERENCE_STRATEGY": 2,
-                "SHOW_LOG_INFO": True,
+                "LOG_INFO": True,
             },
         )
 
@@ -111,7 +111,7 @@ class TestAutoUpdateBorders(unittest.TestCase):
                 "REVIEW_PERCENTAGE": 10,
                 "PREDICTION_STRATEGY": 1,
                 "FULL_REFERENCE_STRATEGY": 2,
-                "SHOW_LOG_INFO": True,
+                "LOG_INFO": True,
             },
         )
 
@@ -145,7 +145,7 @@ class TestAutoUpdateBorders(unittest.TestCase):
                 "REVIEW_PERCENTAGE": 10,
                 "PREDICTION_STRATEGY": 1,
                 "FULL_REFERENCE_STRATEGY": 2,
-                "SHOW_LOG_INFO": True,
+                "LOG_INFO": True,
             },
         )
 

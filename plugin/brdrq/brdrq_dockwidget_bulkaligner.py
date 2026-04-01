@@ -24,8 +24,6 @@
 
 import os
 
-# TODO QGIS4
-from PyQt5.QtCore import QVariant
 from brdr.aligner import Aligner
 from brdr.be.grb.enums import GRBType
 from brdr.be.grb.loader import GRBActualLoader, GRBFiscalParcelLoader
@@ -35,10 +33,8 @@ from brdr.geometry_utils import geom_from_wkt
 from brdr.loader import DictLoader
 from qgis import processing
 from qgis.PyQt import QtWidgets, uic
-from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.core import QgsFeatureRequest, edit
-from qgis.core import QgsMapLayerProxyModel
 from qgis.core import QgsProject
 from qgis.core import QgsStyle
 from qgis.utils import OverrideCursor
@@ -56,6 +52,13 @@ from .brdrq_utils import (
     ADPF_VERSIONS,
     BRDRQ_STATE_FIELDNAME,
     BrdrQState,
+)
+from .qt_compat import (
+    map_layer_filter_polygon,
+    qgs_field_type_string,
+    qt_right_dock_widget_area,
+    qt_wait_cursor,
+    set_map_layer_combo_filters,
 )
 
 FORM_CLASS, _ = uic.loadUiType(
@@ -100,14 +103,16 @@ class brdrQDockWidgetBulkAligner(
         self.pushButton_reset.clicked.connect(self.reset_geometry)
         self.checkBox_only_manual.stateChanged.connect(self.loadFeaturelist)
         self.pushButton_evaluate.clicked.connect(self.evaluate)
-        self.mMapLayerComboBox.setFilters(QgsMapLayerProxyModel.PolygonLayer)
+        set_map_layer_combo_filters(
+            self.mMapLayerComboBox, map_layer_filter_polygon()
+        )
         self.listWidget_features.itemPressed.connect(self.onFeatureActivated)
         self.listWidget_predictions.itemPressed.connect(self.onListItemActivated)
         self.horizontalSlider.sliderMoved.connect(self.onSliderChange)
         self.doubleSpinBox.valueChanged.connect(self.onSpinboxChange)
 
         # # show the dockwidget
-        self.iface.addDockWidget(Qt.RightDockWidgetArea, self)
+        self.iface.addDockWidget(qt_right_dock_widget_area(), self)
         # #
         self.settingsDialog.confirmed.connect(self.startDock)
         self.startDock()
@@ -125,7 +130,7 @@ class brdrQDockWidgetBulkAligner(
         print("evaluate")
         self.clearUserInterface()
 
-        with OverrideCursor(Qt.WaitCursor):
+        with OverrideCursor(qt_wait_cursor()):
             self.workinglayer, self.workinggroupname = self.create_workinglayer()
             self.evaluate_layer()
             self.prepareFeatureList()
@@ -140,7 +145,7 @@ class brdrQDockWidgetBulkAligner(
         root = qinst.layerTreeRoot()
         layer = self.mMapLayerComboBox.currentLayer()
         # create a new layer from all features
-        if self.checkBox_only_selected.checkState():
+        if self.checkBox_only_selected.isChecked():
             new_layer = layer.materialize(
                 QgsFeatureRequest().setFilterFids(layer.selectedFeatureIds())
             )
@@ -151,7 +156,10 @@ class brdrQDockWidgetBulkAligner(
         # add attribute for automatic/manual correction
         # new_layer.renderer().setSymbol(QgsStyle.defaultStyle().symbol("hashed clbue /"))
         add_field_to_layer(
-            layer, BRDRQ_STATE_FIELDNAME, QVariant.String, BrdrQState.TO_UPDATE
+            layer,
+            BRDRQ_STATE_FIELDNAME,
+            qgs_field_type_string(),
+            BrdrQState.TO_UPDATE,
         )
 
         # add a new layer to the map
@@ -159,12 +167,10 @@ class brdrQDockWidgetBulkAligner(
 
         root.insertLayer(0, new_layer)
 
-        node = root.findLayer(new_layer.id())
-        if node:
-            new_state = Qt.Checked if visible else Qt.Unchecked
-            node.setItemVisibilityChecked(new_state)
         groupname = str(new_layer.name()) + "_brdrQ_evaluation"
-        move_to_group(new_layer, groupname)
+        moved_node, _ = move_to_group(new_layer, groupname)
+        if moved_node is not None and hasattr(moved_node, "setItemVisibilityChecked"):
+            moved_node.setItemVisibilityChecked(bool(visible))
         symbol = QgsStyle.defaultStyle().symbol("outline blue")
         renderer = new_layer.renderer()
         if symbol is not None and renderer is not None:
@@ -315,7 +321,7 @@ class brdrQDockWidgetBulkAligner(
         featurecollection_to_layer(
             self.LAYER_RESULT,
             fcs["result"],
-            QgsStyle.defaultStyle().symbol("outline green"),
+            "result",
             True,
             self.workinggroupname,
             self.tempfolder,
@@ -374,7 +380,7 @@ class brdrQDockWidgetBulkAligner(
         self.clearUserInterface()
         for f in self.getWorkingFeatures():
             item = f"ID: *{str(f.id())}*, Attributes: {f[BRDRQ_STATE_FIELDNAME]}"
-            if self.checkBox_only_manual.checkState() == 2 and not "to_check" in item:
+            if self.checkBox_only_manual.isChecked() and "to_check" not in item:
                 continue
             self.listWidget_features.addItem(item)
 
@@ -449,3 +455,4 @@ class brdrQDockWidgetBulkAligner(
 
 def __init__():
     pass
+

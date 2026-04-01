@@ -93,7 +93,7 @@ analysis).
     - **Default**: None
     - **Optional**: yes.
 
-- **SHOW_LOG_INFO** (default False): When True, the logging of brdr is shown in the feedback-window
+- **LOG_INFO** (default False): When True, extra logging from brdr is written to a file (`brdr_show_log_info.log`) in the selected WORK_FOLDER.
     - **Default**: False
     - **Optional**: No.
 
@@ -128,7 +128,7 @@ output = processing.run(
         "REVIEW_PERCENTAGE": 10,
         "PREDICTION_STRATEGY": 2,
         "FULL_REFERENCE_STRATEGY": 2,
-        "SHOW_LOG_INFO": True,
+        "LOG_INFO": True,
     },
 )
 

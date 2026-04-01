@@ -1,11 +1,10 @@
 import copy
 import json
 import os
+import re
 from enum import Enum
 from pathlib import Path
 
-# TODO QGIS4
-from PyQt5.QtGui import QColor
 from brdr.be.grb.enums import GRBType
 from brdr.constants import (
     SYMMETRICAL_AREA_CHANGE,
@@ -26,6 +25,7 @@ from brdr.processor import (
 from brdr.utils import (
     write_featurecollection_to_geopackage,
 )
+from qgis.PyQt.QtGui import QColor, QPainter
 from qgis.core import Qgis
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
@@ -61,8 +61,6 @@ except:
 import datetime
 from math import ceil
 
-import geopandas as gpd
-import matplotlib.pyplot as plt
 from brdr.enums import (
     OpenDomainStrategy,
     SnapStrategy,
@@ -73,9 +71,7 @@ from brdr.enums import (
 )
 from brdr.typings import ProcessResult
 
-# TODO QGIS4
-from PyQt5.QtCore import pyqtSignal, QVariant
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import pyqtSignal
 from qgis import processing
 from qgis.core import QgsField, QgsFeatureRequest, QgsProcessing
 from qgis.core import QgsProcessingParameterFolderDestination
@@ -92,6 +88,13 @@ from qgis.core import (
 from qgis.core import QgsStyle
 from qgis.utils import iface
 from shapely import to_wkt, from_wkt, make_valid
+from .qt_compat import (
+    is_return_or_enter_key,
+    map_mouse_event_pos,
+    map_mouse_event_xy,
+    qgs_field_type_double,
+    qgs_field_type_string,
+)
 
 GPKG_FILENAME = "brdrq.gpkg"
 
@@ -499,10 +502,15 @@ def zoom_to_features(features, iface, marge_factor=0.1, features_crs=None):
     # Calculate the combined bounding box
     if features is None or len(features) == 0:
         return
-    bbox = QgsRectangle()
-    bbox.setMinimal()  # Start met een lege bbox
+    bbox = None
     for feat in features:
-        bbox.combineExtentWith(feat.geometry().boundingBox())
+        feat_bbox = feat.geometry().boundingBox()
+        if bbox is None:
+            bbox = QgsRectangle(feat_bbox)
+        else:
+            bbox.combineExtentWith(feat_bbox)
+    if bbox is None:
+        return
 
     # Add a margin to the bbox
     width = bbox.width()
@@ -595,12 +603,18 @@ def move_to_group(thing, group, pos=0, expanded=False):
 
     group_object = tree.findGroup(group_name)
 
-    if not group_object:
+    if group_object is None:
         group_object = tree.insertGroup(0, group_name)
 
     # do the move
+    original_visibility = True
+    if hasattr(node_object, "itemVisibilityChecked"):
+        original_visibility = bool(node_object.itemVisibilityChecked())
+
     node_object_clone = node_object.clone()
     node_object_clone.setExpanded(expanded)
+    if hasattr(node_object_clone, "setItemVisibilityChecked"):
+        node_object_clone.setItemVisibilityChecked(original_visibility)
     group_object.insertChildNode(pos, node_object_clone)
 
     parent = node_object.parent()
@@ -643,7 +657,16 @@ def get_symbol(geojson, resulttype):
         elif resulttype == "result_diff_min":
             return QgsStyle.defaultStyle().symbol("hashed cred /")
         elif resulttype == "result":
-            return QgsStyle.defaultStyle().symbol("outline green")
+            fill_alpha = 35  # 0-255, keep fill very transparent
+            fill_color = QColor("green")
+            return QgsFillSymbol.createSimple(
+                {
+                    "outline_color": "green",
+                    "outline_style": "solid",
+                    "outline_width": "1.0",
+                    "color": f"{fill_color.red()},{fill_color.green()},{fill_color.blue()},{fill_alpha}",
+                }
+            )
         elif resulttype == "reference":
             return QgsStyle.defaultStyle().symbol("outline black")
         else:
@@ -726,14 +749,12 @@ def gpkg_layer_to_map(name, gpkg_path, layer_name, symbol, visible, group):
     qinst.addMapLayer(vl, False)
     root.insertLayer(0, vl)
 
-    # 6. Zichtbaarheid instellen
-    node = root.findLayer(vl.id())
-    if node:
-        new_state = Qt.Checked if visible else Qt.Unchecked
-        node.setItemVisibilityChecked(new_state)
+    # 6. Verplaatsen naar groep en pas daarna zichtbaarheid instellen op de clone
+    moved_node, _ = move_to_group(vl, group)
+    if moved_node is not None and hasattr(moved_node, "setItemVisibilityChecked"):
+        moved_node.setItemVisibilityChecked(bool(visible))
 
-    # 7. Verplaatsen naar groep en refreshen
-    move_to_group(vl, group)
+    # 7. Refreshen
     vl.triggerRepaint()
 
     if iface is not None:
@@ -741,89 +762,6 @@ def gpkg_layer_to_map(name, gpkg_path, layer_name, symbol, visible, group):
 
     return vl
 
-
-def load_full_gpkg_with_styles(gpkg_path, group_name):
-    layers = get_all_layer_names_in_gpkg(gpkg_path)
-
-    for lyr_name in layers:
-        # Laad de laag in QGIS
-        vl = gpkg_layer_to_map(
-            name=lyr_name,
-            gpkg_path=gpkg_path,
-            layer_name=lyr_name,
-            symbol=None,  # We doen styling hieronder
-            visible=True,
-            group=group_name,
-        )
-
-        if vl and vl.isValid():
-            # Probeer stijl uit DB te laden
-            style_applied = apply_style_from_gpkg(vl)
-
-            if not style_applied:
-                # Optioneel: Fallback naar handmatige styling als er geen DB-stijl is
-                print(
-                    f"Geen stijl gevonden in GPKG voor {lyr_name}, gebruik standaard."
-                )
-
-
-def get_all_layer_names_in_gpkg(gpkg_path):
-    """
-    Geeft een lijst terug met alle tabelnamen (layers) in een GeoPackage.
-    """
-    metadata = QgsProviderRegistry.instance().providerMetadata("ogr")
-    # Gebruik de URI van de container om de sublagen te vinden
-    conn = metadata.decodeUri(gpkg_path)
-
-    # We gebruiken de OGR provider om de lagen te scannen
-    layer_list = []
-    source = QgsDataSourceUri(gpkg_path)
-
-    # Een slimme manier via de metadata van de provider:
-    options = metadata.querySublayers(gpkg_path)
-    for option in options:
-        layer_list.append(option.name())
-
-    return layer_list
-
-
-def load_full_gpkg_to_qgis(gpkg_path, group_name, visible=True):
-    """
-    Scant een GeoPackage en voegt elke laag toe aan een specifieke groep in de TOC.
-    """
-    layers = get_all_layer_names_in_gpkg(gpkg_path)
-
-    for lyr_name in layers:
-        # We gebruiken de naam van de laag uit de GPKG ook als displaynaam in QGIS
-        # Je kunt hier eventueel symboliek-logica toevoegen
-        gpkg_layer_to_map(
-            name=lyr_name,
-            gpkg_path=gpkg_path,
-            layer_name=lyr_name,
-            symbol=None,
-            visible=visible,
-            group=group_name,
-        )
-
-    print(f"Klaar! {len(layers)} lagen geladen uit {gpkg_path}")
-
-
-def apply_style_from_gpkg(layer):
-    """
-    Controleert of er een stijl is opgeslagen in de GeoPackage voor deze laag
-    en past de standaardstijl toe.
-    """
-    # Haal de lijst met stijlen op uit de database (GeoPackage)
-    # De methode geeft (aantal_stijlen, ids, namen, descriptions) terug
-    count, ids, names, descriptions = layer.listStylesInDatabase()
-
-    if count > 0:
-        # We laden de eerste stijl (meestal de 'default')
-        # Je kunt ook zoeken naar een specifieke naam in 'names'
-        layer.loadNamedStyle(layer.styleURI())
-        layer.triggerRepaint()
-        return True
-    return False
 
 
 def featurecollection_to_layer(
@@ -853,7 +791,11 @@ def featurecollection_to_layer(
             qinst.removeMapLayer(lyr.id())
     if tempfolder is None or str(tempfolder) == "NULL" or str(tempfolder) == "":
         tempfolder = "tempfolder"
-    gpkg_path = tempfolder + "/" + GPKG_FILENAME
+    # Use one GPKG per layer to avoid pyogrio overwrite races on a shared file.
+    safe_layer_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(name)).strip("._")
+    if not safe_layer_name:
+        safe_layer_name = "layer"
+    gpkg_path = os.path.join(tempfolder, f"{safe_layer_name}.gpkg")
     write_featurecollection_to_geopackage(gpkg_path, featurecollection, layer_name=name)
 
     uri = f"{gpkg_path}|layername={name}"
@@ -878,12 +820,10 @@ def featurecollection_to_layer(
 
     root.insertLayer(0, vl)
 
-    node = root.findLayer(vl.id())
-    if node:
-        new_state = Qt.Checked if visible else Qt.Unchecked
-        node.setItemVisibilityChecked(new_state)
+    moved_node, _ = move_to_group(vl, group)
+    if moved_node is not None and hasattr(moved_node, "setItemVisibilityChecked"):
+        moved_node.setItemVisibilityChecked(bool(visible))
 
-    move_to_group(vl, group)
     vl.triggerRepaint()
     if iface is not None:
         iface.layerTreeView().refreshLayerSymbology(vl.id())
@@ -924,8 +864,8 @@ def set_layer_visibility(layer: QgsMapLayer, visible: bool):
         return
 
     layer_tree = QgsProject.instance().layerTreeRoot().findLayer(layer.id())
-    if layer_tree:
-        layer_tree.setItemVisibilityChecked(visible)
+    if layer_tree is not None:
+        layer_tree.setItemVisibilityChecked(bool(visible))
     else:
         print("Layer not found in the layer tree.")
 
@@ -1024,6 +964,9 @@ def _make_map(ax, processresult, thematic_dict, reference_dict):
     , so it can be used in matplotlib
     """
     try:
+        import geopandas as gpd
+        import matplotlib.pyplot as plt
+
         dicts = _processresult_to_dicts(processresult)
         results = dicts[0]
         results_diff_pos = dicts[2]
@@ -1102,6 +1045,8 @@ def show_map(
     """
     Show results on a map
     """
+    import matplotlib.pyplot as plt
+
     dict_results_by_distance = {}
     for theme_id, dist_result in dict_results.items():
         for rel_dist, processresults in dist_result.items():
@@ -1135,6 +1080,8 @@ def plot_series(
     ylabel="difference (m²)",
     title="Relevant distance vs difference",
 ):
+    import matplotlib.pyplot as plt
+
     for key in dictionary:
         if len(dictionary[key]) == len(series):
             lst_diffs = list(dictionary[key].values())
@@ -1337,12 +1284,12 @@ def generate_correction_layer(
 
     # 4. Update geometries in duplicated layer
     fields_to_add = [
-        QgsField(METADATA_FIELD_NAME, QVariant.String),
-        QgsField(EVALUATION_FIELD_NAME, QVariant.String),
-        QgsField(BRDRQ_STATE_FIELDNAME, QVariant.String),
-        QgsField(BRDRQ_ORIGINAL_WKT_FIELDNAME, QVariant.String),
-        QgsField(SYMMETRICAL_AREA_CHANGE, QVariant.Double),
-        QgsField(SYMMETRICAL_AREA_PERCENTAGE_CHANGE, QVariant.Double),
+        QgsField(METADATA_FIELD_NAME, qgs_field_type_string()),
+        QgsField(EVALUATION_FIELD_NAME, qgs_field_type_string()),
+        QgsField(BRDRQ_STATE_FIELDNAME, qgs_field_type_string()),
+        QgsField(BRDRQ_ORIGINAL_WKT_FIELDNAME, qgs_field_type_string()),
+        QgsField(SYMMETRICAL_AREA_CHANGE, qgs_field_type_double()),
+        QgsField(SYMMETRICAL_AREA_PERCENTAGE_CHANGE, qgs_field_type_double()),
     ]
 
     # Iterate fields
@@ -1413,12 +1360,13 @@ def generate_correction_layer(
 def style_outputlayer(layer, field_name):
     # Determine the geometry type (Point=0, Line=1, Polygon=2)
     geom_type = layer.geometryType()
+    fill_alpha = 35  # 0-255, keep fill very transparent
 
     # Configuration for each state
     state_config = {
         str(BrdrQState.NOT_CHANGED.value): {
             "color": "#b2df8a",
-            "width": "0.6",
+            "width": "0.8",
             "size": "2.0",
         },
         str(BrdrQState.AUTO_UPDATED.value): {
@@ -1433,12 +1381,12 @@ def style_outputlayer(layer, field_name):
         },
         str(BrdrQState.TO_REVIEW.value): {
             "color": "orange",
-            "width": "1.0",
+            "width": "0.8",
             "size": "4.0",
         },
         str(BrdrQState.TO_UPDATE.value): {
             "color": "red",
-            "width": "1.0",
+            "width": "0.8",
             "size": "4.0",
         },
     }
@@ -1447,12 +1395,13 @@ def style_outputlayer(layer, field_name):
 
     for value, settings in state_config.items():
         if geom_type == Qgis.GeometryType.Polygon:
+            fill_color = QColor(settings["color"])
             symbol = QgsFillSymbol.createSimple(
                 {
                     "outline_color": settings["color"],
                     "outline_style": "solid",
                     "outline_width": settings["width"],
-                    "color": "transparent",
+                    "color": f"{fill_color.red()},{fill_color.green()},{fill_color.blue()},{fill_alpha}",
                 }
             )
         elif geom_type == Qgis.GeometryType.Line:
@@ -1482,6 +1431,30 @@ def style_outputlayer(layer, field_name):
     # Apply the Categorized Renderer
     renderer = QgsCategorizedSymbolRenderer(field_name, categories)
     layer.setRenderer(renderer)
+    # Blend mode keeps aerial/base map readable while preserving correction colors.
+    try:
+        layer.setBlendMode(QPainter.CompositionMode_Multiply)
+    except Exception:
+        try:
+            composition_mode = getattr(QPainter, "CompositionMode", None)
+            if composition_mode is not None and hasattr(
+                composition_mode, "CompositionMode_Multiply"
+            ):
+                layer.setBlendMode(composition_mode.CompositionMode_Multiply)
+            elif composition_mode is not None and hasattr(
+                composition_mode, "CompositionMode_Overlay"
+            ):
+                layer.setBlendMode(composition_mode.CompositionMode_Overlay)
+            elif composition_mode is not None and hasattr(
+                composition_mode, "Multiply"
+            ):
+                layer.setBlendMode(composition_mode.Multiply)
+            elif composition_mode is not None and hasattr(
+                composition_mode, "Overlay"
+            ):
+                layer.setBlendMode(composition_mode.Overlay)
+        except Exception:
+            pass
     layer.triggerRepaint()
 
 
@@ -1610,19 +1583,39 @@ def thematic_preparation(input_thematic_layer, relevant_distance, context, feedb
 
 
 # https://www.pythonguis.com/tutorials/plotting-matplotlib/
-import matplotlib
+try:
+    import matplotlib
 
-matplotlib.use("Qt5Agg")
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-from matplotlib.figure import Figure
+    try:
+        matplotlib.use("QtAgg")
+    except Exception:
+        matplotlib.use("Qt5Agg")
+
+    try:
+        from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+    except Exception:
+        from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+    from matplotlib.figure import Figure
+except Exception:
+    FigureCanvasQTAgg = None
+    Figure = None
 
 
-class MplCanvas(FigureCanvasQTAgg):
+if FigureCanvasQTAgg is not None and Figure is not None:
 
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = fig.add_subplot(111)
-        super(MplCanvas, self).__init__(fig)
+    class MplCanvas(FigureCanvasQTAgg):
+
+        def __init__(self, parent=None, width=5, height=4, dpi=100):
+            fig = Figure(figsize=(width, height), dpi=dpi)
+            self.axes = fig.add_subplot(111)
+            super(MplCanvas, self).__init__(fig)
+
+else:
+
+    class MplCanvas:
+
+        def __init__(self, parent=None, width=5, height=4, dpi=100):
+            raise RuntimeError("Matplotlib Qt backend is not available")
 
 
 from qgis.gui import QgsMapToolIdentifyFeature, QgsMapToolIdentify
@@ -1638,8 +1631,9 @@ class SelectTool(QgsMapToolIdentifyFeature):
         QgsMapToolIdentifyFeature.__init__(self, self.canvas, self.layer)
 
     def canvasPressEvent(self, event):
+        x, y = map_mouse_event_xy(event)
         identified_features = self.identify(
-            event.x(), event.y(), [self.layer], QgsMapToolIdentify.TopDownAll
+            x, y, [self.layer], QgsMapToolIdentify.TopDownAll
         )
         identified_features = [f.mFeature for f in identified_features]
         self.featuresIdentified.emit(identified_features)
@@ -1660,12 +1654,12 @@ class PolygonSelectTool(QgsMapTool):
         self.rubber_band.setWidth(2)
 
     def canvasPressEvent(self, event):
-        point = self.toMapCoordinates(event.pos())
+        point = self.toMapCoordinates(map_mouse_event_pos(event))
         self.points.append(point)
         self.rubber_band.addPoint(point, True)
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Return and len(self.points) >= 3:
+        if is_return_or_enter_key(event.key()) and len(self.points) >= 3:
             polygon_geom = QgsGeometry.fromPolygonXY([self.points])
             self.on_polygon_finished(
                 polygon_geom, self.layer, self.canvas
@@ -1683,3 +1677,4 @@ class PolygonSelectTool(QgsMapTool):
     def reset(self):
         self.points = []
         self.rubber_band.reset(QgsWkbTypes.PolygonGeometry)
+

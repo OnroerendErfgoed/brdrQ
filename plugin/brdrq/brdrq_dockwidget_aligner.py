@@ -120,10 +120,12 @@ class brdrQDockWidgetAligner(object):
     def _check_warn_edit_modus(self, layer):
         if layer.isEditable():
             msg = "This layer is in edit-modus. Please close edit-modus before using the feature-aligner"
-            self.iface.messageBar().pushMessage("Warning",
-                                                    msg,
-                                                    level=Qgis.Warning,
-                                                    duration=5,)
+            self.iface.messageBar().pushMessage(
+                "Warning",
+                msg,
+                level=Qgis.Warning,
+                duration=5,
+            )
             return True
         else:
             return False
@@ -166,11 +168,14 @@ class brdrQDockWidgetAligner(object):
                     )
                 if ix_brdrq_original_wkt >= 0:
                     layer.changeAttributeValue(
-                        feat.id(), ix_brdrq_original_wkt, str(feat[ix_brdrq_original_wkt])
+                        feat.id(),
+                        ix_brdrq_original_wkt,
+                        str(feat[ix_brdrq_original_wkt]),
                     )
                 if ix_brdr_metadata_fieldname >= 0:
                     layer.changeAttributeValue(
-                            feat.id(), ix_brdr_metadata_fieldname, str(result["metadata"]))
+                        feat.id(), ix_brdr_metadata_fieldname, str(result["metadata"])
+                    )
         except:
             errormessage = "state/original_wkt/metadata could not be updated, please check brdrq-columns for these data."
             self.iface.messageBar().pushMessage(
@@ -180,7 +185,10 @@ class brdrQDockWidgetAligner(object):
                 duration=5,
             )
         layer.triggerRepaint()
-        self.iface.messageBar().pushMessage("geometry saved",duration=5,)
+        self.iface.messageBar().pushMessage(
+            "geometry saved",
+            duration=5,
+        )
 
     def _reset_geometry(self, layer):
         if self._check_warn_edit_modus(layer):
@@ -196,9 +204,7 @@ class brdrQDockWidgetAligner(object):
                 result = self.dict_processresults[key][relevant_distance]
                 original_geometry = geom_shapely_to_qgis(result["result"])
             else:
-                errormessage = (
-                    f"problem resetting for reldist {str(relevant_distance)}"
-                )
+                errormessage = f"problem resetting for reldist {str(relevant_distance)}"
                 print(errormessage)
                 self.iface.messageBar().pushMessage(
                     "Warning",
@@ -226,7 +232,8 @@ class brdrQDockWidgetAligner(object):
                     )
                 if ix_brdr_metadata_fieldname >= 0:
                     layer.changeAttributeValue(
-                        feat.id(), ix_brdr_metadata_fieldname, str({}))
+                        feat.id(), ix_brdr_metadata_fieldname, str({})
+                    )
         except:
             errormessage = "state/original_wkt/metadata could not be reset, please check brdrq-columns for these data."
             self.iface.messageBar().pushMessage(
@@ -236,7 +243,7 @@ class brdrQDockWidgetAligner(object):
                 duration=5,
             )
         layer.triggerRepaint()
-        self.iface.messageBar().pushMessage("geometry reset",duration=5)
+        self.iface.messageBar().pushMessage("geometry reset", duration=5)
 
     def onSliderChange(self, index):
         print("onSliderChange: index -> " + str(index))
@@ -274,8 +281,6 @@ class brdrQDockWidgetAligner(object):
         setFilterOnLayer(self.LAYER_RESULT_DIFF_MIN, filter)
         setFilterOnLayer(self.LAYER_RESULT_DIFF_PLUS, filter)
         return
-
-
 
     def get_wkt(self):
         feat = self.feature
@@ -322,7 +327,8 @@ class brdrQDockWidgetAligner(object):
                 dict_results={key: self.dict_evaluated_predictions[key]},
                 dict_thematic={key: self.aligner.thematic_data[key].geometry},
                 dict_reference={
-                    k: v.geometry for k, v in self.aligner.reference_data.features.items()
+                    k: v.geometry
+                    for k, v in self.aligner.reference_data.features.items()
                 },
             )
             return

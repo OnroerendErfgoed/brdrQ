@@ -12,6 +12,9 @@ A: When using Autocorrectborders or Autoupdateborders, the original data is not 
 ## **Q: What types of geometries are supported?**
 A: The brdr-library is initially developed to align (Multi-)Polygons to (Multi-)Polygons. However the plugin can also be used for other types of input/reference (Points & Linestrings).
 
+## **Q: Is brdrQ compatible with both QGIS 3 and QGIS 4?**
+A: Yes. The plugin is maintained for QGIS 3 and QGIS 4 compatibility. Internally it uses `qgis.PyQt` imports and compatibility wrappers for Qt/API enum differences (for example layer filter flags and check-state enums).
+
 ## **Q: My 'local' reference layer seems to slow down brdrQ. What can I do about it?**
 A: Performance bottlenecks with reference layers are usually caused by how data is accessed and how efficiently it is searched. Even "local" layers can be slow due to two main factors:
 * Network Latency: If your data is stored on a network drive, a VPN share, or a cloud-synced folder (like OneDrive or Dropbox), QGIS must communicate with the server for every geometry calculation. This constant data transfer creates significant delays compared to reading directly from your hardware.

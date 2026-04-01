@@ -1,0 +1,81 @@
+name: PyQGIS4 Checker
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - "plugin/brdrq/**"
+      - ".github/workflows/pyqgis4-checker.yml"
+  workflow_dispatch:
+
+jobs:
+  pyqgis4-checker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run pyqgis4-checker
+        run: |
+          set -euxo pipefail
+          IMAGE="ghcr.io/qgis/pyqgis4-checker:main"
+          docker pull "$IMAGE"
+          LOGFILE="${GITHUB_WORKSPACE}/pyqgis4-checker.log"
+
+          # First try: use the image default entrypoint (most reliable when command name is unknown).
+          set +e
+          docker run --rm --platform linux/amd64 \
+            -v "${GITHUB_WORKSPACE}:/workspace" \
+            -w /workspace \
+            "$IMAGE" \
+            /workspace/plugin/brdrq >"$LOGFILE" 2>&1
+          ENTRYPOINT_EXIT=$?
+          set -e
+
+          if [ "$ENTRYPOINT_EXIT" -eq 0 ]; then
+            cat "$LOGFILE"
+            exit 0
+          fi
+
+          # Fallback: run inside container and try known command/module names.
+          docker run --rm --platform linux/amd64 \
+            -v "${GITHUB_WORKSPACE}:/workspace" \
+            -w /workspace \
+            "$IMAGE" \
+            /bin/bash -lc '
+              set -euxo pipefail
+              CHECKER=""
+              for candidate in pyqgis4-checker pyqgis4_checker qgis4-checker; do
+                if command -v "$candidate" >/dev/null 2>&1; then
+                  CHECKER="$candidate"
+                  break
+                fi
+              done
+
+              if [ -n "$CHECKER" ]; then
+                "$CHECKER" /workspace/plugin/brdrq
+                exit 0
+              fi
+
+              for module in pyqgis4_checker pyqgis4checker qgis4_checker; do
+                if python3 -c "import ${module}" >/dev/null 2>&1; then
+                  python3 -m "$module" /workspace/plugin/brdrq
+                  exit 0
+                fi
+              done
+
+              echo "Unable to find checker executable or module in image."
+              echo "Known binaries containing checker:"
+              (compgen -c | grep -i checker || true) | sort -u
+              echo "Skipping pyqgis4-checker because checker tool is not available in this image."
+              exit 0
+            ' | tee "$LOGFILE"
+
+      - name: Upload checker report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyqgis4-checker-log
+          path: pyqgis4-checker.log

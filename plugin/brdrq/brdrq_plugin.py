@@ -35,11 +35,10 @@ import os
 import sys
 
 import brdr
-# TODO QGIS4
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QAction, QMenu
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication, QLocale, QTranslator, QSettings
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QAction, QMenu
 from qgis.core import Qgis
 from qgis.core import QgsApplication
 
@@ -47,14 +46,7 @@ from .brdrq_dockwidget_bulkaligner import brdrQDockWidgetBulkAligner
 from .brdrq_dockwidget_featurealigner import brdrQDockWidgetFeatureAligner
 from .brdrq_provider import BrdrQProvider
 from .brdrq_version_dialog import VersionInfoDialog
-
-# #example when upgrading plugin for QGIS4 - compatibility
-# try:
-#     from PyQt6.QtWidgets import QAction, QMenu
-#     from PyQt6.QtGui import QIcon
-# except ImportError:
-#     from PyQt5.QtWidgets import QAction, QMenu
-#     from PyQt5.QtGui import QIcon
+from .qt_compat import get_vector_menu, remove_plugin_menu_action
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 
@@ -83,7 +75,7 @@ class BrdrQPlugin(object):
         self.toolbar = self.iface.addToolBar(pluginname)
         self.toolbar.setObjectName(pluginname)
         self.brdrq_menu = QMenu(pluginname)
-        self.vector_menu = self.iface.vectorMenu()
+        self.vector_menu = get_vector_menu(self.iface)
         self.metadata = self.get_metadata()
 
     # noinspection PyMethodMayBeStatic
@@ -117,7 +109,8 @@ class BrdrQPlugin(object):
         # Setup menu
         icon_menu = QIcon(os.path.join(os.path.join(cmd_folder, "icon_base.svg")))
         self.brdrq_menu.setIcon(icon_menu)
-        self.vector_menu.addMenu(self.brdrq_menu)
+        if self.vector_menu is not None:
+            self.vector_menu.addMenu(self.brdrq_menu)
 
         # FEATUREALIGNER
         icon = os.path.join(os.path.join(cmd_folder, "icon_featurealigner.svg"))
@@ -220,8 +213,10 @@ class BrdrQPlugin(object):
         for action in self.actions:
             self.iface.removeToolBarIcon(action)
             self.toolbar.removeAction(action)
-            self.iface.removePluginMenu(pluginname, action)
+            remove_plugin_menu_action(self.iface, pluginname, action)
             del action
+        if self.vector_menu is not None:
+            self.vector_menu.removeAction(self.brdrq_menu.menuAction())
         # remove the toolbar
         del self.toolbar
 
@@ -264,3 +259,4 @@ class BrdrQPlugin(object):
                 "email": "N/A",
             }
         return metadata
+

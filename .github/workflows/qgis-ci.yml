@@ -1,0 +1,66 @@
+name: QGIS Plugin CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - "plugin/brdrq/**"
+      - ".github/workflows/qgis-ci.yml"
+  workflow_dispatch:
+
+jobs:
+  smoke-tests:
+    name: Smoke Tests (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: qgis3
+            image: qgis/qgis:3.44
+          - name: qgis4
+            image: qgis/qgis:nightly
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run smoke tests in QGIS container
+        run: |
+          set -euxo pipefail
+          IMAGE="${{ matrix.image }}"
+          docker pull "$IMAGE"
+          docker run --rm --platform linux/amd64 \
+            -e QT_QPA_PLATFORM=offscreen \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            -v "${GITHUB_WORKSPACE}:/workspace" \
+            -w /workspace \
+            "$IMAGE" \
+            /bin/bash -lc '
+              set -euxo pipefail
+              if command -v python3 >/dev/null 2>&1; then
+                PYBIN=python3
+              elif command -v python >/dev/null 2>&1; then
+                PYBIN=python
+              else
+                echo "No Python interpreter found in container"
+                exit 127
+              fi
+              "$PYBIN" -m venv --system-site-packages /tmp/qgis-ci-venv >/dev/null 2>&1 || \
+                (apt-get update && apt-get install -y python3-venv && "$PYBIN" -m venv --system-site-packages /tmp/qgis-ci-venv)
+              . /tmp/qgis-ci-venv/bin/activate
+              python -m pip install --upgrade pip
+              python -m pip install --upgrade pytest brdr==0.15.6
+              export QGIS_PREFIX_PATH=/usr
+              export PYTHONPATH="/usr/share/qgis/python:/usr/share/qgis/python/plugins:${PYTHONPATH:-}"
+              TESTS="plugin/brdrq/test/test_init.py \
+                     plugin/brdrq/test/test_toolbar.py \
+                     plugin/brdrq/test/test_utils.py \
+                     plugin/brdrq/test/test_brdrqdockwidgetfeaturealigner.py"
+              if command -v xvfb-run >/dev/null 2>&1; then
+                xvfb-run -a python -m pytest -q $TESTS
+              else
+                python -m pytest -q $TESTS
+              fi
+            '

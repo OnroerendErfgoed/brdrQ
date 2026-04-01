@@ -4,8 +4,13 @@ import site
 import subprocess
 import sys
 
-# TODO QGIS4
-from PyQt5.QtWidgets import QMessageBox
+from qgis.PyQt.QtWidgets import QMessageBox
+
+from .qt_compat import (
+    dialog_exec,
+    qmessagebox_ok_button,
+    qmessagebox_warning_icon,
+)
 
 # helper function to find embedded python
 # path in windows. Based on
@@ -105,15 +110,15 @@ def import_modules():
 
 
 def show_new_brdr_dialog():
-    # TODO QGIS4
-    from PyQt5.QtWidgets import QMessageBox
+    from qgis.PyQt.QtWidgets import QMessageBox
 
     msg = QMessageBox()
-    msg.setIcon(QMessageBox.Warning)
+    msg.setIcon(qmessagebox_warning_icon())
     msg.setWindowTitle("New installation of 'brdr'")
     msg.setText(
         f"A new version of 'brdr'({brdr_version}) is installed for the calculations in the brdrQ-plugin: . A restart of QGIS is required to ensure correct functioning of brdrQ"
     )
     msg.setInformativeText("Please restart QGIS before using brdrQ.")
-    msg.setStandardButtons(QMessageBox.Ok)
-    msg.exec_()
+    msg.setStandardButtons(qmessagebox_ok_button())
+    dialog_exec(msg)
+

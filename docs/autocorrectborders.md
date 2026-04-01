@@ -36,7 +36,7 @@ The script requires the following input parameters:
 | REVIEW_PERCENTAGE % (0-100)                | Resulting geometries that change more than REVIEW_PERCENTAGE are categorised as 'to_review'                                                                                                                                                                                                                                                                                                                                                      | 10 (%)                                                                                        | No.      |
 | WORKING FOLDER                             | Folder to save the resulting geojson-files. By default empty, resulting in saving the geojson-files in a created folder.                                                                                                                                                                                                                                                                                                                         | Empty - a local folder is used                                                                | No       |
 | SHOW_INTERMEDIATE_LAYERS                   | If True, 2 additional layers are generated as output that visually represent the significant intersections and significant differences                                                                                                                                                                                                                                                                                                           | False                                                                                         | No.      |
-| SHOW_LOG_INFO                              | If True, the logging of brdr is shown in the feedback-window.                                                                                                                                                                                                                                                                                                                                                                                    | False                                                                                         | No       |
+| LOG_INFO                                   | If True, extra logging from brdr is written to a file (`brdr_show_log_info.log`) in the selected WORK_FOLDER.                                                                                                                                                                                                                                                                                                                                   | False                                                                                         | No       |
 
 ## Output Parameters
 
@@ -79,7 +79,7 @@ Here is an example of how to use the script in Python:
                 "ADD_METADATA": True,
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
-                "SHOW_LOG_INFO": False,
+                "LOG_INFO": False,
             }
 
 processing.run('brdrqprovider:brdrqautocorrectborders', params)
