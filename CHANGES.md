@@ -1,3 +1,7 @@
+# v0.20.1
+
+- Bugfix for closing brdrQ-plugin
+
 # v0.20.0
 
 - QGIS3/QGIS4 compatibility: Improved Qt5/Qt6 compatibility across plugin UI and tests (enum/API compatibility wrappers)
