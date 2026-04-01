@@ -36,7 +36,7 @@ from brdr.nl.enums import BRKType
 from brdr.nl.loader import BRKLoader
 from brdr.osm.loader import OSMLoader
 from qgis.PyQt import QtWidgets, uic
-from qgis.PyQt.QtCore import pyqtSignal, Qt, QTimer, QSignalBlocker
+from qgis.PyQt.QtCore import pyqtSignal, Qt, QTimer, QSignalBlocker, QEvent
 from qgis.PyQt.QtGui import QColor
 from qgis.core import Qgis
 from qgis.core import QgsFeature, QgsWkbTypes, QgsVectorLayer, QgsProject
@@ -152,6 +152,8 @@ class brdrQDockWidgetFeatureAligner(
         self._last_selected_feature_row = -1
         self._app_is_closing = False
         self._shutdown_prepared = False
+        self._main_window = None
+        self._qt_app = None
         self._featureFilterTimer = QTimer(self)
         self._featureFilterTimer.setSingleShot(True)
         self._featureFilterTimer.timeout.connect(self._onFeatureFilterTimeout)
@@ -159,11 +161,20 @@ class brdrQDockWidgetFeatureAligner(
         self._configure_stable_layout()
         self._initialize()
         app = QtWidgets.QApplication.instance()
+        self._qt_app = app
         if app is not None:
             try:
                 app.aboutToQuit.connect(self._onAppAboutToQuit)
+                app.installEventFilter(self)
             except Exception:
                 pass
+        if hasattr(self, "iface") and self.iface is not None:
+            try:
+                self._main_window = self.iface.mainWindow()
+                if self._main_window is not None:
+                    self._main_window.installEventFilter(self)
+            except Exception:
+                self._main_window = None
         try:
             project = QgsProject.instance()
             project.layersWillBeRemoved.connect(self._onProjectLayersWillBeRemoved)
@@ -629,6 +640,10 @@ class brdrQDockWidgetFeatureAligner(
         print("onClosePlugin")
         print("** CLOSING brdrQ")
         self._prepare_for_shutdown(remove_group=not self._app_is_closing)
+        if not self._app_is_closing and self.brdrqplugin is not None:
+            # Closing only the dock should allow a clean reopen with a fresh instance.
+            self.brdrqplugin.dockwidget_featurealigner = None
+            QTimer.singleShot(0, self.deleteLater)
         print("** disconnect dockwidget")
 
     def _prepare_for_shutdown(self, remove_group=False):
@@ -669,6 +684,12 @@ class brdrQDockWidgetFeatureAligner(
             app = QtWidgets.QApplication.instance()
             if app is not None:
                 app.aboutToQuit.disconnect(self._onAppAboutToQuit)
+                app.removeEventFilter(self)
+        except Exception:
+            pass
+        try:
+            if self._main_window is not None:
+                self._main_window.removeEventFilter(self)
         except Exception:
             pass
         try:
@@ -710,6 +731,22 @@ class brdrQDockWidgetFeatureAligner(
 
     def _onProjectCleared(self):
         self._prepare_for_shutdown(remove_group=False)
+
+    def eventFilter(self, watched, event):
+        if self._is_closing:
+            return super().eventFilter(watched, event)
+        event_type = event.type() if event is not None else None
+        close_event = getattr(QEvent, "Close", None)
+        quit_event = getattr(QEvent, "Quit", None)
+        if watched is self._main_window and close_event is not None and event_type == close_event:
+            self._app_is_closing = True
+            self._prepare_for_shutdown(remove_group=False)
+        elif watched is self._qt_app and event_type in tuple(
+            et for et in (close_event, quit_event) if et is not None
+        ):
+            self._app_is_closing = True
+            self._prepare_for_shutdown(remove_group=False)
+        return super().eventFilter(watched, event)
 
     def activate_selectTool(self):
         # print ("currentlayer:" + str (self.mMapLayerComboBox.currentLayer()))

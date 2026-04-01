@@ -248,7 +248,16 @@ class BrdrQPlugin(object):
 
     def openDockFeatureAligner(self):
         print("openDockFeatureAligner")
-        if self.dockwidget_featurealigner is None:
+        recreate = self.dockwidget_featurealigner is None
+        if not recreate:
+            try:
+                recreate = bool(
+                    getattr(self.dockwidget_featurealigner, "_shutdown_prepared", False)
+                    or getattr(self.dockwidget_featurealigner, "_is_closing", False)
+                )
+            except Exception:
+                recreate = True
+        if recreate:
             # Create the dockwidget (after translation) and keep reference
             self.dockwidget_featurealigner = brdrQDockWidgetFeatureAligner(self)
             print("brdrQDockWidgetFeatureAligner created")
