@@ -321,7 +321,7 @@ class brdrQDockWidgetBulkAligner(
         featurecollection_to_layer(
             self.LAYER_RESULT,
             fcs["result"],
-            QgsStyle.defaultStyle().symbol("outline green"),
+            "result",
             True,
             self.workinggroupname,
             self.tempfolder,

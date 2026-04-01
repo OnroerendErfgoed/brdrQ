@@ -24,7 +24,7 @@ from brdr.processor import (
 from brdr.utils import (
     write_featurecollection_to_geopackage,
 )
-from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtGui import QColor, QPainter
 from qgis.core import Qgis
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
@@ -656,7 +656,16 @@ def get_symbol(geojson, resulttype):
         elif resulttype == "result_diff_min":
             return QgsStyle.defaultStyle().symbol("hashed cred /")
         elif resulttype == "result":
-            return QgsStyle.defaultStyle().symbol("outline green")
+            fill_alpha = 35  # 0-255, keep fill very transparent
+            fill_color = QColor("green")
+            return QgsFillSymbol.createSimple(
+                {
+                    "outline_color": "green",
+                    "outline_style": "solid",
+                    "outline_width": "1.0",
+                    "color": f"{fill_color.red()},{fill_color.green()},{fill_color.blue()},{fill_alpha}",
+                }
+            )
         elif resulttype == "reference":
             return QgsStyle.defaultStyle().symbol("outline black")
         else:
@@ -1429,12 +1438,13 @@ def generate_correction_layer(
 def style_outputlayer(layer, field_name):
     # Determine the geometry type (Point=0, Line=1, Polygon=2)
     geom_type = layer.geometryType()
+    fill_alpha = 35  # 0-255, keep fill very transparent
 
     # Configuration for each state
     state_config = {
         str(BrdrQState.NOT_CHANGED.value): {
             "color": "#b2df8a",
-            "width": "0.6",
+            "width": "0.8",
             "size": "2.0",
         },
         str(BrdrQState.AUTO_UPDATED.value): {
@@ -1449,12 +1459,12 @@ def style_outputlayer(layer, field_name):
         },
         str(BrdrQState.TO_REVIEW.value): {
             "color": "orange",
-            "width": "1.0",
+            "width": "0.8",
             "size": "4.0",
         },
         str(BrdrQState.TO_UPDATE.value): {
             "color": "red",
-            "width": "1.0",
+            "width": "0.8",
             "size": "4.0",
         },
     }
@@ -1463,12 +1473,13 @@ def style_outputlayer(layer, field_name):
 
     for value, settings in state_config.items():
         if geom_type == Qgis.GeometryType.Polygon:
+            fill_color = QColor(settings["color"])
             symbol = QgsFillSymbol.createSimple(
                 {
                     "outline_color": settings["color"],
                     "outline_style": "solid",
                     "outline_width": settings["width"],
-                    "color": "transparent",
+                    "color": f"{fill_color.red()},{fill_color.green()},{fill_color.blue()},{fill_alpha}",
                 }
             )
         elif geom_type == Qgis.GeometryType.Line:
@@ -1498,6 +1509,30 @@ def style_outputlayer(layer, field_name):
     # Apply the Categorized Renderer
     renderer = QgsCategorizedSymbolRenderer(field_name, categories)
     layer.setRenderer(renderer)
+    # Blend mode keeps aerial/base map readable while preserving correction colors.
+    try:
+        layer.setBlendMode(QPainter.CompositionMode_Multiply)
+    except Exception:
+        try:
+            composition_mode = getattr(QPainter, "CompositionMode", None)
+            if composition_mode is not None and hasattr(
+                composition_mode, "CompositionMode_Multiply"
+            ):
+                layer.setBlendMode(composition_mode.CompositionMode_Multiply)
+            elif composition_mode is not None and hasattr(
+                composition_mode, "CompositionMode_Overlay"
+            ):
+                layer.setBlendMode(composition_mode.CompositionMode_Overlay)
+            elif composition_mode is not None and hasattr(
+                composition_mode, "Multiply"
+            ):
+                layer.setBlendMode(composition_mode.Multiply)
+            elif composition_mode is not None and hasattr(
+                composition_mode, "Overlay"
+            ):
+                layer.setBlendMode(composition_mode.Overlay)
+        except Exception:
+            pass
     layer.triggerRepaint()
 
 

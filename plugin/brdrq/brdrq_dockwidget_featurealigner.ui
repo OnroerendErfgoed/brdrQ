@@ -228,7 +228,7 @@ p, li { white-space: pre-wrap; }
      </layout>
     </item>
     <item row="18" column="0" alignment="Qt::AlignLeft">
-     <widget class="QLabel" name="label">
+     <widget class="QLabel" name="labelFeatures">
       <property name="font">
        <font>
         <weight>75</weight>

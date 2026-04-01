@@ -87,6 +87,9 @@ FORM_CLASS, _ = uic.loadUiType(
     os.path.join(os.path.dirname(__file__), "brdrq_dockwidget_featurealigner.ui")
 )
 
+SELECTION_ALL = "ALL"
+SELECTION_SELECTED = "SELECTED"
+
 
 class brdrQDockWidgetFeatureAligner(
     QtWidgets.QDockWidget, FORM_CLASS, brdrQDockWidgetAligner
@@ -121,12 +124,14 @@ class brdrQDockWidgetFeatureAligner(
             button.setIcon(QgsApplication.getThemeIcon(icon_name))
             # button.setIconSize(QtCore.QSize(18, 18))
 
+        self.max_listed_features = 1000
         self._initialize()
 
     def clearUserInterface(self):
         # Clear progressbar
         self.progressBar.setValue(0)
         self.doubleSpinBox.setValue(0)
+        self.labelFeatures.setText("Features:")
         # Clear the featurelist widget
         self.listWidget_features.clear()
         self.listWidget_features.scrollToTop()
@@ -192,8 +197,10 @@ class brdrQDockWidgetFeatureAligner(
         return
 
     def _initializeSelectFeatures(self):
-        self.comboBox_selectfeatures.addItem("ALL FEATURES", userData="ALL")
-        self.comboBox_selectfeatures.addItem("SELECTED FEATURES", userData="SELECTED")
+        self.comboBox_selectfeatures.addItem("ALL FEATURES", userData=SELECTION_ALL)
+        self.comboBox_selectfeatures.addItem(
+            "SELECTED FEATURES", userData=SELECTION_SELECTED
+        )
         for x in BrdrQState:
             self.comboBox_selectfeatures.addItem(
                 "STATE: " + str(x.value), userData=str(x.value)
@@ -308,14 +315,6 @@ class brdrQDockWidgetFeatureAligner(
             self.layer = None
             self.mMapLayerComboBox.setLayer(self.layer)
             return
-        if self.layer.selectedFeatureCount() > self.max_feature_count or (
-            self.layer.selectedFeatureCount() == 0
-            and self.layer.featureCount() > self.max_feature_count
-        ):
-            self.textEdit_output.setText(
-                f"Nr of features bigger than {str(self.max_feature_count)}. Please make a smaller selection of features"
-            )
-            return
         # Write the layer_id to the settings
         write_setting(self.settingsDialog.prefix, "theme_layer", self.layer.id())
 
@@ -328,39 +327,53 @@ class brdrQDockWidgetFeatureAligner(
             self.textEdit_output.setText("Please select a layer to align in the upper combobox")
             return
         self.clearUserInterface()
+        max_listed_features = getattr(self, "max_listed_features", 1000)
+        total_features = 0
         if not features is None:
-            self.listed_features = features
-        elif selection is None or selection == "ALL":
-            self.listed_features = [f for f in self.layer.getFeatures()]
-            self.textEdit_output.setText("All features in this layer returned")
-        elif selection == "SELECTED":
-            ix = self.layer.fields().indexOf(BRDRQ_STATE_FIELDNAME)
-            self.listed_features = [f for f in self.layer.getSelectedFeatures()]
-            self.textEdit_output.setText("Selected features in this layer returned")
+            self.listed_features = list(features)
+            total_features = len(self.listed_features)
+        elif selection is None or selection == SELECTION_ALL:
+            total_features = self.layer.featureCount()
+            self.listed_features = []
+            for f in self.layer.getFeatures():
+                self.listed_features.append(f)
+                if len(self.listed_features) >= max_listed_features:
+                    break
+        elif selection == SELECTION_SELECTED:
+            selected_ids = self.layer.selectedFeatureIds()
+            total_features = len(selected_ids)
+            self.listed_features = []
+            selected_ids = selected_ids[: max_listed_features]
+            request = QgsFeatureRequest().setFilterFids(selected_ids)
+            for f in self.layer.getFeatures(request):
+                self.listed_features.append(f)
         elif selection in [str(e.value) for e in BrdrQState]:
             listed_features = []
             ix = self.layer.fields().indexOf(BRDRQ_STATE_FIELDNAME)
+            total_features = 0
             for f in self.layer.getFeatures():
                 attributes = f.attributes()
                 if ix >= 0 and attributes[ix] == selection:
-                    listed_features.append(f)
+                    total_features += 1
+                    if len(listed_features) < max_listed_features:
+                        listed_features.append(f)
             self.listed_features = listed_features
-            self.textEdit_output.setText(
-                f"Features filtered by brdrq_STATE = {str(selection)}"
-            )
-
-        if len(self.listed_features) > self.max_feature_count:
-            self.textEdit_output.setText(
-                f"Nr of features bigger than {str(self.max_feature_count)}. Please make a smaller selection of features"
-            )
-            return
+        if total_features == 0:
+            total_features = len(self.listed_features)
 
         # Add the selected features to the list widget
         for feature in self.listed_features:
             item = QListWidgetItem(str(feature.id()))
             self.listWidget_features.addItem(item)
         self.updateTextListWidgetItems()
-        self.textEdit_output.setText(f"#Features: {str(len(self.listed_features))}")
+        listed_count = len(self.listed_features)
+        self.labelFeatures.setText(f"Features: ({listed_count}/{total_features})")
+        if total_features > max_listed_features:
+            self.textEdit_output.setText(
+                f"#Features listed: {listed_count} / {total_features} (first {max_listed_features})"
+            )
+        else:
+            self.textEdit_output.setText(f"#Features listed: {listed_count} / {total_features}")
         if len(self.listed_features) == 1:
             self.onFeatureActivated(self.listWidget_features.item(0))
         return
