@@ -36,9 +36,8 @@ from brdr.nl.enums import BRKType
 from brdr.nl.loader import BRKLoader
 from brdr.osm.loader import OSMLoader
 from qgis.PyQt import QtWidgets, uic
-from qgis.PyQt.QtCore import pyqtSignal
+from qgis.PyQt.QtCore import pyqtSignal, Qt
 from qgis.PyQt.QtGui import QColor
-from qgis.PyQt.QtWidgets import QListWidgetItem
 from qgis.core import Qgis
 from qgis.core import QgsFeature, QgsWkbTypes, QgsVectorLayer, QgsProject
 from qgis.core import QgsFeatureRequest
@@ -133,7 +132,8 @@ class brdrQDockWidgetFeatureAligner(
         self.doubleSpinBox.setValue(0)
         self.labelFeatures.setText("Features:")
         # Clear the featurelist widget
-        self.listWidget_features.clear()
+        self.listWidget_features.clearContents()
+        self.listWidget_features.setRowCount(0)
         self.listWidget_features.scrollToTop()
         # Clear the predictionlist
         self.listWidget_predictions.clear()
@@ -157,7 +157,9 @@ class brdrQDockWidgetFeatureAligner(
         # self.pushButton_select_partial.clicked.connect(self.activate_partialSelectTool)
 
         self.mMapLayerComboBox.layerChanged.connect(self.themeLayerChanged)
-        self.listWidget_features.itemPressed.connect(self.onFeatureActivated)
+        self.listWidget_features.itemSelectionChanged.connect(
+            self.onFeatureSelectionChanged
+        )
         self.listWidget_predictions.itemPressed.connect(self.onListItemActivated)
         self.horizontalSlider.sliderMoved.connect(self.onSliderChange)
         self.doubleSpinBox.valueChanged.connect(self.onSpinboxChange)
@@ -361,10 +363,22 @@ class brdrQDockWidgetFeatureAligner(
         if total_features == 0:
             total_features = len(self.listed_features)
 
-        # Add the selected features to the list widget
-        for feature in self.listed_features:
-            item = QListWidgetItem(str(feature.id()))
-            self.listWidget_features.addItem(item)
+        # Prepare table for compact feature/attribute overview.
+        self.listWidget_features.setSelectionBehavior(
+            QtWidgets.QAbstractItemView.SelectRows
+        )
+        self.listWidget_features.setSelectionMode(
+            QtWidgets.QAbstractItemView.SingleSelection
+        )
+        self.listWidget_features.setEditTriggers(
+            QtWidgets.QAbstractItemView.NoEditTriggers
+        )
+        self.listWidget_features.setHorizontalScrollMode(
+            QtWidgets.QAbstractItemView.ScrollPerPixel
+        )
+        self.listWidget_features.setVerticalScrollMode(
+            QtWidgets.QAbstractItemView.ScrollPerPixel
+        )
         self.updateTextListWidgetItems()
         listed_count = len(self.listed_features)
         self.labelFeatures.setText(f"Features: ({listed_count}/{total_features})")
@@ -375,13 +389,21 @@ class brdrQDockWidgetFeatureAligner(
         else:
             self.textEdit_output.setText(f"#Features listed: {listed_count} / {total_features}")
         if len(self.listed_features) == 1:
-            self.onFeatureActivated(self.listWidget_features.item(0))
+            self.listWidget_features.selectRow(0)
+            self.onFeatureActivated(0)
         return
 
     def updateTextListWidgetItems(self):
         ix = self.layer.fields().indexOf(BRDRQ_STATE_FIELDNAME)
-        for i in range(self.listWidget_features.count()):
-            item = self.listWidget_features.item(i)
+        field_names = self.layer.fields().names()
+        headers = ["ID", "STATE"] + list(field_names)
+        self.listWidget_features.clearContents()
+        self.listWidget_features.setColumnCount(len(headers))
+        self.listWidget_features.setHorizontalHeaderLabels(headers)
+        self.listWidget_features.setRowCount(len(self.listed_features))
+        self.listWidget_features.verticalHeader().setVisible(False)
+        self.listWidget_features.horizontalHeader().setStretchLastSection(False)
+        for i in range(len(self.listed_features)):
             feature_id = self.listed_features[i].id()
             feature = self.layer.getFeature(feature_id)
             attributes = feature.attributes()
@@ -389,33 +411,39 @@ class brdrQDockWidgetFeatureAligner(
                 state = attributes[ix]
             else:
                 state = str(BrdrQState.NONE.value)
-            attribute_string = ", ".join(str(attribute) for attribute in attributes)
-            item_text = f"ID: *{feature.id()}*, STATE: *{state} *, Attributes: {attribute_string}"
-            item.setText(item_text)
+            row_values = [feature.id(), state] + list(attributes)
+            for col, value in enumerate(row_values):
+                table_item = QtWidgets.QTableWidgetItem("" if value is None else str(value))
+                table_item.setFlags(table_item.flags() & ~Qt.ItemIsEditable)
+                self.listWidget_features.setItem(i, col, table_item)
 
-    def onFeatureActivated(self, currentItem):
+    def onFeatureSelectionChanged(self):
+        row = self.listWidget_features.currentRow()
+        if row >= 0:
+            self.onFeatureActivated(row)
+
+    def onFeatureActivated(self, selected_row):
         print("onFeatureActivated")
         self.deactivateSelectTool()
         self.progressBar.setValue(0)
         self.listWidget_predictions.clear()
         self.textEdit_output.setText("")
         with OverrideCursor(qt_wait_cursor()):
-            self._onFeatureChange(currentItem)
+            self._onFeatureChange(selected_row)
         self.progressBar.setValue(100)
 
-    def _onFeatureChange(self, currentItem):
+    def _onFeatureChange(self, selected_row):
         print("_onFeatureChange")
         self.feature = None
-        if currentItem is None:
-            print("currentItem is none")
+        if selected_row is None or selected_row < 0:
+            print("selected_row is none")
             return
-        feature_id = currentItem.text().split("*")[1]
-        for feat in self.listed_features:
-            if str(feat.id()) == feature_id:
-                self.feature = feat
-                break
+        if selected_row >= len(self.listed_features):
+            self.textEdit_output.setText(f"No feature found at row {selected_row}")
+            return
+        self.feature = self.listed_features[selected_row]
         if self.feature is None:
-            self.textEdit_output.setText(f"No feature found with ID {feature_id}")
+            self.textEdit_output.setText(f"No feature found at row {selected_row}")
             return
 
         original_geometry = get_original_geometry(

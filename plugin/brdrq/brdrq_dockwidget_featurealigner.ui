@@ -124,7 +124,7 @@ p, li { white-space: pre-wrap; }
      </widget>
     </item>
     <item row="19" column="0">
-     <widget class="QListWidget" name="listWidget_features">
+     <widget class="QTableWidget" name="listWidget_features">
       <property name="maximumSize">
        <size>
         <width>16777215</width>
