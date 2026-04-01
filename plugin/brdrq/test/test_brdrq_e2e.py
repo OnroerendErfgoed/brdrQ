@@ -28,6 +28,26 @@ QGISAPP, CANVAS, IFACE, PARENT = get_qgis_app()
 Processing.initialize()
 
 
+def dialog_ok_button():
+    value = getattr(QDialogButtonBox, "Ok", None)
+    if value is not None:
+        return value
+    std = getattr(QDialogButtonBox, "StandardButton", None)
+    if std is not None and hasattr(std, "Ok"):
+        return std.Ok
+    raise AttributeError("QDialogButtonBox Ok enum not available")
+
+
+def left_mouse_button():
+    value = getattr(Qt, "LeftButton", None)
+    if value is not None:
+        return value
+    mouse_button = getattr(Qt, "MouseButton", None)
+    if mouse_button is not None and hasattr(mouse_button, "LeftButton"):
+        return mouse_button.LeftButton
+    raise AttributeError("Qt LeftButton enum not available")
+
+
 class TestFlow(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -54,47 +74,48 @@ class TestFlow(unittest.TestCase):
         # Create and open the dialog
         brdrqplugin = BrdrQPlugin(IFACE)
         widget = brdrQDockWidgetFeatureAligner(brdrqplugin, None)
-        widget._initialize()
-        widget.startDock()
-        layer_theme = get_layer_by_name(themelayername)
-        assert layer_theme.name() == themelayername
-        layers = project.mapLayers(validOnly=True)
-        self.assertEqual(len(layers), 1)
-        # need to import here so that there's already an initialized QGIS app
+        try:
+            widget._initialize()
+            widget.startDock()
+            layer_theme = get_layer_by_name(themelayername)
+            assert layer_theme.name() == themelayername
+            layers = project.mapLayers(validOnly=True)
+            self.assertEqual(len(layers), 1)
+            # need to import here so that there's already an initialized QGIS app
 
-        settingsDialog = widget.settingsDialog
-        assert settingsDialog is not None
-        self.assertFalse(settingsDialog.isVisible())
-        widget.show_settings_dialog()
-        self.assertTrue(settingsDialog.isVisible())
-        # # Click the map button which should close the dialog
-        settings_ok_button: QPushButton = settingsDialog.buttonBox_settings.button(
-            QDialogButtonBox.Ok
-        )
-        QTest.mouseClick(settings_ok_button, Qt.LeftButton)
-        self.assertFalse(settingsDialog.isVisible())
+            settingsDialog = widget.settingsDialog
+            assert settingsDialog is not None
+            self.assertFalse(settingsDialog.isVisible())
+            widget.show_settings_dialog()
+            self.assertTrue(settingsDialog.isVisible())
+            # # Click the map button which should close the dialog
+            settings_ok_button: QPushButton = settingsDialog.buttonBox_settings.button(
+                dialog_ok_button()
+            )
+            QTest.mouseClick(settings_ok_button, left_mouse_button())
+            self.assertFalse(settingsDialog.isVisible())
 
-        # kies themelayer in widget
-        widget.mMapLayerComboBox.setLayer(None)
-        widget.mMapLayerComboBox.setLayer(layer_theme)
-        listwidget_features = widget.listWidget_features
-        print(str(listwidget_features.count()))
-        print("current_layer: " + widget.mMapLayerComboBox.currentLayer().name())
-        for x in range(listwidget_features.count()):
-            item = listwidget_features.item(x)
-            widget.onFeatureActivated(item)
-        layers = project.mapLayers(validOnly=True)
-        self.assertEqual(len(layers), 5)
-        wkt = widget.get_wkt()
-        print(wkt)
-        widget.get_graphic()
-        time.sleep(2)
-        plt.close('all')
-        widget.get_visualisation()
-        time.sleep(2)
-        plt.close("all")
-        project.removeAllMapLayers()
-        widget.close()
+            # kies themelayer in widget
+            widget.mMapLayerComboBox.setLayer(None)
+            widget.mMapLayerComboBox.setLayer(layer_theme)
+            feature_table = widget.tableFeatures
+            print(str(feature_table.rowCount()))
+            print("current_layer: " + widget.mMapLayerComboBox.currentLayer().name())
+            for x in range(feature_table.rowCount()):
+                widget.onFeatureActivated(x)
+            layers = project.mapLayers(validOnly=True)
+            self.assertEqual(len(layers), 5)
+            wkt = widget.get_wkt()
+            print(wkt)
+            widget.get_graphic()
+            time.sleep(2)
+            plt.close("all")
+            widget.get_visualisation()
+            time.sleep(2)
+            plt.close("all")
+        finally:
+            project.removeAllMapLayers()
+            widget.close()
 
     def test_full_success_brdrq_params(self):
         """Test the full workflow from opening the dialog to align features"""
@@ -110,39 +131,40 @@ class TestFlow(unittest.TestCase):
         # Create and open the dialog
         brdrqplugin = BrdrQPlugin(IFACE)
         widget = brdrQDockWidgetFeatureAligner(brdrqplugin, None)
-        widget._initialize()
-        widget.startDock()
-        layer_theme = get_layer_by_name(themelayername)
-        assert layer_theme.name() == themelayername
-        layers = project.mapLayers(validOnly=True)
-        self.assertEqual(len(layers), 1)
-        # need to import here so that there's already an initialized QGIS app
+        try:
+            widget._initialize()
+            widget.startDock()
+            layer_theme = get_layer_by_name(themelayername)
+            assert layer_theme.name() == themelayername
+            layers = project.mapLayers(validOnly=True)
+            self.assertEqual(len(layers), 1)
+            # need to import here so that there's already an initialized QGIS app
 
-        settingsDialog = widget.settingsDialog
-        assert settingsDialog is not None
-        self.assertFalse(settingsDialog.isVisible())
-        widget.show_settings_dialog()
-        self.assertTrue(settingsDialog.isVisible())
-        # # Click the map button which should close the dialog
-        settings_ok_button: QPushButton = settingsDialog.buttonBox_settings.button(
-            QDialogButtonBox.Ok
-        )
-        QTest.mouseClick(settings_ok_button, Qt.LeftButton)
-        self.assertFalse(settingsDialog.isVisible())
+            settingsDialog = widget.settingsDialog
+            assert settingsDialog is not None
+            self.assertFalse(settingsDialog.isVisible())
+            widget.show_settings_dialog()
+            self.assertTrue(settingsDialog.isVisible())
+            # # Click the map button which should close the dialog
+            settings_ok_button: QPushButton = settingsDialog.buttonBox_settings.button(
+                dialog_ok_button()
+            )
+            QTest.mouseClick(settings_ok_button, left_mouse_button())
+            self.assertFalse(settingsDialog.isVisible())
 
-        # kies themelayer in widget
-        widget.mMapLayerComboBox.setLayer(None)
-        widget.mMapLayerComboBox.setLayer(layer_theme)
-        listwidget_features = widget.listWidget_features
-        print(str(listwidget_features.count()))
-        print("current_layer: " + widget.mMapLayerComboBox.currentLayer().name())
-        for x in range(listwidget_features.count()):
-            item = listwidget_features.item(x)
-            widget.onFeatureActivated(item)
-        layers = project.mapLayers(validOnly=True)
-        self.assertEqual(len(layers), 5)
-        project.removeAllMapLayers()
-        widget.close()
+            # kies themelayer in widget
+            widget.mMapLayerComboBox.setLayer(None)
+            widget.mMapLayerComboBox.setLayer(layer_theme)
+            feature_table = widget.tableFeatures
+            print(str(feature_table.rowCount()))
+            print("current_layer: " + widget.mMapLayerComboBox.currentLayer().name())
+            for x in range(feature_table.rowCount()):
+                widget.onFeatureActivated(x)
+            layers = project.mapLayers(validOnly=True)
+            self.assertEqual(len(layers), 5)
+        finally:
+            project.removeAllMapLayers()
+            widget.close()
 
     # def test_full_error_crs(self):
     #     """Test the full workflow from opening the dialog to align features"""

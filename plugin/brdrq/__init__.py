@@ -26,7 +26,7 @@ __author__ = "Karel Dieussaert / Onroerend Erfgoed"
 __date__ = "2024-10-11"
 __copyright__ = "(C) 2024 by Karel Dieussaert / Onroerend Erfgoed"
 
-from .qt_compat import dialog_exec
+from .qt_compat import dialog_exec, qmessagebox_critical_icon, qmessagebox_ok_button
 
 
 # noinspection PyPep8Naming
@@ -121,12 +121,12 @@ def show_error_dialog(e):
     from qgis.PyQt.QtWidgets import QMessageBox
 
     msg = QMessageBox()
-    msg.setIcon(QMessageBox.Critical)
+    msg.setIcon(qmessagebox_critical_icon())
     msg.setWindowTitle("Problem while initializing the brdrQ-plugin")
     msg.setText(f"The brdrQ-plugin could not be loaded correctly.")
     msg.setInformativeText(
         f"Please restart QGIS and retry.<br>If the problem persists, try to upgrade the plugin or the QGIS-version.<br>If it still persists you can log the issue at: <a href='https://github.com/OnroerendErfgoed/brdrQ/issues'>https://github.com/OnroerendErfgoed/brdrQ/issues</a>.<br>Error-message: {e} "
     )
-    msg.setStandardButtons(QMessageBox.Ok)
+    msg.setStandardButtons(qmessagebox_ok_button())
     dialog_exec(msg)
 

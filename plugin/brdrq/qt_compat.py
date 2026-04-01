@@ -11,6 +11,48 @@ def dialog_exec(dialog):
     return dialog.exec()
 
 
+def qmessagebox_warning_icon():
+    from qgis.PyQt.QtWidgets import QMessageBox
+
+    value = getattr(QMessageBox, "Warning", None)
+    if value is not None:
+        return value
+
+    icon = getattr(QMessageBox, "Icon", None)
+    if icon is not None and hasattr(icon, "Warning"):
+        return icon.Warning
+
+    raise AttributeError("QMessageBox Warning icon enum not available")
+
+
+def qmessagebox_critical_icon():
+    from qgis.PyQt.QtWidgets import QMessageBox
+
+    value = getattr(QMessageBox, "Critical", None)
+    if value is not None:
+        return value
+
+    icon = getattr(QMessageBox, "Icon", None)
+    if icon is not None and hasattr(icon, "Critical"):
+        return icon.Critical
+
+    raise AttributeError("QMessageBox Critical icon enum not available")
+
+
+def qmessagebox_ok_button():
+    from qgis.PyQt.QtWidgets import QMessageBox
+
+    value = getattr(QMessageBox, "Ok", None)
+    if value is not None:
+        return value
+
+    standard_button = getattr(QMessageBox, "StandardButton", None)
+    if standard_button is not None and hasattr(standard_button, "Ok"):
+        return standard_button.Ok
+
+    raise AttributeError("QMessageBox Ok button enum not available")
+
+
 def set_map_layer_combo_filters(combo, filters):
     """
     Compatibility wrapper for QgsMapLayerComboBox filter API changes.

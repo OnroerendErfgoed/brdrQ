@@ -1,6 +1,7 @@
 import copy
 import json
 import os
+import re
 from enum import Enum
 from pathlib import Path
 
@@ -873,7 +874,11 @@ def featurecollection_to_layer(
             qinst.removeMapLayer(lyr.id())
     if tempfolder is None or str(tempfolder) == "NULL" or str(tempfolder) == "":
         tempfolder = "tempfolder"
-    gpkg_path = tempfolder + "/" + GPKG_FILENAME
+    # Use one GPKG per layer to avoid pyogrio overwrite races on a shared file.
+    safe_layer_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(name)).strip("._")
+    if not safe_layer_name:
+        safe_layer_name = "layer"
+    gpkg_path = os.path.join(tempfolder, f"{safe_layer_name}.gpkg")
     write_featurecollection_to_geopackage(gpkg_path, featurecollection, layer_name=name)
 
     uri = f"{gpkg_path}|layername={name}"
