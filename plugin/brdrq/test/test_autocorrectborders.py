@@ -1,4 +1,4 @@
-import os
+﻿import os
 import unittest
 
 import processing
@@ -75,7 +75,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
                 "PREDICTIONS": 0,
-                "SHOW_LOG_INFO": False,
+                "LOG_INFO": False,
             },
         )
         featurecount = layer_theme.featureCount()
@@ -115,7 +115,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
                 "PREDICTIONS": 0,
-                "SHOW_LOG_INFO": False,
+                "LOG_INFO": False,
             },
         )
         featurecount = layer_theme.featureCount()
@@ -153,7 +153,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
                 "PREDICTIONS": 0,
-                "SHOW_LOG_INFO": False,
+                "LOG_INFO": False,
             },
         )
         featurecount = layer_theme.featureCount()
@@ -206,7 +206,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
                 "PREDICTIONS": 0,
-                "SHOW_LOG_INFO": False,
+                "LOG_INFO": False,
             },
         )
         featurecount = layer_theme.featureCount()
@@ -254,7 +254,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
                 "PREDICTIONS": 0,
-                "SHOW_LOG_INFO": False,
+                "LOG_INFO": False,
             },
         )
         featurecount = layer_theme.featureCount()
@@ -292,7 +292,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
                 "PREDICTIONS": 1,
-                "SHOW_LOG_INFO": False,
+                "LOG_INFO": False,
             },
         )
         featurecount = layer_theme.featureCount()
@@ -329,7 +329,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "ADD_METADATA": False,
                 "ADD_ATTRIBUTES": False,
                 "SHOW_INTERMEDIATE_LAYERS": False,
-                "SHOW_LOG_INFO": False,
+                "LOG_INFO": False,
             },
         )
         featurecount = layer_theme.featureCount()
@@ -367,7 +367,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
                 "PREDICTIONS": 1,
-                "SHOW_LOG_INFO": False,
+                "LOG_INFO": False,
             },
         )
         featurecount = layer_theme.featureCount()
@@ -413,7 +413,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                     "ADD_ATTRIBUTES": True,
                     "SHOW_INTERMEDIATE_LAYERS": True,
                     "PREDICTIONS": 0,
-                    "SHOW_LOG_INFO": False,
+                    "LOG_INFO": False,
                 },
             )
 
@@ -448,7 +448,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
                 "PREDICTIONS": 0,
-                "SHOW_LOG_INFO": True,
+                "LOG_INFO": True,
             },
         )
         featurecount = layer_theme.featureCount()

@@ -36,7 +36,7 @@ from brdr.nl.enums import BRKType
 from brdr.nl.loader import BRKLoader
 from brdr.osm.loader import OSMLoader
 from qgis.PyQt import QtWidgets, uic
-from qgis.PyQt.QtCore import pyqtSignal, Qt, QTimer
+from qgis.PyQt.QtCore import pyqtSignal, Qt, QTimer, QSignalBlocker
 from qgis.PyQt.QtGui import QColor
 from qgis.core import Qgis
 from qgis.core import QgsFeature, QgsWkbTypes, QgsVectorLayer, QgsProject
@@ -148,6 +148,8 @@ class brdrQDockWidgetFeatureAligner(
         self._current_feature_selection = SELECTION_ALL
         self._current_feature_input_features = None
         self._pending_feature_filter_text = ""
+        self._initialized = False
+        self._last_selected_feature_row = -1
         self._featureFilterTimer = QTimer(self)
         self._featureFilterTimer.setSingleShot(True)
         self._featureFilterTimer.timeout.connect(self._onFeatureFilterTimeout)
@@ -158,6 +160,7 @@ class brdrQDockWidgetFeatureAligner(
         self.dockLocationChanged.connect(self._onDockStateChanged)
 
     def clearUserInterface(self):
+        self._last_selected_feature_row = -1
         # Clear progressbar
         self.progressBar.setValue(0)
         self.doubleSpinBox.setValue(0)
@@ -521,6 +524,8 @@ class brdrQDockWidgetFeatureAligner(
         self._onDockStateChanged()
 
     def _initialize(self):
+        if self._initialized:
+            return
         print("_initialize")
         # connect to provide cleanup on closing of dockwidget
         self._initializeSelectFeatures()
@@ -576,6 +581,7 @@ class brdrQDockWidgetFeatureAligner(
         #
         self.layer = self.mMapLayerComboBox.currentLayer()
         self.settingsDialog.confirmed.connect(self.startDock)
+        self._initialized = True
         return
 
     def _initializeSelectFeatures(self):
@@ -708,7 +714,9 @@ class brdrQDockWidgetFeatureAligner(
         )
         self._refresh_feature_rows_from_source(self.lineEditFeatureFilter.text())
         if len(self.listed_features) == 1:
+            blocker = QSignalBlocker(self.tableFeatures)
             self.tableFeatures.selectRow(0)
+            del blocker
             self.onFeatureActivated(0)
         return
 
@@ -799,11 +807,18 @@ class brdrQDockWidgetFeatureAligner(
 
     def onFeatureSelectionChanged(self):
         row = self.tableFeatures.currentRow()
-        if row >= 0:
-            self.onFeatureActivated(row)
+        if row < 0:
+            self._last_selected_feature_row = -1
+            return
+        if row == self._last_selected_feature_row:
+            return
+        self._last_selected_feature_row = row
+        self.onFeatureActivated(row)
 
     def onFeatureActivated(self, selected_row):
         print("onFeatureActivated")
+        if selected_row is not None and selected_row >= 0:
+            self._last_selected_feature_row = selected_row
         self.deactivateSelectTool()
         self.progressBar.setValue(0)
         self.tablePredictions.clearContents()
@@ -1225,7 +1240,7 @@ class brdrQDockWidgetFeatureAligner(
             self.textEdit_output.setText("Please select a layer to align in the upper combobox")
             return
         self._change_geometry(self.layer)
-        self.updateTextListWidgetItems()
+        self._refresh_feature_table_without_realign()
         remove_group_layer(self.GROUP_LAYER)
 
     def reset_geometry(self):
@@ -1233,8 +1248,29 @@ class brdrQDockWidgetFeatureAligner(
             self.textEdit_output.setText("Please select a layer to align in the upper combobox")
             return
         self._reset_geometry(self.layer)
-        self.updateTextListWidgetItems()
+        self._refresh_feature_table_without_realign()
         remove_group_layer(self.GROUP_LAYER)
+
+    def _refresh_feature_table_without_realign(self):
+        """
+        Refresh the feature table (e.g. state colors) without triggering a new alignment
+        via itemSelectionChanged.
+        """
+        selected_row = self.tableFeatures.currentRow()
+        table_blocker = QSignalBlocker(self.tableFeatures)
+        selection_blocker = None
+        selection_model = self.tableFeatures.selectionModel()
+        if selection_model is not None:
+            selection_blocker = QSignalBlocker(selection_model)
+
+        try:
+            self.updateTextListWidgetItems()
+            if 0 <= selected_row < self.tableFeatures.rowCount():
+                self.tableFeatures.selectRow(selected_row)
+        finally:
+            del table_blocker
+            if selection_blocker is not None:
+                del selection_blocker
 
     def startDock(self):
         print("start dock")

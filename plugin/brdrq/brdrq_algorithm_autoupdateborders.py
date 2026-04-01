@@ -112,7 +112,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     WORKFOLDER = None
     PREDICTION_STRATEGY = None
     FULL_REFERENCE_STRATEGY = None
-    SHOW_LOG_INFO = None
+    LOG_INFO = None
     METADATA_FIELDNAME = None
 
     # Non UI -  parameters
@@ -336,8 +336,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         add_boolean_parameter(
             algorithm=self,
-            name="SHOW_LOG_INFO",
-            description="Show extra logging (from brdr-log)",
+            name="LOG_INFO",
+            description="Write extra logging (from brdr-log)",
             default_value=self.default_extra_logging,
             advanced=True,
         )
@@ -400,7 +400,11 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             dict_thematic_properties[id_theme] = attributes_dict
 
         # Aligner IMPLEMENTATION
-        log_info = get_log_feedback(self.SHOW_LOG_INFO, feedback)
+        log_info = get_log_feedback(
+            self.LOG_INFO, feedback, workfolder=self.WORKFOLDER
+        )
+        if self.LOG_INFO and log_info is not None and hasattr(log_info, "log_path"):
+            feedback.pushInfo(f"Extra brdr log written to: {log_info.log_path}")
         processor = build_processor(
             processor_enum=self.PROCESSOR,
             od_strategy=self.OD_STRATEGY,
@@ -567,7 +571,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "REVIEW_PERCENTAGE": 10,
             "WORK_FOLDER": "brdrQ",
             "METADATA_FIELD": BASE_METADATA_FIELD_NAME,
-            "SHOW_LOG_INFO": False,
+            "LOG_INFO": False,
         }
 
         initialize_default_attributes(
@@ -586,7 +590,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ("default_workfolder", "WORK_FOLDER"),
                 ("default_review_percentage", "REVIEW_PERCENTAGE"),
                 ("default_metadata_field", "METADATA_FIELD"),
-                ("default_extra_logging", "SHOW_LOG_INFO"),
+                ("default_extra_logging", "LOG_INFO"),
             ],
         )
 
@@ -643,6 +647,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
 
     def prepare_parameters(self, parameters, context):
+        if "LOG_INFO" not in parameters and "SHOW_LOG_INFO" in parameters:
+            parameters["LOG_INFO"] = parameters["SHOW_LOG_INFO"]
 
         # PARAMETER PREPARATION
         assign_parameter_values(
@@ -662,7 +668,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ("default_threshold_overlap_percentage", "THRESHOLD_OVERLAP_PERCENTAGE"),
                 ("default_workfolder", "WORK_FOLDER"),
                 ("default_metadata_field", "METADATA_FIELD"),
-                ("default_extra_logging", "SHOW_LOG_INFO"),
+                ("default_extra_logging", "LOG_INFO"),
             ],
         )
 
@@ -712,7 +718,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.GRB_TYPE, layer_reference_name, ref_suffix = get_reference_params(
             ref, None, None, self.CRS
         )
-        self.SHOW_LOG_INFO = parameters["SHOW_LOG_INFO"]
+        self.LOG_INFO = self.default_extra_logging
 
         self.METADATA_FIELDNAME = self.default_metadata_field
         if str(self.METADATA_FIELDNAME) == "NULL":

@@ -1,3 +1,7 @@
+import threading
+import time
+from pathlib import Path
+
 from brdr.aligner import Aligner
 from brdr.configs import AlignerConfig, ProcessorConfig
 from brdr.enums import PredictionStrategy
@@ -16,8 +20,66 @@ from qgis.core import (
 )
 
 
-def get_log_feedback(show_log_info, feedback):
-    return feedback if show_log_info else None
+class _SafeLogFeedback:
+    """
+    Guard logging into QGIS Processing feedback so verbose third-party logs
+    cannot flood the rich-text widget and destabilize the dialog.
+    """
+
+    def __init__(self, feedback, max_messages=250, min_interval_seconds=0.01):
+        self._feedback = feedback
+        self._max_messages = max_messages
+        self._min_interval_seconds = min_interval_seconds
+        self._message_count = 0
+        self._last_emit = 0.0
+        self._suppressed_notice_sent = False
+        self._lock = threading.Lock()
+
+    def pushInfo(self, text):
+        now = time.monotonic()
+        with self._lock:
+            self._message_count += 1
+
+            if self._message_count > self._max_messages:
+                if not self._suppressed_notice_sent:
+                    self._suppressed_notice_sent = True
+                    self._feedback.pushInfo(
+                        f"Extra log output suppressed after {self._max_messages} messages."
+                    )
+                return
+
+            if (now - self._last_emit) < self._min_interval_seconds:
+                return
+
+            self._last_emit = now
+            self._feedback.pushInfo(str(text))
+
+
+class _FileLogFeedback:
+    """
+    Feedback adapter that writes verbose brdr logs to a file in the workfolder,
+    avoiding flooding the Processing dialog text widget.
+    """
+
+    def __init__(self, workfolder, filename="brdr_show_log_info.log"):
+        self._lock = threading.Lock()
+        folder = Path(workfolder) if workfolder else Path(".")
+        folder.mkdir(parents=True, exist_ok=True)
+        self.log_path = folder / filename
+
+    def pushInfo(self, text):
+        line = f"{time.strftime('%Y-%m-%d %H:%M:%S')} | {str(text)}\n"
+        with self._lock:
+            with self.log_path.open("a", encoding="utf-8") as fh:
+                fh.write(line)
+
+
+def get_log_feedback(show_log_info, feedback, workfolder=None):
+    if not show_log_info:
+        return None
+    if workfolder:
+        return _FileLogFeedback(workfolder=workfolder)
+    return _SafeLogFeedback(feedback)
 
 
 def build_processor(

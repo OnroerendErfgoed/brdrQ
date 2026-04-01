@@ -187,7 +187,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     ADD_METADATA = None
     ATTRIBUTES = None
     PREDICTIONS = None
-    SHOW_LOG_INFO = None
+    LOG_INFO = None
     WORKFOLDER = None
 
     # OTHER non UI parameters
@@ -456,8 +456,8 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         add_boolean_parameter(
             algorithm=self,
-            name="SHOW_LOG_INFO",
-            description="Show extra logging (from brdr-log)",
+            name="LOG_INFO",
+            description="Write extra logging (from brdr-log)",
             default_value=self.default_extra_logging,
             advanced=True,
         )
@@ -543,7 +543,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             return {}
 
         # Aligner IMPLEMENTATION
-        log_info = get_log_feedback(self.SHOW_LOG_INFO, feedback)
+        log_info = get_log_feedback(
+            self.LOG_INFO, feedback, workfolder=self.WORKFOLDER
+        )
+        if self.LOG_INFO and log_info is not None and hasattr(log_info, "log_path"):
+            feedback.pushInfo(f"Extra brdr log written to: {log_info.log_path}")
         processor = build_processor(
             processor_enum=self.PROCESSOR,
             od_strategy=self.OD_STRATEGY,
@@ -857,7 +861,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "ADD_METADATA": False,
             "ADD_ATTRIBUTES": False,
             "SHOW_INTERMEDIATE_LAYERS": False,
-            "SHOW_LOG_INFO": False,
+            "LOG_INFO": False,
         }
         initialize_default_attributes(
             self,
@@ -880,7 +884,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ("default_add_metadata", "ADD_METADATA"),
                 ("default_add_attributes", "ADD_ATTRIBUTES"),
                 ("default_intermediate_layers", "SHOW_INTERMEDIATE_LAYERS"),
-                ("default_extra_logging", "SHOW_LOG_INFO"),
+                ("default_extra_logging", "LOG_INFO"),
             ],
         )
 
@@ -951,6 +955,9 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
 
     def prepare_parameters(self, parameters, context):
+        if "LOG_INFO" not in parameters and "SHOW_LOG_INFO" in parameters:
+            parameters["LOG_INFO"] = parameters["SHOW_LOG_INFO"]
+
         # PARAMETER PREPARATION
         assign_parameter_values(
             self,
@@ -974,7 +981,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ("default_add_metadata", "ADD_METADATA"),
                 ("default_add_attributes", "ADD_ATTRIBUTES"),
                 ("default_intermediate_layers", "SHOW_INTERMEDIATE_LAYERS"),
-                ("default_extra_logging", "SHOW_LOG_INFO"),
+                ("default_extra_logging", "LOG_INFO"),
             ],
         )
 
@@ -1032,7 +1039,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         else:
             self.PREDICTIONS = False  # 0 means NO_PREDICTION
 
-        self.SHOW_LOG_INFO = self.default_extra_logging
+        self.LOG_INFO = self.default_extra_logging
 
         # REFERENCE
         ref = ENUM_REFERENCE_OPTIONS[self.default_reference]
