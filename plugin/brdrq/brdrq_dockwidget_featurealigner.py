@@ -629,13 +629,27 @@ class brdrQDockWidgetFeatureAligner(
             self.comboBox_selectfeatures.addItem(
                 "STATE: " + str(x.value), userData=str(x.value)
             )
+        self._restore_selectfeatures_choice()
 
         self.comboBox_selectfeatures.currentIndexChanged.connect(
             self.on_selectfeatures_changed
         )
 
+    def _restore_selectfeatures_choice(self):
+        saved_value = read_setting(
+            self.settingsDialog.prefix,
+            "feature_selection_mode",
+            SELECTION_ALL,
+        )
+        for idx in range(self.comboBox_selectfeatures.count()):
+            if str(self.comboBox_selectfeatures.itemData(idx)) == str(saved_value):
+                self.comboBox_selectfeatures.setCurrentIndex(idx)
+                return
+        self.comboBox_selectfeatures.setCurrentIndex(0)
+
     def on_selectfeatures_changed(self, index):
         data = self.comboBox_selectfeatures.itemData(index)
+        write_setting(self.settingsDialog.prefix, "feature_selection_mode", data)
         print("Selected data:", data)
         self.listFeatures(selection=data)
 
