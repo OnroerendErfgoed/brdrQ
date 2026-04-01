@@ -1,3 +1,15 @@
+# v0.20.0
+
+- QGIS3/QGIS4 compatibility: Improved Qt5/Qt6 compatibility across plugin UI and tests (enum/API compatibility wrappers)
+- FeatureAligner: switched feature list UI handling to table-based flow in tests and removed duplicate alignment triggers on feature selection
+- FeatureAligner: improved save/reset behavior to avoid immediate re-alignment after save, so reset remains possible
+- FeatureAligner: prediction table now hides empty-geometry predictions
+- FeatureAligner: evaluation values are displayed without enum prefix
+- FeatureAligner: `brdrq_state` row coloring now applies to the full record (entire row)
+- Processing logging hardening: extra brdr logging is no longer pushed to the Processing feedback widget to avoid UI flooding/stack overflow
+- Added file-based logging for advanced logs: when `LOG_INFO=True`, logs are written to `brdr_show_log_info.log` in `WORK_FOLDER`
+- Renamed and updated processing parameter `SHOW_LOG_INFO` to `LOG_INFO`
+
 # v0.19.0
 
 - Upgrade to brdr release version 0.15.6 (performance improvement)
