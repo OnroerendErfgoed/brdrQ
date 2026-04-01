@@ -150,12 +150,26 @@ class brdrQDockWidgetFeatureAligner(
         self._pending_feature_filter_text = ""
         self._initialized = False
         self._last_selected_feature_row = -1
+        self._app_is_closing = False
+        self._shutdown_prepared = False
         self._featureFilterTimer = QTimer(self)
         self._featureFilterTimer.setSingleShot(True)
         self._featureFilterTimer.timeout.connect(self._onFeatureFilterTimeout)
         self._install_scrollable_contents()
         self._configure_stable_layout()
         self._initialize()
+        app = QtWidgets.QApplication.instance()
+        if app is not None:
+            try:
+                app.aboutToQuit.connect(self._onAppAboutToQuit)
+            except Exception:
+                pass
+        try:
+            project = QgsProject.instance()
+            project.layersWillBeRemoved.connect(self._onProjectLayersWillBeRemoved)
+            project.cleared.connect(self._onProjectCleared)
+        except Exception:
+            pass
         self.topLevelChanged.connect(self._onDockStateChanged)
         self.dockLocationChanged.connect(self._onDockStateChanged)
 
@@ -176,7 +190,8 @@ class brdrQDockWidgetFeatureAligner(
         self.tablePredictions.setRowCount(0)
         self.tablePredictions.scrollToTop()
 
-        remove_group_layer(self.GROUP_LAYER)
+        if not self._is_closing and not self._app_is_closing:
+            remove_group_layer(self.GROUP_LAYER)
         self.feature = None
 
     def _install_scrollable_contents(self):
@@ -349,11 +364,15 @@ class brdrQDockWidgetFeatureAligner(
             button.setText(text)
 
     def _onFeatureFilterTextChanged(self, text):
+        if self._is_closing:
+            return
         self._pending_feature_filter_text = (text or "").strip()
         # Debounce to avoid rescanning large layers on every keystroke.
         self._featureFilterTimer.start(250)
 
     def _onFeatureFilterTimeout(self):
+        if self._is_closing:
+            return
         self._refresh_feature_rows_from_source(
             filter_text=self._pending_feature_filter_text
         )
@@ -609,7 +628,21 @@ class brdrQDockWidgetFeatureAligner(
         """Cleanup necessary items here when plugin dockwidget is closed"""
         print("onClosePlugin")
         print("** CLOSING brdrQ")
+        self._prepare_for_shutdown(remove_group=not self._app_is_closing)
+        print("** disconnect dockwidget")
+
+    def _prepare_for_shutdown(self, remove_group=False):
+        if self._shutdown_prepared:
+            return
+        self._shutdown_prepared = True
         self._is_closing = True
+        try:
+            # Prevent any late UI-triggered callbacks during app/project teardown.
+            self.setUpdatesEnabled(False)
+            self.setEnabled(False)
+            self.hide()
+        except Exception:
+            pass
         try:
             self._featureFilterTimer.stop()
         except Exception:
@@ -617,20 +650,66 @@ class brdrQDockWidgetFeatureAligner(
         # Disconnect active signals to avoid callbacks while QGIS is shutting down.
         for signal_obj, handler in (
             (self.mMapLayerComboBox.layerChanged, self.themeLayerChanged),
+            (self.comboBox_selectfeatures.currentIndexChanged, self.on_selectfeatures_changed),
             (self.tableFeatures.itemSelectionChanged, self.onFeatureSelectionChanged),
             (self.tablePredictions.itemSelectionChanged, self.onPredictionSelectionChanged),
+            (self.lineEditFeatureFilter.textChanged, self._onFeatureFilterTextChanged),
             (self.horizontalSlider.sliderMoved, self.onSliderChange),
             (self.doubleSpinBox.valueChanged, self.onSpinboxChange),
             (self.settingsDialog.confirmed, self.startDock),
             (self.closingPlugin, self.onClosePlugin),
+            (self.topLevelChanged, self._onDockStateChanged),
+            (self.dockLocationChanged, self._onDockStateChanged),
         ):
             try:
                 signal_obj.disconnect(handler)
             except Exception:
                 pass
-        remove_group_layer(self.GROUP_LAYER)
-        # disconnects
-        print("** disconnect dockwidget")
+        try:
+            app = QtWidgets.QApplication.instance()
+            if app is not None:
+                app.aboutToQuit.disconnect(self._onAppAboutToQuit)
+        except Exception:
+            pass
+        try:
+            project = QgsProject.instance()
+            project.layersWillBeRemoved.disconnect(self._onProjectLayersWillBeRemoved)
+            project.cleared.disconnect(self._onProjectCleared)
+        except Exception:
+            pass
+        self.feature = None
+        self.layer = None
+        if remove_group and not self._app_is_closing:
+            remove_group_layer(self.GROUP_LAYER)
+
+    def _onAppAboutToQuit(self):
+        self._app_is_closing = True
+        self._prepare_for_shutdown(remove_group=False)
+
+    def _onProjectLayersWillBeRemoved(self, layer_ids):
+        if self._is_closing:
+            return
+        try:
+            removed_ids = set()
+            for item in layer_ids:
+                if hasattr(item, "id"):
+                    removed_ids.add(str(item.id()))
+                else:
+                    removed_ids.add(str(item))
+        except Exception:
+            return
+        if not removed_ids:
+            return
+        current_layer = self.layer
+        if current_layer is None:
+            current_layer = self.mMapLayerComboBox.currentLayer()
+        if current_layer is None:
+            return
+        if str(current_layer.id()) in removed_ids:
+            self._prepare_for_shutdown(remove_group=False)
+
+    def _onProjectCleared(self):
+        self._prepare_for_shutdown(remove_group=False)
 
     def activate_selectTool(self):
         # print ("currentlayer:" + str (self.mMapLayerComboBox.currentLayer()))
@@ -726,6 +805,8 @@ class brdrQDockWidgetFeatureAligner(
         self.listFeatures(selection=data)
 
     def listFeatures(self, selection=None, features=None):
+        if self._is_closing:
+            return
         if self.layer is None:
             self.textEdit_output.setText("Please select a layer to align in the upper combobox")
             return
@@ -828,6 +909,8 @@ class brdrQDockWidgetFeatureAligner(
         return QColor(245, 245, 245, 0)
 
     def onFeatureSelectionChanged(self):
+        if self._is_closing:
+            return
         row = self.tableFeatures.currentRow()
         if row < 0:
             self._last_selected_feature_row = -1
@@ -838,6 +921,8 @@ class brdrQDockWidgetFeatureAligner(
         self.onFeatureActivated(row)
 
     def onFeatureActivated(self, selected_row):
+        if self._is_closing:
+            return
         print("onFeatureActivated")
         if selected_row is not None and selected_row >= 0:
             self._last_selected_feature_row = selected_row
@@ -851,6 +936,8 @@ class brdrQDockWidgetFeatureAligner(
         self.progressBar.setValue(100)
 
     def _onFeatureChange(self, selected_row):
+        if self._is_closing:
+            return
         print("_onFeatureChange")
         self.feature = None
         if selected_row is None or selected_row < 0:
@@ -1297,6 +1384,8 @@ class brdrQDockWidgetFeatureAligner(
                 del selection_blocker
 
     def startDock(self):
+        if self._is_closing:
+            return
         print("start dock")
         self.clearUserInterface()
         self.textEdit_output.setText("Please select a feature to align")

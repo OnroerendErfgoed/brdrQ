@@ -455,9 +455,17 @@ def geom_shapely_to_qgis(geom_shapely):
 
 
 def remove_group_layer(group_layer_name):
-    tree = QgsProject.instance().layerTreeRoot()
-    node_object = tree.findGroup(group_layer_name)
-    tree.removeChildNode(node_object)
+    try:
+        tree = QgsProject.instance().layerTreeRoot()
+        if tree is None:
+            return
+        node_object = tree.findGroup(group_layer_name)
+        if node_object is None:
+            return
+        tree.removeChildNode(node_object)
+    except Exception:
+        # Ignore cleanup failures during project shutdown/teardown.
+        return
 
 
 def geom_qgis_to_shapely(geom_qgis):

@@ -209,6 +209,20 @@ class BrdrQPlugin(object):
         processing.execAlgorithmDialog("brdrqprovider:brdrqautoupdateborders")
 
     def unload(self):
+        if self.dockwidget_featurealigner is not None:
+            try:
+                self.dockwidget_featurealigner.close()
+                self.dockwidget_featurealigner.deleteLater()
+            except Exception:
+                pass
+            self.dockwidget_featurealigner = None
+        if self.dockwidget_bulkaligner is not None:
+            try:
+                self.dockwidget_bulkaligner.close()
+                self.dockwidget_bulkaligner.deleteLater()
+            except Exception:
+                pass
+            self.dockwidget_bulkaligner = None
         QgsApplication.processingRegistry().removeProvider(self.provider)
         for action in self.actions:
             self.iface.removeToolBarIcon(action)

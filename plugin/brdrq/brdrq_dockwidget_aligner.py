@@ -261,6 +261,13 @@ class brdrQDockWidgetAligner(object):
             return
         if self.relevant_distances is None:
             return
+        if self.layer is None or not self.layer.isValid():
+            return
+        from qgis.core import QgsProject
+
+        if QgsProject.instance().mapLayer(self.layer.id()) is None:
+            # Layer was removed from project (e.g. project close / app exit).
+            return
         value = round(value, self.settingsDialog.DECIMAL)
         index = self.relevant_distances.index(value)
         self.horizontalSlider.setValue(index)
