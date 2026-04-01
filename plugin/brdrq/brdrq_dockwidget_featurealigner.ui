@@ -124,17 +124,17 @@ p, li { white-space: pre-wrap; }
      </widget>
     </item>
     <item row="19" column="0">
-     <widget class="QListWidget" name="listWidget_features">
+     <widget class="QTableWidget" name="tableFeatures">
       <property name="maximumSize">
        <size>
         <width>16777215</width>
-        <height>200</height>
+         <height>200</height>
        </size>
       </property>
      </widget>
     </item>
     <item row="23" column="0">
-     <widget class="QListWidget" name="listWidget_predictions">
+     <widget class="QTableWidget" name="tablePredictions">
       <property name="maximumSize">
        <size>
         <width>16777215</width>
@@ -227,21 +227,35 @@ p, li { white-space: pre-wrap; }
       </item>
      </layout>
     </item>
-    <item row="18" column="0" alignment="Qt::AlignLeft">
-     <widget class="QLabel" name="labelFeatures">
-      <property name="font">
-       <font>
-        <weight>75</weight>
-        <bold>true</bold>
-       </font>
-      </property>
-      <property name="toolTip">
-       <string> List of (all, selected, clicked) features</string>
-      </property>
-      <property name="text">
-       <string>Features:</string>
-      </property>
-     </widget>
+    <item row="18" column="0">
+     <layout class="QHBoxLayout" name="horizontalLayoutFeaturesHeader">
+      <item alignment="Qt::AlignLeft">
+       <widget class="QLabel" name="labelFeatures">
+        <property name="font">
+         <font>
+          <weight>75</weight>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="toolTip">
+         <string>List of (all, selected, clicked) features</string>
+        </property>
+        <property name="text">
+         <string>Features:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="lineEditFeatureFilter">
+        <property name="placeholderText">
+         <string>Filter features...</string>
+        </property>
+        <property name="clearButtonEnabled">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </item>
     <item row="16" column="0">
      <widget class="QComboBox" name="comboBox_selectfeatures">

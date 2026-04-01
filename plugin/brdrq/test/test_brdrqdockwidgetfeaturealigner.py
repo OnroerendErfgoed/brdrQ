@@ -28,5 +28,10 @@ class TestBrdrQDockWidgetFeatureAligner(unittest.TestCase):
         brdrqplugin = BrdrQPlugin(IFACE)
         widget = brdrQDockWidgetFeatureAligner(brdrqplugin, None)
         widget.get_graphic()
+        assert hasattr(widget, "tableFeatures")
+        assert hasattr(widget, "tablePredictions")
+        assert hasattr(widget, "lineEditFeatureFilter")
+        assert widget.tableFeatures.isSortingEnabled()
+        assert widget.tablePredictions.isSortingEnabled()
 
 

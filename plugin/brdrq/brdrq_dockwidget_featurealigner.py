@@ -36,9 +36,8 @@ from brdr.nl.enums import BRKType
 from brdr.nl.loader import BRKLoader
 from brdr.osm.loader import OSMLoader
 from qgis.PyQt import QtWidgets, uic
-from qgis.PyQt.QtCore import pyqtSignal
+from qgis.PyQt.QtCore import pyqtSignal, Qt, QTimer
 from qgis.PyQt.QtGui import QColor
-from qgis.PyQt.QtWidgets import QListWidgetItem
 from qgis.core import Qgis
 from qgis.core import QgsFeature, QgsWkbTypes, QgsVectorLayer, QgsProject
 from qgis.core import QgsFeatureRequest
@@ -125,7 +124,20 @@ class brdrQDockWidgetFeatureAligner(
             # button.setIconSize(QtCore.QSize(18, 18))
 
         self.max_listed_features = 1000
+        self._features_by_id = {}
+        self._frozenFeaturesView = None
+        self._use_frozen_feature_columns = False
+        self._current_feature_selection = SELECTION_ALL
+        self._current_feature_input_features = None
+        self._pending_feature_filter_text = ""
+        self._featureFilterTimer = QTimer(self)
+        self._featureFilterTimer.setSingleShot(True)
+        self._featureFilterTimer.timeout.connect(self._onFeatureFilterTimeout)
+        self._install_scrollable_contents()
+        self._configure_stable_layout()
         self._initialize()
+        self.topLevelChanged.connect(self._onDockStateChanged)
+        self.dockLocationChanged.connect(self._onDockStateChanged)
 
     def clearUserInterface(self):
         # Clear progressbar
@@ -133,14 +145,328 @@ class brdrQDockWidgetFeatureAligner(
         self.doubleSpinBox.setValue(0)
         self.labelFeatures.setText("Features:")
         # Clear the featurelist widget
-        self.listWidget_features.clear()
-        self.listWidget_features.scrollToTop()
-        # Clear the predictionlist
-        self.listWidget_predictions.clear()
-        self.listWidget_predictions.scrollToTop()
+        self.tableFeatures.clearContents()
+        self.tableFeatures.setRowCount(0)
+        self.tableFeatures.scrollToTop()
+        # Clear predictions table
+        self.tablePredictions.clearContents()
+        self.tablePredictions.setRowCount(0)
+        self.tablePredictions.scrollToTop()
 
         remove_group_layer(self.GROUP_LAYER)
         self.feature = None
+
+    def _install_scrollable_contents(self):
+        """
+        Wrap dock contents in a scroll area so narrow/short dock states don't
+        collapse critical controls.
+        """
+        if not hasattr(self, "dockWidgetContents"):
+            return
+        scroll_area = QtWidgets.QScrollArea(self)
+        scroll_area.setObjectName("featureAlignerScrollArea")
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QtWidgets.QFrame.NoFrame)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setWidget(self.dockWidgetContents)
+        self.setWidget(scroll_area)
+        self._scroll_area = scroll_area
+
+    def _configure_stable_layout(self):
+        """
+        Apply defensive sizing hints so buttons remain usable when dock width/height changes.
+        """
+        buttons = [
+            self.pushButton_settings,
+            self.pushButton_help,
+            self.pushButton_select,
+            self.pushButton_grafiek,
+            self.pushButton_visualisatie,
+            self.pushButton_save,
+            self.pushButton_reset,
+        ]
+        for button in buttons:
+            button.setMinimumHeight(30)
+            button.setSizePolicy(
+                QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed
+            )
+        self._button_texts_full = {
+            self.pushButton_settings: "Choose settings",
+            self.pushButton_help: "Docs",
+            self.pushButton_select: "Select feature(s) on map",
+            self.pushButton_grafiek: "Plot",
+            self.pushButton_visualisatie: "Visualize",
+            self.pushButton_save: " Save Geometry*",
+            self.pushButton_reset: "Reset Geometry*",
+        }
+        self._button_texts_compact = {
+            self.pushButton_settings: "Settings",
+            self.pushButton_help: "Docs",
+            self.pushButton_select: "Select on map",
+            self.pushButton_grafiek: "Plot",
+            self.pushButton_visualisatie: "Visualize",
+            self.pushButton_save: "Save*",
+            self.pushButton_reset: "Reset*",
+        }
+
+        # Keep data tables flexible, keep action rows stable.
+        if hasattr(self, "gridLayout"):
+            self.gridLayout.setRowStretch(19, 4)  # features table
+            self.gridLayout.setRowStretch(23, 3)  # predictions table
+            self.gridLayout.setRowStretch(43, 0)  # log text (fixed height)
+            self.label_4.hide()
+            self.logToggleButton = QtWidgets.QToolButton(self)
+            self.logToggleButton.setCheckable(True)
+            self.logToggleButton.setChecked(True)
+            self.logToggleButton.setText("Log")
+            self.logToggleButton.setToolButtonStyle(Qt.ToolButtonTextOnly)
+            self.logToggleButton.toggled.connect(self._toggle_log_section)
+            self.gridLayout.addWidget(self.logToggleButton, 41, 0, Qt.AlignLeft)
+        self._setup_feature_table()
+        self._setup_predictions_table()
+
+    def _setup_feature_table(self):
+        self.tableFeatures.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.tableFeatures.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.tableFeatures.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.tableFeatures.setHorizontalScrollMode(
+            QtWidgets.QAbstractItemView.ScrollPerPixel
+        )
+        self.tableFeatures.setVerticalScrollMode(
+            QtWidgets.QAbstractItemView.ScrollPerPixel
+        )
+        self.tableFeatures.setSortingEnabled(True)
+        self.tableFeatures.verticalHeader().setVisible(False)
+        self.lineEditFeatureFilter.textChanged.connect(self._onFeatureFilterTextChanged)
+
+        self._frozenFeaturesView = QtWidgets.QTableView(self.tableFeatures)
+        self._frozenFeaturesView.setFocusPolicy(Qt.NoFocus)
+        self._frozenFeaturesView.setSelectionModel(self.tableFeatures.selectionModel())
+        self._frozenFeaturesView.verticalHeader().hide()
+        self._frozenFeaturesView.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self._frozenFeaturesView.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self._frozenFeaturesView.setStyleSheet("QTableView { border: none; background: palette(base); }")
+        self.tableFeatures.viewport().stackUnder(self._frozenFeaturesView)
+        self.tableFeatures.verticalScrollBar().valueChanged.connect(
+            self._frozenFeaturesView.verticalScrollBar().setValue
+        )
+        self.tableFeatures.horizontalHeader().sectionResized.connect(
+            self._refresh_frozen_columns
+        )
+
+    def _toggle_log_section(self, visible):
+        self.textEdit_output.setVisible(visible)
+        self._onDockStateChanged()
+
+    def _setup_predictions_table(self):
+        self.tablePredictions.setSelectionBehavior(
+            QtWidgets.QAbstractItemView.SelectRows
+        )
+        self.tablePredictions.setSelectionMode(
+            QtWidgets.QAbstractItemView.SingleSelection
+        )
+        self.tablePredictions.setEditTriggers(
+            QtWidgets.QAbstractItemView.NoEditTriggers
+        )
+        self.tablePredictions.setSortingEnabled(True)
+        self.tablePredictions.verticalHeader().setVisible(False)
+        self.tablePredictions.setColumnCount(3)
+        self.tablePredictions.setHorizontalHeaderLabels(
+            ["Distance", "Evaluation", "Score"]
+        )
+        self.tablePredictions.horizontalHeader().setSectionResizeMode(
+            0, QtWidgets.QHeaderView.ResizeToContents
+        )
+        self.tablePredictions.horizontalHeader().setSectionResizeMode(
+            1, QtWidgets.QHeaderView.Stretch
+        )
+        self.tablePredictions.horizontalHeader().setSectionResizeMode(
+            2, QtWidgets.QHeaderView.ResizeToContents
+        )
+
+    def _apply_compact_button_texts(self):
+        compact = self.width() < 360
+        target = self._button_texts_compact if compact else self._button_texts_full
+        for button, text in target.items():
+            button.setText(text)
+
+    def _onFeatureFilterTextChanged(self, text):
+        self._pending_feature_filter_text = (text or "").strip()
+        # Debounce to avoid rescanning large layers on every keystroke.
+        self._featureFilterTimer.start(250)
+
+    def _onFeatureFilterTimeout(self):
+        self._refresh_feature_rows_from_source(
+            filter_text=self._pending_feature_filter_text
+        )
+
+    def _update_features_counter_from_table(self):
+        total = getattr(self, "_total_features_for_selection", 0)
+        listed = self.tableFeatures.rowCount()
+        self.labelFeatures.setText(f"Features: ({listed}/{total})")
+
+    def _feature_matches_filter(self, feature, filter_text):
+        if not filter_text:
+            return True
+        needle = filter_text.lower()
+        if needle in str(feature.id()).lower():
+            return True
+        for value in feature.attributes():
+            if value is not None and needle in str(value).lower():
+                return True
+        return False
+
+    def _state_filtered_features(self, state_value, filter_text):
+        request = QgsFeatureRequest()
+        request.setFlags(QgsFeatureRequest.NoGeometry)
+        listed_features = []
+        total_state_features = 0
+        total_matches = 0
+        ix_state = self.layer.fields().indexOf(BRDRQ_STATE_FIELDNAME)
+        if ix_state < 0:
+            return listed_features, 0
+        for feature in self.layer.getFeatures(request):
+            attrs = feature.attributes()
+            if ix_state < 0 or attrs[ix_state] != state_value:
+                continue
+            total_state_features += 1
+            if self._feature_matches_filter(feature, filter_text):
+                total_matches += 1
+                if len(listed_features) < self.max_listed_features:
+                    listed_features.append(feature)
+        if filter_text:
+            return listed_features, total_matches
+        return listed_features, total_state_features
+
+    def _refresh_feature_rows_from_source(self, filter_text=""):
+        if self.layer is None:
+            return
+        selection = self._current_feature_selection
+        input_features = self._current_feature_input_features
+        listed_features = []
+        total_for_counter = 0
+        max_listed_features = getattr(self, "max_listed_features", 1000)
+        filter_text = (filter_text or "").strip()
+        if input_features is not None:
+            total_input = len(input_features)
+            matched = [
+                feature
+                for feature in input_features
+                if self._feature_matches_filter(feature, filter_text)
+            ]
+            if filter_text:
+                listed_features = matched[:max_listed_features]
+                total_for_counter = len(matched)
+            else:
+                listed_features = list(input_features[:max_listed_features])
+                total_for_counter = total_input
+        elif selection is None or selection == SELECTION_ALL:
+            total_input = self.layer.featureCount()
+            request = QgsFeatureRequest()
+            request.setFlags(QgsFeatureRequest.NoGeometry)
+            matches = 0
+            for feature in self.layer.getFeatures(request):
+                if filter_text and not self._feature_matches_filter(feature, filter_text):
+                    continue
+                matches += 1
+                if len(listed_features) < max_listed_features:
+                    listed_features.append(feature)
+                if not filter_text and len(listed_features) >= max_listed_features:
+                    break
+            total_for_counter = matches if filter_text else total_input
+        elif selection == SELECTION_SELECTED:
+            selected_ids = self.layer.selectedFeatureIds()
+            total_input = len(selected_ids)
+            if filter_text:
+                request = QgsFeatureRequest().setFilterFids(selected_ids)
+                request.setFlags(QgsFeatureRequest.NoGeometry)
+                matches = 0
+                for feature in self.layer.getFeatures(request):
+                    if not self._feature_matches_filter(feature, filter_text):
+                        continue
+                    matches += 1
+                    if len(listed_features) < max_listed_features:
+                        listed_features.append(feature)
+                total_for_counter = matches
+            else:
+                listed_ids = selected_ids[:max_listed_features]
+                request = QgsFeatureRequest().setFilterFids(listed_ids)
+                request.setFlags(QgsFeatureRequest.NoGeometry)
+                listed_features = list(self.layer.getFeatures(request))
+                total_for_counter = total_input
+        elif selection in [str(e.value) for e in BrdrQState]:
+            listed_features, total_for_counter = self._state_filtered_features(
+                selection, filter_text
+            )
+
+        self.listed_features = listed_features
+        self._total_features_for_selection = total_for_counter
+        self._features_by_id = {str(f.id()): f for f in listed_features}
+        self.updateTextListWidgetItems()
+        self._update_features_counter_from_table()
+        listed_count = len(listed_features)
+        if total_for_counter > max_listed_features:
+            self.textEdit_output.setText(
+                f"#Features listed: {listed_count} / {total_for_counter} (first {max_listed_features})"
+            )
+        else:
+            self.textEdit_output.setText(
+                f"#Features listed: {listed_count} / {total_for_counter}"
+            )
+
+    def _refresh_frozen_columns(self, *_args):
+        if self._frozenFeaturesView is None or self.tableFeatures.columnCount() < 2:
+            return
+        if not self._use_frozen_feature_columns:
+            self.tableFeatures.setColumnHidden(0, False)
+            self.tableFeatures.setColumnHidden(1, False)
+            self._frozenFeaturesView.hide()
+            return
+        self._frozenFeaturesView.setModel(self.tableFeatures.model())
+        self._frozenFeaturesView.setSelectionModel(self.tableFeatures.selectionModel())
+        for col in range(self.tableFeatures.columnCount()):
+            hide = col > 1
+            self._frozenFeaturesView.setColumnHidden(col, hide)
+        self.tableFeatures.setColumnHidden(0, True)
+        self.tableFeatures.setColumnHidden(1, True)
+        self._frozenFeaturesView.setColumnWidth(0, self.tableFeatures.columnWidth(0))
+        self._frozenFeaturesView.setColumnWidth(1, self.tableFeatures.columnWidth(1))
+        self._frozenFeaturesView.horizontalHeader().setSectionResizeMode(
+            0, QtWidgets.QHeaderView.Fixed
+        )
+        self._frozenFeaturesView.horizontalHeader().setSectionResizeMode(
+            1, QtWidgets.QHeaderView.Fixed
+        )
+        frozen_width = self.tableFeatures.columnWidth(0) + self.tableFeatures.columnWidth(1)
+        self._frozenFeaturesView.setGeometry(
+            self.tableFeatures.frameWidth(),
+            self.tableFeatures.frameWidth(),
+            frozen_width,
+            self.tableFeatures.viewport().height()
+            + self.tableFeatures.horizontalHeader().height(),
+        )
+        self._frozenFeaturesView.show()
+
+    def _onDockStateChanged(self, *_args):
+        # Delay relayout to the end of Qt's dock-resize event cycle.
+        QTimer.singleShot(0, self._refresh_layout)
+
+    def _refresh_layout(self):
+        for widget in (self, getattr(self, "dockWidgetContents", None), self.widget()):
+            if widget is None:
+                continue
+            layout = widget.layout()
+            if layout is not None:
+                layout.activate()
+            widget.updateGeometry()
+        self._apply_compact_button_texts()
+        self._refresh_frozen_columns()
+        self.update()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._onDockStateChanged()
 
     def _initialize(self):
         print("_initialize")
@@ -157,8 +483,12 @@ class brdrQDockWidgetFeatureAligner(
         # self.pushButton_select_partial.clicked.connect(self.activate_partialSelectTool)
 
         self.mMapLayerComboBox.layerChanged.connect(self.themeLayerChanged)
-        self.listWidget_features.itemPressed.connect(self.onFeatureActivated)
-        self.listWidget_predictions.itemPressed.connect(self.onListItemActivated)
+        self.tableFeatures.itemSelectionChanged.connect(
+            self.onFeatureSelectionChanged
+        )
+        self.tablePredictions.itemSelectionChanged.connect(
+            self.onPredictionSelectionChanged
+        )
         self.horizontalSlider.sliderMoved.connect(self.onSliderChange)
         self.doubleSpinBox.valueChanged.connect(self.onSpinboxChange)
 
@@ -327,95 +657,131 @@ class brdrQDockWidgetFeatureAligner(
             self.textEdit_output.setText("Please select a layer to align in the upper combobox")
             return
         self.clearUserInterface()
-        max_listed_features = getattr(self, "max_listed_features", 1000)
-        total_features = 0
-        if not features is None:
-            self.listed_features = list(features)
-            total_features = len(self.listed_features)
-        elif selection is None or selection == SELECTION_ALL:
-            total_features = self.layer.featureCount()
-            self.listed_features = []
-            for f in self.layer.getFeatures():
-                self.listed_features.append(f)
-                if len(self.listed_features) >= max_listed_features:
-                    break
-        elif selection == SELECTION_SELECTED:
-            selected_ids = self.layer.selectedFeatureIds()
-            total_features = len(selected_ids)
-            self.listed_features = []
-            selected_ids = selected_ids[: max_listed_features]
-            request = QgsFeatureRequest().setFilterFids(selected_ids)
-            for f in self.layer.getFeatures(request):
-                self.listed_features.append(f)
-        elif selection in [str(e.value) for e in BrdrQState]:
-            listed_features = []
-            ix = self.layer.fields().indexOf(BRDRQ_STATE_FIELDNAME)
-            total_features = 0
-            for f in self.layer.getFeatures():
-                attributes = f.attributes()
-                if ix >= 0 and attributes[ix] == selection:
-                    total_features += 1
-                    if len(listed_features) < max_listed_features:
-                        listed_features.append(f)
-            self.listed_features = listed_features
-        if total_features == 0:
-            total_features = len(self.listed_features)
-
-        # Add the selected features to the list widget
-        for feature in self.listed_features:
-            item = QListWidgetItem(str(feature.id()))
-            self.listWidget_features.addItem(item)
-        self.updateTextListWidgetItems()
-        listed_count = len(self.listed_features)
-        self.labelFeatures.setText(f"Features: ({listed_count}/{total_features})")
-        if total_features > max_listed_features:
-            self.textEdit_output.setText(
-                f"#Features listed: {listed_count} / {total_features} (first {max_listed_features})"
-            )
-        else:
-            self.textEdit_output.setText(f"#Features listed: {listed_count} / {total_features}")
+        self._current_feature_selection = selection
+        self._current_feature_input_features = (
+            list(features) if features is not None else None
+        )
+        self._refresh_feature_rows_from_source(self.lineEditFeatureFilter.text())
         if len(self.listed_features) == 1:
-            self.onFeatureActivated(self.listWidget_features.item(0))
+            self.tableFeatures.selectRow(0)
+            self.onFeatureActivated(0)
         return
 
     def updateTextListWidgetItems(self):
-        ix = self.layer.fields().indexOf(BRDRQ_STATE_FIELDNAME)
-        for i in range(self.listWidget_features.count()):
-            item = self.listWidget_features.item(i)
+        field_names = self.layer.fields().names()
+        state_field_name = None
+        for name in field_names:
+            if str(name).lower() == str(BRDRQ_STATE_FIELDNAME).lower():
+                state_field_name = name
+                break
+        ix = self.layer.fields().indexOf(state_field_name) if state_field_name else -1
+        remaining_field_names = [
+            n
+            for n in field_names
+            if state_field_name is None or str(n).lower() != str(state_field_name).lower()
+        ]
+        state_header = state_field_name if state_field_name else BRDRQ_STATE_FIELDNAME
+        headers = ["ID", state_header] + remaining_field_names
+        self.tableFeatures.setSortingEnabled(False)
+        self.tableFeatures.clearContents()
+        self.tableFeatures.setColumnCount(len(headers))
+        self.tableFeatures.setHorizontalHeaderLabels(headers)
+        self.tableFeatures.setRowCount(len(self.listed_features))
+        self.tableFeatures.horizontalHeader().setStretchLastSection(False)
+        for i in range(len(self.listed_features)):
             feature_id = self.listed_features[i].id()
             feature = self.layer.getFeature(feature_id)
             attributes = feature.attributes()
             if ix >= 0:
                 state = attributes[ix]
             else:
-                state = str(BrdrQState.NONE.value)
-            attribute_string = ", ".join(str(attribute) for attribute in attributes)
-            item_text = f"ID: *{feature.id()}*, STATE: *{state} *, Attributes: {attribute_string}"
-            item.setText(item_text)
+                state = ""
+            attributes_by_name = {
+                name: attributes[pos] for pos, name in enumerate(field_names)
+            }
+            row_values = [
+                feature.id(),
+                state,
+            ] + [attributes_by_name.get(name) for name in remaining_field_names]
+            for col, value in enumerate(row_values):
+                table_item = QtWidgets.QTableWidgetItem("" if value is None else str(value))
+                table_item.setFlags(table_item.flags() & ~Qt.ItemIsEditable)
+                if col == 0:
+                    table_item.setData(Qt.UserRole, str(feature.id()))
+                if col == 1 and ix >= 0:
+                    table_item.setBackground(self._state_color_for_value(str(state)))
+                self.tableFeatures.setItem(i, col, table_item)
+        # Keep ID/brdrq_state readable and attrs scrollable
+        self.tableFeatures.setColumnWidth(0, 90)
+        self.tableFeatures.setColumnWidth(1, 120)
+        max_attr_column_width = 320
+        for col in range(2, self.tableFeatures.columnCount()):
+            self.tableFeatures.horizontalHeader().setSectionResizeMode(
+                col, QtWidgets.QHeaderView.Interactive
+            )
+            desired_width = self.tableFeatures.sizeHintForColumn(col) + 16
+            clamped_width = max(120, min(desired_width, max_attr_column_width))
+            self.tableFeatures.setColumnWidth(col, clamped_width)
+        self.tableFeatures.setSortingEnabled(True)
+        self._refresh_frozen_columns()
+        self._update_features_counter_from_table()
 
-    def onFeatureActivated(self, currentItem):
+    def _state_color_for_value(self, state):
+        # Match output/correction layer state colors, but with very light alpha
+        # so the table keeps readable text contrast.
+        state = (state or "").strip().lower()
+        if state == str(BrdrQState.TO_UPDATE.value):
+            color = QColor("red")
+            color.setAlpha(55)
+            return color
+        if state == str(BrdrQState.TO_REVIEW.value):
+            color = QColor("orange")
+            color.setAlpha(55)
+            return color
+        if state == str(BrdrQState.MANUAL_UPDATED.value):
+            color = QColor("blue")
+            color.setAlpha(50)
+            return color
+        if state == str(BrdrQState.AUTO_UPDATED.value):
+            color = QColor("green")
+            color.setAlpha(55)
+            return color
+        if state == str(BrdrQState.NOT_CHANGED.value):
+            color = QColor("#b2df8a")
+            color.setAlpha(55)
+            return color
+        return QColor(245, 245, 245, 0)
+
+    def onFeatureSelectionChanged(self):
+        row = self.tableFeatures.currentRow()
+        if row >= 0:
+            self.onFeatureActivated(row)
+
+    def onFeatureActivated(self, selected_row):
         print("onFeatureActivated")
         self.deactivateSelectTool()
         self.progressBar.setValue(0)
-        self.listWidget_predictions.clear()
+        self.tablePredictions.clearContents()
+        self.tablePredictions.setRowCount(0)
         self.textEdit_output.setText("")
         with OverrideCursor(qt_wait_cursor()):
-            self._onFeatureChange(currentItem)
+            self._onFeatureChange(selected_row)
         self.progressBar.setValue(100)
 
-    def _onFeatureChange(self, currentItem):
+    def _onFeatureChange(self, selected_row):
         print("_onFeatureChange")
         self.feature = None
-        if currentItem is None:
-            print("currentItem is none")
+        if selected_row is None or selected_row < 0:
+            print("selected_row is none")
             return
-        feature_id = currentItem.text().split("*")[1]
-        for feat in self.listed_features:
-            if str(feat.id()) == feature_id:
-                self.feature = feat
-                break
-        if self.feature is None:
-            self.textEdit_output.setText(f"No feature found with ID {feature_id}")
+        id_item = self.tableFeatures.item(selected_row, 0)
+        feature_id = None if id_item is None else id_item.data(Qt.UserRole)
+        if feature_id is None:
+            self.textEdit_output.setText(f"No feature found at row {selected_row}")
+            return
+        self.feature = self.layer.getFeature(int(feature_id))
+        if self.feature is None or not self.feature.isValid():
+            self.textEdit_output.setText(f"No feature found for ID {feature_id}")
             return
 
         original_geometry = get_original_geometry(
@@ -437,7 +803,8 @@ class brdrQDockWidgetFeatureAligner(
                 msg = f"Very big area, {str(area)} m²: The calculation is blocked. Please use the bulk tool for this feature"
                 self.textEdit_output.setText(f"{msg}")
                 self.doubleSpinBox.setValue(0)
-                self.listWidget_predictions.clear()
+                self.tablePredictions.clearContents()
+                self.tablePredictions.setRowCount(0)
                 return
             else:
                 big_step = self.settingsDialog.big_step
@@ -460,18 +827,19 @@ class brdrQDockWidgetFeatureAligner(
         self.loadSettings()
         self.setHandles()
 
-        # set list with predicted values
-        self.listWidget_predictions.clear()
+        # Reset prediction table before filling it with fresh results.
+        self.tablePredictions.setSortingEnabled(False)
+        self.tablePredictions.clearContents()
+        self.tablePredictions.setRowCount(0)
         # do alignment/prediction
         align = self._align()
         if align is None:
+            self.tablePredictions.setSortingEnabled(True)
             return
 
         self.add_results_to_grouplayer()
 
         # loop predictions & add prediction score & evaluation
-        items = []
-        items_with_name = []
         best_index = 0
         best_score = 0
         list_predictions = [k for k in (self.dict_evaluated_predictions[key]).keys()]
@@ -483,23 +851,33 @@ class brdrQDockWidgetFeatureAligner(
             )
             list_predictions_features.append(feat)
         zoom_to_features(list_predictions_features, self.iface, features_crs=self.crs)
-        for k in list_predictions:
-            items.append(str(k))
+        self.tablePredictions.setRowCount(len(list_predictions))
+        for row, k in enumerate(list_predictions):
             score = self.dict_evaluated_predictions[key][k]["properties"][
                 PREDICTION_SCORE
             ]
             evaluation = self.dict_evaluated_predictions[key][k]["properties"][
                 EVALUATION_FIELD_NAME
             ]
-            items_with_name.append(f"{str(k)}: {str(evaluation)} (score: {str(score)})")
+            distance_item = QtWidgets.QTableWidgetItem(str(k))
+            distance_item.setData(Qt.UserRole, float(k))
+            evaluation_item = QtWidgets.QTableWidgetItem(str(evaluation))
+            score_item = QtWidgets.QTableWidgetItem(str(score))
+            score_item.setData(Qt.UserRole, float(score))
+            self.tablePredictions.setItem(row, 0, distance_item)
+            self.tablePredictions.setItem(row, 1, evaluation_item)
+            self.tablePredictions.setItem(row, 2, score_item)
             if score > best_score:
                 best_score = score
-                best_index = list_predictions.index(k)
-        self.listWidget_predictions.setFocus()
-        self.listWidget_predictions.addItems(items_with_name)
-        if len(items) > 0:
-            self.listWidget_predictions.setCurrentRow(best_index)
-            value = round(float(items[best_index]), self.settingsDialog.DECIMAL)
+                best_index = row
+        self.tablePredictions.setSortingEnabled(True)
+        self.tablePredictions.setFocus()
+        if self.tablePredictions.rowCount() > 0:
+            self.tablePredictions.selectRow(best_index)
+            distance_item = self.tablePredictions.item(best_index, 0)
+            value = round(
+                float(distance_item.data(Qt.UserRole)), self.settingsDialog.DECIMAL
+            )
             self.setFilterOnLayers(value)
             self.doubleSpinBox.setValue(value)
         else:
@@ -557,10 +935,19 @@ class brdrQDockWidgetFeatureAligner(
         )
         return
 
-    def onListItemActivated(self, current_item):
-        print("onListItemActivated")
+    def onPredictionSelectionChanged(self):
+        selected_rows = self.tablePredictions.selectionModel().selectedRows()
+        if not selected_rows:
+            return
+        row = selected_rows[0].row()
+        distance_item = self.tablePredictions.item(row, 0)
+        if distance_item is None:
+            return
+        value = distance_item.data(Qt.UserRole)
+        if value is None:
+            return
         self.deactivateSelectTool()
-        self._listItemActivated(current_item)
+        self.doubleSpinBox.setValue(round(float(value), self.settingsDialog.DECIMAL))
 
     def _align(self):
         print("_align")
