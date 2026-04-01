@@ -303,6 +303,22 @@ class brdrQDockWidgetFeatureAligner(
             2, qt_header_resize_to_contents()
         )
 
+    @staticmethod
+    def _display_prediction_evaluation(evaluation):
+        """
+        Return a user-friendly prediction evaluation label.
+        """
+        if evaluation is None:
+            return ""
+
+        if hasattr(evaluation, "value"):
+            return str(evaluation.value)
+
+        text = str(evaluation)
+        if "." in text:
+            return text.split(".")[-1]
+        return text
+
     def _apply_compact_button_texts(self):
         compact = self.width() < 360
         target = self._button_texts_compact if compact else self._button_texts_full
@@ -879,7 +895,9 @@ class brdrQDockWidgetFeatureAligner(
             ]
             distance_item = QtWidgets.QTableWidgetItem(str(k))
             distance_item.setData(qt_user_role(), float(k))
-            evaluation_item = QtWidgets.QTableWidgetItem(str(evaluation))
+            evaluation_item = QtWidgets.QTableWidgetItem(
+                self._display_prediction_evaluation(evaluation)
+            )
             score_item = QtWidgets.QTableWidgetItem(str(score))
             score_item.setData(qt_user_role(), float(score))
             self.tablePredictions.setItem(row, 0, distance_item)
