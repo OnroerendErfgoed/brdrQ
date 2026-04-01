@@ -77,7 +77,25 @@ from .qt_compat import (
     map_layer_filter_line,
     map_layer_filter_point,
     map_layer_filter_polygon,
+    qt_align_left,
+    qt_frame_no_frame,
+    qt_header_fixed,
+    qt_header_interactive,
+    qt_header_resize_to_contents,
+    qt_header_stretch,
+    qt_item_is_editable,
+    qt_item_view_no_edit_triggers,
+    qt_item_view_scroll_per_pixel,
+    qt_item_view_select_rows,
+    qt_item_view_single_selection,
+    qt_no_focus,
     qt_right_dock_widget_area,
+    qt_scrollbar_always_off,
+    qt_scrollbar_as_needed,
+    qt_size_policy_fixed,
+    qt_size_policy_preferred,
+    qt_tool_button_text_only,
+    qt_user_role,
     qt_wait_cursor,
     set_map_layer_combo_filters,
 )
@@ -166,9 +184,9 @@ class brdrQDockWidgetFeatureAligner(
         scroll_area = QtWidgets.QScrollArea(self)
         scroll_area.setObjectName("featureAlignerScrollArea")
         scroll_area.setWidgetResizable(True)
-        scroll_area.setFrameShape(QtWidgets.QFrame.NoFrame)
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setFrameShape(qt_frame_no_frame())
+        scroll_area.setHorizontalScrollBarPolicy(qt_scrollbar_as_needed())
+        scroll_area.setVerticalScrollBarPolicy(qt_scrollbar_as_needed())
         scroll_area.setWidget(self.dockWidgetContents)
         self.setWidget(scroll_area)
         self._scroll_area = scroll_area
@@ -189,7 +207,7 @@ class brdrQDockWidgetFeatureAligner(
         for button in buttons:
             button.setMinimumHeight(30)
             button.setSizePolicy(
-                QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed
+                qt_size_policy_preferred(), qt_size_policy_fixed()
             )
         self._button_texts_full = {
             self.pushButton_settings: "Choose settings",
@@ -220,32 +238,32 @@ class brdrQDockWidgetFeatureAligner(
             self.logToggleButton.setCheckable(True)
             self.logToggleButton.setChecked(True)
             self.logToggleButton.setText("Log")
-            self.logToggleButton.setToolButtonStyle(Qt.ToolButtonTextOnly)
+            self.logToggleButton.setToolButtonStyle(qt_tool_button_text_only())
             self.logToggleButton.toggled.connect(self._toggle_log_section)
-            self.gridLayout.addWidget(self.logToggleButton, 41, 0, Qt.AlignLeft)
+            self.gridLayout.addWidget(self.logToggleButton, 41, 0, qt_align_left())
         self._setup_feature_table()
         self._setup_predictions_table()
 
     def _setup_feature_table(self):
-        self.tableFeatures.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.tableFeatures.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
-        self.tableFeatures.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.tableFeatures.setSelectionBehavior(qt_item_view_select_rows())
+        self.tableFeatures.setSelectionMode(qt_item_view_single_selection())
+        self.tableFeatures.setEditTriggers(qt_item_view_no_edit_triggers())
         self.tableFeatures.setHorizontalScrollMode(
-            QtWidgets.QAbstractItemView.ScrollPerPixel
+            qt_item_view_scroll_per_pixel()
         )
         self.tableFeatures.setVerticalScrollMode(
-            QtWidgets.QAbstractItemView.ScrollPerPixel
+            qt_item_view_scroll_per_pixel()
         )
         self.tableFeatures.setSortingEnabled(True)
         self.tableFeatures.verticalHeader().setVisible(False)
         self.lineEditFeatureFilter.textChanged.connect(self._onFeatureFilterTextChanged)
 
         self._frozenFeaturesView = QtWidgets.QTableView(self.tableFeatures)
-        self._frozenFeaturesView.setFocusPolicy(Qt.NoFocus)
+        self._frozenFeaturesView.setFocusPolicy(qt_no_focus())
         self._frozenFeaturesView.setSelectionModel(self.tableFeatures.selectionModel())
         self._frozenFeaturesView.verticalHeader().hide()
-        self._frozenFeaturesView.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self._frozenFeaturesView.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self._frozenFeaturesView.setHorizontalScrollBarPolicy(qt_scrollbar_always_off())
+        self._frozenFeaturesView.setVerticalScrollBarPolicy(qt_scrollbar_always_off())
         self._frozenFeaturesView.setStyleSheet("QTableView { border: none; background: palette(base); }")
         self.tableFeatures.viewport().stackUnder(self._frozenFeaturesView)
         self.tableFeatures.verticalScrollBar().valueChanged.connect(
@@ -261,13 +279,13 @@ class brdrQDockWidgetFeatureAligner(
 
     def _setup_predictions_table(self):
         self.tablePredictions.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectRows
+            qt_item_view_select_rows()
         )
         self.tablePredictions.setSelectionMode(
-            QtWidgets.QAbstractItemView.SingleSelection
+            qt_item_view_single_selection()
         )
         self.tablePredictions.setEditTriggers(
-            QtWidgets.QAbstractItemView.NoEditTriggers
+            qt_item_view_no_edit_triggers()
         )
         self.tablePredictions.setSortingEnabled(True)
         self.tablePredictions.verticalHeader().setVisible(False)
@@ -276,13 +294,13 @@ class brdrQDockWidgetFeatureAligner(
             ["Distance", "Evaluation", "Score"]
         )
         self.tablePredictions.horizontalHeader().setSectionResizeMode(
-            0, QtWidgets.QHeaderView.ResizeToContents
+            0, qt_header_resize_to_contents()
         )
         self.tablePredictions.horizontalHeader().setSectionResizeMode(
-            1, QtWidgets.QHeaderView.Stretch
+            1, qt_header_stretch()
         )
         self.tablePredictions.horizontalHeader().setSectionResizeMode(
-            2, QtWidgets.QHeaderView.ResizeToContents
+            2, qt_header_resize_to_contents()
         )
 
     def _apply_compact_button_texts(self):
@@ -433,10 +451,10 @@ class brdrQDockWidgetFeatureAligner(
         self._frozenFeaturesView.setColumnWidth(0, self.tableFeatures.columnWidth(0))
         self._frozenFeaturesView.setColumnWidth(1, self.tableFeatures.columnWidth(1))
         self._frozenFeaturesView.horizontalHeader().setSectionResizeMode(
-            0, QtWidgets.QHeaderView.Fixed
+            0, qt_header_fixed()
         )
         self._frozenFeaturesView.horizontalHeader().setSectionResizeMode(
-            1, QtWidgets.QHeaderView.Fixed
+            1, qt_header_fixed()
         )
         frozen_width = self.tableFeatures.columnWidth(0) + self.tableFeatures.columnWidth(1)
         self._frozenFeaturesView.setGeometry(
@@ -705,9 +723,9 @@ class brdrQDockWidgetFeatureAligner(
             ] + [attributes_by_name.get(name) for name in remaining_field_names]
             for col, value in enumerate(row_values):
                 table_item = QtWidgets.QTableWidgetItem("" if value is None else str(value))
-                table_item.setFlags(table_item.flags() & ~Qt.ItemIsEditable)
+                table_item.setFlags(table_item.flags() & ~qt_item_is_editable())
                 if col == 0:
-                    table_item.setData(Qt.UserRole, str(feature.id()))
+                    table_item.setData(qt_user_role(), str(feature.id()))
                 if col == 1 and ix >= 0:
                     table_item.setBackground(self._state_color_for_value(str(state)))
                 self.tableFeatures.setItem(i, col, table_item)
@@ -717,7 +735,7 @@ class brdrQDockWidgetFeatureAligner(
         max_attr_column_width = 320
         for col in range(2, self.tableFeatures.columnCount()):
             self.tableFeatures.horizontalHeader().setSectionResizeMode(
-                col, QtWidgets.QHeaderView.Interactive
+                col, qt_header_interactive()
             )
             desired_width = self.tableFeatures.sizeHintForColumn(col) + 16
             clamped_width = max(120, min(desired_width, max_attr_column_width))
@@ -775,7 +793,7 @@ class brdrQDockWidgetFeatureAligner(
             print("selected_row is none")
             return
         id_item = self.tableFeatures.item(selected_row, 0)
-        feature_id = None if id_item is None else id_item.data(Qt.UserRole)
+        feature_id = None if id_item is None else id_item.data(qt_user_role())
         if feature_id is None:
             self.textEdit_output.setText(f"No feature found at row {selected_row}")
             return
@@ -860,10 +878,10 @@ class brdrQDockWidgetFeatureAligner(
                 EVALUATION_FIELD_NAME
             ]
             distance_item = QtWidgets.QTableWidgetItem(str(k))
-            distance_item.setData(Qt.UserRole, float(k))
+            distance_item.setData(qt_user_role(), float(k))
             evaluation_item = QtWidgets.QTableWidgetItem(str(evaluation))
             score_item = QtWidgets.QTableWidgetItem(str(score))
-            score_item.setData(Qt.UserRole, float(score))
+            score_item.setData(qt_user_role(), float(score))
             self.tablePredictions.setItem(row, 0, distance_item)
             self.tablePredictions.setItem(row, 1, evaluation_item)
             self.tablePredictions.setItem(row, 2, score_item)
@@ -876,7 +894,7 @@ class brdrQDockWidgetFeatureAligner(
             self.tablePredictions.selectRow(best_index)
             distance_item = self.tablePredictions.item(best_index, 0)
             value = round(
-                float(distance_item.data(Qt.UserRole)), self.settingsDialog.DECIMAL
+                float(distance_item.data(qt_user_role())), self.settingsDialog.DECIMAL
             )
             self.setFilterOnLayers(value)
             self.doubleSpinBox.setValue(value)
@@ -943,7 +961,7 @@ class brdrQDockWidgetFeatureAligner(
         distance_item = self.tablePredictions.item(row, 0)
         if distance_item is None:
             return
-        value = distance_item.data(Qt.UserRole)
+        value = distance_item.data(qt_user_role())
         if value is None:
             return
         self.deactivateSelectTool()

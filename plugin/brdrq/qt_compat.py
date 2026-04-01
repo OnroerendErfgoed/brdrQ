@@ -87,6 +87,244 @@ def qt_wait_cursor():
     raise AttributeError("Qt WaitCursor enum not available")
 
 
+def qt_scrollbar_as_needed():
+    """
+    Cross-Qt helper for Qt.ScrollBarAsNeeded enum location differences.
+    """
+    from qgis.PyQt.QtCore import Qt
+
+    value = getattr(Qt, "ScrollBarAsNeeded", None)
+    if value is not None:
+        return value
+
+    scroll_bar_policy = getattr(Qt, "ScrollBarPolicy", None)
+    if scroll_bar_policy is not None and hasattr(
+        scroll_bar_policy, "ScrollBarAsNeeded"
+    ):
+        return scroll_bar_policy.ScrollBarAsNeeded
+
+    raise AttributeError("Qt ScrollBarAsNeeded enum not available")
+
+
+def qt_scrollbar_always_off():
+    """
+    Cross-Qt helper for Qt.ScrollBarAlwaysOff enum location differences.
+    """
+    from qgis.PyQt.QtCore import Qt
+
+    value = getattr(Qt, "ScrollBarAlwaysOff", None)
+    if value is not None:
+        return value
+
+    scroll_bar_policy = getattr(Qt, "ScrollBarPolicy", None)
+    if scroll_bar_policy is not None and hasattr(
+        scroll_bar_policy, "ScrollBarAlwaysOff"
+    ):
+        return scroll_bar_policy.ScrollBarAlwaysOff
+
+    raise AttributeError("Qt ScrollBarAlwaysOff enum not available")
+
+
+def qt_frame_no_frame():
+    """
+    Cross-Qt helper for QFrame.NoFrame enum location differences.
+    """
+    from qgis.PyQt import QtWidgets
+
+    value = getattr(QtWidgets.QFrame, "NoFrame", None)
+    if value is not None:
+        return value
+
+    frame_shape = getattr(QtWidgets.QFrame, "Shape", None)
+    if frame_shape is not None and hasattr(frame_shape, "NoFrame"):
+        return frame_shape.NoFrame
+
+    raise AttributeError("Qt QFrame.NoFrame enum not available")
+
+
+def qt_size_policy_preferred():
+    """
+    Cross-Qt helper for QSizePolicy.Preferred enum location differences.
+    """
+    from qgis.PyQt import QtWidgets
+
+    value = getattr(QtWidgets.QSizePolicy, "Preferred", None)
+    if value is not None:
+        return value
+
+    policy = getattr(QtWidgets.QSizePolicy, "Policy", None)
+    if policy is not None and hasattr(policy, "Preferred"):
+        return policy.Preferred
+
+    raise AttributeError("Qt QSizePolicy.Preferred enum not available")
+
+
+def qt_size_policy_fixed():
+    """
+    Cross-Qt helper for QSizePolicy.Fixed enum location differences.
+    """
+    from qgis.PyQt import QtWidgets
+
+    value = getattr(QtWidgets.QSizePolicy, "Fixed", None)
+    if value is not None:
+        return value
+
+    policy = getattr(QtWidgets.QSizePolicy, "Policy", None)
+    if policy is not None and hasattr(policy, "Fixed"):
+        return policy.Fixed
+
+    raise AttributeError("Qt QSizePolicy.Fixed enum not available")
+
+
+def qt_tool_button_text_only():
+    """
+    Cross-Qt helper for Qt.ToolButtonTextOnly enum location differences.
+    """
+    from qgis.PyQt.QtCore import Qt
+
+    value = getattr(Qt, "ToolButtonTextOnly", None)
+    if value is not None:
+        return value
+
+    style = getattr(Qt, "ToolButtonStyle", None)
+    if style is not None and hasattr(style, "ToolButtonTextOnly"):
+        return style.ToolButtonTextOnly
+
+    raise AttributeError("Qt ToolButtonTextOnly enum not available")
+
+
+def qt_align_left():
+    """
+    Cross-Qt helper for Qt.AlignLeft enum location differences.
+    """
+    from qgis.PyQt.QtCore import Qt
+
+    value = getattr(Qt, "AlignLeft", None)
+    if value is not None:
+        return value
+
+    alignment_flag = getattr(Qt, "AlignmentFlag", None)
+    if alignment_flag is not None and hasattr(alignment_flag, "AlignLeft"):
+        return alignment_flag.AlignLeft
+
+    raise AttributeError("Qt AlignLeft enum not available")
+
+
+def qt_no_focus():
+    """
+    Cross-Qt helper for Qt.NoFocus enum location differences.
+    """
+    from qgis.PyQt.QtCore import Qt
+
+    value = getattr(Qt, "NoFocus", None)
+    if value is not None:
+        return value
+
+    focus_policy = getattr(Qt, "FocusPolicy", None)
+    if focus_policy is not None and hasattr(focus_policy, "NoFocus"):
+        return focus_policy.NoFocus
+
+    raise AttributeError("Qt NoFocus enum not available")
+
+
+def _qabstract_item_view_enum(name, *containers):
+    from qgis.PyQt import QtWidgets
+
+    direct = getattr(QtWidgets.QAbstractItemView, name, None)
+    if direct is not None:
+        return direct
+
+    for container_name in containers:
+        container = getattr(QtWidgets.QAbstractItemView, container_name, None)
+        if container is None:
+            continue
+        candidate = getattr(container, name, None)
+        if candidate is not None:
+            return candidate
+
+    raise AttributeError(f"QAbstractItemView enum not available: {name}")
+
+
+def qt_item_view_select_rows():
+    return _qabstract_item_view_enum("SelectRows", "SelectionBehavior")
+
+
+def qt_item_view_single_selection():
+    return _qabstract_item_view_enum("SingleSelection", "SelectionMode")
+
+
+def qt_item_view_no_edit_triggers():
+    return _qabstract_item_view_enum("NoEditTriggers", "EditTrigger")
+
+
+def qt_item_view_scroll_per_pixel():
+    return _qabstract_item_view_enum("ScrollPerPixel", "ScrollMode")
+
+
+def _qheader_view_enum(name):
+    from qgis.PyQt import QtWidgets
+
+    direct = getattr(QtWidgets.QHeaderView, name, None)
+    if direct is not None:
+        return direct
+
+    resize_mode = getattr(QtWidgets.QHeaderView, "ResizeMode", None)
+    if resize_mode is not None and hasattr(resize_mode, name):
+        return getattr(resize_mode, name)
+
+    raise AttributeError(f"QHeaderView enum not available: {name}")
+
+
+def qt_header_resize_to_contents():
+    return _qheader_view_enum("ResizeToContents")
+
+
+def qt_header_stretch():
+    return _qheader_view_enum("Stretch")
+
+
+def qt_header_fixed():
+    return _qheader_view_enum("Fixed")
+
+
+def qt_header_interactive():
+    return _qheader_view_enum("Interactive")
+
+
+def qt_item_is_editable():
+    """
+    Cross-Qt helper for Qt.ItemIsEditable enum location differences.
+    """
+    from qgis.PyQt.QtCore import Qt
+
+    value = getattr(Qt, "ItemIsEditable", None)
+    if value is not None:
+        return value
+
+    item_flag = getattr(Qt, "ItemFlag", None)
+    if item_flag is not None and hasattr(item_flag, "ItemIsEditable"):
+        return item_flag.ItemIsEditable
+
+    raise AttributeError("Qt ItemIsEditable enum not available")
+
+
+def qt_user_role():
+    """
+    Cross-Qt helper for Qt.UserRole enum location differences.
+    """
+    from qgis.PyQt.QtCore import Qt
+
+    value = getattr(Qt, "UserRole", None)
+    if value is not None:
+        return value
+
+    item_data_role = getattr(Qt, "ItemDataRole", None)
+    if item_data_role is not None and hasattr(item_data_role, "UserRole"):
+        return item_data_role.UserRole
+
+    raise AttributeError("Qt UserRole enum not available")
+
+
 def qt_checkstate_checked():
     from qgis.PyQt.QtCore import Qt
 
