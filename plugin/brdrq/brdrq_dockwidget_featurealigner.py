@@ -877,16 +877,27 @@ class brdrQDockWidgetFeatureAligner(
         best_index = 0
         best_score = 0
         list_predictions = [k for k in (self.dict_evaluated_predictions[key]).keys()]
+        valid_predictions = []
         list_predictions_features = []
         for rd in list_predictions:
+            geom_shapely = self.dict_evaluated_predictions[key][rd].get("result")
+            if geom_shapely is None:
+                continue
+            if hasattr(geom_shapely, "is_empty") and geom_shapely.is_empty:
+                continue
+            geom_qgis = geom_shapely_to_qgis(geom_shapely)
+            if geom_qgis is None or geom_qgis.isNull() or geom_qgis.isEmpty():
+                continue
+            valid_predictions.append(rd)
             feat = QgsFeature()
-            feat.setGeometry(
-                geom_shapely_to_qgis(self.dict_evaluated_predictions[key][rd]["result"])
-            )
+            feat.setGeometry(geom_qgis)
             list_predictions_features.append(feat)
-        zoom_to_features(list_predictions_features, self.iface, features_crs=self.crs)
-        self.tablePredictions.setRowCount(len(list_predictions))
-        for row, k in enumerate(list_predictions):
+
+        if list_predictions_features:
+            zoom_to_features(list_predictions_features, self.iface, features_crs=self.crs)
+
+        self.tablePredictions.setRowCount(len(valid_predictions))
+        for row, k in enumerate(valid_predictions):
             score = self.dict_evaluated_predictions[key][k]["properties"][
                 PREDICTION_SCORE
             ]
