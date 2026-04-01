@@ -152,6 +152,7 @@ class brdrQDockWidgetFeatureAligner(
         self._last_selected_feature_row = -1
         self._app_is_closing = False
         self._shutdown_prepared = False
+        self._theme_layer_id = None
         self._main_window = None
         self._qt_app = None
         self._featureFilterTimer = QTimer(self)
@@ -178,6 +179,9 @@ class brdrQDockWidgetFeatureAligner(
         try:
             project = QgsProject.instance()
             project.layersWillBeRemoved.connect(self._onProjectLayersWillBeRemoved)
+            about_to_be_cleared = getattr(project, "aboutToBeCleared", None)
+            if about_to_be_cleared is not None:
+                about_to_be_cleared.connect(self._onProjectAboutToBeCleared)
             project.cleared.connect(self._onProjectCleared)
         except Exception:
             pass
@@ -695,11 +699,15 @@ class brdrQDockWidgetFeatureAligner(
         try:
             project = QgsProject.instance()
             project.layersWillBeRemoved.disconnect(self._onProjectLayersWillBeRemoved)
+            about_to_be_cleared = getattr(project, "aboutToBeCleared", None)
+            if about_to_be_cleared is not None:
+                about_to_be_cleared.disconnect(self._onProjectAboutToBeCleared)
             project.cleared.disconnect(self._onProjectCleared)
         except Exception:
             pass
         self.feature = None
         self.layer = None
+        self._theme_layer_id = None
         if remove_group and not self._app_is_closing:
             remove_group_layer(self.GROUP_LAYER)
 
@@ -709,6 +717,10 @@ class brdrQDockWidgetFeatureAligner(
 
     def _onProjectLayersWillBeRemoved(self, layer_ids):
         if self._is_closing:
+            return
+        if QtWidgets.QApplication.closingDown():
+            self._app_is_closing = True
+            self._prepare_for_shutdown(remove_group=False)
             return
         try:
             removed_ids = set()
@@ -721,13 +733,12 @@ class brdrQDockWidgetFeatureAligner(
             return
         if not removed_ids:
             return
-        current_layer = self.layer
-        if current_layer is None:
-            current_layer = self.mMapLayerComboBox.currentLayer()
-        if current_layer is None:
-            return
-        if str(current_layer.id()) in removed_ids:
+        if self._theme_layer_id and str(self._theme_layer_id) in removed_ids:
             self._prepare_for_shutdown(remove_group=False)
+
+    def _onProjectAboutToBeCleared(self):
+        self._app_is_closing = True
+        self._prepare_for_shutdown(remove_group=False)
 
     def _onProjectCleared(self):
         self._prepare_for_shutdown(remove_group=False)
@@ -814,6 +825,7 @@ class brdrQDockWidgetFeatureAligner(
         # reset interface by clearing list, progress_bar
         self.clearUserInterface()
         self.layer = self.mMapLayerComboBox.currentLayer()
+        self._theme_layer_id = self.layer.id() if self.layer is not None else None
         if self.layer is None:
             self.textEdit_output.setText("Please select a layer to align in the upper combobox")
             return
@@ -827,11 +839,13 @@ class brdrQDockWidgetFeatureAligner(
                 "CRS of the thematic layer is not defined. Please define a CRS to the thematic layer with units in meter",
             )
             self.layer = None
+            self._theme_layer_id = None
             self.mMapLayerComboBox.setLayer(self.layer)
             return
         if self._check_warn_edit_modus(self.layer):
             self._show_warning("Edit-session", "Please close edit-session of layer")
             self.layer = None
+            self._theme_layer_id = None
             self.mMapLayerComboBox.setLayer(self.layer)
             return
         # Write the layer_id to the settings
@@ -1039,11 +1053,14 @@ class brdrQDockWidgetFeatureAligner(
         self.tablePredictions.setRowCount(0)
         # do alignment/prediction
         align = self._align()
-        if align is None:
+        if self._is_closing or align is None:
             self.tablePredictions.setSortingEnabled(True)
             return
 
         self.add_results_to_grouplayer()
+        if self._is_closing:
+            self.tablePredictions.setSortingEnabled(True)
+            return
 
         # loop predictions & add prediction score & evaluation
         best_index = 0
@@ -1171,6 +1188,8 @@ class brdrQDockWidgetFeatureAligner(
         self.doubleSpinBox.setValue(round(float(value), self.settingsDialog.DECIMAL))
 
     def _align(self):
+        if self._is_closing:
+            return None
         print("_align")
         feat = self.feature
         selected_features = []
@@ -1223,6 +1242,8 @@ class brdrQDockWidgetFeatureAligner(
 
         # Load thematic data
         self.aligner.load_thematic_data(DictLoader(dict_to_load))
+        if self._is_closing:
+            return None
         self.progressBar.setValue(25)
         # Load reference data for the on-the fly reference versions
         reference_choice_id = DICT_REFERENCE_OPTIONS[self.reference_choice]
@@ -1356,12 +1377,16 @@ class brdrQDockWidgetFeatureAligner(
             self.aligner.reference_data.source["source_url"] = PREFIX_LOCAL_LAYER
             self.aligner.reference_data.source[VERSION_DATE] = "unknown"
         self.progressBar.setValue(50)
+        if self._is_closing:
+            return None
 
         self.aligner_result = self.aligner.evaluate(
             max_predictions=4,
             relevant_distances=self.relevant_distances,
             full_reference_strategy=self.full_strategy,
         )
+        if self._is_closing:
+            return None
         # TODO should we add a try/catch, fe when using DieussaertProcessing for non-polygons it will result in error
 
         self.dict_processresults = self.aligner_result.get_results(aligner=self.aligner)
