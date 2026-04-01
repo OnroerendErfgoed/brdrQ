@@ -135,6 +135,7 @@ ul.task-list li input[type="checkbox"] {
   <ul class="collapse">
   <li><a href="#introduction" id="toc-introduction" class="nav-link" data-scroll-target="#introduction">Introduction</a></li>
   <li><a href="#installation" id="toc-installation" class="nav-link" data-scroll-target="#installation">Installation</a></li>
+  <li><a href="#qgis-compatibility" id="toc-qgis-compatibility" class="nav-link" data-scroll-target="#qgis-compatibility">QGIS compatibility</a></li>
   <li><a href="#possible-workflow" id="toc-possible-workflow" class="nav-link" data-scroll-target="#possible-workflow">Possible workflow</a></li>
   </ul></li>
   </ul>
@@ -179,6 +180,15 @@ ul.task-list li input[type="checkbox"] {
 <li>Once installed, the plugin will appear in the plugin toolbar.</li>
 </ol>
 <p>This plugin provides tools to align geometries to reference data.</p>
+</section>
+<section id="qgis-compatibility" class="level2">
+<h2 class="anchored" data-anchor-id="qgis-compatibility">QGIS compatibility</h2>
+<p><code>brdrQ</code> is currently maintained to run on both:</p>
+<ul>
+<li>QGIS 3 (Qt5 / <code>qgis.PyQt</code>)</li>
+<li>QGIS 4 (Qt6 / <code>qgis.PyQt</code>)</li>
+</ul>
+<p>Compatibility wrappers are used in the plugin code for API differences (for example Qt enums and map-layer filter enums).</p>
 <p>here you can find links to the different tools that are currently provided:</p>
 <ul>
 <li><a href="./featurealigner.html">Feature aligner</a> - Feature-by-feature alignment with predictions</li>

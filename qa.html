@@ -170,6 +170,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul class="collapse">
   <li><a href="#q-does-brdrq-modify-the-original-data" id="toc-q-does-brdrq-modify-the-original-data" class="nav-link" data-scroll-target="#q-does-brdrq-modify-the-original-data"><strong>Q: Does brdrQ modify the original data?</strong></a></li>
   <li><a href="#q-what-types-of-geometries-are-supported" id="toc-q-what-types-of-geometries-are-supported" class="nav-link" data-scroll-target="#q-what-types-of-geometries-are-supported"><strong>Q: What types of geometries are supported?</strong></a></li>
+  <li><a href="#q-is-brdrq-compatible-with-both-qgis-3-and-qgis-4" id="toc-q-is-brdrq-compatible-with-both-qgis-3-and-qgis-4" class="nav-link" data-scroll-target="#q-is-brdrq-compatible-with-both-qgis-3-and-qgis-4"><strong>Q: Is brdrQ compatible with both QGIS 3 and QGIS 4?</strong></a></li>
   <li><a href="#q-my-local-reference-layer-seems-to-slow-down-brdrq.-what-can-i-do-about-it" id="toc-q-my-local-reference-layer-seems-to-slow-down-brdrq.-what-can-i-do-about-it" class="nav-link" data-scroll-target="#q-my-local-reference-layer-seems-to-slow-down-brdrq.-what-can-i-do-about-it"><strong>Q: My ‘local’ reference layer seems to slow down brdrQ. What can I do about it?</strong></a></li>
   </ul></li>
   <li><a href="#warningserrors" id="toc-warningserrors" class="nav-link" data-scroll-target="#warningserrors">Warnings/Errors</a>
@@ -212,6 +213,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="q-what-types-of-geometries-are-supported" class="level2">
 <h2 class="anchored" data-anchor-id="q-what-types-of-geometries-are-supported"><strong>Q: What types of geometries are supported?</strong></h2>
 <p>A: The brdr-library is initially developed to align (Multi-)Polygons to (Multi-)Polygons. However the plugin can also be used for other types of input/reference (Points &amp; Linestrings).</p>
+</section>
+<section id="q-is-brdrq-compatible-with-both-qgis-3-and-qgis-4" class="level2">
+<h2 class="anchored" data-anchor-id="q-is-brdrq-compatible-with-both-qgis-3-and-qgis-4"><strong>Q: Is brdrQ compatible with both QGIS 3 and QGIS 4?</strong></h2>
+<p>A: Yes. The plugin is maintained for QGIS 3 and QGIS 4 compatibility. Internally it uses <code>qgis.PyQt</code> imports and compatibility wrappers for Qt/API enum differences (for example layer filter flags and check-state enums).</p>
 </section>
 <section id="q-my-local-reference-layer-seems-to-slow-down-brdrq.-what-can-i-do-about-it" class="level2">
 <h2 class="anchored" data-anchor-id="q-my-local-reference-layer-seems-to-slow-down-brdrq.-what-can-i-do-about-it"><strong>Q: My ‘local’ reference layer seems to slow down brdrQ. What can I do about it?</strong></h2>
