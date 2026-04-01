@@ -753,7 +753,7 @@ class brdrQDockWidgetFeatureAligner(
                 table_item.setFlags(table_item.flags() & ~qt_item_is_editable())
                 if col == 0:
                     table_item.setData(qt_user_role(), str(feature.id()))
-                if col == 1 and ix >= 0:
+                if ix >= 0:
                     table_item.setBackground(self._state_color_for_value(str(state)))
                 self.tableFeatures.setItem(i, col, table_item)
         # Keep ID/brdrq_state readable and attrs scrollable
