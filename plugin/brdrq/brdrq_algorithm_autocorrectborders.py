@@ -35,10 +35,31 @@ from datetime import datetime
 from brdr.be.be import BeCadastralParcelLoader
 from brdr.be.grb.enums import GRBType
 from brdr.be.grb.loader import GRBFiscalParcelLoader, GRBActualLoader
+from brdr.enums import (
+    OpenDomainStrategy,
+    SnapStrategy,
+    AlignerResultType,
+    FullReferenceStrategy,
+    PredictionStrategy,
+)
 from brdr.geometry_utils import safe_unary_union
+from brdr.loader import DictLoader
 from brdr.nl.enums import BRKType
 from brdr.nl.loader import BRKLoader
 from brdr.osm.loader import OSMLoader
+import numpy as np
+from qgis import processing
+from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtCore import QDate, QDateTime
+from qgis.core import QgsFeatureRequest
+from qgis.core import QgsProcessing
+from qgis.core import QgsProcessingAlgorithm
+from qgis.core import QgsProcessingMultiStepFeedback
+from qgis.core import QgsProcessingParameterFile
+from qgis.core import QgsProcessingParameterNumber
+from qgis.core import QgsProcessingException
+from qgis.core import QgsProject
+from qgis.core import QgsStyle
 
 from .brdrq_utils import (
     ENUM_REFERENCE_OPTIONS,
@@ -70,33 +91,6 @@ from .brdrq_utils import (
     DICT_NL_TYPES,
     BE_TYPES,
 )
-
-cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
-if cmd_folder not in sys.path:
-    sys.path.insert(0, cmd_folder)
-
-import numpy as np
-from qgis import processing
-from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtCore import QDate, QDateTime
-from qgis.core import QgsFeatureRequest
-from qgis.core import QgsProcessing
-from qgis.core import QgsProcessingAlgorithm
-from qgis.core import QgsProcessingMultiStepFeedback
-from qgis.core import QgsProcessingParameterFile
-from qgis.core import QgsProcessingParameterNumber
-from qgis.core import QgsProcessingException
-from qgis.core import QgsProject
-from qgis.core import QgsStyle
-
-from brdr.loader import DictLoader
-from brdr.enums import (
-    OpenDomainStrategy,
-    SnapStrategy,
-    AlignerResultType,
-    FullReferenceStrategy,
-    PredictionStrategy,
-)
 from .brdrq_algorithm_common import (
     add_boolean_parameter,
     add_enum_parameter,
@@ -115,6 +109,10 @@ from .brdrq_algorithm_common import (
     resolve_thematic_layer_and_crs,
     write_saved_settings,
 )
+
+cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
+if cmd_folder not in sys.path:
+    sys.path.insert(0, cmd_folder)
 
 
 class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
@@ -507,16 +505,16 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo("Unioned Area of thematic zone: " + str(area))
 
         if (
-            self.SELECTED_REFERENCE != 0
-            and area > self.MAX_AREA_FOR_DOWNLOADING_REFERENCE
+            self.SELECTED_REFERENCE != 0 and
+            area > self.MAX_AREA_FOR_DOWNLOADING_REFERENCE
         ):
             raise QgsProcessingException(
-                "The area of all unioned thematic geometries is bigger than threshold ("
-                + str(self.MAX_AREA_FOR_DOWNLOADING_REFERENCE)
-                + " m²) to use the on-the-fly downloads: "
-                + str(area)
-                + "(m² unioned thematic area) "
-                + "Please make use of a local REFERENCELAYER (for performance reasons)"
+                "The area of all unioned thematic geometries is bigger than threshold (" +
+                str(self.MAX_AREA_FOR_DOWNLOADING_REFERENCE) +
+                " m²) to use the on-the-fly downloads: " +
+                str(area) +
+                "(m² unioned thematic area) " +
+                "Please make use of a local REFERENCELAYER (for performance reasons)"
             )
         feedback.pushInfo("1) PREPROCESSING - Thematic layer fixed")
         feedback.setCurrentStep(2)
@@ -607,10 +605,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback.setCurrentStep(4)
         feedback.pushInfo("START PROCESSING")
         feedback.pushInfo(
-            "calculation for relevant distance (m): "
-            + str(self.RELEVANT_DISTANCE)
-            + " - Predictions: "
-            + str(self.PREDICTIONS)
+            "calculation for relevant distance (m): " +
+            str(self.RELEVANT_DISTANCE) +
+            " - Predictions: " +
+            str(self.PREDICTIONS)
         )
         if self.RELEVANT_DISTANCE < 0:
             raise QgsProcessingException("Please provide a RELEVANT DISTANCE >=0")

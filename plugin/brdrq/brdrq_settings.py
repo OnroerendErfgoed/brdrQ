@@ -166,8 +166,8 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.od_strategy = OpenDomainStrategy[self.comboBox_odstrategy.currentText()]
 
         if (
-            self.partial_snapping_strategy is None
-            or self.partial_snapping_strategy not in SnapStrategy
+            self.partial_snapping_strategy is None or
+            self.partial_snapping_strategy not in SnapStrategy
         ):
             default_partial_snapping_strategy = SnapStrategy.PREFER_VERTICES
             partial_snapping_strategy_name = read_setting(
@@ -203,8 +203,8 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         self.processor = Processor[self.comboBox_processor.currentText()]
 
         if (
-            self.full_strategy is None
-            or self.full_strategy not in FullReferenceStrategy
+            self.full_strategy is None or
+            self.full_strategy not in FullReferenceStrategy
         ):
             default_full_strategy = FullReferenceStrategy.PREFER_FULL_REFERENCE
             full_strategy_name = read_setting(
@@ -225,8 +225,8 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         ]
 
         if (
-            self.reference_choice is None
-            or self.reference_choice not in ENUM_REFERENCE_OPTIONS
+            self.reference_choice is None or
+            self.reference_choice not in ENUM_REFERENCE_OPTIONS
         ):
             default_reference_choice = ENUM_REFERENCE_OPTIONS[1]  # ADP
             self.reference_choice = read_setting(

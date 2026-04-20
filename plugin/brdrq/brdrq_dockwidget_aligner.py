@@ -280,10 +280,10 @@ class brdrQDockWidgetAligner(object):
         layer_result_diff_min = get_layer_by_name(self.LAYER_RESULT_DIFF_MIN)
         layer_result_diff_plus = get_layer_by_name(self.LAYER_RESULT_DIFF_PLUS)
         if (
-            layer_result is None
-            or layer_result_diff is None
-            or layer_result_diff_min is None
-            or layer_result_diff_plus is None
+            layer_result is None or
+            layer_result_diff is None or
+            layer_result_diff_min is None or
+            layer_result_diff_plus is None
         ):
             if self.aligner_result is None:
                 return
@@ -312,9 +312,9 @@ class brdrQDockWidgetAligner(object):
         )
         # print(str(relevant_distance))
         if (
-            key is None
-            or self.dict_processresults is None
-            or not key in self.dict_processresults.keys()
+            key is None or
+            self.dict_processresults is None or
+            not key in self.dict_processresults.keys()
         ):
             msg = f"No prediction-WKT of feature {str(key)}..."
             self.textEdit_output.setText(msg)
@@ -325,10 +325,10 @@ class brdrQDockWidgetAligner(object):
             resulting_geom = result["result"]
         else:
             errormesssage = (
-                "Relevant_distance_result not calculated for key : "
-                + str(key)
-                + " at relevant distance-"
-                + str(relevant_distance)
+                "Relevant_distance_result not calculated for key : " +
+                str(key) +
+                " at relevant distance-" +
+                str(relevant_distance)
             )
 
             self.textEdit_output.setText(errormesssage)

@@ -172,9 +172,9 @@ class TestAutoCorrectBorders(unittest.TestCase):
         QgsProject.instance().addMapLayer(layer_theme)
 
         if (
-            layer_theme
-            and layer_theme.type() == QgsMapLayer.VectorLayer
-            and layer_theme.featureCount() > 0
+            layer_theme and
+            layer_theme.type() == QgsMapLayer.VectorLayer and
+            layer_theme.featureCount() > 0
         ):
             first_feature = next(
                 layer_theme.getFeatures()

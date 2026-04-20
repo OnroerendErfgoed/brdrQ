@@ -252,8 +252,8 @@ class BrdrQPlugin(object):
         if not recreate:
             try:
                 recreate = bool(
-                    getattr(self.dockwidget_featurealigner, "_shutdown_prepared", False)
-                    or getattr(self.dockwidget_featurealigner, "_is_closing", False)
+                    getattr(self.dockwidget_featurealigner, "_shutdown_prepared", False) or
+                    getattr(self.dockwidget_featurealigner, "_is_closing", False)
                 )
             except Exception:
                 recreate = True

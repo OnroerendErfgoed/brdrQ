@@ -244,11 +244,11 @@ class brdrQDockWidgetBulkAligner(
         for key in dict_evaluated_predictions.keys():
 
             outputMessage = (
-                outputMessage
-                + str(key)
-                + ": Voorspelde relevante afstanden: "
-                + str([str(k) for k in dict_evaluated_predictions[key].keys()])
-                + newline
+                outputMessage +
+                str(key) +
+                ": Voorspelde relevante afstanden: " +
+                str([str(k) for k in dict_evaluated_predictions[key].keys()]) +
+                newline
             )
         self.textEdit_output.setText(outputMessage)
 
