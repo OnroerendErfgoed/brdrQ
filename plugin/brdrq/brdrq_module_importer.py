@@ -17,7 +17,7 @@ from .qt_compat import (
 # https://github.com/qgis/QGIS/issues/45646
 
 
-brdr_version = "0.16.0"
+brdr_version = "0.15.6"
 
 
 def find_python():
