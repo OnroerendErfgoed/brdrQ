@@ -126,9 +126,9 @@ PREFIX_LOCAL_LAYER = (
     "LOCREF"  # prefix for the TOC layername, when a local layer is used
 )
 LOCAL_REFERENCE_LAYER = (
-    PREFIX_LOCAL_LAYER
-    + SPLITTER
-    + " define LOCAL REF LAYER and UNIQUE ID in the next 2 fields"
+    PREFIX_LOCAL_LAYER +
+    SPLITTER +
+    " define LOCAL REF LAYER and UNIQUE ID in the next 2 fields"
 )
 
 DICT_REFERENCE_OPTIONS = dict()
@@ -532,9 +532,9 @@ def zoom_to_features(features, iface, marge_factor=0.1, features_crs=None):
         features_crs = QgsCoordinateReferenceSystem(features_crs)
     project_crs = QgsProject.instance().crs()
     if (
-        not features_crs is None
-        and not project_crs is None
-        and features_crs != project_crs
+        not features_crs is None and
+        not project_crs is None and
+        features_crs != project_crs
     ):
         # Transformeer bbox naar project CRS
         transform = QgsCoordinateTransform(
@@ -814,9 +814,9 @@ def featurecollection_to_layer(
     if symbol is not None and isinstance(symbol, str):
         symbol = get_symbol(featurecollection, symbol)
     if (
-        symbol is not None
-        and vl.renderer() is not None
-        and isinstance(symbol, QgsSymbol)
+        symbol is not None and
+        vl.renderer() is not None and
+        isinstance(symbol, QgsSymbol)
     ):
         vl.renderer().setSymbol(symbol)
     # vl.setOpacity(0.5)
@@ -1108,10 +1108,10 @@ def get_valid_layer(layer_id_or_name):
     Returns the layer object if valid, otherwise returns None.
     """
     if (
-        layer_id_or_name is None
-        or not layer_id_or_name
-        or layer_id_or_name == -1
-        or not isinstance(layer_id_or_name, str)
+        layer_id_or_name is None or
+        not layer_id_or_name or
+        layer_id_or_name == -1 or
+        not isinstance(layer_id_or_name, str)
     ):
         return None
     project = QgsProject.instance()
@@ -1272,15 +1272,15 @@ def generate_correction_layer(
         elif geom is None or geom.isEmpty():
             ids_to_align.append(key)
         elif (
-            geom_type != Qgis.GeometryType.Polygon
-            and stability_field_available
-            and not feat[STABILITY]
+            geom_type != Qgis.GeometryType.Polygon and
+            stability_field_available and
+            not feat[STABILITY]
         ):
             ids_to_align.append(key)
         elif (
-            geom_type != Qgis.GeometryType.Polygon
-            and stability_field_available
-            and feat[STABILITY]
+            geom_type != Qgis.GeometryType.Polygon and
+            stability_field_available and
+            feat[STABILITY]
         ):
             ids_to_review.append(key)
         elif stability_field_available and not feat[STABILITY]:
@@ -1486,9 +1486,9 @@ def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_
         print("idref: " + str(id_reference_fieldname))
         selected_reference = 0
         if (
-            layer_reference is None
-            or id_reference_fieldname is None
-            or str(id_reference_fieldname) == "NULL"
+            layer_reference is None or
+            id_reference_fieldname is None or
+            str(id_reference_fieldname) == "NULL"
         ):
             raise QgsProcessingException(
                 "Please choose a REFERENCELAYER from the table of contents, and the associated unique REFERENCE ID"

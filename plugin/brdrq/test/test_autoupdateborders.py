@@ -85,9 +85,9 @@ class TestAutoUpdateBorders(unittest.TestCase):
         QgsProject.instance().addMapLayer(layer_theme)
         # make a selection of the first feature
         if (
-            layer_theme
-            and layer_theme.type() == QgsMapLayer.VectorLayer
-            and layer_theme.featureCount() > 0
+            layer_theme and
+            layer_theme.type() == QgsMapLayer.VectorLayer and
+            layer_theme.featureCount() > 0
         ):
             first_feature = next(layer_theme.getFeatures())  # Haalt de eerste feature op
             layer_theme.select(first_feature.id())
