@@ -534,8 +534,8 @@ class brdrQDockWidgetFeatureAligner(
             self.tableFeatures.frameWidth(),
             self.tableFeatures.frameWidth(),
             frozen_width,
-            self.tableFeatures.viewport().height()
-            + self.tableFeatures.horizontalHeader().height(),
+            self.tableFeatures.viewport().height() +
+            self.tableFeatures.horizontalHeader().height(),
         )
         self._frozenFeaturesView.show()
 
@@ -587,9 +587,9 @@ class brdrQDockWidgetFeatureAligner(
 
         set_map_layer_combo_filters(
             self.mMapLayerComboBox,
-            map_layer_filter_polygon()
-            | map_layer_filter_line()
-            | map_layer_filter_point()
+            map_layer_filter_polygon() |
+            map_layer_filter_line() |
+            map_layer_filter_point()
         )
         self.mMapLayerComboBox.setExcludedProviders(
             [
@@ -1334,10 +1334,10 @@ class brdrQDockWidgetFeatureAligner(
                 )
                 return None
             elif (
-                self.reference_id is None
-                or str(self.reference_id) == "NULL"
-                or str(self.reference_id) == ""
-                or self.reference_id == -1
+                self.reference_id is None or
+                str(self.reference_id) == "NULL" or
+                str(self.reference_id) == "" or
+                self.reference_id == -1
             ):
                 self._show_warning(
                     "Reference ID",

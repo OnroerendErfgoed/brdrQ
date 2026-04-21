@@ -128,12 +128,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         PREFIX + "DIFF"  # parameter that holds the TOC layername of the resulting diff
     )
     LAYER_RESULT_DIFF_PLUS = (
-        PREFIX
-        + "DIFF_PLUS"  # parameter that holds the TOC layername of the resulting diff_plus
+        PREFIX + "DIFF_PLUS"  # parameter that holds the TOC layername of the resulting diff_plus
     )
     LAYER_RESULT_DIFF_MIN = (
-        PREFIX
-        + "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
+        PREFIX + "DIFF_MIN"  # parameter that holds the TOC layername of the resulting diff_min
     )
     LAYER_CORRECTION = (
         "CORRECTION"  # parameter that holds the TOC layername of the correction_layer
