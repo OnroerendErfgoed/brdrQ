@@ -39,6 +39,7 @@ from .brdrq_utils import (
     read_setting,
     write_setting,
 )
+from .qt_compat import qt_widget_attribute
 
 FORM_CLASS, _ = uic.loadUiType(
     os.path.join(os.path.dirname(__file__), "brdrq_settings.ui")
@@ -58,6 +59,11 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        # Ensure opaque dialog background across platforms/themes.
+        self.setAttribute(qt_widget_attribute("WA_TranslucentBackground"), False)
+        self.setAttribute(qt_widget_attribute("WA_NoSystemBackground"), False)
+        self.setAutoFillBackground(True)
+        self.setStyleSheet("QDialog { background-color: palette(window); }")
         self.prefix = "brdrqfeaturealigner"
         self.minimum = 0
         self.maximum = 2500
@@ -228,7 +234,7 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
             self.reference_choice is None or
             self.reference_choice not in ENUM_REFERENCE_OPTIONS
         ):
-            default_reference_choice = ENUM_REFERENCE_OPTIONS[1]  # ADP
+            default_reference_choice = ENUM_REFERENCE_OPTIONS[0]  # LOCREF
             self.reference_choice = read_setting(
                 self.prefix,
                 "reference_choice",

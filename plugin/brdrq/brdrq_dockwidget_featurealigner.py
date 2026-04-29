@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 /***************************************************************************
  brdrQDockWidget
@@ -23,6 +23,7 @@
 """
 
 import os
+import time
 
 from brdr.aligner import Aligner
 from brdr.be.be import BeCadastralParcelLoader
@@ -94,7 +95,6 @@ from .qt_compat import (
     qt_scrollbar_as_needed,
     qt_size_policy_fixed,
     qt_size_policy_preferred,
-    qt_tool_button_text_only,
     qt_user_role,
     qt_wait_cursor,
     set_map_layer_combo_filters,
@@ -158,6 +158,48 @@ class brdrQDockWidgetFeatureAligner(
         self._featureFilterTimer = QTimer(self)
         self._featureFilterTimer.setSingleShot(True)
         self._featureFilterTimer.timeout.connect(self._onFeatureFilterTimeout)
+        self._featureActivationTimer = QTimer(self)
+        self._featureActivationTimer.setSingleShot(True)
+        self._featureActivationTimer.timeout.connect(self._process_pending_feature_activation)
+        # Search tuning (adjust in code as needed):
+        # - field name matching is case-insensitive and partial (substring)
+        # - matching fields are prioritized, then remaining fields fill up to max
+        self.search_field_keywords = [
+            "nr",
+            "num",
+            "num",
+            "id",
+            "dos",
+            "file",
+            "key",
+            "opm",
+            "rem",
+            "naam",
+            "name",
+            "code",
+            "ref",
+            "stat",
+            "brdr",
+            "feat"
+        ]
+        self.search_max_fields = 15
+        self._search_field_indices = []
+        self._search_field_names = []
+        self._suppress_feature_activation = False
+        self._feature_activation_in_progress = False
+        self._last_feature_activation_row = -1
+        self._last_feature_activation_ts = 0.0
+        self._last_feature_activation_source = ""
+        self._last_feature_activation_id = None
+        self._pending_feature_activation_row = None
+        self._pending_feature_activation_source = "selection"
+        self._last_selection_event_row = -1
+        self._last_selection_event_ts = 0.0
+        self._last_selection_request_row = -1
+        self._last_selection_request_ts = 0.0
+        self._consume_next_click_row = -1
+        self._last_auto_activation_key = None
+        self._last_auto_activation_ts = 0.0
         self._install_scrollable_contents()
         self._configure_stable_layout()
         self._initialize()
@@ -269,13 +311,26 @@ class brdrQDockWidgetFeatureAligner(
             self.gridLayout.setRowStretch(23, 3)  # predictions table
             self.gridLayout.setRowStretch(43, 0)  # log text (fixed height)
             self.label_4.hide()
-            self.logToggleButton = QtWidgets.QToolButton(self)
-            self.logToggleButton.setCheckable(True)
-            self.logToggleButton.setChecked(True)
-            self.logToggleButton.setText("Log")
-            self.logToggleButton.setToolButtonStyle(qt_tool_button_text_only())
-            self.logToggleButton.toggled.connect(self._toggle_log_section)
-            self.gridLayout.addWidget(self.logToggleButton, 41, 0, qt_align_left())
+            # Keep log always visible as a compact status indicator (max ~2 lines).
+            self.textEdit_output.setVisible(True)
+            self.textEdit_output.setMinimumHeight(36)
+            self.textEdit_output.setMaximumHeight(44)
+
+        # Place WKT action in the same action row as Plot/Visualize.
+        self.wktButton = QtWidgets.QPushButton(self)
+        self.wktButton.setText("WKT")
+        self.wktButton.setToolTip("Show WKT for selected prediction")
+        self.wktButton.clicked.connect(self.get_wkt)
+        try:
+            from qgis.core import QgsApplication
+            icon = QgsApplication.getThemeIcon("/mActionOpenTable.svg")
+            if icon.isNull():
+                icon = QgsApplication.getThemeIcon("/mActionCalculateField.svg")
+            self.wktButton.setIcon(icon)
+        except Exception:
+            pass
+        if hasattr(self, "horizontalLayout"):
+            self.horizontalLayout.addWidget(self.wktButton)
         self._setup_feature_table()
         self._setup_predictions_table()
 
@@ -309,7 +364,10 @@ class brdrQDockWidgetFeatureAligner(
         )
 
     def _toggle_log_section(self, visible):
-        self.textEdit_output.setVisible(visible)
+        # Backward-compatible no-op: log is now always shown in compact mode.
+        self.textEdit_output.setVisible(True)
+        self.textEdit_output.setMinimumHeight(36)
+        self.textEdit_output.setMaximumHeight(44)
         self._onDockStateChanged()
 
     def _setup_predictions_table(self):
@@ -324,6 +382,9 @@ class brdrQDockWidgetFeatureAligner(
         )
         self.tablePredictions.setSortingEnabled(True)
         self.tablePredictions.verticalHeader().setVisible(False)
+        self.tablePredictions.setVerticalScrollBarPolicy(
+            qt_scrollbar_always_off()
+        )
         self.tablePredictions.setColumnCount(3)
         self.tablePredictions.setHorizontalHeaderLabels(
             ["Distance", "Evaluation", "Score"]
@@ -337,6 +398,20 @@ class brdrQDockWidgetFeatureAligner(
         self.tablePredictions.horizontalHeader().setSectionResizeMode(
             2, qt_header_resize_to_contents()
         )
+        # Keep the prediction list compact and readable: it should fit
+        # the expected max of 4 prediction rows without scrolling.
+        self._resize_predictions_table_for_max_rows(4)
+
+    def _resize_predictions_table_for_max_rows(self, max_rows=4):
+        if max_rows <= 0:
+            return
+        header_height = self.tablePredictions.horizontalHeader().height()
+        row_height = self.tablePredictions.verticalHeader().defaultSectionSize()
+        frame = self.tablePredictions.frameWidth() * 2
+        padding = 6
+        target_height = header_height + (row_height * max_rows) + frame + padding
+        self.tablePredictions.setMinimumHeight(target_height)
+        self.tablePredictions.setMaximumHeight(target_height)
 
     @staticmethod
     def _display_prediction_evaluation(evaluation):
@@ -369,8 +444,12 @@ class brdrQDockWidgetFeatureAligner(
         if bar is not None:
             bar.pushMessage(title, message, level=Qgis.Warning, duration=duration)
             return
-        if hasattr(self, "textEdit_output") and self.textEdit_output is not None:
-            self.textEdit_output.setText(f"{title}: {message}")
+        self._set_user_feedback(f"{title}: {message}")
+
+    def _set_user_feedback(self, message):
+        if not hasattr(self, "textEdit_output") or self.textEdit_output is None:
+            return
+        self.textEdit_output.setText("" if message is None else str(message))
 
     def _apply_compact_button_texts(self):
         compact = self.width() < 360
@@ -403,10 +482,51 @@ class brdrQDockWidgetFeatureAligner(
         needle = filter_text.lower()
         if needle in str(feature.id()).lower():
             return True
-        for value in feature.attributes():
+        attrs = feature.attributes()
+        indices = self._search_field_indices
+        if not indices:
+            indices = range(len(attrs))
+        for idx in indices:
+            if idx < 0 or idx >= len(attrs):
+                continue
+            value = attrs[idx]
             if value is not None and needle in str(value).lower():
                 return True
         return False
+
+    def _update_search_field_selection(self):
+        self._search_field_indices = []
+        self._search_field_names = []
+        if self.layer is None:
+            return
+        try:
+            field_names = self.layer.fields().names()
+        except Exception:
+            return
+        if not field_names:
+            return
+
+        keywords = [
+            str(k).strip().lower()
+            for k in self.search_field_keywords
+            if str(k).strip()
+        ]
+        matched = []
+        remaining = []
+        for idx, name in enumerate(field_names):
+            lname = str(name).lower()
+            if keywords and any(k in lname for k in keywords):
+                matched.append(idx)
+            else:
+                remaining.append(idx)
+
+        selected = matched + remaining
+        max_fields = int(self.search_max_fields) if self.search_max_fields else 0
+        if max_fields > 0:
+            selected = selected[:max_fields]
+
+        self._search_field_indices = selected
+        self._search_field_names = [field_names[i] for i in selected]
 
     def _state_filtered_features(self, state_value, filter_text):
         request = QgsFeatureRequest()
@@ -498,11 +618,11 @@ class brdrQDockWidgetFeatureAligner(
         self._update_features_counter_from_table()
         listed_count = len(listed_features)
         if total_for_counter > max_listed_features:
-            self.textEdit_output.setText(
+            self._set_user_feedback(
                 f"#Features listed: {listed_count} / {total_for_counter} (first {max_listed_features})"
             )
         else:
-            self.textEdit_output.setText(
+            self._set_user_feedback(
                 f"#Features listed: {listed_count} / {total_for_counter}"
             )
 
@@ -576,12 +696,15 @@ class brdrQDockWidgetFeatureAligner(
         # self.pushButton_select_partial.clicked.connect(self.activate_partialSelectTool)
 
         self.mMapLayerComboBox.layerChanged.connect(self.themeLayerChanged)
+        # Primary activation trigger: selection change (works reliably with frozen columns).
         self.tableFeatures.itemSelectionChanged.connect(
             self.onFeatureSelectionChanged
         )
+        self.tableFeatures.cellClicked.connect(self.onFeatureRowClicked)
         self.tablePredictions.itemSelectionChanged.connect(
             self.onPredictionSelectionChanged
         )
+        self.tablePredictions.cellClicked.connect(self.onPredictionRowClicked)
         self.horizontalSlider.sliderMoved.connect(self.onSliderChange)
         self.doubleSpinBox.valueChanged.connect(self.onSpinboxChange)
 
@@ -685,7 +808,9 @@ class brdrQDockWidgetFeatureAligner(
             (self.mMapLayerComboBox.layerChanged, self.themeLayerChanged),
             (self.comboBox_selectfeatures.currentIndexChanged, self.on_selectfeatures_changed),
             (self.tableFeatures.itemSelectionChanged, self.onFeatureSelectionChanged),
+            (self.tableFeatures.cellClicked, self.onFeatureRowClicked),
             (self.tablePredictions.itemSelectionChanged, self.onPredictionSelectionChanged),
+            (self.tablePredictions.cellClicked, self.onPredictionRowClicked),
             (self.lineEditFeatureFilter.textChanged, self._onFeatureFilterTextChanged),
             (self.horizontalSlider.sliderMoved, self.onSliderChange),
             (self.doubleSpinBox.valueChanged, self.onSpinboxChange),
@@ -776,7 +901,7 @@ class brdrQDockWidgetFeatureAligner(
     def activate_selectTool(self):
         # print ("currentlayer:" + str (self.mMapLayerComboBox.currentLayer()))
         if self.layer is None:
-            self.textEdit_output.setText("Please select a layer to align in the upper combobox")
+            self._set_user_feedback("Please select a layer to align in the upper combobox")
             return
         self.selectTool = SelectTool(self.iface, self.mMapLayerComboBox.currentLayer())
         self.formerMapTool = self.iface.mapCanvas().mapTool()
@@ -802,7 +927,7 @@ class brdrQDockWidgetFeatureAligner(
 
     def onFeaturesIdentified(self, identified_features):
         """Code called when the feature is selected by the user"""
-        self.listFeatures(features=identified_features)
+        self.listFeatures(features=identified_features, auto_activate_single=True)
 
     def handlePartialSelection(self, polygon_geom, layer, canvas):
 
@@ -830,50 +955,55 @@ class brdrQDockWidgetFeatureAligner(
 
         QgsProject.instance().addMapLayer(temp_layer)
         print(f"{len(partial_features)} -> #partial features.")
-        self.listFeatures(features=partial_features)
+        self.listFeatures(features=partial_features, auto_activate_single=True)
 
     def themeLayerChanged(self):
         if self._is_closing:
             return
         print("themelayer changed")
+        self._suppress_feature_activation = True
         # reset interface by clearing list, progress_bar
-        self.clearUserInterface()
-        self.layer = self.mMapLayerComboBox.currentLayer()
-        self._theme_layer_id = self.layer.id() if self.layer is not None else None
-        if self.layer is None:
-            self.textEdit_output.setText("Please select a layer to align in the upper combobox")
-            return
         try:
-            self.crs = self.layer.sourceCrs().authid()
-        except:
-            self.crs = None
-        if self.crs is None or str(self.crs) == "NULL" or str(self.crs) == "":
-            self._show_warning(
-                "CRS",
-                "CRS of the thematic layer is not defined. Please define a CRS to the thematic layer with units in meter",
-            )
-            self.layer = None
-            self._theme_layer_id = None
-            self.mMapLayerComboBox.setLayer(self.layer)
-            return
-        if self._check_warn_edit_modus(self.layer):
-            self._show_warning("Edit-session", "Please close edit-session of layer")
-            self.layer = None
-            self._theme_layer_id = None
-            self.mMapLayerComboBox.setLayer(self.layer)
-            return
-        # Write the layer_id to the settings
-        write_setting(self.settingsDialog.prefix, "theme_layer", self.layer.id())
+            self.clearUserInterface()
+            self.layer = self.mMapLayerComboBox.currentLayer()
+            self._theme_layer_id = self.layer.id() if self.layer is not None else None
+            if self.layer is None:
+                self._set_user_feedback("Please select a layer to align in the upper combobox")
+                return
+            try:
+                self.crs = self.layer.sourceCrs().authid()
+            except:
+                self.crs = None
+            if self.crs is None or str(self.crs) == "NULL" or str(self.crs) == "":
+                self._show_warning(
+                    "CRS",
+                    "CRS of the thematic layer is not defined. Please define a CRS to the thematic layer with units in meter",
+                )
+                self.layer = None
+                self._theme_layer_id = None
+                self.mMapLayerComboBox.setLayer(self.layer)
+                return
+            if self._check_warn_edit_modus(self.layer):
+                self._show_warning("Edit-session", "Please close edit-session of layer")
+                self.layer = None
+                self._theme_layer_id = None
+                self.mMapLayerComboBox.setLayer(self.layer)
+                return
+            # Write the layer_id to the settings
+            write_setting(self.settingsDialog.prefix, "theme_layer", self.layer.id())
+            self._update_search_field_selection()
 
-        index = self.comboBox_selectfeatures.currentIndex()
-        data = self.comboBox_selectfeatures.itemData(index)
-        self.listFeatures(selection=data)
+            index = self.comboBox_selectfeatures.currentIndex()
+            data = self.comboBox_selectfeatures.itemData(index)
+            self.listFeatures(selection=data)
+        finally:
+            self._suppress_feature_activation = False
 
-    def listFeatures(self, selection=None, features=None):
+    def listFeatures(self, selection=None, features=None, auto_activate_single=False):
         if self._is_closing:
             return
         if self.layer is None:
-            self.textEdit_output.setText("Please select a layer to align in the upper combobox")
+            self._set_user_feedback("Please select a layer to align in the upper combobox")
             return
         self.clearUserInterface()
         self._current_feature_selection = selection
@@ -883,69 +1013,84 @@ class brdrQDockWidgetFeatureAligner(
         self._refresh_feature_rows_from_source(self.lineEditFeatureFilter.text())
         if len(self.listed_features) == 1:
             blocker = QSignalBlocker(self.tableFeatures)
+            selection_blocker = None
+            selection_model = self.tableFeatures.selectionModel()
+            if selection_model is not None:
+                selection_blocker = QSignalBlocker(selection_model)
+            self._suppress_feature_activation = True
             self.tableFeatures.selectRow(0)
+            self._last_selected_feature_row = 0
+            self._suppress_feature_activation = False
             del blocker
-            self.onFeatureActivated(0)
+            if selection_blocker is not None:
+                del selection_blocker
+            if auto_activate_single:
+                self._request_feature_activation(0, source="mapselect", source_auto=True)
         return
 
     def updateTextListWidgetItems(self):
-        field_names = self.layer.fields().names()
-        state_field_name = None
-        for name in field_names:
-            if str(name).lower() == str(BRDRQ_STATE_FIELDNAME).lower():
-                state_field_name = name
-                break
-        ix = self.layer.fields().indexOf(state_field_name) if state_field_name else -1
-        remaining_field_names = [
-            n
-            for n in field_names
-            if state_field_name is None or str(n).lower() != str(state_field_name).lower()
-        ]
-        state_header = state_field_name if state_field_name else BRDRQ_STATE_FIELDNAME
-        headers = ["ID", state_header] + remaining_field_names
-        self.tableFeatures.setSortingEnabled(False)
-        self.tableFeatures.clearContents()
-        self.tableFeatures.setColumnCount(len(headers))
-        self.tableFeatures.setHorizontalHeaderLabels(headers)
-        self.tableFeatures.setRowCount(len(self.listed_features))
-        self.tableFeatures.horizontalHeader().setStretchLastSection(False)
-        for i in range(len(self.listed_features)):
-            feature_id = self.listed_features[i].id()
-            feature = self.layer.getFeature(feature_id)
-            attributes = feature.attributes()
-            if ix >= 0:
-                state = attributes[ix]
-            else:
-                state = ""
-            attributes_by_name = {
-                name: attributes[pos] for pos, name in enumerate(field_names)
-            }
-            row_values = [
-                feature.id(),
-                state,
-            ] + [attributes_by_name.get(name) for name in remaining_field_names]
-            for col, value in enumerate(row_values):
-                table_item = QtWidgets.QTableWidgetItem("" if value is None else str(value))
-                table_item.setFlags(table_item.flags() & ~qt_item_is_editable())
-                if col == 0:
-                    table_item.setData(qt_user_role(), str(feature.id()))
+        self._suppress_feature_activation = True
+        try:
+            field_names = self.layer.fields().names()
+            state_field_name = None
+            for name in field_names:
+                if str(name).lower() == str(BRDRQ_STATE_FIELDNAME).lower():
+                    state_field_name = name
+                    break
+            ix = self.layer.fields().indexOf(state_field_name) if state_field_name else -1
+            remaining_field_names = [
+                n
+                for n in field_names
+                if state_field_name is None or str(n).lower() != str(state_field_name).lower()
+            ]
+            state_header = state_field_name if state_field_name else BRDRQ_STATE_FIELDNAME
+            headers = ["ID", state_header] + remaining_field_names
+            self.tableFeatures.setSortingEnabled(False)
+            self.tableFeatures.clearContents()
+            self.tableFeatures.setColumnCount(len(headers))
+            self.tableFeatures.setHorizontalHeaderLabels(headers)
+            self.tableFeatures.setRowCount(len(self.listed_features))
+            self.tableFeatures.horizontalHeader().setStretchLastSection(False)
+            for i in range(len(self.listed_features)):
+                feature_id = self.listed_features[i].id()
+                feature = self.layer.getFeature(feature_id)
+                attributes = feature.attributes()
                 if ix >= 0:
-                    table_item.setBackground(self._state_color_for_value(str(state)))
-                self.tableFeatures.setItem(i, col, table_item)
-        # Keep ID/brdrq_state readable and attrs scrollable
-        self.tableFeatures.setColumnWidth(0, 90)
-        self.tableFeatures.setColumnWidth(1, 120)
-        max_attr_column_width = 320
-        for col in range(2, self.tableFeatures.columnCount()):
-            self.tableFeatures.horizontalHeader().setSectionResizeMode(
-                col, qt_header_interactive()
-            )
-            desired_width = self.tableFeatures.sizeHintForColumn(col) + 16
-            clamped_width = max(120, min(desired_width, max_attr_column_width))
-            self.tableFeatures.setColumnWidth(col, clamped_width)
-        self.tableFeatures.setSortingEnabled(True)
-        self._refresh_frozen_columns()
-        self._update_features_counter_from_table()
+                    state = attributes[ix]
+                else:
+                    state = ""
+                attributes_by_name = {
+                    name: attributes[pos] for pos, name in enumerate(field_names)
+                }
+                row_values = [
+                    feature.id(),
+                    state,
+                ] + [attributes_by_name.get(name) for name in remaining_field_names]
+                for col, value in enumerate(row_values):
+                    table_item = QtWidgets.QTableWidgetItem("" if value is None else str(value))
+                    table_item.setFlags(table_item.flags() & ~qt_item_is_editable())
+                    if col == 0:
+                        table_item.setData(qt_user_role(), str(feature.id()))
+                    if ix >= 0:
+                        table_item.setBackground(self._state_color_for_value(str(state)))
+                    self.tableFeatures.setItem(i, col, table_item)
+            # Keep ID/brdrq_state readable and attrs scrollable
+            self.tableFeatures.setColumnWidth(0, 90)
+            self.tableFeatures.setColumnWidth(1, 120)
+            max_attr_column_width = 320
+            for col in range(2, self.tableFeatures.columnCount()):
+                self.tableFeatures.horizontalHeader().setSectionResizeMode(
+                    col, qt_header_interactive()
+                )
+                desired_width = self.tableFeatures.sizeHintForColumn(col) + 16
+                clamped_width = max(120, min(desired_width, max_attr_column_width))
+                self.tableFeatures.setColumnWidth(col, clamped_width)
+            self.tableFeatures.setSortingEnabled(True)
+            self.tableFeatures.clearSelection()
+            self._refresh_frozen_columns()
+            self._update_features_counter_from_table()
+        finally:
+            self._suppress_feature_activation = False
 
     def _state_color_for_value(self, state):
         # Match output/correction layer state colors, but with very light alpha
@@ -976,29 +1121,126 @@ class brdrQDockWidgetFeatureAligner(
     def onFeatureSelectionChanged(self):
         if self._is_closing:
             return
+        if self._suppress_feature_activation:
+            return
         row = self.tableFeatures.currentRow()
         if row < 0:
             self._last_selected_feature_row = -1
             return
-        if row == self._last_selected_feature_row:
+        now = time.monotonic()
+        if (
+            row == self._last_selection_request_row and
+            (now - self._last_selection_request_ts) < 0.45
+        ):
             return
         self._last_selected_feature_row = row
-        self.onFeatureActivated(row)
+        self._last_selection_event_row = row
+        self._last_selection_event_ts = now
+        self._last_selection_request_row = row
+        self._last_selection_request_ts = now
+        self._request_feature_activation(row, source="selection")
 
-    def onFeatureActivated(self, selected_row):
+    def onFeatureActivated(self, selected_row, source_auto=False, source="manual"):
         if self._is_closing:
             return
+        if self._feature_activation_in_progress:
+            return
         print("onFeatureActivated")
+        if selected_row is None or selected_row < 0:
+            return
+        id_item = self.tableFeatures.item(selected_row, 0)
+        current_feature_id = None if id_item is None else str(id_item.data(qt_user_role()))
+        now = time.monotonic()
+        # Hard dedupe for duplicate selection-chain emits on the same feature.
+        # Keeps explicit re-click behavior (source="click") intact.
+        if (
+            source == "selection" and
+            current_feature_id is not None and
+            current_feature_id == self._last_feature_activation_id and
+            (now - self._last_feature_activation_ts) < 1.20
+        ):
+            return
+        if (
+            current_feature_id is not None and
+            current_feature_id == self._last_feature_activation_id and
+            (now - self._last_feature_activation_ts) < 0.7
+        ):
+            return
         if selected_row is not None and selected_row >= 0:
             self._last_selected_feature_row = selected_row
+        if source_auto and self.layer is not None and selected_row is not None and selected_row >= 0:
+            feature_id = None if id_item is None else id_item.data(qt_user_role())
+            auto_key = (self.layer.id(), str(feature_id))
+            if (
+                auto_key == self._last_auto_activation_key and
+                (now - self._last_auto_activation_ts) < 1.0
+            ):
+                return
+            self._last_auto_activation_key = auto_key
+            self._last_auto_activation_ts = now
         self.deactivateSelectTool()
         self.progressBar.setValue(0)
         self.tablePredictions.clearContents()
         self.tablePredictions.setRowCount(0)
-        self.textEdit_output.setText("")
-        with OverrideCursor(qt_wait_cursor()):
-            self._onFeatureChange(selected_row)
-        self.progressBar.setValue(100)
+        self._set_user_feedback("")
+        self._last_feature_activation_row = selected_row if selected_row is not None else -1
+        self._last_feature_activation_ts = now
+        self._last_feature_activation_source = source
+        self._last_feature_activation_id = current_feature_id
+        self._feature_activation_in_progress = True
+        try:
+            with OverrideCursor(qt_wait_cursor()):
+                self._onFeatureChange(selected_row)
+            self.progressBar.setValue(100)
+            if source == "selection":
+                self._consume_next_click_row = selected_row
+        finally:
+            self._feature_activation_in_progress = False
+
+    def onFeatureRowClicked(self, row, _column):
+        if self._is_closing or self._suppress_feature_activation or row is None or row < 0:
+            return
+        if row == self._consume_next_click_row:
+            self._consume_next_click_row = -1
+            return
+        # Only handle explicit re-click on the already selected row.
+        # New row selection is handled exclusively by onFeatureSelectionChanged.
+        if row != self._last_selected_feature_row:
+            return
+        # Ignore click echo right after selection change for same row.
+        if (
+            row == self._last_selection_event_row and
+            (time.monotonic() - self._last_selection_event_ts) < 0.30
+        ):
+            return
+        self._request_feature_activation(row, source="click")
+
+    def _request_feature_activation(self, row, source="selection", source_auto=False):
+        if self._is_closing or self._suppress_feature_activation:
+            return
+        if row is None or row < 0:
+            return
+        self._pending_feature_activation_row = row
+        self._pending_feature_activation_source = source
+        self._pending_feature_activation_auto = source_auto
+        if not self._featureActivationTimer.isActive():
+            # Coalesce multiple UI signals from one user action into one activation.
+            self._featureActivationTimer.start(0)
+
+    def _process_pending_feature_activation(self):
+        row = self._pending_feature_activation_row
+        source = self._pending_feature_activation_source
+        source_auto = getattr(self, "_pending_feature_activation_auto", False)
+        self._pending_feature_activation_row = None
+        if row is None or row < 0:
+            return
+        if (
+            source == "selection" and
+            row == self._last_feature_activation_row and
+            (time.monotonic() - self._last_feature_activation_ts) < 0.60
+        ):
+            return
+        self.onFeatureActivated(row, source_auto=source_auto, source=source)
 
     def _onFeatureChange(self, selected_row):
         if self._is_closing:
@@ -1011,11 +1253,11 @@ class brdrQDockWidgetFeatureAligner(
         id_item = self.tableFeatures.item(selected_row, 0)
         feature_id = None if id_item is None else id_item.data(qt_user_role())
         if feature_id is None:
-            self.textEdit_output.setText(f"No feature found at row {selected_row}")
+            self._set_user_feedback(f"No feature found at row {selected_row}")
             return
         self.feature = self.layer.getFeature(int(feature_id))
         if self.feature is None or not self.feature.isValid():
-            self.textEdit_output.setText(f"No feature found for ID {feature_id}")
+            self._set_user_feedback(f"No feature found for ID {feature_id}")
             return
 
         original_geometry = get_original_geometry(
@@ -1034,26 +1276,26 @@ class brdrQDockWidgetFeatureAligner(
         step = self.settingsDialog.small_step
         if area > self.max_area_optimization:
             if area > self.max_area_limit:
-                msg = f"Very big area, {str(area)} m²: The calculation is blocked. Please use the bulk tool for this feature"
-                self.textEdit_output.setText(f"{msg}")
+                msg = f"Very big area, {str(area)} mÂ²: The calculation is blocked. Please use the bulk tool for this feature"
+                self._set_user_feedback(f"{msg}")
                 self.doubleSpinBox.setValue(0)
                 self.tablePredictions.clearContents()
                 self.tablePredictions.setRowCount(0)
                 return
             else:
                 big_step = self.settingsDialog.big_step
-                msg = f"Warning - Big area, {str(area)} m²: the calculation will be adapted/optimized. Predictions will be based on steps of {str(big_step)} cm"
-                self.textEdit_output.setText(f"{msg}")
+                msg = f"Warning - Big area, {str(area)} mÂ²: the calculation will be adapted/optimized. Predictions will be based on steps of {str(big_step)} cm"
+                self._set_user_feedback(f"{msg}")
                 step = big_step
         if max_rel_dist > 2 * self.max_rel_dist_optimization:
             big_step = self.settingsDialog.big_step
             msg = f"Predictions will be based on steps of {str(big_step)} cm"
-            self.textEdit_output.setText(f"{msg}")
+            self._set_user_feedback(f"{msg}")
             step = big_step
         elif max_rel_dist > self.max_rel_dist_optimization:
             mid_step = self.settingsDialog.mid_step
             msg = f"Predictions will be based on steps of {str(mid_step)} cm"
-            self.textEdit_output.setText(f"{msg}")
+            self._set_user_feedback(f"{msg}")
             step = mid_step
 
         # adapt & reload settings (espacially relevant_distances) before alignment
@@ -1122,6 +1364,7 @@ class brdrQDockWidgetFeatureAligner(
                 best_index = row
         self.tablePredictions.setSortingEnabled(True)
         self.tablePredictions.setFocus()
+        self._resize_predictions_table_for_max_rows(4)
         if self.tablePredictions.rowCount() > 0:
             self.tablePredictions.selectRow(best_index)
             distance_item = self.tablePredictions.item(best_index, 0)
@@ -1131,7 +1374,7 @@ class brdrQDockWidgetFeatureAligner(
             self.setFilterOnLayers(value)
             self.doubleSpinBox.setValue(value)
         else:
-            self.textEdit_output.setText("No predictions")
+            self._set_user_feedback("No predictions")
         return
 
     def add_results_to_grouplayer(self):
@@ -1192,14 +1435,50 @@ class brdrQDockWidgetFeatureAligner(
         if not selected_rows:
             return
         row = selected_rows[0].row()
+        self._apply_prediction_row(row, force=False)
+
+    def onPredictionRowClicked(self, row, _column):
+        if self._is_closing:
+            return
+        # Re-trigger action on repeated clicks of the same selected row.
+        self._apply_prediction_row(row, force=True)
+
+    def _apply_prediction_row(self, row, force=False):
+        if row is None or row < 0:
+            return
         distance_item = self.tablePredictions.item(row, 0)
         if distance_item is None:
             return
         value = distance_item.data(qt_user_role())
         if value is None:
             return
+        value = round(float(value), self.settingsDialog.DECIMAL)
         self.deactivateSelectTool()
-        self.doubleSpinBox.setValue(round(float(value), self.settingsDialog.DECIMAL))
+        if force:
+            self.doubleSpinBox.blockSignals(True)
+            self.doubleSpinBox.setValue(value)
+            self.doubleSpinBox.blockSignals(False)
+            self.setFilterOnLayers(value)
+        else:
+            self.doubleSpinBox.setValue(value)
+
+    def _sync_prediction_selection_with_distance(self, value):
+        if self.tablePredictions.rowCount() == 0:
+            return
+        selected_rows = self.tablePredictions.selectionModel().selectedRows()
+        if not selected_rows:
+            return
+        row = selected_rows[0].row()
+        distance_item = self.tablePredictions.item(row, 0)
+        if distance_item is None:
+            return
+        selected_value = distance_item.data(qt_user_role())
+        if selected_value is None:
+            return
+        selected_value = round(float(selected_value), self.settingsDialog.DECIMAL)
+        current_value = round(float(value), self.settingsDialog.DECIMAL)
+        if selected_value != current_value:
+            self.tablePredictions.clearSelection()
 
     def _align(self):
         if self._is_closing:
@@ -1210,7 +1489,7 @@ class brdrQDockWidgetFeatureAligner(
         if feat is not None:
             selected_features.append(feat)
         if len(selected_features) == 0:
-            self.textEdit_output.setText(
+            self._set_user_feedback(
                 "No features selected. Please select a feature from the active layer."
             )
             return None
@@ -1415,7 +1694,7 @@ class brdrQDockWidgetFeatureAligner(
         output_message = "PREDICTIONS (@ relevant distances): " + str(
             [str(k) for k in self.dict_evaluated_predictions[feat.id()].keys()]
         )
-        self.textEdit_output.setText(output_message)
+        self._set_user_feedback(output_message)
         return (
             self.dict_processresults,
             self.dict_evaluated_predictions,
@@ -1424,7 +1703,7 @@ class brdrQDockWidgetFeatureAligner(
 
     def change_geometry(self):
         if self.layer is None:
-            self.textEdit_output.setText("Please select a layer to align in the upper combobox")
+            self._set_user_feedback("Please select a layer to align in the upper combobox")
             return
         self._change_geometry(self.layer)
         self._refresh_feature_table_without_realign()
@@ -1432,7 +1711,7 @@ class brdrQDockWidgetFeatureAligner(
 
     def reset_geometry(self):
         if self.layer is None:
-            self.textEdit_output.setText("Please select a layer to align in the upper combobox")
+            self._set_user_feedback("Please select a layer to align in the upper combobox")
             return
         self._reset_geometry(self.layer)
         self._refresh_feature_table_without_realign()
@@ -1463,14 +1742,18 @@ class brdrQDockWidgetFeatureAligner(
         if self._is_closing:
             return
         print("start dock")
-        self.clearUserInterface()
-        self.textEdit_output.setText("Please select a feature to align")
-        self.loadSettings()
-        self.add_reference_label()
-        self.setHandles()
-        self.show()
-        # directly start the themelayerchanged
-        self.themeLayerChanged()
+        self._suppress_feature_activation = True
+        try:
+            self.clearUserInterface()
+            self._set_user_feedback("Please select a feature to align")
+            self.loadSettings()
+            self.add_reference_label()
+            self.setHandles()
+            self.show()
+            # directly start the themelayerchanged
+            self.themeLayerChanged()
+        finally:
+            self._suppress_feature_activation = False
         return
 
     def add_reference_label(self):
@@ -1486,4 +1769,5 @@ class brdrQDockWidgetFeatureAligner(
 
 def __init__():
     pass
+
 

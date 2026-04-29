@@ -5,9 +5,11 @@ import unittest
 from matplotlib import pyplot as plt
 # sys.path.append("C:/Program Files/QGIS 3.38.1/apps/qgis/python/plugins")
 from processing.core.Processing import Processing
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import Qt, QTimer
 from qgis.PyQt.QtTest import QTest
 from qgis.PyQt.QtWidgets import (
+    QApplication,
+    QDialog,
     QPushButton,
     QDialogButtonBox,
 )
@@ -48,6 +50,39 @@ def left_mouse_button():
     raise AttributeError("Qt LeftButton enum not available")
 
 
+def open_settings_dialog_and_auto_accept(widget, delay_ms=2000):
+    settings_dialog = widget.settingsDialog
+    assert settings_dialog is not None
+
+    def _accept_dialog():
+        if settings_dialog is None:
+            return
+        settings_ok_button: QPushButton = settings_dialog.buttonBox_settings.button(
+            dialog_ok_button()
+        )
+        if settings_ok_button is not None:
+            QTest.mouseClick(settings_ok_button, left_mouse_button())
+            return
+        settings_dialog.accept()
+
+    QTimer.singleShot(delay_ms, _accept_dialog)
+    widget.show_settings_dialog()
+
+
+def open_wkt_dialog_and_auto_close(widget, delay_ms=2000):
+    def _close_active_modal():
+        modal = QApplication.activeModalWidget()
+        if modal is None:
+            return
+        if isinstance(modal, QDialog):
+            modal.accept()
+            return
+        modal.close()
+
+    QTimer.singleShot(delay_ms, _close_active_modal)
+    return widget.get_wkt()
+
+
 class TestFlow(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -86,13 +121,7 @@ class TestFlow(unittest.TestCase):
             settingsDialog = widget.settingsDialog
             assert settingsDialog is not None
             self.assertFalse(settingsDialog.isVisible())
-            widget.show_settings_dialog()
-            self.assertTrue(settingsDialog.isVisible())
-            # # Click the map button which should close the dialog
-            settings_ok_button: QPushButton = settingsDialog.buttonBox_settings.button(
-                dialog_ok_button()
-            )
-            QTest.mouseClick(settings_ok_button, left_mouse_button())
+            open_settings_dialog_and_auto_accept(widget, delay_ms=2000)
             self.assertFalse(settingsDialog.isVisible())
 
             # kies themelayer in widget
@@ -105,7 +134,7 @@ class TestFlow(unittest.TestCase):
                 widget.onFeatureActivated(x)
             layers = project.mapLayers(validOnly=True)
             self.assertEqual(len(layers), 5)
-            wkt = widget.get_wkt()
+            wkt = open_wkt_dialog_and_auto_close(widget, delay_ms=2000)
             print(wkt)
             widget.get_graphic()
             time.sleep(2)
@@ -143,13 +172,7 @@ class TestFlow(unittest.TestCase):
             settingsDialog = widget.settingsDialog
             assert settingsDialog is not None
             self.assertFalse(settingsDialog.isVisible())
-            widget.show_settings_dialog()
-            self.assertTrue(settingsDialog.isVisible())
-            # # Click the map button which should close the dialog
-            settings_ok_button: QPushButton = settingsDialog.buttonBox_settings.button(
-                dialog_ok_button()
-            )
-            QTest.mouseClick(settings_ok_button, left_mouse_button())
+            open_settings_dialog_and_auto_accept(widget, delay_ms=2000)
             self.assertFalse(settingsDialog.isVisible())
 
             # kies themelayer in widget

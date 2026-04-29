@@ -29,7 +29,7 @@ Each parameter is documented once with the same structure: **Definition**, **Why
 - **Choices**: Text or numeric field with unique values.
 - **Impact**: Non-unique IDs can break one-to-one interpretation of results.
 
-### SELECT Reference Layer / Reference Layer / Reference ID
+### Reference / Local reference layer / Reference ID (unique!)
 - **Definition**: Reference source selection (LOCREF or GRB on-the-fly) + reference ID field.
 - **Why use it**: Determines geometric truth for snapping/alignment.
 - **Choices**: Local reference for large/stable workflows; GRB for direct service-based reference.
@@ -41,7 +41,7 @@ Each parameter is documented once with the same structure: **Definition**, **Why
 - **Choices**: Low (1-2), medium (3-5), high (>10) depending on source quality.
 - **Impact**: Lower values are conservative/faster; higher values are stronger/slower and may increase review cases.
 
-### PREDICTIONS
+### Use predictions
 - **Definition**: Enables full-scan candidate search over distance steps.
 - **Why use it**: Finds stable candidates in ambiguous situations.
 - **Choices**: False (quick scan) or True (full scan).
@@ -65,19 +65,19 @@ Each parameter is documented once with the same structure: **Definition**, **Why
 - **Choices**: Prefer AlignerGeometryProcessor.
 - **Impact**: Correct processor choice improves speed and stability.
 
-### OD_STRATEGY
+### Open Domain Strategy
 - **Definition**: Behavior for geometry parts not covered by reference (Open Domain).
 - **Why use it**: Aligns output with legal/operational boundary policy.
 - **Choices**: EXCLUDE, ASIS, SNAP_INNER_SIDE, SNAP_ALL_SIDE.
 - **Impact**: Changes whether and how non-reference-covered areas are retained.
 
-### SNAP_STRATEGY
+### Snap Strategy
 - **Definition**: Vertex snapping policy (mainly line/point workflows).
 - **Why use it**: Controls strictness of snapping to real reference vertices.
 - **Choices**: NO_PREFERENCE, PREFER_VERTICES, ONLY_VERTICES.
 - **Impact**: Stricter snapping yields cleaner topology but fewer candidates.
 
-### FULL_OVERLAP_PERCENTAGE
+### Threshold overlap percentage (%)
 - **Definition**: Fallback overlap threshold for relevance decisions.
 - **Why use it**: Resolves edge cases where relevance is unclear.
 - **Choices**: 0-100 (default around 50).
@@ -89,19 +89,19 @@ Each parameter is documented once with the same structure: **Definition**, **Why
 - **Choices**: Lower for strict QA, higher for more automation.
 - **Impact**: Lower threshold increases manual review volume.
 
-### WORKING FOLDER
+### Work Folder
 - **Definition**: Output/log storage location.
 - **Why use it**: Ensures reproducible output organization.
 - **Choices**: Empty (default local) or explicit path.
 - **Impact**: Explicit folder simplifies batch audit and traceability.
 
-### SHOW_INTERMEDIATE_LAYERS
+### Show Intermediate processing results
 - **Definition**: Adds intermediate layers for diagnostics.
 - **Why use it**: Helps understand why alignment succeeded/failed.
 - **Choices**: False/True.
 - **Impact**: Better interpretability, slightly heavier output.
 
-### LOG_INFO
+### Write extra logging (from brdr-log)
 - **Definition**: Writes extended processing logs.
 - **Why use it**: Troubleshooting and audit.
 - **Choices**: False/True.
@@ -215,6 +215,7 @@ This sections lists fieldnames that can be found in the output layer and explain
 | **brdr_full_actual** | Boolean | Flag indicating if the alignment covers the full extent of the actual feature. |
 | **brdr_remark** | String | Automated logs or warnings generated during the geometry processing. |
 | **brdr_metadata** | JSON/Object | Embedded SOSA/SSN metadata containing the lineage, sensors, and procedures used. |
+
 
 
 

@@ -35,37 +35,37 @@ analysis).
 - **Choices**: 3-5 typical; higher for rough legacy datasets.
 - **Impact**: Higher distance finds more candidates but increases ambiguity.
 
-### PREDICTION_STRATEGY
+### Prediction Strategy
 - **Definition**: Policy when multiple candidate updates exist.
 - **Why use it**: Controls determinism vs analysis.
 - **Choices**: BEST, ALL, ORIGINAL.
 - **Impact**: BEST is production default; ALL increases review scope; ORIGINAL is safe fallback.
 
-### FULL_REFERENCE_STRATEGY
+### Full Reference Strategy
 - **Definition**: Preference strength for full-reference-overlap candidates.
 - **Why use it**: Enforces stricter topological confidence.
 - **Choices**: ONLY_FULL, PREFER_FULL, NO_FULL.
 - **Impact**: Stricter settings reduce risky updates but may hide alternatives.
 
-### ENUM_OD_STRATEGY
+### Open Domain Strategy
 - **Definition**: Open Domain behavior outside reference coverage.
 - **Why use it**: Aligns result with policy on non-covered areas.
 - **Choices**: Strategy enum options.
 - **Impact**: Changes boundary inclusion/exclusion semantics.
 
-### ENUM_SNAP_STRATEGY
+### Snap Strategy
 - **Definition**: Snap strictness to reference vertices.
 - **Why use it**: Controls structural fit in line/point situations.
 - **Choices**: NO_PREFERENCE, PREFER_VERTICES, ONLY_VERTICES.
 - **Impact**: Stricter settings improve vertex correctness but reduce flexibility.
 
-### ENUM_PROCESSOR
+### Processor
 - **Definition**: Processing backend selector.
 - **Why use it**: Runtime/performance optimization.
 - **Choices**: Prefer AlignerGeometryProcessor.
 - **Impact**: Better defaults reduce runtime variance.
 
-### THRESHOLD_OVERLAP_PERCENTAGE
+### Threshold overlap percentage (%)
 - **Definition**: Fallback overlap threshold for edge-case relevance.
 - **Why use it**: Stabilizes ambiguous relevance decisions.
 - **Choices**: 0-100.
@@ -77,19 +77,19 @@ analysis).
 - **Choices**: Lower for strict control, higher for throughput.
 - **Impact**: Directly changes number of records to review.
 
-### WORKING FOLDER
+### Work Folder
 - **Definition**: Output folder for generated artifacts.
 - **Why use it**: Centralized run outputs/logs.
 - **Choices**: default local or explicit directory.
 - **Impact**: Improves reproducibility and auditability.
 
-### METADATA_FIELD
+### brdr_metadata field
 - **Definition**: Field containing prior `brdr_metadata`.
 - **Why use it**: Provides temporal lineage context.
 - **Choices**: empty or existing metadata field.
 - **Impact**: Can improve prediction quality.
 
-### LOG_INFO
+### Write extra logging (from brdr-log)
 - **Definition**: Extended log output.
 - **Why use it**: Diagnostics and troubleshooting.
 - **Choices**: False/True.
@@ -139,6 +139,7 @@ output = processing.run(
 
 
 ```
+
 
 
 

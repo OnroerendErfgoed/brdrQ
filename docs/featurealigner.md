@@ -30,7 +30,7 @@ Additionally, you can:
 - **Choices**: Local/project reference or on-the-fly sources.
 - **Impact**: Reference quality controls final alignment quality.
 
-### OpenDomain Strategy
+### Open Domain Strategy
 - **Definition**: Handling rule for geometry parts outside reference coverage.
 - **Why use it**: Reflects policy on non-covered area retention.
 - **Choices**: Exclude/keep/snap variants.
@@ -42,31 +42,31 @@ Additionally, you can:
 - **Choices**: AlignerGeometryProcessor recommended.
 - **Impact**: Better defaults improve speed and consistency.
 
-### Threshold_overlap_percentage
+### Threshold value (%)
 - **Definition**: Fallback threshold in uncertain relevance cases.
 - **Why use it**: Prevents unstable candidate acceptance.
 - **Choices**: usually around 50, adapt per dataset.
 - **Impact**: Higher means stricter matching.
 
-### Maximum relevant distance
+### Maximal relevant distance (m)
 - **Definition**: Maximum deviation searched for predictions.
 - **Why use it**: Controls correction aggressiveness.
 - **Choices**: low/medium/high according to data drift.
 - **Impact**: Larger values increase candidate range and ambiguity.
 
-### Add metadata
+### Add brdr_metadata?
 - **Definition**: Adds rdr_metadata to results.
 - **Why use it**: Preserves lineage for downstream updates/audits.
 - **Choices**: enabled/disabled.
 - **Impact**: Better traceability with small storage overhead.
 
-### FullReference Strategy
+### Full Reference Strategy
 - **Definition**: Preference for full-overlap candidates.
 - **Why use it**: Raise confidence in selected predictions.
 - **Choices**: ONLY_FULL_REFERENCE, PREFER_FULL_REFERENCE, NO_FULL_REFERENCE.
 - **Impact**: Stricter mode improves certainty but may reduce alternatives.
 
-### SnapStrategy
+### Snap Strategy
 - **Definition**: Snap strictness to reference vertices (mainly line/point workflows).
 - **Why use it**: Controls structural precision at vertices/endpoints.
 - **Choices**: NO_PREFERENCE, PREFER_VERTICES, PREFER_ENDS_AND_ANGLES, ONLY_VERTICES.
@@ -77,4 +77,5 @@ Additionally, you can:
 - **Balanced Daily Use**: medium distance + default processor + PREFER_VERTICES.
 - **Strong Recovery for Rough Data**: higher distance + permissive full-reference mode.
 - **Strict Network Snapping**: ONLY_VERTICES + low distance.
+
 
