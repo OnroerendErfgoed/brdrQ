@@ -1,3 +1,11 @@
+# v0.21.0
+
+- Upgrade to brdr release version 0.16.0
+- FeatureAligner cleanup UI [#301 #303]
+- FeatureALigner: fixed bugs with double triggers [#300 #302]
+- FeatureAligner: improved loading features [#296]
+- Added dutch (nl) version to docs
+
 # v0.20.1
 
 - Bugfix for closing brdrQ-plugin
