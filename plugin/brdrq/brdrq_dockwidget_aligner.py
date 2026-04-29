@@ -24,11 +24,18 @@
 import webbrowser
 
 from brdr.constants import METADATA_FIELD_NAME
+from qgis.PyQt import QtWidgets
 from qgis.core import Qgis
 from qgis.core import edit
 
 from .brdrq_help import brdrQHelp
 from .brdrq_settings import brdrQSettings
+from .qt_compat import (
+    dialog_exec,
+    qt_application_modal,
+    qt_widget_attribute,
+    qt_window_flag,
+)
 from .brdrq_utils import (
     plot_series,
     show_map,
@@ -289,8 +296,8 @@ class brdrQDockWidgetAligner(object):
                 return
             self.add_results_to_grouplayer()
         self.setFilterOnLayers(value)
-
-        self.get_wkt()
+        if hasattr(self, "_sync_prediction_selection_with_distance"):
+            self._sync_prediction_selection_with_distance(value)
         return
 
     def setFilterOnLayers(self, value):
@@ -304,7 +311,7 @@ class brdrQDockWidgetAligner(object):
     def get_wkt(self):
         feat = self.feature
         if feat is None:
-            return
+            return None
         key = feat.id()
         # print("key:" + str(key))
         relevant_distance = round(
@@ -317,8 +324,8 @@ class brdrQDockWidgetAligner(object):
             not key in self.dict_processresults.keys()
         ):
             msg = f"No prediction-WKT of feature {str(key)}..."
-            self.textEdit_output.setText(msg)
-            return
+            self._show_warning("WKT", msg)
+            return None
 
         elif relevant_distance in self.dict_processresults[key]:
             result = self.dict_processresults[key][relevant_distance]
@@ -330,11 +337,28 @@ class brdrQDockWidgetAligner(object):
                 " at relevant distance-" +
                 str(relevant_distance)
             )
-
-            self.textEdit_output.setText(errormesssage)
-            return
+            self._show_warning("WKT", errormesssage)
+            return None
         wkt = resulting_geom.wkt
-        self.textEdit_output.setText(wkt)
+        self._show_wkt_dialog(wkt)
+        return wkt
+
+    def _show_wkt_dialog(self, wkt_text):
+        dialog = QtWidgets.QDialog()
+        dialog.setWindowTitle("WKT output")
+        dialog.setWindowModality(qt_application_modal())
+        dialog.resize(900, 420)
+        layout = QtWidgets.QVBoxLayout(dialog)
+        text = QtWidgets.QPlainTextEdit(dialog)
+        text.setReadOnly(True)
+        text.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
+        text.setPlainText(wkt_text)
+        layout.addWidget(text)
+        button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close, parent=dialog)
+        button_box.rejected.connect(dialog.reject)
+        button_box.accepted.connect(dialog.accept)
+        layout.addWidget(button_box)
+        dialog_exec(dialog)
 
     def get_visualisation(self):
         feat = self.feature
@@ -386,7 +410,35 @@ class brdrQDockWidgetAligner(object):
 
     def show_settings_dialog(self):
         print("show_settings_dialog")
-        self.settingsDialog.show()
+        dialog = self.settingsDialog
+
+        # Attach to QGIS main window and open as true modal dialog:
+        # this blocks all QGIS interaction until OK/Cancel/Close.
+        try:
+            main_window = self.iface.mainWindow() if self.iface is not None else None
+        except Exception:
+            main_window = None
+        if main_window is not None and dialog.parent() is None:
+            dialog.setParent(main_window)
+
+        # Keep a standard titled dialog with system close button.
+        dialog.setWindowFlags(
+            qt_window_flag("Dialog")
+            | qt_window_flag("WindowTitleHint")
+            | qt_window_flag("WindowSystemMenuHint")
+            | qt_window_flag("WindowCloseButtonHint")
+        )
+        try:
+            dialog.setAttribute(qt_widget_attribute("WA_TranslucentBackground"), False)
+        except Exception:
+            pass
+        dialog.setStyleSheet("")
+        dialog.setWindowModality(qt_application_modal())
+        dialog.setModal(True)
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
+        dialog_exec(dialog)
 
     def setHandles(self):
         self.minimum = self.settingsDialog.minimum

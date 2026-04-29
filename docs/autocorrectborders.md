@@ -1,42 +1,117 @@
-# Documentation of QGIS Python plugin brdrQ -  Autocorrectborders
+﻿# Documentation of QGIS Python plugin brdrQ -  Autocorrectborders
 
 
 ## Video
 
-{{< video src="figures/brdrQ_autocorrectborders_bulk.mp4" muted width="600" height="400" title="BrdrQ Autocorrectborders Demo" >}}
+{{< video src="../figures/brdrQ_autocorrectborders_bulk.mp4" muted width="600" height="400" title="BrdrQ Autocorrectborders Demo" >}}
 
 
 ## Description
 
-<img src="figures/autocorrectborders.png" width="50%" />
+<img src="../figures/autocorrectborders.png" width="50%" />
 
 The processing algorithm, named **Autocorrectborders**, is developed to automatically adjust thematic boundaries to
 reference boundaries. It searches for relevant overlap between thematic boundaries and reference boundaries, and creates
 a resulting boundary based on the relevant overlapping areas.
 
-## Input Parameters
+## Parameter Guide
+Each parameter is documented once with the same structure: **Definition**, **Why use it**, **Choices**, and **Impact**.
 
-The script requires the following input parameters:
+### Thematic Layer
+- **Definition**: Input vector layer (polygon, line, or point) in projected CRS (meters).
+- **Why use it**: Defines the geometry that will be corrected.
+- **Choices**: Any valid layer with stable geometry and valid CRS.
+- **Impact**: Invalid CRS or mixed quality input causes unreliable alignment.
 
-| Parameter                                  | Description                                                                                                                                                                                                                                                                                                                                                                                                                                      | Default                                                                                       | Optional |
-|--------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|----------|
-| Thematic Layer                             | A vector layer (polygon, line, or point) with a projected CRS (unit: meter) and a unique ID.                                                                                                                                                                                                                                                                                                                                                     | No default value, must be provided by the user.                                               | No.      |
-| Thematic ID                                | Textual or numeric ID of the thematic layer used as a reference to the objects. This must be unique.                                                                                                                                                                                                                                                                                                                                             | No default value, must be provided by the user.                                               | No.      |
-| SELECT Reference Layer:                    | Selection of REFERENCE LAYER: The user can choose between a LOCAL REFERENCE LAYER (see parameters below), or on-the fly reference layers from GRB (Flanders, Belgium)                                                                                                                                                                                                                                                                            | LOCREF: use of a LOCAL REFERENCE LAYER                                                        | Yes.     |
-| Reference Layer (when LOCREF selected)     | A (MULTI)POLYGON layer with the same projected CRS (unit: meter).                                                                                                                                                                                                                                                                                                                                                                                | No default value, must be provided by the user.                                               | Yes.     |
-| Reference ID (when LOCREF selected)        | Textual or numeric ID of the reference layer used as a reference to the objects.                                                                                                                                                                                                                                                                                                                                                                 | No default value, must be provided by the user.                                               | Yes.     |
-| Relevant Distance (meters)                 | Positive (decimal) number in meters. This indicates the maximum distance that the geometry is allowed to change.                                                                                                                                                                                                                                                                                                                                 | 3 (meters)                                                                                    | No.      |
-| PREDICTIONS (!slower!)                     | If True, the code will do a FULL SCAN of all relevant distances with an interval of 10cm to try to search for the best 'predictions'.These are results where the output geometry is a stable result that could be the possible wanted result.- The resulting layer will use the prediction with the highest prediction score. Warning : When this option is used, the processing will be much slower, as a multitude of calculations are needed. | False                                                                                         | No       |
-| Prediction Strategy (when PREDICTIONS)     | When PREDICTIONS, you can set Prediction Strategy to ALL (all predictions in result), BEST (the prediction with highest prediction score) or ORIGINAL (if multiple predictions,the original geometry is shown)                                                                                                                                                                                                                                   | BEST                                                                                          | Yes.     |
-| Full Reference Strategy (when PREDICTIONS) | When PREDICTIONS, you can set if predictions that are fully aligned with the reference are prefered or not                                                                                                                                                                                                                                                                                                                                       | PREFER_FULL_REFERENCE                                                                         | Yes.     |
-| Processor                                  | Choice of which processing-algorithm is used. Best to set it to AlignerGeometryProcessor as this chooses automatically the fastest algorithm                                                                                                                                                                                                                                                                                                     | AlignerGeometryProcessor (Wrapper for DieussaertGeometryProcessor & NetworkGeometryProcessor) | No       |
-| OD_STRATEGY                                | This parameter determines how the algorithm deals with parts of the geometry that is not covered by reference data. Different strategies are available: EXCLUDE, ASIS, SNAP_INNER_SIDE, SNAP_ALL_SIDE                                                                                                                                                                                                                                            | SNAP_ALL_SIDE (2)                                                                             | No       |
-| SNAP_STRATEGY                              | Strategy for snapping to reference vertices. Options: NO_PREFERENCE, PREFER_VERTICES, ONLY_VERTICES. This parameter only applies to NetworkGeometryProcessor and SnapGeometryProcessor, typically for line and point workflows. For polygon workflows this setting has no effect.                                                                                                                                                              | PREFER_VERTICES (1)                                                                           | Yes.     |
-| FULL_OVERLAP_PERCENTAGE % (0-100)          | Backup-parameter when the algorithm cannot decide if a reference is relevant to be taken into account. It falls back to the covered percentage.                                                                                                                                                                                                                                                                                                  | 50%                                                                                           | No       |
-| REVIEW_PERCENTAGE % (0-100)                | Resulting geometries that change more than REVIEW_PERCENTAGE are categorised as 'to_review'                                                                                                                                                                                                                                                                                                                                                      | 10 (%)                                                                                        | No.      |
-| WORKING FOLDER                             | Folder to save the resulting geojson-files. By default empty, resulting in saving the geojson-files in a created folder.                                                                                                                                                                                                                                                                                                                         | Empty - a local folder is used                                                                | No       |
-| SHOW_INTERMEDIATE_LAYERS                   | If True, 2 additional layers are generated as output that visually represent the significant intersections and significant differences                                                                                                                                                                                                                                                                                                           | False                                                                                         | No.      |
-| LOG_INFO                                   | If True, extra logging from brdr is written to a file (`brdr_show_log_info.log`) in the selected WORK_FOLDER.                                                                                                                                                                                                                                                                                                                                   | False                                                                                         | No       |
+### Thematic ID
+- **Definition**: Unique feature identifier in the thematic layer.
+- **Why use it**: Keeps feature lineage and output traceable.
+- **Choices**: Text or numeric field with unique values.
+- **Impact**: Non-unique IDs can break one-to-one interpretation of results.
+
+### Reference / Local reference layer / Reference ID (unique!)
+- **Definition**: Reference source selection (LOCREF or GRB on-the-fly) + reference ID field.
+- **Why use it**: Determines geometric truth for snapping/alignment.
+- **Choices**: Local reference for large/stable workflows; GRB for direct service-based reference.
+- **Impact**: Better reference quality directly improves output quality.
+
+### Relevant Distance (meters)
+- **Definition**: Maximum allowed geometry shift.
+- **Why use it**: Controls how far features may move to match reference.
+- **Choices**: Low (1-2), medium (3-5), high (>10) depending on source quality.
+- **Impact**: Lower values are conservative/faster; higher values are stronger/slower and may increase review cases.
+
+### Use predictions
+- **Definition**: Enables full-scan candidate search over distance steps.
+- **Why use it**: Finds stable candidates in ambiguous situations.
+- **Choices**: False (quick scan) or True (full scan).
+- **Impact**: True improves candidate quality but increases processing time.
+
+### Prediction Strategy
+- **Definition**: Output policy when multiple predictions exist.
+- **Why use it**: Controls whether output is deterministic or review-oriented.
+- **Choices**: BEST, ALL, ORIGINAL.
+- **Impact**: BEST is production-friendly, ALL is analysis-heavy, ORIGINAL is safest under ambiguity.
+
+### Full Reference Strategy
+- **Definition**: Preference for predictions with full overlap to reference.
+- **Why use it**: Enforces stricter geometric consistency when needed.
+- **Choices**: prefer/strict/no preference modes.
+- **Impact**: Stricter modes reduce risky candidates but may omit usable alternatives.
+
+### Processor
+- **Definition**: Geometry processing engine selector.
+- **Why use it**: Optimizes runtime and robustness per geometry type.
+- **Choices**: Prefer AlignerGeometryProcessor.
+- **Impact**: Correct processor choice improves speed and stability.
+
+### Open Domain Strategy
+- **Definition**: Behavior for geometry parts not covered by reference (Open Domain).
+- **Why use it**: Aligns output with legal/operational boundary policy.
+- **Choices**: EXCLUDE, ASIS, SNAP_INNER_SIDE, SNAP_ALL_SIDE.
+- **Impact**: Changes whether and how non-reference-covered areas are retained.
+
+### Snap Strategy
+- **Definition**: Vertex snapping policy (mainly line/point workflows).
+- **Why use it**: Controls strictness of snapping to real reference vertices.
+- **Choices**: NO_PREFERENCE, PREFER_VERTICES, ONLY_VERTICES.
+- **Impact**: Stricter snapping yields cleaner topology but fewer candidates.
+
+### Threshold overlap percentage (%)
+- **Definition**: Fallback overlap threshold for relevance decisions.
+- **Why use it**: Resolves edge cases where relevance is unclear.
+- **Choices**: 0-100 (default around 50).
+- **Impact**: Higher values are stricter; lower values are more permissive.
+
+### REVIEW_PERCENTAGE
+- **Definition**: Threshold to classify results as 	o_review.
+- **Why use it**: Controls QA workload.
+- **Choices**: Lower for strict QA, higher for more automation.
+- **Impact**: Lower threshold increases manual review volume.
+
+### Work Folder
+- **Definition**: Output/log storage location.
+- **Why use it**: Ensures reproducible output organization.
+- **Choices**: Empty (default local) or explicit path.
+- **Impact**: Explicit folder simplifies batch audit and traceability.
+
+### Show Intermediate processing results
+- **Definition**: Adds intermediate layers for diagnostics.
+- **Why use it**: Helps understand why alignment succeeded/failed.
+- **Choices**: False/True.
+- **Impact**: Better interpretability, slightly heavier output.
+
+### Write extra logging (from brdr-log)
+- **Definition**: Writes extended processing logs.
+- **Why use it**: Troubleshooting and audit.
+- **Choices**: False/True.
+- **Impact**: Enables root-cause analysis at cost of larger logs.
+
+## Recommended Presets
+- **Fast Scan**: PREDICTIONS=False, Relevant Distance=2-4, REVIEW_PERCENTAGE=10.
+- **Balanced Production**: PREDICTIONS=True, Prediction Strategy=BEST, Full Reference Strategy=PREFER_FULL_REFERENCE, Relevant Distance=3-5.
+- **Strict QA**: lower REVIEW_PERCENTAGE (5-8), conservative Relevant Distance, stricter full-reference mode.
+- **Exploration**: PREDICTIONS=True, Prediction Strategy=ALL, SHOW_INTERMEDIATE_LAYERS=True, LOG_INFO=True.
 
 ## Output Parameters
 
@@ -52,7 +127,7 @@ The script generates a GROUP layer with several output layers in the TOC:
   geometry
 
 The name includes which 'RELEVANT_DISTANCE (X)' and 'REFERENCE (Y)' is used
-<img src="figures/output.png" width="100%" />
+<img src="../figures/output.png" width="100%" />
 
 ## Example of Usage
 
@@ -98,7 +173,7 @@ processing.run('brdrqprovider:brdrqautocorrectborders', params)
     - when was it created,
     - on what reference limits was it drawn at the time,
     - Which drawing rules have been applied (e.g. accuracy of 0.5m)
-    - …
+    - â€¦
 
 This allows you to gain insight into the 'deviation' and which RELEVANT_DISTANCE value can best be applied.
 
@@ -140,3 +215,7 @@ This sections lists fieldnames that can be found in the output layer and explain
 | **brdr_full_actual** | Boolean | Flag indicating if the alignment covers the full extent of the actual feature. |
 | **brdr_remark** | String | Automated logs or warnings generated during the geometry processing. |
 | **brdr_metadata** | JSON/Object | Embedded SOSA/SSN metadata containing the lineage, sensors, and procedures used. |
+
+
+
+

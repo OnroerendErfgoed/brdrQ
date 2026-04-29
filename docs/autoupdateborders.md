@@ -1,6 +1,6 @@
-# Documentation of QGIS Python plugin brdrQ -  AutoUpdateBorders - GRB Updater (Flanders-specific dataset)
+﻿# Documentation of QGIS Python plugin brdrQ -  AutoUpdateBorders - GRB Updater (Flanders-specific dataset)
 
-<img src="figures/autoupdateborders.png" width="50%" />
+<img src="../figures/autoupdateborders.png" width="50%" />
 
 ## Description
 
@@ -9,93 +9,98 @@ to a newer GRB-referencelayer. It makes predictions to find the resulting aligne
 found the user can choose to return ALL predictions, the BEST prediction, or the ORIGINAL geometry (for further
 analysis).
 
-## Parameters
+## Parameter Guide
 
-### Input Parameters
+### Thematic Layer
+- **Definition**: Input geometry layer to be temporally updated.
+- **Why use it**: Defines which existing aligned features will be migrated to newer GRB geometry.
+- **Choices**: Projected CRS layer with stable geometry.
+- **Impact**: Bad source quality propagates into update uncertainty.
 
-- **Thematic Layer**: A vector layer (polygon, line, or point) with EPSG:31370 or EPSG:3812 coordinates and a unique ID.
-    - **Default**: No default value, must be provided by the user.
-    - **Optional**: No.
+### Thematic ID
+- **Definition**: Unique feature key.
+- **Why use it**: Maintains stable lineage over update cycles.
+- **Choices**: Unique text/numeric field.
+- **Impact**: Non-unique IDs reduce traceability and review clarity.
 
-- **Thematic ID**: Textual or numeric ID of the thematic layer used as a reference to the objects. This must be unique.
+### Reference Layer
+- **Definition**: GRB source selection (ADP, GBG, KNW).
+- **Why use it**: Picks the target dataset type for update.
+- **Choices**: Match source to domain object type.
+- **Impact**: Wrong reference type leads to semantically wrong updates.
 
-    - **Default**: No default value, must be provided by the user.
-    - **Optional**: No.
+### Relevant Distance (meters)
+- **Definition**: Maximum search shift for update candidates.
+- **Why use it**: Limits update aggressiveness.
+- **Choices**: 3-5 typical; higher for rough legacy datasets.
+- **Impact**: Higher distance finds more candidates but increases ambiguity.
 
-- **Reference Layer**: Combobox to choose which GRB referencelayer will be used (on-the-fly download).
-    - The on-the-fly downloads are only possible for smaller areas.
+### Prediction Strategy
+- **Definition**: Policy when multiple candidate updates exist.
+- **Why use it**: Controls determinism vs analysis.
+- **Choices**: BEST, ALL, ORIGINAL.
+- **Impact**: BEST is production default; ALL increases review scope; ORIGINAL is safe fallback.
 
-        - ADP: (on-the-fly download) - Actual administrative parcels from GRB (Grootschalig Referentie Bestand)
-        - GBG: (on-the-fly download) - Actual buildings from GRB
-        - KNW: (on-the-fly download) - Actual artwork from GRB
-        - (Note: the on-the-fly downloads are only possible for a subset or small area of thematic objects as this
-          results in downloading this reference-area.)
+### Full Reference Strategy
+- **Definition**: Preference strength for full-reference-overlap candidates.
+- **Why use it**: Enforces stricter topological confidence.
+- **Choices**: ONLY_FULL, PREFER_FULL, NO_FULL.
+- **Impact**: Stricter settings reduce risky updates but may hide alternatives.
 
-    - **Default**: ADP (parcels)
-    - **Optional**: no
+### Open Domain Strategy
+- **Definition**: Open Domain behavior outside reference coverage.
+- **Why use it**: Aligns result with policy on non-covered areas.
+- **Choices**: Strategy enum options.
+- **Impact**: Changes boundary inclusion/exclusion semantics.
 
+### Snap Strategy
+- **Definition**: Snap strictness to reference vertices.
+- **Why use it**: Controls structural fit in line/point situations.
+- **Choices**: NO_PREFERENCE, PREFER_VERTICES, ONLY_VERTICES.
+- **Impact**: Stricter settings improve vertex correctness but reduce flexibility.
 
-- **Relevant Distance (meters)**: Positive (decimal) number in meters. This is the maximum distance by which the original boundary is maximally shifted to align with the reference layer when searching for predictions. The algorithm uses all relevant distances from 0 to 'max' with steps of 10cm in between.
-  - **Default**: 3 (meters)
-  - **Optional**: No.
+### Processor
+- **Definition**: Processing backend selector.
+- **Why use it**: Runtime/performance optimization.
+- **Choices**: Prefer AlignerGeometryProcessor.
+- **Impact**: Better defaults reduce runtime variance.
 
+### Threshold overlap percentage (%)
+- **Definition**: Fallback overlap threshold for edge-case relevance.
+- **Why use it**: Stabilizes ambiguous relevance decisions.
+- **Choices**: 0-100.
+- **Impact**: Higher threshold = stricter acceptance.
 
-- **PREDICTION_STRATEGY** : Strategy when multiple predictions are available:
+### REVIEW_PERCENTAGE
+- **Definition**: Change threshold for review categorization.
+- **Why use it**: Tunes QA load.
+- **Choices**: Lower for strict control, higher for throughput.
+- **Impact**: Directly changes number of records to review.
 
-    - ALL: All predictions will be added to the result. It is not guaranteed anymore that the ID is unique anymore in
-      the result.
-    - BEST: Only the prediction with the best prediction_score will be added to the result (ID is unique)
-    - ORIGINAL: When multiple predictions are found, the original geometry will be added to the result . The ID stays
-      unique. This strategy can be usefull in combination with the featurealigner, so the multiple predictions can be
-      handled one-by-one.
+### Work Folder
+- **Definition**: Output folder for generated artifacts.
+- **Why use it**: Centralized run outputs/logs.
+- **Choices**: default local or explicit directory.
+- **Impact**: Improves reproducibility and auditability.
 
-    - **Default**: BEST
-    - **Optional**: No.
+### brdr_metadata field
+- **Definition**: Field containing prior `brdr_metadata`.
+- **Why use it**: Provides temporal lineage context.
+- **Choices**: empty or existing metadata field.
+- **Impact**: Can improve prediction quality.
 
-### ADVANCED INPUT PARAMETERS
+### Write extra logging (from brdr-log)
+- **Definition**: Extended log output.
+- **Why use it**: Diagnostics and troubleshooting.
+- **Choices**: False/True.
+- **Impact**: Better debugging, more log volume.
 
-- **FULL_REFERENCE_STRATEGY**: Choice that determines the score of predictions based on full overlap with reference polygons:
-    - ONLY_FULL: Only predictions with a full reference overlap are shown.
-    - PREFER_FULL: Predictions with a full reference overlap get a higher score, others are still shown.
-    - NO_FULL: No distinction is made between predictions with or without full reference overlap.
-    - **Default**: None
-    - **Optional**: yes.
+## Recommended Presets
+- **Stable Production Update**: PREDICTION_STRATEGY=BEST, FULL_REFERENCE_STRATEGY=PREFER_FULL, Relevant Distance=3-5.
+- **Strict Legal/Boundary QA**: FULL_REFERENCE_STRATEGY=ONLY_FULL, lower REVIEW_PERCENTAGE, conservative distance.
+- **Ambiguity Analysis**: PREDICTION_STRATEGY=ALL, higher distance, LOG_INFO=True.
+- **Safe Fallback**: PREDICTION_STRATEGY=ORIGINAL when preserving source geometry is preferred over uncertain shifts.
 
-- **ENUM_OD_STRATEGY**: Strategy for handling parts of the geometry not covered by reference features (= Open Domain).
-    - **Default**: `SNAP_ALL_SIDE`
-    - **Optional**: yes.
-
-- **ENUM_SNAP_STRATEGY**: Strategy for snapping to reference vertices. Options: `NO_PREFERENCE`, `PREFER_VERTICES`, `ONLY_VERTICES`.
-  This parameter only applies to `NetworkGeometryProcessor` and `SnapGeometryProcessor`, typically for line and point workflows.
-  For polygon workflows this setting has no effect.
-    - **Default**: `PREFER_VERTICES`
-    - **Optional**: yes.
-
-- **ENUM_PROCESSOR**: Choice of processing algorithm. Recommended is `AlignerGeometryProcessor` (wrapper that chooses the fastest algorithm based on geometry types).
-    - **Default**: `AlignerGeometryProcessor`
-    - **Optional**: yes.
-
-- **THRESHOLD_OVERLAP_PERCENTAGE (0-100)**: Fallback overlap threshold used in edge cases where relevance cannot be determined.
-    - **Default**: `50`
-    - **Optional**: yes.
-
-- **REVIEW_PERCENTAGE (0-100)**: Results with change percentage above this threshold are categorized for review.
-    - **Default**: `10`
-    - **Optional**: yes.
-
-- **WORKING FOLDER**: Folder to save the resulting geojson-files. By default empty, resulting in saving the
-  geojson-files in
-  a default folder on your machine.
-    - **Default**: By default, the output will be saved in a local folder on your machine.
-    - **Optional**: yes.
-
-- **METADATA_FIELD**: Attribute field of the thematic layer containing former `brdr_metadata`. When provided, it is used for better prediction quality.
-    - **Default**: None
-    - **Optional**: yes.
-
-- **LOG_INFO** (default False): When True, extra logging from brdr is written to a file (`brdr_show_log_info.log`) in the selected WORK_FOLDER.
-    - **Default**: False
-    - **Optional**: No.
 
 ### Output Parameters
 
@@ -134,5 +139,9 @@ output = processing.run(
 
 
 ```
+
+
+
+
 
 

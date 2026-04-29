@@ -129,6 +129,57 @@ def qt_wait_cursor():
     raise AttributeError("Qt WaitCursor enum not available")
 
 
+def qt_widget_attribute(name):
+    """
+    Resolve Qt widget attributes across Qt5/Qt6 enum API variants.
+    """
+    from qgis.PyQt.QtCore import Qt
+
+    direct = getattr(Qt, name, None)
+    if direct is not None:
+        return direct
+
+    widget_attr = getattr(Qt, "WidgetAttribute", None)
+    if widget_attr is not None and hasattr(widget_attr, name):
+        return getattr(widget_attr, name)
+
+    raise AttributeError(f"Qt widget attribute not available: {name}")
+
+
+def qt_window_flag(name):
+    """
+    Resolve Qt window type/hint flags across Qt5/Qt6 enum API variants.
+    """
+    from qgis.PyQt.QtCore import Qt
+
+    direct = getattr(Qt, name, None)
+    if direct is not None:
+        return direct
+
+    window_type = getattr(Qt, "WindowType", None)
+    if window_type is not None and hasattr(window_type, name):
+        return getattr(window_type, name)
+
+    raise AttributeError(f"Qt window flag not available: {name}")
+
+
+def qt_application_modal():
+    """
+    Resolve Qt.ApplicationModal across Qt5/Qt6 enum API variants.
+    """
+    from qgis.PyQt.QtCore import Qt
+
+    direct = getattr(Qt, "ApplicationModal", None)
+    if direct is not None:
+        return direct
+
+    modality = getattr(Qt, "WindowModality", None)
+    if modality is not None and hasattr(modality, "ApplicationModal"):
+        return modality.ApplicationModal
+
+    raise AttributeError("Qt ApplicationModal enum not available")
+
+
 def qt_scrollbar_as_needed():
     """
     Cross-Qt helper for Qt.ScrollBarAsNeeded enum location differences.

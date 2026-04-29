@@ -1,11 +1,12 @@
----
+﻿---
 title: "Home"
 format: html
+lang: en
 ---
 
 # Welcome to the brdrQ-Documentation page
 
-<img src="figures/icon_base_large.png" width="50" />
+<img src="../figures/icon_base_large.png" width="50" />
 
 ## Introduction
 
@@ -14,7 +15,7 @@ format: html
 ## Installation
 
 1. Open QGIS.
-2. Go to `Plugins` → `Manage and Install Plugins`.
+2. Go to `Plugins` â†’ `Manage and Install Plugins`.
 3. Search for `brdrQ`.
 4. Click `Install Plugin`.
 5. Once installed, the plugin will appear in the plugin toolbar.
@@ -43,3 +44,4 @@ The tools can be used separately or in combination with each other:
 
 1. Use [Autocorrectborders (BULK)](autocorrectborders.md) to align your thematic data to a reference layer. A CORRECTION_ layer is returned that indicates the brdrq_state of the alignment.
 2. Use [Feature aligner](featurealigner.md) on the CORRECTION_ layer to review/update features that are not automatically updated, according the 'brdrq_state' (to_review, to_update).
+
