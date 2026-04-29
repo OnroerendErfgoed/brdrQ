@@ -137,7 +137,18 @@ ul.task-list li input[type="checkbox"] {
   <ul class="collapse">
   <li><a href="#video" id="toc-video" class="nav-link" data-scroll-target="#video">Video</a></li>
   <li><a href="#instructions" id="toc-instructions" class="nav-link" data-scroll-target="#instructions">Instructions</a></li>
-  <li><a href="#settings" id="toc-settings" class="nav-link" data-scroll-target="#settings">Settings</a></li>
+  <li><a href="#parameter-guide" id="toc-parameter-guide" class="nav-link" data-scroll-target="#parameter-guide">Parameter Guide</a>
+  <ul class="collapse">
+  <li><a href="#reference-layer" id="toc-reference-layer" class="nav-link" data-scroll-target="#reference-layer">Reference layer</a></li>
+  <li><a href="#open-domain-strategy" id="toc-open-domain-strategy" class="nav-link" data-scroll-target="#open-domain-strategy">Open Domain Strategy</a></li>
+  <li><a href="#processor" id="toc-processor" class="nav-link" data-scroll-target="#processor">Processor</a></li>
+  <li><a href="#threshold-value" id="toc-threshold-value" class="nav-link" data-scroll-target="#threshold-value">Threshold value (%)</a></li>
+  <li><a href="#maximal-relevant-distance-m" id="toc-maximal-relevant-distance-m" class="nav-link" data-scroll-target="#maximal-relevant-distance-m">Maximal relevant distance (m)</a></li>
+  <li><a href="#add-brdr_metadata" id="toc-add-brdr_metadata" class="nav-link" data-scroll-target="#add-brdr_metadata">Add brdr_metadata?</a></li>
+  <li><a href="#full-reference-strategy" id="toc-full-reference-strategy" class="nav-link" data-scroll-target="#full-reference-strategy">Full Reference Strategy</a></li>
+  <li><a href="#snap-strategy" id="toc-snap-strategy" class="nav-link" data-scroll-target="#snap-strategy">Snap Strategy</a></li>
+  </ul></li>
+  <li><a href="#recommended-presets" id="toc-recommended-presets" class="nav-link" data-scroll-target="#recommended-presets">Recommended Presets</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -152,11 +163,11 @@ ul.task-list li input[type="checkbox"] {
 <h1>Documentation of QGIS Python plugin brdrQ: FeatureAligner</h1>
 <section id="video" class="level2">
 <h2 class="anchored" data-anchor-id="video">Video</h2>
-<div class="quarto-video"><video id="video_shortcode_videojs_video1" width="600" height="400" class="video-js vjs-default-skin vjs-big-play-centered " controls="" preload="auto" data-setup="{}" title="BrdrQ FeatureAligner Demo"><source src="figures/brdrQ_featurealigner.mp4"></video></div>
+<div class="quarto-video"><video id="video_shortcode_videojs_video1" width="600" height="400" class="video-js vjs-default-skin vjs-big-play-centered " controls="" preload="auto" data-setup="{}" title="BrdrQ FeatureAligner Demo"><source src="../figures/brdrQ_featurealigner.mp4"></video></div>
 </section>
 <section id="instructions" class="level2">
 <h2 class="anchored" data-anchor-id="instructions">Instructions</h2>
-<p><img src="figures/featurealigner.png" width="50%"></p>
+<p><img src="../figures/featurealigner.png" width="50%"></p>
 <ol start="0" type="1">
 <li>Choose the settings for the alignment (reference layer,…)</li>
 <li>Select the thematic layer you want to align.</li>
@@ -166,38 +177,94 @@ ul.task-list li input[type="checkbox"] {
 <p>Additionally, you can:</p>
 <ul>
 <li>Switch between multiple predictions (via list, slider, or spinbox).</li>
-<li>Plot: Request a ‘plot’ of these predictions (relevant distance (m) vs.&nbsp;change (m²)).</li>
+<li>Plot: Request a ‘plot’ of these predictions (relevant distance (m) vs.&nbsp;change (mÂ²)).</li>
 <li>Visualize: Visualize the predicted relevant distances side by side.</li>
 <li>Save Geometry: Adjust the original geometry to the chosen prediction.</li>
 <li>Reset Geometry: Reset the original geometry (only within a feature session, so if no other feature is selected).</li>
 </ul>
 </section>
-<section id="settings" class="level2">
-<h2 class="anchored" data-anchor-id="settings">Settings</h2>
-<p><img src="figures/featurealigner_settings.png" width="50%"></p>
+<section id="parameter-guide" class="level2">
+<h2 class="anchored" data-anchor-id="parameter-guide">Parameter Guide</h2>
+<section id="reference-layer" class="level3">
+<h3 class="anchored" data-anchor-id="reference-layer">Reference layer</h3>
 <ul>
-<li>Choice of the <strong>reference layer</strong>: you can choose a local layer or several predefined on-the-fly layers (GRB, OSM,…)</li>
-<li><strong>OpenDomain Strategy</strong>: exclude or include the Open Domain</li>
-<li><strong>Processor</strong>: Choice of processing-algorithm. Best to use AlignerGeometryProcessor (default), as this is a wrapper that chooses the fastest available algorithm based on geometry-types: DieussaertGeometryProcessor for Polygon-to-Polygon and NetworkGeometryProcessor for all other geometry-type-combinations.</li>
-<li><strong>Threshold_overlap_percentage</strong> (default 50): fallback value for the algorithm if no relevant areas are detected.</li>
-<li><strong>Maximum relevant distance</strong>: Maximum distance (in meters) that can be used to search for predictions. (Prediction deviates at most by this value from the original).</li>
-<li><strong>Add metadata</strong>: A field ‘brdr_metadata’ with descriptive metadata of the geometry is added to the result.</li>
-<li><strong>FullReference Strategy</strong>: Choice that determines the score of the predictions based on a full overlap with reference polygons:
+<li><strong>Definition</strong>: Target dataset used as geometric truth.</li>
+<li><strong>Why use it</strong>: Determines what ?aligned? means.</li>
+<li><strong>Choices</strong>: Local/project reference or on-the-fly sources.</li>
+<li><strong>Impact</strong>: Reference quality controls final alignment quality.</li>
+</ul>
+</section>
+<section id="open-domain-strategy" class="level3">
+<h3 class="anchored" data-anchor-id="open-domain-strategy">Open Domain Strategy</h3>
 <ul>
-<li>ONLY_FULL_REFERENCE: Only predictions with a full reference overlap are shown.</li>
-<li>PREFER_FULL_REFERENCE: Predictions with a full reference overlap get a higher score, others are still shown.</li>
-<li>NO_FULL_REFERENCE: No distinction is made between predictions with or without full reference overlap.</li>
-</ul></li>
-<li>SNAP OPTIONS: only used when geometry is processed by the NetworkGeometryAligner/SnapGeometryProcessor (Line or Points):
+<li><strong>Definition</strong>: Handling rule for geometry parts outside reference coverage.</li>
+<li><strong>Why use it</strong>: Reflects policy on non-covered area retention.</li>
+<li><strong>Choices</strong>: Exclude/keep/snap variants.</li>
+<li><strong>Impact</strong>: Changes whether external areas are removed, kept, or reshaped.</li>
+</ul>
+</section>
+<section id="processor" class="level3">
+<h3 class="anchored" data-anchor-id="processor">Processor</h3>
 <ul>
-<li><strong>SnapStrategy</strong>:
+<li><strong>Definition</strong>: Algorithm backend selector.</li>
+<li><strong>Why use it</strong>: Optimizes runtime by geometry type.</li>
+<li><strong>Choices</strong>: AlignerGeometryProcessor recommended.</li>
+<li><strong>Impact</strong>: Better defaults improve speed and consistency.</li>
+</ul>
+</section>
+<section id="threshold-value" class="level3">
+<h3 class="anchored" data-anchor-id="threshold-value">Threshold value (%)</h3>
 <ul>
-<li>NO_PREFERENCE: does not prefer real vertices when searching for a solution</li>
-<li>PREFER_VERTICES: tries to move the result to real vertices of the reference data if they are within relevant distance</li>
-<li>PREFER_ENDS_AND_ANGLES: tries to move the result to end vertices or ‘angles’ of the reference data if they are within relevant distance</li>
-<li>ONLY_VERTICES: uses only real vertices of the reference data (or not, if not found)</li>
-</ul></li>
-</ul></li>
+<li><strong>Definition</strong>: Fallback threshold in uncertain relevance cases.</li>
+<li><strong>Why use it</strong>: Prevents unstable candidate acceptance.</li>
+<li><strong>Choices</strong>: usually around 50, adapt per dataset.</li>
+<li><strong>Impact</strong>: Higher means stricter matching.</li>
+</ul>
+</section>
+<section id="maximal-relevant-distance-m" class="level3">
+<h3 class="anchored" data-anchor-id="maximal-relevant-distance-m">Maximal relevant distance (m)</h3>
+<ul>
+<li><strong>Definition</strong>: Maximum deviation searched for predictions.</li>
+<li><strong>Why use it</strong>: Controls correction aggressiveness.</li>
+<li><strong>Choices</strong>: low/medium/high according to data drift.</li>
+<li><strong>Impact</strong>: Larger values increase candidate range and ambiguity.</li>
+</ul>
+</section>
+<section id="add-brdr_metadata" class="level3">
+<h3 class="anchored" data-anchor-id="add-brdr_metadata">Add brdr_metadata?</h3>
+<ul>
+<li><strong>Definition</strong>: Adds rdr_metadata to results.</li>
+<li><strong>Why use it</strong>: Preserves lineage for downstream updates/audits.</li>
+<li><strong>Choices</strong>: enabled/disabled.</li>
+<li><strong>Impact</strong>: Better traceability with small storage overhead.</li>
+</ul>
+</section>
+<section id="full-reference-strategy" class="level3">
+<h3 class="anchored" data-anchor-id="full-reference-strategy">Full Reference Strategy</h3>
+<ul>
+<li><strong>Definition</strong>: Preference for full-overlap candidates.</li>
+<li><strong>Why use it</strong>: Raise confidence in selected predictions.</li>
+<li><strong>Choices</strong>: ONLY_FULL_REFERENCE, PREFER_FULL_REFERENCE, NO_FULL_REFERENCE.</li>
+<li><strong>Impact</strong>: Stricter mode improves certainty but may reduce alternatives.</li>
+</ul>
+</section>
+<section id="snap-strategy" class="level3">
+<h3 class="anchored" data-anchor-id="snap-strategy">Snap Strategy</h3>
+<ul>
+<li><strong>Definition</strong>: Snap strictness to reference vertices (mainly line/point workflows).</li>
+<li><strong>Why use it</strong>: Controls structural precision at vertices/endpoints.</li>
+<li><strong>Choices</strong>: NO_PREFERENCE, PREFER_VERTICES, PREFER_ENDS_AND_ANGLES, ONLY_VERTICES.</li>
+<li><strong>Impact</strong>: Stricter snapping improves topological control but can reduce feasible matches.</li>
+</ul>
+</section>
+</section>
+<section id="recommended-presets" class="level2">
+<h2 class="anchored" data-anchor-id="recommended-presets">Recommended Presets</h2>
+<ul>
+<li><strong>Conservative Editing</strong>: low distance + PREFER_FULL_REFERENCE.</li>
+<li><strong>Balanced Daily Use</strong>: medium distance + default processor + PREFER_VERTICES.</li>
+<li><strong>Strong Recovery for Rough Data</strong>: higher distance + permissive full-reference mode.</li>
+<li><strong>Strict Network Snapping</strong>: ONLY_VERTICES + low distance.</li>
 </ul>
 
 

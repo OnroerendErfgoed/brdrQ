@@ -169,10 +169,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#documentation-of-qgis-python-plugin-brdrq---autoupdateborders---grb-updater-flanders-specific-dataset" id="toc-documentation-of-qgis-python-plugin-brdrq---autoupdateborders---grb-updater-flanders-specific-dataset" class="nav-link active" data-scroll-target="#documentation-of-qgis-python-plugin-brdrq---autoupdateborders---grb-updater-flanders-specific-dataset">Documentation of QGIS Python plugin brdrQ - AutoUpdateBorders - GRB Updater (Flanders-specific dataset)</a>
   <ul class="collapse">
   <li><a href="#description" id="toc-description" class="nav-link" data-scroll-target="#description">Description</a></li>
-  <li><a href="#parameters" id="toc-parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a>
+  <li><a href="#parameter-guide" id="toc-parameter-guide" class="nav-link" data-scroll-target="#parameter-guide">Parameter Guide</a>
   <ul class="collapse">
-  <li><a href="#input-parameters" id="toc-input-parameters" class="nav-link" data-scroll-target="#input-parameters">Input Parameters</a></li>
-  <li><a href="#advanced-input-parameters" id="toc-advanced-input-parameters" class="nav-link" data-scroll-target="#advanced-input-parameters">ADVANCED INPUT PARAMETERS</a></li>
+  <li><a href="#thematic-layer" id="toc-thematic-layer" class="nav-link" data-scroll-target="#thematic-layer">Thematic Layer</a></li>
+  <li><a href="#thematic-id" id="toc-thematic-id" class="nav-link" data-scroll-target="#thematic-id">Thematic ID</a></li>
+  <li><a href="#reference-layer" id="toc-reference-layer" class="nav-link" data-scroll-target="#reference-layer">Reference Layer</a></li>
+  <li><a href="#relevant-distance-meters" id="toc-relevant-distance-meters" class="nav-link" data-scroll-target="#relevant-distance-meters">Relevant Distance (meters)</a></li>
+  <li><a href="#prediction-strategy" id="toc-prediction-strategy" class="nav-link" data-scroll-target="#prediction-strategy">Prediction Strategy</a></li>
+  <li><a href="#full-reference-strategy" id="toc-full-reference-strategy" class="nav-link" data-scroll-target="#full-reference-strategy">Full Reference Strategy</a></li>
+  <li><a href="#open-domain-strategy" id="toc-open-domain-strategy" class="nav-link" data-scroll-target="#open-domain-strategy">Open Domain Strategy</a></li>
+  <li><a href="#snap-strategy" id="toc-snap-strategy" class="nav-link" data-scroll-target="#snap-strategy">Snap Strategy</a></li>
+  <li><a href="#processor" id="toc-processor" class="nav-link" data-scroll-target="#processor">Processor</a></li>
+  <li><a href="#threshold-overlap-percentage" id="toc-threshold-overlap-percentage" class="nav-link" data-scroll-target="#threshold-overlap-percentage">Threshold overlap percentage (%)</a></li>
+  <li><a href="#review_percentage" id="toc-review_percentage" class="nav-link" data-scroll-target="#review_percentage">REVIEW_PERCENTAGE</a></li>
+  <li><a href="#work-folder" id="toc-work-folder" class="nav-link" data-scroll-target="#work-folder">Work Folder</a></li>
+  <li><a href="#brdr_metadata-field" id="toc-brdr_metadata-field" class="nav-link" data-scroll-target="#brdr_metadata-field">brdr_metadata field</a></li>
+  <li><a href="#write-extra-logging-from-brdr-log" id="toc-write-extra-logging-from-brdr-log" class="nav-link" data-scroll-target="#write-extra-logging-from-brdr-log">Write extra logging (from brdr-log)</a></li>
+  </ul></li>
+  <li><a href="#recommended-presets" id="toc-recommended-presets" class="nav-link" data-scroll-target="#recommended-presets">Recommended Presets</a>
+  <ul class="collapse">
   <li><a href="#output-parameters" id="toc-output-parameters" class="nav-link" data-scroll-target="#output-parameters">Output Parameters</a></li>
   </ul></li>
   <li><a href="#example-of-usage" id="toc-example-of-usage" class="nav-link" data-scroll-target="#example-of-usage">Example of Usage</a></li>
@@ -188,106 +203,148 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="documentation-of-qgis-python-plugin-brdrq---autoupdateborders---grb-updater-flanders-specific-dataset" class="level1">
 <h1>Documentation of QGIS Python plugin brdrQ - AutoUpdateBorders - GRB Updater (Flanders-specific dataset)</h1>
-<p><img src="figures/autoupdateborders.png" width="50%"></p>
+<p><img src="../figures/autoupdateborders.png" width="50%"></p>
 <section id="description" class="level2">
 <h2 class="anchored" data-anchor-id="description">Description</h2>
 <p><code>AutoUpdateBorders</code> is a QGIS-processing Script to auto-update geometries that are aligned to an old GRB-referencelayer (Flanders) to a newer GRB-referencelayer. It makes predictions to find the resulting aligned geometry. If multiple predictions are found the user can choose to return ALL predictions, the BEST prediction, or the ORIGINAL geometry (for further analysis).</p>
 </section>
-<section id="parameters" class="level2">
-<h2 class="anchored" data-anchor-id="parameters">Parameters</h2>
-<section id="input-parameters" class="level3">
-<h3 class="anchored" data-anchor-id="input-parameters">Input Parameters</h3>
+<section id="parameter-guide" class="level2">
+<h2 class="anchored" data-anchor-id="parameter-guide">Parameter Guide</h2>
+<section id="thematic-layer" class="level3">
+<h3 class="anchored" data-anchor-id="thematic-layer">Thematic Layer</h3>
 <ul>
-<li><p><strong>Thematic Layer</strong>: A vector layer (polygon, line, or point) with EPSG:31370 or EPSG:3812 coordinates and a unique ID.</p>
-<ul>
-<li><strong>Default</strong>: No default value, must be provided by the user.</li>
-<li><strong>Optional</strong>: No.</li>
-</ul></li>
-<li><p><strong>Thematic ID</strong>: Textual or numeric ID of the thematic layer used as a reference to the objects. This must be unique.</p>
-<ul>
-<li><strong>Default</strong>: No default value, must be provided by the user.</li>
-<li><strong>Optional</strong>: No.</li>
-</ul></li>
-<li><p><strong>Reference Layer</strong>: Combobox to choose which GRB referencelayer will be used (on-the-fly download).</p>
-<ul>
-<li><p>The on-the-fly downloads are only possible for smaller areas.</p>
-<ul>
-<li>ADP: (on-the-fly download) - Actual administrative parcels from GRB (Grootschalig Referentie Bestand)</li>
-<li>GBG: (on-the-fly download) - Actual buildings from GRB</li>
-<li>KNW: (on-the-fly download) - Actual artwork from GRB</li>
-<li>(Note: the on-the-fly downloads are only possible for a subset or small area of thematic objects as this results in downloading this reference-area.)</li>
-</ul></li>
-<li><p><strong>Default</strong>: ADP (parcels)</p></li>
-<li><p><strong>Optional</strong>: no</p></li>
-</ul></li>
-<li><p><strong>Relevant Distance (meters)</strong>: Positive (decimal) number in meters. This is the maximum distance by which the original boundary is maximally shifted to align with the reference layer when searching for predictions. The algorithm uses all relevant distances from 0 to ‘max’ with steps of 10cm in between.</p>
-<ul>
-<li><strong>Default</strong>: 3 (meters)</li>
-<li><strong>Optional</strong>: No.</li>
-</ul></li>
-<li><p><strong>PREDICTION_STRATEGY</strong> : Strategy when multiple predictions are available:</p>
-<ul>
-<li><p>ALL: All predictions will be added to the result. It is not guaranteed anymore that the ID is unique anymore in the result.</p></li>
-<li><p>BEST: Only the prediction with the best prediction_score will be added to the result (ID is unique)</p></li>
-<li><p>ORIGINAL: When multiple predictions are found, the original geometry will be added to the result . The ID stays unique. This strategy can be usefull in combination with the featurealigner, so the multiple predictions can be handled one-by-one.</p></li>
-<li><p><strong>Default</strong>: BEST</p></li>
-<li><p><strong>Optional</strong>: No.</p></li>
-</ul></li>
+<li><strong>Definition</strong>: Input geometry layer to be temporally updated.</li>
+<li><strong>Why use it</strong>: Defines which existing aligned features will be migrated to newer GRB geometry.</li>
+<li><strong>Choices</strong>: Projected CRS layer with stable geometry.</li>
+<li><strong>Impact</strong>: Bad source quality propagates into update uncertainty.</li>
 </ul>
 </section>
-<section id="advanced-input-parameters" class="level3">
-<h3 class="anchored" data-anchor-id="advanced-input-parameters">ADVANCED INPUT PARAMETERS</h3>
+<section id="thematic-id" class="level3">
+<h3 class="anchored" data-anchor-id="thematic-id">Thematic ID</h3>
 <ul>
-<li><strong>FULL_REFERENCE_STRATEGY</strong>: Choice that determines the score of predictions based on full overlap with reference polygons:
-<ul>
-<li>ONLY_FULL: Only predictions with a full reference overlap are shown.</li>
-<li>PREFER_FULL: Predictions with a full reference overlap get a higher score, others are still shown.</li>
-<li>NO_FULL: No distinction is made between predictions with or without full reference overlap.</li>
-<li><strong>Default</strong>: None</li>
-<li><strong>Optional</strong>: yes.</li>
-</ul></li>
-<li><strong>ENUM_OD_STRATEGY</strong>: Strategy for handling parts of the geometry not covered by reference features (= Open Domain).
-<ul>
-<li><strong>Default</strong>: <code>SNAP_ALL_SIDE</code></li>
-<li><strong>Optional</strong>: yes.</li>
-</ul></li>
-<li><strong>ENUM_SNAP_STRATEGY</strong>: Strategy for snapping to reference vertices. Options: <code>NO_PREFERENCE</code>, <code>PREFER_VERTICES</code>, <code>ONLY_VERTICES</code>. This parameter only applies to <code>NetworkGeometryProcessor</code> and <code>SnapGeometryProcessor</code>, typically for line and point workflows. For polygon workflows this setting has no effect.
-<ul>
-<li><strong>Default</strong>: <code>PREFER_VERTICES</code></li>
-<li><strong>Optional</strong>: yes.</li>
-</ul></li>
-<li><strong>ENUM_PROCESSOR</strong>: Choice of processing algorithm. Recommended is <code>AlignerGeometryProcessor</code> (wrapper that chooses the fastest algorithm based on geometry types).
-<ul>
-<li><strong>Default</strong>: <code>AlignerGeometryProcessor</code></li>
-<li><strong>Optional</strong>: yes.</li>
-</ul></li>
-<li><strong>THRESHOLD_OVERLAP_PERCENTAGE (0-100)</strong>: Fallback overlap threshold used in edge cases where relevance cannot be determined.
-<ul>
-<li><strong>Default</strong>: <code>50</code></li>
-<li><strong>Optional</strong>: yes.</li>
-</ul></li>
-<li><strong>REVIEW_PERCENTAGE (0-100)</strong>: Results with change percentage above this threshold are categorized for review.
-<ul>
-<li><strong>Default</strong>: <code>10</code></li>
-<li><strong>Optional</strong>: yes.</li>
-</ul></li>
-<li><strong>WORKING FOLDER</strong>: Folder to save the resulting geojson-files. By default empty, resulting in saving the geojson-files in a default folder on your machine.
-<ul>
-<li><strong>Default</strong>: By default, the output will be saved in a local folder on your machine.</li>
-<li><strong>Optional</strong>: yes.</li>
-</ul></li>
-<li><strong>METADATA_FIELD</strong>: Attribute field of the thematic layer containing former <code>brdr_metadata</code>. When provided, it is used for better prediction quality.
-<ul>
-<li><strong>Default</strong>: None</li>
-<li><strong>Optional</strong>: yes.</li>
-</ul></li>
-<li><strong>LOG_INFO</strong> (default False): When True, extra logging from brdr is written to a file (<code>brdr_show_log_info.log</code>) in the selected WORK_FOLDER.
-<ul>
-<li><strong>Default</strong>: False</li>
-<li><strong>Optional</strong>: No.</li>
-</ul></li>
+<li><strong>Definition</strong>: Unique feature key.</li>
+<li><strong>Why use it</strong>: Maintains stable lineage over update cycles.</li>
+<li><strong>Choices</strong>: Unique text/numeric field.</li>
+<li><strong>Impact</strong>: Non-unique IDs reduce traceability and review clarity.</li>
 </ul>
 </section>
+<section id="reference-layer" class="level3">
+<h3 class="anchored" data-anchor-id="reference-layer">Reference Layer</h3>
+<ul>
+<li><strong>Definition</strong>: GRB source selection (ADP, GBG, KNW).</li>
+<li><strong>Why use it</strong>: Picks the target dataset type for update.</li>
+<li><strong>Choices</strong>: Match source to domain object type.</li>
+<li><strong>Impact</strong>: Wrong reference type leads to semantically wrong updates.</li>
+</ul>
+</section>
+<section id="relevant-distance-meters" class="level3">
+<h3 class="anchored" data-anchor-id="relevant-distance-meters">Relevant Distance (meters)</h3>
+<ul>
+<li><strong>Definition</strong>: Maximum search shift for update candidates.</li>
+<li><strong>Why use it</strong>: Limits update aggressiveness.</li>
+<li><strong>Choices</strong>: 3-5 typical; higher for rough legacy datasets.</li>
+<li><strong>Impact</strong>: Higher distance finds more candidates but increases ambiguity.</li>
+</ul>
+</section>
+<section id="prediction-strategy" class="level3">
+<h3 class="anchored" data-anchor-id="prediction-strategy">Prediction Strategy</h3>
+<ul>
+<li><strong>Definition</strong>: Policy when multiple candidate updates exist.</li>
+<li><strong>Why use it</strong>: Controls determinism vs analysis.</li>
+<li><strong>Choices</strong>: BEST, ALL, ORIGINAL.</li>
+<li><strong>Impact</strong>: BEST is production default; ALL increases review scope; ORIGINAL is safe fallback.</li>
+</ul>
+</section>
+<section id="full-reference-strategy" class="level3">
+<h3 class="anchored" data-anchor-id="full-reference-strategy">Full Reference Strategy</h3>
+<ul>
+<li><strong>Definition</strong>: Preference strength for full-reference-overlap candidates.</li>
+<li><strong>Why use it</strong>: Enforces stricter topological confidence.</li>
+<li><strong>Choices</strong>: ONLY_FULL, PREFER_FULL, NO_FULL.</li>
+<li><strong>Impact</strong>: Stricter settings reduce risky updates but may hide alternatives.</li>
+</ul>
+</section>
+<section id="open-domain-strategy" class="level3">
+<h3 class="anchored" data-anchor-id="open-domain-strategy">Open Domain Strategy</h3>
+<ul>
+<li><strong>Definition</strong>: Open Domain behavior outside reference coverage.</li>
+<li><strong>Why use it</strong>: Aligns result with policy on non-covered areas.</li>
+<li><strong>Choices</strong>: Strategy enum options.</li>
+<li><strong>Impact</strong>: Changes boundary inclusion/exclusion semantics.</li>
+</ul>
+</section>
+<section id="snap-strategy" class="level3">
+<h3 class="anchored" data-anchor-id="snap-strategy">Snap Strategy</h3>
+<ul>
+<li><strong>Definition</strong>: Snap strictness to reference vertices.</li>
+<li><strong>Why use it</strong>: Controls structural fit in line/point situations.</li>
+<li><strong>Choices</strong>: NO_PREFERENCE, PREFER_VERTICES, ONLY_VERTICES.</li>
+<li><strong>Impact</strong>: Stricter settings improve vertex correctness but reduce flexibility.</li>
+</ul>
+</section>
+<section id="processor" class="level3">
+<h3 class="anchored" data-anchor-id="processor">Processor</h3>
+<ul>
+<li><strong>Definition</strong>: Processing backend selector.</li>
+<li><strong>Why use it</strong>: Runtime/performance optimization.</li>
+<li><strong>Choices</strong>: Prefer AlignerGeometryProcessor.</li>
+<li><strong>Impact</strong>: Better defaults reduce runtime variance.</li>
+</ul>
+</section>
+<section id="threshold-overlap-percentage" class="level3">
+<h3 class="anchored" data-anchor-id="threshold-overlap-percentage">Threshold overlap percentage (%)</h3>
+<ul>
+<li><strong>Definition</strong>: Fallback overlap threshold for edge-case relevance.</li>
+<li><strong>Why use it</strong>: Stabilizes ambiguous relevance decisions.</li>
+<li><strong>Choices</strong>: 0-100.</li>
+<li><strong>Impact</strong>: Higher threshold = stricter acceptance.</li>
+</ul>
+</section>
+<section id="review_percentage" class="level3">
+<h3 class="anchored" data-anchor-id="review_percentage">REVIEW_PERCENTAGE</h3>
+<ul>
+<li><strong>Definition</strong>: Change threshold for review categorization.</li>
+<li><strong>Why use it</strong>: Tunes QA load.</li>
+<li><strong>Choices</strong>: Lower for strict control, higher for throughput.</li>
+<li><strong>Impact</strong>: Directly changes number of records to review.</li>
+</ul>
+</section>
+<section id="work-folder" class="level3">
+<h3 class="anchored" data-anchor-id="work-folder">Work Folder</h3>
+<ul>
+<li><strong>Definition</strong>: Output folder for generated artifacts.</li>
+<li><strong>Why use it</strong>: Centralized run outputs/logs.</li>
+<li><strong>Choices</strong>: default local or explicit directory.</li>
+<li><strong>Impact</strong>: Improves reproducibility and auditability.</li>
+</ul>
+</section>
+<section id="brdr_metadata-field" class="level3">
+<h3 class="anchored" data-anchor-id="brdr_metadata-field">brdr_metadata field</h3>
+<ul>
+<li><strong>Definition</strong>: Field containing prior <code>brdr_metadata</code>.</li>
+<li><strong>Why use it</strong>: Provides temporal lineage context.</li>
+<li><strong>Choices</strong>: empty or existing metadata field.</li>
+<li><strong>Impact</strong>: Can improve prediction quality.</li>
+</ul>
+</section>
+<section id="write-extra-logging-from-brdr-log" class="level3">
+<h3 class="anchored" data-anchor-id="write-extra-logging-from-brdr-log">Write extra logging (from brdr-log)</h3>
+<ul>
+<li><strong>Definition</strong>: Extended log output.</li>
+<li><strong>Why use it</strong>: Diagnostics and troubleshooting.</li>
+<li><strong>Choices</strong>: False/True.</li>
+<li><strong>Impact</strong>: Better debugging, more log volume.</li>
+</ul>
+</section>
+</section>
+<section id="recommended-presets" class="level2">
+<h2 class="anchored" data-anchor-id="recommended-presets">Recommended Presets</h2>
+<ul>
+<li><strong>Stable Production Update</strong>: PREDICTION_STRATEGY=BEST, FULL_REFERENCE_STRATEGY=PREFER_FULL, Relevant Distance=3-5.</li>
+<li><strong>Strict Legal/Boundary QA</strong>: FULL_REFERENCE_STRATEGY=ONLY_FULL, lower REVIEW_PERCENTAGE, conservative distance.</li>
+<li><strong>Ambiguity Analysis</strong>: PREDICTION_STRATEGY=ALL, higher distance, LOG_INFO=True.</li>
+<li><strong>Safe Fallback</strong>: PREDICTION_STRATEGY=ORIGINAL when preserving source geometry is preferred over uncertain shifts.</li>
+</ul>
 <section id="output-parameters" class="level3">
 <h3 class="anchored" data-anchor-id="output-parameters">Output Parameters</h3>
 <p>The script generates several output layers in the layer overview, combined into a group layer:</p>

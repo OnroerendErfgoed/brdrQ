@@ -201,7 +201,25 @@ window.Quarto = {
   <ul class="collapse">
   <li><a href="#video" id="toc-video" class="nav-link" data-scroll-target="#video">Video</a></li>
   <li><a href="#description" id="toc-description" class="nav-link" data-scroll-target="#description">Description</a></li>
-  <li><a href="#input-parameters" id="toc-input-parameters" class="nav-link" data-scroll-target="#input-parameters">Input Parameters</a></li>
+  <li><a href="#parameter-guide" id="toc-parameter-guide" class="nav-link" data-scroll-target="#parameter-guide">Parameter Guide</a>
+  <ul class="collapse">
+  <li><a href="#thematic-layer" id="toc-thematic-layer" class="nav-link" data-scroll-target="#thematic-layer">Thematic Layer</a></li>
+  <li><a href="#thematic-id" id="toc-thematic-id" class="nav-link" data-scroll-target="#thematic-id">Thematic ID</a></li>
+  <li><a href="#reference-local-reference-layer-reference-id-unique" id="toc-reference-local-reference-layer-reference-id-unique" class="nav-link" data-scroll-target="#reference-local-reference-layer-reference-id-unique">Reference / Local reference layer / Reference ID (unique!)</a></li>
+  <li><a href="#relevant-distance-meters" id="toc-relevant-distance-meters" class="nav-link" data-scroll-target="#relevant-distance-meters">Relevant Distance (meters)</a></li>
+  <li><a href="#use-predictions" id="toc-use-predictions" class="nav-link" data-scroll-target="#use-predictions">Use predictions</a></li>
+  <li><a href="#prediction-strategy" id="toc-prediction-strategy" class="nav-link" data-scroll-target="#prediction-strategy">Prediction Strategy</a></li>
+  <li><a href="#full-reference-strategy" id="toc-full-reference-strategy" class="nav-link" data-scroll-target="#full-reference-strategy">Full Reference Strategy</a></li>
+  <li><a href="#processor" id="toc-processor" class="nav-link" data-scroll-target="#processor">Processor</a></li>
+  <li><a href="#open-domain-strategy" id="toc-open-domain-strategy" class="nav-link" data-scroll-target="#open-domain-strategy">Open Domain Strategy</a></li>
+  <li><a href="#snap-strategy" id="toc-snap-strategy" class="nav-link" data-scroll-target="#snap-strategy">Snap Strategy</a></li>
+  <li><a href="#threshold-overlap-percentage" id="toc-threshold-overlap-percentage" class="nav-link" data-scroll-target="#threshold-overlap-percentage">Threshold overlap percentage (%)</a></li>
+  <li><a href="#review_percentage" id="toc-review_percentage" class="nav-link" data-scroll-target="#review_percentage">REVIEW_PERCENTAGE</a></li>
+  <li><a href="#work-folder" id="toc-work-folder" class="nav-link" data-scroll-target="#work-folder">Work Folder</a></li>
+  <li><a href="#show-intermediate-processing-results" id="toc-show-intermediate-processing-results" class="nav-link" data-scroll-target="#show-intermediate-processing-results">Show Intermediate processing results</a></li>
+  <li><a href="#write-extra-logging-from-brdr-log" id="toc-write-extra-logging-from-brdr-log" class="nav-link" data-scroll-target="#write-extra-logging-from-brdr-log">Write extra logging (from brdr-log)</a></li>
+  </ul></li>
+  <li><a href="#recommended-presets" id="toc-recommended-presets" class="nav-link" data-scroll-target="#recommended-presets">Recommended Presets</a></li>
   <li><a href="#output-parameters" id="toc-output-parameters" class="nav-link" data-scroll-target="#output-parameters">Output Parameters</a></li>
   <li><a href="#example-of-usage" id="toc-example-of-usage" class="nav-link" data-scroll-target="#example-of-usage">Example of Usage</a></li>
   <li><a href="#tips" id="toc-tips" class="nav-link" data-scroll-target="#tips">TIPS</a></li>
@@ -220,136 +238,160 @@ window.Quarto = {
 <h1>Documentation of QGIS Python plugin brdrQ - Autocorrectborders</h1>
 <section id="video" class="level2">
 <h2 class="anchored" data-anchor-id="video">Video</h2>
-<div class="quarto-video"><video id="video_shortcode_videojs_video1" width="600" height="400" class="video-js vjs-default-skin vjs-big-play-centered " controls="" preload="auto" data-setup="{}" title="BrdrQ Autocorrectborders Demo"><source src="figures/brdrQ_autocorrectborders_bulk.mp4"></video></div>
+<div class="quarto-video"><video id="video_shortcode_videojs_video1" width="600" height="400" class="video-js vjs-default-skin vjs-big-play-centered " controls="" preload="auto" data-setup="{}" title="BrdrQ Autocorrectborders Demo"><source src="../figures/brdrQ_autocorrectborders_bulk.mp4"></video></div>
 </section>
 <section id="description" class="level2">
 <h2 class="anchored" data-anchor-id="description">Description</h2>
-<p><img src="figures/autocorrectborders.png" width="50%"></p>
+<p><img src="../figures/autocorrectborders.png" width="50%"></p>
 <p>The processing algorithm, named <strong>Autocorrectborders</strong>, is developed to automatically adjust thematic boundaries to reference boundaries. It searches for relevant overlap between thematic boundaries and reference boundaries, and creates a resulting boundary based on the relevant overlapping areas.</p>
 </section>
-<section id="input-parameters" class="level2">
-<h2 class="anchored" data-anchor-id="input-parameters">Input Parameters</h2>
-<p>The script requires the following input parameters:</p>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 7%">
-<col style="width: 74%">
-<col style="width: 16%">
-<col style="width: 1%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Parameter</th>
-<th>Description</th>
-<th>Default</th>
-<th>Optional</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>Thematic Layer</td>
-<td>A vector layer (polygon, line, or point) with a projected CRS (unit: meter) and a unique ID.</td>
-<td>No default value, must be provided by the user.</td>
-<td>No.</td>
-</tr>
-<tr class="even">
-<td>Thematic ID</td>
-<td>Textual or numeric ID of the thematic layer used as a reference to the objects. This must be unique.</td>
-<td>No default value, must be provided by the user.</td>
-<td>No.</td>
-</tr>
-<tr class="odd">
-<td>SELECT Reference Layer:</td>
-<td>Selection of REFERENCE LAYER: The user can choose between a LOCAL REFERENCE LAYER (see parameters below), or on-the fly reference layers from GRB (Flanders, Belgium)</td>
-<td>LOCREF: use of a LOCAL REFERENCE LAYER</td>
-<td>Yes.</td>
-</tr>
-<tr class="even">
-<td>Reference Layer (when LOCREF selected)</td>
-<td>A (MULTI)POLYGON layer with the same projected CRS (unit: meter).</td>
-<td>No default value, must be provided by the user.</td>
-<td>Yes.</td>
-</tr>
-<tr class="odd">
-<td>Reference ID (when LOCREF selected)</td>
-<td>Textual or numeric ID of the reference layer used as a reference to the objects.</td>
-<td>No default value, must be provided by the user.</td>
-<td>Yes.</td>
-</tr>
-<tr class="even">
-<td>Relevant Distance (meters)</td>
-<td>Positive (decimal) number in meters. This indicates the maximum distance that the geometry is allowed to change.</td>
-<td>3 (meters)</td>
-<td>No.</td>
-</tr>
-<tr class="odd">
-<td>PREDICTIONS (!slower!)</td>
-<td>If True, the code will do a FULL SCAN of all relevant distances with an interval of 10cm to try to search for the best ‘predictions’.These are results where the output geometry is a stable result that could be the possible wanted result.- The resulting layer will use the prediction with the highest prediction score. Warning : When this option is used, the processing will be much slower, as a multitude of calculations are needed.</td>
-<td>False</td>
-<td>No</td>
-</tr>
-<tr class="even">
-<td>Prediction Strategy (when PREDICTIONS)</td>
-<td>When PREDICTIONS, you can set Prediction Strategy to ALL (all predictions in result), BEST (the prediction with highest prediction score) or ORIGINAL (if multiple predictions,the original geometry is shown)</td>
-<td>BEST</td>
-<td>Yes.</td>
-</tr>
-<tr class="odd">
-<td>Full Reference Strategy (when PREDICTIONS)</td>
-<td>When PREDICTIONS, you can set if predictions that are fully aligned with the reference are prefered or not</td>
-<td>PREFER_FULL_REFERENCE</td>
-<td>Yes.</td>
-</tr>
-<tr class="even">
-<td>Processor</td>
-<td>Choice of which processing-algorithm is used. Best to set it to AlignerGeometryProcessor as this chooses automatically the fastest algorithm</td>
-<td>AlignerGeometryProcessor (Wrapper for DieussaertGeometryProcessor &amp; NetworkGeometryProcessor)</td>
-<td>No</td>
-</tr>
-<tr class="odd">
-<td>OD_STRATEGY</td>
-<td>This parameter determines how the algorithm deals with parts of the geometry that is not covered by reference data. Different strategies are available: EXCLUDE, ASIS, SNAP_INNER_SIDE, SNAP_ALL_SIDE</td>
-<td>SNAP_ALL_SIDE (2)</td>
-<td>No</td>
-</tr>
-<tr class="even">
-<td>SNAP_STRATEGY</td>
-<td>Strategy for snapping to reference vertices. Options: NO_PREFERENCE, PREFER_VERTICES, ONLY_VERTICES. This parameter only applies to NetworkGeometryProcessor and SnapGeometryProcessor, typically for line and point workflows. For polygon workflows this setting has no effect.</td>
-<td>PREFER_VERTICES (1)</td>
-<td>Yes.</td>
-</tr>
-<tr class="odd">
-<td>FULL_OVERLAP_PERCENTAGE % (0-100)</td>
-<td>Backup-parameter when the algorithm cannot decide if a reference is relevant to be taken into account. It falls back to the covered percentage.</td>
-<td>50%</td>
-<td>No</td>
-</tr>
-<tr class="even">
-<td>REVIEW_PERCENTAGE % (0-100)</td>
-<td>Resulting geometries that change more than REVIEW_PERCENTAGE are categorised as ‘to_review’</td>
-<td>10 (%)</td>
-<td>No.</td>
-</tr>
-<tr class="odd">
-<td>WORKING FOLDER</td>
-<td>Folder to save the resulting geojson-files. By default empty, resulting in saving the geojson-files in a created folder.</td>
-<td>Empty - a local folder is used</td>
-<td>No</td>
-</tr>
-<tr class="even">
-<td>SHOW_INTERMEDIATE_LAYERS</td>
-<td>If True, 2 additional layers are generated as output that visually represent the significant intersections and significant differences</td>
-<td>False</td>
-<td>No.</td>
-</tr>
-<tr class="odd">
-<td>LOG_INFO</td>
-<td>If True, extra logging from brdr is written to a file (<code>brdr_show_log_info.log</code>) in the selected WORK_FOLDER.</td>
-<td>False</td>
-<td>No</td>
-</tr>
-</tbody>
-</table>
+<section id="parameter-guide" class="level2">
+<h2 class="anchored" data-anchor-id="parameter-guide">Parameter Guide</h2>
+<p>Each parameter is documented once with the same structure: <strong>Definition</strong>, <strong>Why use it</strong>, <strong>Choices</strong>, and <strong>Impact</strong>.</p>
+<section id="thematic-layer" class="level3">
+<h3 class="anchored" data-anchor-id="thematic-layer">Thematic Layer</h3>
+<ul>
+<li><strong>Definition</strong>: Input vector layer (polygon, line, or point) in projected CRS (meters).</li>
+<li><strong>Why use it</strong>: Defines the geometry that will be corrected.</li>
+<li><strong>Choices</strong>: Any valid layer with stable geometry and valid CRS.</li>
+<li><strong>Impact</strong>: Invalid CRS or mixed quality input causes unreliable alignment.</li>
+</ul>
+</section>
+<section id="thematic-id" class="level3">
+<h3 class="anchored" data-anchor-id="thematic-id">Thematic ID</h3>
+<ul>
+<li><strong>Definition</strong>: Unique feature identifier in the thematic layer.</li>
+<li><strong>Why use it</strong>: Keeps feature lineage and output traceable.</li>
+<li><strong>Choices</strong>: Text or numeric field with unique values.</li>
+<li><strong>Impact</strong>: Non-unique IDs can break one-to-one interpretation of results.</li>
+</ul>
+</section>
+<section id="reference-local-reference-layer-reference-id-unique" class="level3">
+<h3 class="anchored" data-anchor-id="reference-local-reference-layer-reference-id-unique">Reference / Local reference layer / Reference ID (unique!)</h3>
+<ul>
+<li><strong>Definition</strong>: Reference source selection (LOCREF or GRB on-the-fly) + reference ID field.</li>
+<li><strong>Why use it</strong>: Determines geometric truth for snapping/alignment.</li>
+<li><strong>Choices</strong>: Local reference for large/stable workflows; GRB for direct service-based reference.</li>
+<li><strong>Impact</strong>: Better reference quality directly improves output quality.</li>
+</ul>
+</section>
+<section id="relevant-distance-meters" class="level3">
+<h3 class="anchored" data-anchor-id="relevant-distance-meters">Relevant Distance (meters)</h3>
+<ul>
+<li><strong>Definition</strong>: Maximum allowed geometry shift.</li>
+<li><strong>Why use it</strong>: Controls how far features may move to match reference.</li>
+<li><strong>Choices</strong>: Low (1-2), medium (3-5), high (&gt;10) depending on source quality.</li>
+<li><strong>Impact</strong>: Lower values are conservative/faster; higher values are stronger/slower and may increase review cases.</li>
+</ul>
+</section>
+<section id="use-predictions" class="level3">
+<h3 class="anchored" data-anchor-id="use-predictions">Use predictions</h3>
+<ul>
+<li><strong>Definition</strong>: Enables full-scan candidate search over distance steps.</li>
+<li><strong>Why use it</strong>: Finds stable candidates in ambiguous situations.</li>
+<li><strong>Choices</strong>: False (quick scan) or True (full scan).</li>
+<li><strong>Impact</strong>: True improves candidate quality but increases processing time.</li>
+</ul>
+</section>
+<section id="prediction-strategy" class="level3">
+<h3 class="anchored" data-anchor-id="prediction-strategy">Prediction Strategy</h3>
+<ul>
+<li><strong>Definition</strong>: Output policy when multiple predictions exist.</li>
+<li><strong>Why use it</strong>: Controls whether output is deterministic or review-oriented.</li>
+<li><strong>Choices</strong>: BEST, ALL, ORIGINAL.</li>
+<li><strong>Impact</strong>: BEST is production-friendly, ALL is analysis-heavy, ORIGINAL is safest under ambiguity.</li>
+</ul>
+</section>
+<section id="full-reference-strategy" class="level3">
+<h3 class="anchored" data-anchor-id="full-reference-strategy">Full Reference Strategy</h3>
+<ul>
+<li><strong>Definition</strong>: Preference for predictions with full overlap to reference.</li>
+<li><strong>Why use it</strong>: Enforces stricter geometric consistency when needed.</li>
+<li><strong>Choices</strong>: prefer/strict/no preference modes.</li>
+<li><strong>Impact</strong>: Stricter modes reduce risky candidates but may omit usable alternatives.</li>
+</ul>
+</section>
+<section id="processor" class="level3">
+<h3 class="anchored" data-anchor-id="processor">Processor</h3>
+<ul>
+<li><strong>Definition</strong>: Geometry processing engine selector.</li>
+<li><strong>Why use it</strong>: Optimizes runtime and robustness per geometry type.</li>
+<li><strong>Choices</strong>: Prefer AlignerGeometryProcessor.</li>
+<li><strong>Impact</strong>: Correct processor choice improves speed and stability.</li>
+</ul>
+</section>
+<section id="open-domain-strategy" class="level3">
+<h3 class="anchored" data-anchor-id="open-domain-strategy">Open Domain Strategy</h3>
+<ul>
+<li><strong>Definition</strong>: Behavior for geometry parts not covered by reference (Open Domain).</li>
+<li><strong>Why use it</strong>: Aligns output with legal/operational boundary policy.</li>
+<li><strong>Choices</strong>: EXCLUDE, ASIS, SNAP_INNER_SIDE, SNAP_ALL_SIDE.</li>
+<li><strong>Impact</strong>: Changes whether and how non-reference-covered areas are retained.</li>
+</ul>
+</section>
+<section id="snap-strategy" class="level3">
+<h3 class="anchored" data-anchor-id="snap-strategy">Snap Strategy</h3>
+<ul>
+<li><strong>Definition</strong>: Vertex snapping policy (mainly line/point workflows).</li>
+<li><strong>Why use it</strong>: Controls strictness of snapping to real reference vertices.</li>
+<li><strong>Choices</strong>: NO_PREFERENCE, PREFER_VERTICES, ONLY_VERTICES.</li>
+<li><strong>Impact</strong>: Stricter snapping yields cleaner topology but fewer candidates.</li>
+</ul>
+</section>
+<section id="threshold-overlap-percentage" class="level3">
+<h3 class="anchored" data-anchor-id="threshold-overlap-percentage">Threshold overlap percentage (%)</h3>
+<ul>
+<li><strong>Definition</strong>: Fallback overlap threshold for relevance decisions.</li>
+<li><strong>Why use it</strong>: Resolves edge cases where relevance is unclear.</li>
+<li><strong>Choices</strong>: 0-100 (default around 50).</li>
+<li><strong>Impact</strong>: Higher values are stricter; lower values are more permissive.</li>
+</ul>
+</section>
+<section id="review_percentage" class="level3">
+<h3 class="anchored" data-anchor-id="review_percentage">REVIEW_PERCENTAGE</h3>
+<ul>
+<li><strong>Definition</strong>: Threshold to classify results as o_review.</li>
+<li><strong>Why use it</strong>: Controls QA workload.</li>
+<li><strong>Choices</strong>: Lower for strict QA, higher for more automation.</li>
+<li><strong>Impact</strong>: Lower threshold increases manual review volume.</li>
+</ul>
+</section>
+<section id="work-folder" class="level3">
+<h3 class="anchored" data-anchor-id="work-folder">Work Folder</h3>
+<ul>
+<li><strong>Definition</strong>: Output/log storage location.</li>
+<li><strong>Why use it</strong>: Ensures reproducible output organization.</li>
+<li><strong>Choices</strong>: Empty (default local) or explicit path.</li>
+<li><strong>Impact</strong>: Explicit folder simplifies batch audit and traceability.</li>
+</ul>
+</section>
+<section id="show-intermediate-processing-results" class="level3">
+<h3 class="anchored" data-anchor-id="show-intermediate-processing-results">Show Intermediate processing results</h3>
+<ul>
+<li><strong>Definition</strong>: Adds intermediate layers for diagnostics.</li>
+<li><strong>Why use it</strong>: Helps understand why alignment succeeded/failed.</li>
+<li><strong>Choices</strong>: False/True.</li>
+<li><strong>Impact</strong>: Better interpretability, slightly heavier output.</li>
+</ul>
+</section>
+<section id="write-extra-logging-from-brdr-log" class="level3">
+<h3 class="anchored" data-anchor-id="write-extra-logging-from-brdr-log">Write extra logging (from brdr-log)</h3>
+<ul>
+<li><strong>Definition</strong>: Writes extended processing logs.</li>
+<li><strong>Why use it</strong>: Troubleshooting and audit.</li>
+<li><strong>Choices</strong>: False/True.</li>
+<li><strong>Impact</strong>: Enables root-cause analysis at cost of larger logs.</li>
+</ul>
+</section>
+</section>
+<section id="recommended-presets" class="level2">
+<h2 class="anchored" data-anchor-id="recommended-presets">Recommended Presets</h2>
+<ul>
+<li><strong>Fast Scan</strong>: PREDICTIONS=False, Relevant Distance=2-4, REVIEW_PERCENTAGE=10.</li>
+<li><strong>Balanced Production</strong>: PREDICTIONS=True, Prediction Strategy=BEST, Full Reference Strategy=PREFER_FULL_REFERENCE, Relevant Distance=3-5.</li>
+<li><strong>Strict QA</strong>: lower REVIEW_PERCENTAGE (5-8), conservative Relevant Distance, stricter full-reference mode.</li>
+<li><strong>Exploration</strong>: PREDICTIONS=True, Prediction Strategy=ALL, SHOW_INTERMEDIATE_LAYERS=True, LOG_INFO=True.</li>
+</ul>
 </section>
 <section id="output-parameters" class="level2">
 <h2 class="anchored" data-anchor-id="output-parameters">Output Parameters</h2>
@@ -363,7 +405,7 @@ window.Quarto = {
 <li>(optional) brdrQ_RLVNT_DIFF_X_Y: relevant differences (parts to exclude), used when processing the resulting geometry</li>
 <li>(optional) brdrQ_RLVNT_ISECT_X_Y: relevant intersection (parts to include), used when processing the resulting geometry</li>
 </ul>
-<p>The name includes which ‘RELEVANT_DISTANCE (X)’ and ‘REFERENCE (Y)’ is used <img src="figures/output.png" width="100%"></p>
+<p>The name includes which ‘RELEVANT_DISTANCE (X)’ and ‘REFERENCE (Y)’ is used <img src="../figures/output.png" width="100%"></p>
 </section>
 <section id="example-of-usage" class="level2">
 <h2 class="anchored" data-anchor-id="example-of-usage">Example of Usage</h2>
@@ -403,7 +445,7 @@ window.Quarto = {
 <li>when was it created,</li>
 <li>on what reference limits was it drawn at the time,</li>
 <li>Which drawing rules have been applied (e.g.&nbsp;accuracy of 0.5m)</li>
-<li>…</li>
+<li>â€¦</li>
 </ul></li>
 </ul>
 <p>This allows you to gain insight into the ‘deviation’ and which RELEVANT_DISTANCE value can best be applied.</p>
