@@ -45,6 +45,7 @@
     window.addEventListener("resize", placeBelowNavbar);
 
     var path = window.location.pathname;
+    var isNlPage = /\/nl(\/|$)/.test(path);
     var suffix = window.location.search + window.location.hash;
     var enPath;
     var nlPath;
@@ -70,5 +71,50 @@
     var nl = document.getElementById("lang-nl-link");
     if (en) en.href = enPath + suffix;
     if (nl) nl.href = nlPath + suffix;
+
+    function localizePathname(pathname, useNl) {
+      if (useNl) {
+        if (/^\/nl(\/|$)/.test(pathname)) return pathname;
+        return pathname === "/" ? "/nl/index.html" : "/nl" + pathname;
+      }
+      return pathname.replace(/^\/nl(?=\/|$)/, "") || "/";
+    }
+
+    function localizeHref(href, useNl) {
+      if (!href) return href;
+      if (
+        href.startsWith("#") ||
+        href.startsWith("mailto:") ||
+        href.startsWith("tel:") ||
+        href.startsWith("javascript:")
+      ) {
+        return href;
+      }
+
+      var parsed;
+      try {
+        parsed = new URL(href, window.location.href);
+      } catch (_e) {
+        return href;
+      }
+      if (parsed.origin !== window.location.origin) {
+        return href;
+      }
+
+      var localizedPath = localizePathname(parsed.pathname, useNl);
+      return localizedPath + (parsed.search || "") + (parsed.hash || "");
+    }
+
+    // Keep normal navbar navigation within the currently active language.
+    var navLinks = document.querySelectorAll(
+      "#quarto-header .navbar a[href], .navbar a[href]"
+    );
+    navLinks.forEach(function (a) {
+      var original = a.getAttribute("href");
+      var localized = localizeHref(original, isNlPage);
+      if (localized) {
+        a.setAttribute("href", localized);
+      }
+    });
   })();
 </script>
