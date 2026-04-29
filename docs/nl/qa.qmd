@@ -1,0 +1,49 @@
+﻿---
+title: "Vragen & Antwoorden"
+format: html
+lang: nl
+---
+Deze pagina bevat antwoorden op FAQ's en brdrQ-fouten/waarschuwingen.
+
+# FAQ
+
+## **V: Wijzigt brdrQ de originele data?**
+A: Bij gebruik van Autocorrectborders of Autoupdateborders blijft de originele data ongewijzigd en wordt een nieuwe laag teruggegeven. Bij gebruik van FeatureAligner kan de data in de geselecteerde laag wel wijzigen wanneer je de voorspelde geometrie opslaat.
+
+## **V: Welke types geometrieen worden ondersteund?**
+A: De brdr-bibliotheek is in eerste instantie ontwikkeld voor uitlijning van (Multi-)Polygonen op (Multi-)Polygonen. De plugin kan echter ook gebruikt worden met andere input-/referentietypes (punten en lijngeometrieen).
+
+## **V: Is brdrQ compatibel met zowel QGIS 3 als QGIS 4?**
+A: Ja. De plugin wordt onderhouden voor compatibiliteit met QGIS 3 en QGIS 4. Intern gebruikt ze `qgis.PyQt`-imports en compatibiliteitswrappers voor Qt/API-enumverschillen (bijvoorbeeld layer filter flags en check-state enums).
+
+## **V: Mijn lokale referentielaag lijkt brdrQ te vertragen. Wat kan ik doen?**
+A: Prestatieproblemen met referentielagen worden meestal veroorzaakt door de manier waarop data benaderd en doorzocht wordt. Zelfs lokale lagen kunnen traag zijn door twee hoofdoorzaken:
+* Netwerklatentie: als je data op een netwerkschijf, VPN-share of cloudgesynchroniseerde map (zoals OneDrive of Dropbox) staat, moet QGIS voor elke geometriebewerking met de server communiceren.
+* Ontbrekende ruimtelijke index: zonder ruimtelijke index moet QGIS een volledige tabelscan uitvoeren en feature per feature zoeken.
+
+Om je lokale referentielaag merkbaar te versnellen:
+* Werk lokaal: zorg dat de referentielaag op een interne SSD staat. Vermijd zware analyses op netwerkpaden of externe mechanische schijven.
+* Maak een ruimtelijke index: dit werkt als een lookup-tabel voor geometrieen en vermijdt scans over de volledige dataset.
+* Gebruik efficiente formaten: naast Shapefile is GeoPackage (`.gpkg`) moderner en meestal sneller voor grotere datasets in QGIS.
+
+Hoe maak je een ruimtelijke index in QGIS:
+
+* Rechtsklik op de laag in het Lagenpaneel en kies `Properties`.
+* Ga naar de tab `Source`.
+* Zoek de sectie `Geometry`.
+* Klik op `Create Spatial Index` (als de knop grijs is, bestaat de index al).
+
+# Waarschuwingen/Fouten
+
+## Installatiefout
+A: brdrQ heeft brdr nodig voor de verwerking. De juiste versie van brdr wordt normaal automatisch geinstalleerd bij installatie van brdrQ. In sommige gevallen mislukt die automatische installatie.
+Een oplossing is om de juiste brdr-versie manueel te installeren in je QGIS-omgeving:
+
+```python
+pip install --user brdr==x.x.x
+```
+
+(waar `x.x.x` de specifieke versie van brdr is die door jouw brdrQ gebruikt wordt)
+
+## CRS-fout
+A: Controleer of de CRS ingesteld is op zowel thematische laag als referentielaag, en of beide dezelfde geprojecteerde CRS gebruiken (eenheid: meter).

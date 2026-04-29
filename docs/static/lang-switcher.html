@@ -1,0 +1,74 @@
+<style>
+  #lang-switcher-fixed {
+    position: fixed;
+    top: 4rem;
+    right: 0.75rem;
+    z-index: 2000;
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.85rem;
+    background: rgba(255, 255, 255, 0.65);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 999px;
+    padding: 0.15rem 0.55rem;
+  }
+  #lang-switcher-fixed a {
+    text-decoration: none;
+    font-weight: 600;
+  }
+  #lang-switcher-fixed .sep {
+    margin: 0 0.35rem;
+    opacity: 0.6;
+  }
+</style>
+
+<div id="lang-switcher-fixed" aria-label="Language switcher">
+  <a id="lang-en-link" href="/index.html">EN</a>
+  <span class="sep">|</span>
+  <a id="lang-nl-link" href="/nl/index.html">NL</a>
+</div>
+
+<script>
+  (function () {
+    var switcher = document.getElementById("lang-switcher-fixed");
+    var navbar = document.querySelector(".navbar, #quarto-header .navbar, #quarto-header");
+    function placeBelowNavbar() {
+      if (!switcher) return;
+      var top = 64;
+      if (navbar) {
+        var rect = navbar.getBoundingClientRect();
+        top = Math.max(44, Math.round(rect.bottom + 8));
+      }
+      switcher.style.top = top + "px";
+    }
+    placeBelowNavbar();
+    window.addEventListener("resize", placeBelowNavbar);
+
+    var path = window.location.pathname;
+    var suffix = window.location.search + window.location.hash;
+    var enPath;
+    var nlPath;
+
+    if (/\/nl\//.test(path)) {
+      enPath = path.replace("/nl/", "/");
+      nlPath = path;
+    } else if (/\/nl$/.test(path)) {
+      enPath = path.slice(0, -3) || "/";
+      nlPath = path;
+    } else if (/\/$/.test(path)) {
+      enPath = path + "index.html";
+      nlPath = path + "nl/index.html";
+    } else {
+      var idx = path.lastIndexOf("/");
+      var base = idx >= 0 ? path.slice(0, idx + 1) : "/";
+      var file = idx >= 0 ? path.slice(idx + 1) : path;
+      enPath = path;
+      nlPath = base + "nl/" + file;
+    }
+
+    var en = document.getElementById("lang-en-link");
+    var nl = document.getElementById("lang-nl-link");
+    if (en) en.href = enPath + suffix;
+    if (nl) nl.href = nlPath + suffix;
+  })();
+</script>

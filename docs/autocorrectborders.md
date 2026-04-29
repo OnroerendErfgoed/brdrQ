@@ -3,12 +3,12 @@
 
 ## Video
 
-{{< video src="../figures/brdrQ_autocorrectborders_bulk.mp4" muted width="600" height="400" title="BrdrQ Autocorrectborders Demo" >}}
+{{< video src="./figures/brdrQ_autocorrectborders_bulk.mp4" muted width="600" height="400" title="BrdrQ Autocorrectborders Demo" >}}
 
 
 ## Description
 
-<img src="../figures/autocorrectborders.png" width="50%" />
+<img src="./figures/autocorrectborders.png" width="50%" />
 
 The processing algorithm, named **Autocorrectborders**, is developed to automatically adjust thematic boundaries to
 reference boundaries. It searches for relevant overlap between thematic boundaries and reference boundaries, and creates
@@ -127,7 +127,7 @@ The script generates a GROUP layer with several output layers in the TOC:
   geometry
 
 The name includes which 'RELEVANT_DISTANCE (X)' and 'REFERENCE (Y)' is used
-<img src="../figures/output.png" width="100%" />
+<img src="./figures/output.png" width="100%" />
 
 ## Example of Usage
 
@@ -215,6 +215,7 @@ This sections lists fieldnames that can be found in the output layer and explain
 | **brdr_full_actual** | Boolean | Flag indicating if the alignment covers the full extent of the actual feature. |
 | **brdr_remark** | String | Automated logs or warnings generated during the geometry processing. |
 | **brdr_metadata** | JSON/Object | Embedded SOSA/SSN metadata containing the lineage, sensors, and procedures used. |
+
 
 
 
