@@ -3,11 +3,11 @@
 
 ## Video
 
-{{< video src="../figures/brdrQ_featurealigner.mp4" muted width="600" height="400" title="BrdrQ FeatureAligner Demo" >}}
+{{< video src="./figures/brdrQ_featurealigner.mp4" muted width="600" height="400" title="BrdrQ FeatureAligner Demo" >}}
 
 ## Instructions
 
-<img src="../figures/featurealigner.png" width="50%" />
+<img src="./figures/featurealigner.png" width="50%" />
 
 0. Choose the settings for the alignment (reference layer,...)
 1. Select the thematic layer you want to align.
@@ -77,5 +77,6 @@ Additionally, you can:
 - **Balanced Daily Use**: medium distance + default processor + PREFER_VERTICES.
 - **Strong Recovery for Rough Data**: higher distance + permissive full-reference mode.
 - **Strict Network Snapping**: ONLY_VERTICES + low distance.
+
 
 

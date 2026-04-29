@@ -6,7 +6,7 @@ lang: en
 
 # Welcome to the brdrQ-Documentation page
 
-<img src="../figures/icon_base_large.png" width="50" />
+<img src="./figures/icon_base_large.png" width="50" />
 
 ## Introduction
 
@@ -44,4 +44,5 @@ The tools can be used separately or in combination with each other:
 
 1. Use [Autocorrectborders (BULK)](autocorrectborders.md) to align your thematic data to a reference layer. A CORRECTION_ layer is returned that indicates the brdrq_state of the alignment.
 2. Use [Feature aligner](featurealigner.md) on the CORRECTION_ layer to review/update features that are not automatically updated, according the 'brdrq_state' (to_review, to_update).
+
 
