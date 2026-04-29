@@ -23,6 +23,8 @@ highlight-style: github-dark
 
 format:
   html:
+    include-in-header:
+      - static/lang-switcher.html
     theme:
       - static/custom.scss
     code-fold: false

@@ -1,6 +1,7 @@
 ---
 title: "Q & A"
 format: html
+lang: en
 ---
 This page lists the answers on FAQ's & brdrQ - errors/warnings.
 
