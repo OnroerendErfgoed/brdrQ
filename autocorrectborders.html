@@ -107,6 +107,80 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
+<style>
+  #lang-switcher-fixed {
+    position: fixed;
+    top: 4rem;
+    right: 0.75rem;
+    z-index: 2000;
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.85rem;
+    background: rgba(255, 255, 255, 0.65);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 999px;
+    padding: 0.15rem 0.55rem;
+  }
+  #lang-switcher-fixed a {
+    text-decoration: none;
+    font-weight: 600;
+  }
+  #lang-switcher-fixed .sep {
+    margin: 0 0.35rem;
+    opacity: 0.6;
+  }
+</style>
+
+</head><body class="nav-fixed quarto-light"><div id="lang-switcher-fixed" aria-label="Language switcher">
+  <a id="lang-en-link" href="./index.html">EN</a>
+  <span class="sep">|</span>
+  <a id="lang-nl-link" href="./nl/index.html">NL</a>
+</div>
+
+<script>
+  (function () {
+    var switcher = document.getElementById("lang-switcher-fixed");
+    var navbar = document.querySelector(".navbar, #quarto-header .navbar, #quarto-header");
+    function placeBelowNavbar() {
+      if (!switcher) return;
+      var top = 64;
+      if (navbar) {
+        var rect = navbar.getBoundingClientRect();
+        top = Math.max(44, Math.round(rect.bottom + 8));
+      }
+      switcher.style.top = top + "px";
+    }
+    placeBelowNavbar();
+    window.addEventListener("resize", placeBelowNavbar);
+
+    var path = window.location.pathname;
+    var suffix = window.location.search + window.location.hash;
+    var enPath;
+    var nlPath;
+
+    if (/\/nl\//.test(path)) {
+      enPath = path.replace("/nl/", "/");
+      nlPath = path;
+    } else if (/\/nl$/.test(path)) {
+      enPath = path.slice(0, -3) || "/";
+      nlPath = path;
+    } else if (/\/$/.test(path)) {
+      enPath = path + "index.html";
+      nlPath = path + "nl/index.html";
+    } else {
+      var idx = path.lastIndexOf("/");
+      var base = idx >= 0 ? path.slice(0, idx + 1) : "/";
+      var file = idx >= 0 ? path.slice(idx + 1) : path;
+      enPath = path;
+      nlPath = base + "nl/" + file;
+    }
+
+    var en = document.getElementById("lang-en-link");
+    var nl = document.getElementById("lang-nl-link");
+    if (en) en.href = enPath + suffix;
+    if (nl) nl.href = nlPath + suffix;
+  })();
+</script>
 
   <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
   <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
@@ -138,9 +212,9 @@ window.Quarto = {
 };
 </script>
 
-</head>
 
-<body class="nav-fixed quarto-light">
+
+
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top">
@@ -238,11 +312,11 @@ window.Quarto = {
 <h1>Documentation of QGIS Python plugin brdrQ - Autocorrectborders</h1>
 <section id="video" class="level2">
 <h2 class="anchored" data-anchor-id="video">Video</h2>
-<div class="quarto-video"><video id="video_shortcode_videojs_video1" width="600" height="400" class="video-js vjs-default-skin vjs-big-play-centered " controls="" preload="auto" data-setup="{}" title="BrdrQ Autocorrectborders Demo"><source src="../figures/brdrQ_autocorrectborders_bulk.mp4"></video></div>
+<div class="quarto-video"><video id="video_shortcode_videojs_video1" width="600" height="400" class="video-js vjs-default-skin vjs-big-play-centered " controls="" preload="auto" data-setup="{}" title="BrdrQ Autocorrectborders Demo"><source src="./figures/brdrQ_autocorrectborders_bulk.mp4"></video></div>
 </section>
 <section id="description" class="level2">
 <h2 class="anchored" data-anchor-id="description">Description</h2>
-<p><img src="../figures/autocorrectborders.png" width="50%"></p>
+<p><img src="./figures/autocorrectborders.png" width="50%"></p>
 <p>The processing algorithm, named <strong>Autocorrectborders</strong>, is developed to automatically adjust thematic boundaries to reference boundaries. It searches for relevant overlap between thematic boundaries and reference boundaries, and creates a resulting boundary based on the relevant overlapping areas.</p>
 </section>
 <section id="parameter-guide" class="level2">
@@ -405,7 +479,7 @@ window.Quarto = {
 <li>(optional) brdrQ_RLVNT_DIFF_X_Y: relevant differences (parts to exclude), used when processing the resulting geometry</li>
 <li>(optional) brdrQ_RLVNT_ISECT_X_Y: relevant intersection (parts to include), used when processing the resulting geometry</li>
 </ul>
-<p>The name includes which ‘RELEVANT_DISTANCE (X)’ and ‘REFERENCE (Y)’ is used <img src="../figures/output.png" width="100%"></p>
+<p>The name includes which ‘RELEVANT_DISTANCE (X)’ and ‘REFERENCE (Y)’ is used <img src="./figures/output.png" width="100%"></p>
 </section>
 <section id="example-of-usage" class="level2">
 <h2 class="anchored" data-anchor-id="example-of-usage">Example of Usage</h2>
