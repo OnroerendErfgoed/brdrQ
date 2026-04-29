@@ -24,11 +24,13 @@
 import webbrowser
 
 from brdr.constants import METADATA_FIELD_NAME
+from qgis.PyQt.QtCore import Qt
 from qgis.core import Qgis
 from qgis.core import edit
 
 from .brdrq_help import brdrQHelp
 from .brdrq_settings import brdrQSettings
+from .qt_compat import dialog_exec
 from .brdrq_utils import (
     plot_series,
     show_map,
@@ -386,7 +388,25 @@ class brdrQDockWidgetAligner(object):
 
     def show_settings_dialog(self):
         print("show_settings_dialog")
-        self.settingsDialog.show()
+        dialog = self.settingsDialog
+
+        # Attach to QGIS main window when available, then force modal + on top
+        # so users must explicitly choose OK/Cancel before continuing.
+        try:
+            main_window = self.iface.mainWindow() if self.iface is not None else None
+        except Exception:
+            main_window = None
+        if main_window is not None and dialog.parent() is None:
+            dialog.setParent(main_window)
+
+        flags = dialog.windowFlags() | Qt.WindowStaysOnTopHint
+        dialog.setWindowFlags(flags)
+        dialog.setWindowModality(Qt.ApplicationModal)
+        dialog.setModal(True)
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
+        dialog_exec(dialog)
 
     def setHandles(self):
         self.minimum = self.settingsDialog.minimum
