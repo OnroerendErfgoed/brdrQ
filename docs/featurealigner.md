@@ -1,10 +1,6 @@
 ﻿
 # Documentation of QGIS Python plugin brdrQ: FeatureAligner
 
-## Video
-
-{{< video src="./figures/brdrQ_featurealigner.mp4" muted width="600" height="400" title="BrdrQ FeatureAligner Demo" >}}
-
 ## Instructions
 
 <img src="./figures/featurealigner.png" width="50%" />
