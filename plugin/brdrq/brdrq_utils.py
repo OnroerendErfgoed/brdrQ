@@ -21,6 +21,9 @@ from brdr.processor import (
     NetworkGeometryProcessor,
     SnapGeometryProcessor,
     TopologyProcessor,
+    AnchorGeometryProcessor,
+    DirectedNetworkGeometryProcessor,
+    DirectedAnchorGeometryProcessor,
 )
 from brdr.utils import (
     write_featurecollection_to_geopackage,
@@ -105,10 +108,13 @@ class Processor(str, Enum):
     """
 
     AlignerGeometryProcessor = "2024:aligner2024a"
-    # DieussaertGeometryProcessor = "2024:dieussaert2024a"
+    DieussaertGeometryProcessor = "2024:dieussaert2024a"
     SnapGeometryProcessor = "2024:snap2024a"
     NetworkGeometryProcessor = "2024:network2024a"
     # TOPOLOGY = "2024:topology2024a"
+    AnchorGeometryProcessor = "2026:anchor2026a"
+    DirectedNetworkGeometryProcessor = "2026:directed_network2026a"
+    DirectedAnchorGeometryProcessor = "2026:directed_codexanchor2026a"
 
 
 class OsmType(dict, Enum):
@@ -227,6 +233,12 @@ def get_processor_by_id(processor_id, config):
         return SnapGeometryProcessor(config=config)
     if processor_id == ProcessorID.TOPOLOGY:
         return TopologyProcessor(config=config)
+    if processor_id == ProcessorID.ANCHOR:
+        return AnchorGeometryProcessor(config=config)
+    if processor_id == ProcessorID.DIRECTED_NETWORK:
+        return DirectedNetworkGeometryProcessor(config=config)
+    if processor_id == ProcessorID.DIRECTED_ANCHOR:
+        return DirectedAnchorGeometryProcessor(config=config)
     return processor
 
 
@@ -391,7 +403,6 @@ def _reconstruct_object(data, enum_classes=None):
     return data.get("value", data)
 
 
-
 def serialize_value(value):
     """Helper function to convert complex QGIS objects into JSON-friendly dicts."""
     if isinstance(value, float):
@@ -442,7 +453,6 @@ def get_string_type(val):
             return "float"
         except ValueError:
             return "string"
-
 
 
 def geom_shapely_to_qgis(geom_shapely):
@@ -769,7 +779,6 @@ def gpkg_layer_to_map(name, gpkg_path, layer_name, symbol, visible, group):
         iface.layerTreeView().refreshLayerSymbology(vl.id())
 
     return vl
-
 
 
 def featurecollection_to_layer(
@@ -1685,4 +1694,3 @@ class PolygonSelectTool(QgsMapTool):
     def reset(self):
         self.points = []
         self.rubber_band.reset(QgsWkbTypes.PolygonGeometry)
-

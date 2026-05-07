@@ -52,6 +52,7 @@ from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QDate, QDateTime
 from qgis.core import QgsFeatureRequest
+from qgis.core import Qgis
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
 from qgis.core import QgsProcessingMultiStepFeedback
@@ -476,6 +477,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         if thematic is None:
             raise QgsProcessingException(self.invalidSourceError(parameters, self.test))
+        if (
+            self.PROCESSOR == Processor.DieussaertGeometryProcessor and
+            thematic.geometryType() != Qgis.GeometryType.Polygon
+        ):
+            raise QgsProcessingException(
+                "Dieussaert algorithm can only be used when input geometry is polygon or multipolygon."
+            )
 
         # Load thematic into a shapely_dict:
         dict_thematic = {}
@@ -526,6 +534,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             reference = self._reference_preparation(
                 thematic_buffered, context, feedback, parameters
             )
+            if (
+                self.PROCESSOR == Processor.DieussaertGeometryProcessor and
+                reference.geometryType() != Qgis.GeometryType.Polygon
+            ):
+                raise QgsProcessingException(
+                    "Dieussaert algorithm can only be used when input geometry is polygon or multipolygon."
+                )
 
             # Load reference into a shapely_dict:
             dict_reference = {}
@@ -546,104 +561,109 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         if self.LOG_INFO and log_info is not None and hasattr(log_info, "log_path"):
             feedback.pushInfo(f"Extra brdr log written to: {log_info.log_path}")
-        processor = build_processor(
-            processor_enum=self.PROCESSOR,
-            od_strategy=self.OD_STRATEGY,
-            snap_strategy=self.SNAP_STRATEGY,
-            multi_as_single_modus=self.MULTI_AS_SINGLE_MODUS,
-            correction_distance=self.CORR_DISTANCE,
-            threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
-            get_processor_by_id_fn=get_processor_by_id,
-        )
-        aligner = build_aligner(
-            feedback=log_info,
-            crs=self.CRS,
-            processor=processor,
-            log_metadata=self.ADD_METADATA,
-            add_observations=self.ADD_METADATA if self.PREDICTIONS else True,
-        )
-
-        feedback.pushInfo("Load thematic data")
-        aligner.load_thematic_data(DictLoader(dict_thematic, dict_thematic_properties))
-        aligner.name_thematic_id = self.ID_THEME_BRDRQ_FIELDNAME
-
-        feedback.pushInfo("Load reference data")
-        if self.SELECTED_REFERENCE == 0:
-            aligner.load_reference_data(DictLoader(dict_reference))
-            # aligner.reference_data.id_fieldname = self.ID_REFERENCE_FIELDNAME
-            aligner.reference_data.source = {
-                "source": PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE_NAME,
-                "version_date": "unknown",
-            }
-        elif self.SELECTED_REFERENCE in ADPF_VERSIONS:
-            year = DICT_ADPF_VERSIONS[self.SELECTED_REFERENCE]
-            aligner.load_reference_data(
-                GRBFiscalParcelLoader(year=str(year), aligner=aligner, partition=1000)
+        try:
+            processor = build_processor(
+                processor_enum=self.PROCESSOR,
+                od_strategy=self.OD_STRATEGY,
+                snap_strategy=self.SNAP_STRATEGY,
+                multi_as_single_modus=self.MULTI_AS_SINGLE_MODUS,
+                correction_distance=self.CORR_DISTANCE,
+                threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
+                get_processor_by_id_fn=get_processor_by_id,
             )
-        elif self.SELECTED_REFERENCE in OSM_TYPES:
-            tags = DICT_OSM_TYPES[self.SELECTED_REFERENCE]
-            aligner.load_reference_data(OSMLoader(osm_tags=tags, aligner=aligner))
-        elif self.SELECTED_REFERENCE in BE_TYPES:
-            try:
-                aligner.load_reference_data(BeCadastralParcelLoader(partition=1000, aligner=aligner))
-            except Exception as e:
-                raise QgsProcessingException(e)
-        elif self.SELECTED_REFERENCE in NL_TYPES:
-            try:
-                brk_type = BRKType[DICT_NL_TYPES[self.SELECTED_REFERENCE]]
-                aligner.load_reference_data(BRKLoader(brk_type=brk_type, partition=1000, aligner=aligner))
-            except Exception as e:
-                raise QgsProcessingException(e)
-        else:
-            aligner.load_reference_data(
-                GRBActualLoader(
-                    grb_type=GRBType(self.SELECTED_REFERENCE.value),
-                    partition=1000,
-                    aligner=aligner,
+            aligner = build_aligner(
+                feedback=log_info,
+                crs=self.CRS,
+                processor=processor,
+                log_metadata=self.ADD_METADATA,
+                add_observations=self.ADD_METADATA if self.PREDICTIONS else True,
+            )
+
+            feedback.pushInfo("Load thematic data")
+            aligner.load_thematic_data(DictLoader(dict_thematic, dict_thematic_properties))
+            aligner.name_thematic_id = self.ID_THEME_BRDRQ_FIELDNAME
+
+            feedback.pushInfo("Load reference data")
+            if self.SELECTED_REFERENCE == 0:
+                aligner.load_reference_data(DictLoader(dict_reference))
+                # aligner.reference_data.id_fieldname = self.ID_REFERENCE_FIELDNAME
+                aligner.reference_data.source = {
+                    "source": PREFIX_LOCAL_LAYER + "_" + self.LAYER_REFERENCE_NAME,
+                    "version_date": "unknown",
+                }
+            elif self.SELECTED_REFERENCE in ADPF_VERSIONS:
+                year = DICT_ADPF_VERSIONS[self.SELECTED_REFERENCE]
+                aligner.load_reference_data(
+                    GRBFiscalParcelLoader(year=str(year), aligner=aligner, partition=1000)
                 )
+            elif self.SELECTED_REFERENCE in OSM_TYPES:
+                tags = DICT_OSM_TYPES[self.SELECTED_REFERENCE]
+                aligner.load_reference_data(OSMLoader(osm_tags=tags, aligner=aligner))
+            elif self.SELECTED_REFERENCE in BE_TYPES:
+                try:
+                    aligner.load_reference_data(BeCadastralParcelLoader(partition=1000, aligner=aligner))
+                except Exception as e:
+                    raise QgsProcessingException(e)
+            elif self.SELECTED_REFERENCE in NL_TYPES:
+                try:
+                    brk_type = BRKType[DICT_NL_TYPES[self.SELECTED_REFERENCE]]
+                    aligner.load_reference_data(BRKLoader(brk_type=brk_type, partition=1000, aligner=aligner))
+                except Exception as e:
+                    raise QgsProcessingException(e)
+            else:
+                aligner.load_reference_data(
+                    GRBActualLoader(
+                        grb_type=GRBType(self.SELECTED_REFERENCE.value),
+                        partition=1000,
+                        aligner=aligner,
+                    )
+                )
+            feedback.setCurrentStep(4)
+            feedback.pushInfo("START PROCESSING")
+            feedback.pushInfo(
+                "calculation for relevant distance (m): " +
+                str(self.RELEVANT_DISTANCE) +
+                " - Predictions: " +
+                str(self.PREDICTIONS)
             )
-        feedback.setCurrentStep(4)
-        feedback.pushInfo("START PROCESSING")
-        feedback.pushInfo(
-            "calculation for relevant distance (m): " +
-            str(self.RELEVANT_DISTANCE) +
-            " - Predictions: " +
-            str(self.PREDICTIONS)
-        )
-        if self.RELEVANT_DISTANCE < 0:
-            raise QgsProcessingException("Please provide a RELEVANT DISTANCE >=0")
-        if not self.PREDICTIONS:
-            relevant_distances = [self.RELEVANT_DISTANCE]
-            aligner_result = aligner.predict(
-                relevant_distances=relevant_distances,
-            )
-            fcs = aligner_result.get_results_as_geojson(
-                aligner=aligner,
-                result_type=AlignerResultType.PROCESSRESULTS,
-                add_metadata=self.ADD_METADATA,
-                add_original_attributes=self.ATTRIBUTES,
-            )
-        else:
-            relevant_distances = (
-                np.arange(0, self.RELEVANT_DISTANCE * 100, 10, dtype=int) / 100
-            )
+            if self.RELEVANT_DISTANCE < 0:
+                raise QgsProcessingException("Please provide a RELEVANT DISTANCE >=0")
+            if not self.PREDICTIONS:
+                relevant_distances = [self.RELEVANT_DISTANCE]
+                aligner_result = aligner.predict(
+                    relevant_distances=relevant_distances,
+                )
+                fcs = aligner_result.get_results_as_geojson(
+                    aligner=aligner,
+                    result_type=AlignerResultType.PROCESSRESULTS,
+                    add_metadata=self.ADD_METADATA,
+                    add_original_attributes=self.ATTRIBUTES,
+                )
+            else:
+                relevant_distances = (
+                    np.arange(0, self.RELEVANT_DISTANCE * 100, 10, dtype=int) / 100
+                )
 
-            max_predictions, multi_to_best_prediction = (
-                get_prediction_strategy_options(self.PREDICTION_STRATEGY)
-            )
+                max_predictions, multi_to_best_prediction = (
+                    get_prediction_strategy_options(self.PREDICTION_STRATEGY)
+                )
 
-            aligner_result = aligner.evaluate(
-                relevant_distances=relevant_distances,
-                max_predictions=max_predictions,
-                multi_to_best_prediction=multi_to_best_prediction,
-                full_reference_strategy=self.FULL_REFERENCE_STRATEGY,
-            )
-            fcs = aligner_result.get_results_as_geojson(
-                aligner=aligner,
-                result_type=AlignerResultType.EVALUATED_PREDICTIONS,
-                add_metadata=self.ADD_METADATA,
-                add_original_attributes=self.ATTRIBUTES,
-            )
+                aligner_result = aligner.evaluate(
+                    relevant_distances=relevant_distances,
+                    max_predictions=max_predictions,
+                    multi_to_best_prediction=multi_to_best_prediction,
+                    full_reference_strategy=self.FULL_REFERENCE_STRATEGY,
+                )
+                fcs = aligner_result.get_results_as_geojson(
+                    aligner=aligner,
+                    result_type=AlignerResultType.EVALUATED_PREDICTIONS,
+                    add_metadata=self.ADD_METADATA,
+                    add_original_attributes=self.ATTRIBUTES,
+                )
+        except QgsProcessingException:
+            raise
+        except Exception as e:
+            raise QgsProcessingException(str(e))
         if "result" not in fcs:
             feedback.pushInfo("No results found")
             feedback.pushInfo("END")

@@ -40,6 +40,7 @@ from qgis.core import QgsProcessingAlgorithm
 from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingMultiStepFeedback
 from qgis.core import QgsProcessingParameterFile
+from qgis.core import Qgis
 from qgis.core import (
     QgsProcessingParameterNumber,
 )
@@ -372,6 +373,13 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             raise QgsProcessingException(
                 self.invalidSourceError(parameters, self.INPUT_THEMATIC)
             )
+        if (
+            self.PROCESSOR == Processor.DieussaertGeometryProcessor and
+            thematic.geometryType() != Qgis.GeometryType.Polygon
+        ):
+            raise QgsProcessingException(
+                "Dieussaert algorithm can only be used when input geometry is polygon or multipolygon."
+            )
 
         # Load thematic into a shapely_dict:
         dict_thematic = {}
@@ -403,45 +411,50 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         if self.LOG_INFO and log_info is not None and hasattr(log_info, "log_path"):
             feedback.pushInfo(f"Extra brdr log written to: {log_info.log_path}")
-        processor = build_processor(
-            processor_enum=self.PROCESSOR,
-            od_strategy=self.OD_STRATEGY,
-            snap_strategy=self.SNAP_STRATEGY,
-            multi_as_single_modus=self.MULTI_AS_SINGLE_MODUS,
-            correction_distance=self.CORR_DISTANCE,
-            threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
-            get_processor_by_id_fn=get_processor_by_id,
-        )
-        aligner = build_aligner(
-            feedback=log_info,
-            crs=self.CRS,
-            processor=processor,
-            log_metadata=True,
-            add_observations=True,
-        )
-        aligner.load_thematic_data(
-            DictLoader(
-                data_dict=dict_thematic, data_dict_properties=dict_thematic_properties
+        try:
+            processor = build_processor(
+                processor_enum=self.PROCESSOR,
+                od_strategy=self.OD_STRATEGY,
+                snap_strategy=self.SNAP_STRATEGY,
+                multi_as_single_modus=self.MULTI_AS_SINGLE_MODUS,
+                correction_distance=self.CORR_DISTANCE,
+                threshold_overlap_percentage=self.THRESHOLD_OVERLAP_PERCENTAGE,
+                get_processor_by_id_fn=get_processor_by_id,
             )
-        )
-        fc = aligner.thematic_data.to_geojson()
+            aligner = build_aligner(
+                feedback=log_info,
+                crs=self.CRS,
+                processor=processor,
+                log_metadata=True,
+                add_observations=True,
+            )
+            aligner.load_thematic_data(
+                DictLoader(
+                    data_dict=dict_thematic, data_dict_properties=dict_thematic_properties
+                )
+            )
+            fc = aligner.thematic_data.to_geojson()
 
-        feedback.pushInfo("START ACTUALISATION")
+            feedback.pushInfo("START ACTUALISATION")
 
-        max_predictions, multi_to_best_prediction = get_prediction_strategy_options(
-            self.PREDICTION_STRATEGY
-        )
-        fcs_actualisation = update_featurecollection_to_actual_grb(
-            fc,
-            id_theme_fieldname=self.ID_THEME_BRDRQ_FIELDNAME,
-            base_metadata_field=self.METADATA_FIELDNAME,
-            grb_type=self.GRB_TYPE,
-            max_distance_for_actualisation=self.RELEVANT_DISTANCE,
-            feedback=log_info,
-            max_predictions=max_predictions,
-            full_reference_strategy=self.FULL_REFERENCE_STRATEGY,
-            multi_to_best_prediction=multi_to_best_prediction,
-        )
+            max_predictions, multi_to_best_prediction = get_prediction_strategy_options(
+                self.PREDICTION_STRATEGY
+            )
+            fcs_actualisation = update_featurecollection_to_actual_grb(
+                fc,
+                id_theme_fieldname=self.ID_THEME_BRDRQ_FIELDNAME,
+                base_metadata_field=self.METADATA_FIELDNAME,
+                grb_type=self.GRB_TYPE,
+                max_distance_for_actualisation=self.RELEVANT_DISTANCE,
+                feedback=log_info,
+                max_predictions=max_predictions,
+                full_reference_strategy=self.FULL_REFERENCE_STRATEGY,
+                multi_to_best_prediction=multi_to_best_prediction,
+            )
+        except QgsProcessingException:
+            raise
+        except Exception as e:
+            raise QgsProcessingException(str(e))
         if fcs_actualisation is None or fcs_actualisation == {}:
             feedback.pushInfo(
                 "Geen wijzigingen gedetecteerd binnen tijdspanne in referentielaag (GRB-percelen)"

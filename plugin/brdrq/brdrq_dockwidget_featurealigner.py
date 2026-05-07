@@ -73,6 +73,7 @@ from .brdrq_utils import (
     NL_TYPES,
     DICT_NL_TYPES,
     BE_TYPES,
+    Processor,
 )
 from .qt_compat import (
     map_layer_filter_line,
@@ -1494,6 +1495,24 @@ class brdrQDockWidgetFeatureAligner(
             )
             return None
 
+        if self.processor == Processor.DieussaertGeometryProcessor:
+            if feat.geometry().type() != Qgis.GeometryType.Polygon:
+                self._show_warning(
+                    "Processor",
+                    "Dieussaert algorithm can only be used when input geometry is polygon or multipolygon.",
+                )
+                return None
+            if self.reference_choice == ENUM_REFERENCE_OPTIONS[0]:
+                if (
+                    self.reference_layer is not None and
+                    self.reference_layer.geometryType() != Qgis.GeometryType.Polygon
+                ):
+                    self._show_warning(
+                        "Processor",
+                        "Dieussaert algorithm can only be used when input geometry is polygon or multipolygon.",
+                    )
+                    return None
+
         dict_to_load = {}
 
         self.progressBar.setValue(0)
@@ -1673,14 +1692,18 @@ class brdrQDockWidgetFeatureAligner(
         if self._is_closing:
             return None
 
-        self.aligner_result = self.aligner.evaluate(
-            max_predictions=4,
-            relevant_distances=self.relevant_distances,
-            full_reference_strategy=self.full_strategy,
-        )
+        try:
+            self.aligner_result = self.aligner.evaluate(
+                max_predictions=4,
+                relevant_distances=self.relevant_distances,
+                full_reference_strategy=self.full_strategy,
+            )
+        except Exception as e:
+            self._show_warning("Alignment failed", str(e))
+            self._set_user_feedback(str(e))
+            return None
         if self._is_closing:
             return None
-        # TODO should we add a try/catch, fe when using DieussaertProcessing for non-polygons it will result in error
 
         self.dict_processresults = self.aligner_result.get_results(aligner=self.aligner)
         self.dict_evaluated_predictions = self.aligner_result.get_results(
