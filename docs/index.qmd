@@ -15,7 +15,7 @@ lang: en
 ## Installation
 
 1. Open QGIS.
-2. Go to `Plugins` â†’ `Manage and Install Plugins`.
+2. Go to `Plugins` -> `Manage and Install Plugins`.
 3. Search for `brdrQ`.
 4. Click `Install Plugin`.
 5. Once installed, the plugin will appear in the plugin toolbar.

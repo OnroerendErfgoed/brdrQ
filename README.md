@@ -1,7 +1,7 @@
 #
 
 `brdrQ`: a QGIS-processing plugin for aligning thematic borders to reference borders. (for QGIS
-v3.34.8 or higher)
+v3.36 or higher)
 
 <!-- badges: start -->
 
@@ -11,6 +11,7 @@ v3.34.8 or higher)
 
 Quick links:
 
+- [Documentation](https://onroerenderfgoed.github.io/brdrQ/)
 - [Installation](#installation)
 - [Issues, questions, comments and contributions](#comments-and-contributions)
 
@@ -26,6 +27,8 @@ based on a 'relevant distance'. This parameter is used in the algorithm to deter
 effectively adjusted to the reference layer, or where the original boundary is preserved. Thus, the adjustment of the
 boundaries of resulting geometries and original geometries is at most as large as the 'relevant distance'
 
+Full documentation is available at <https://onroerenderfgoed.github.io/brdrQ/>.
+
 ## Installation
 
 * Windows-users: Use the QGIS PluginManager to install brdrQ from the official QGIS-repo:
@@ -39,8 +42,8 @@ boundaries of resulting geometries and original geometries is at most as large a
 
 ### Pre-requisites
 
-- 3.36 <= QGIS-version < 4.x :  The plugin has been developed and tested based on QGIS 3.36. In older versions, the plugin might give
-  unexpected behaviour. Adaptations for QGIS 4 are not yet available.
+- 3.36 <= QGIS-version:  The plugin has been developed and tested based on QGIS 3.36. In older versions, the plugin might give
+  unexpected behaviour. The plugin is also QGIS4-compatible.
 - brdrQ is dependent on some other python packages (brdr,Shapely,...). If these packages are not found, the plugin
   will attempt to install both 'brdr', 'shapely' and others from Pypi.
 
@@ -72,7 +75,7 @@ tools. You can find a link to the docs of each tool/script below.
     - **AutoUpdateBorders (GRB Updater)**: Processing algorithm to update/align features based on the actual situation of the GRB (Flanders - Belgium) [link to documentation](docs/autoupdateborders.md)
 - Plugin version information: overview of the version of brdr and brdrQ
 
-(Also note that these processing algorithms can also be used inside the QGIS ModelBuilder to 'chain' processes)
+(Also note that these processing algorithms can also be used inside the QGIS Model Designer to 'chain' processes)
 
 ## Motivation & citation
 

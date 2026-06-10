@@ -1,3 +1,9 @@
+# v1.0.0
+
+- Upgrade to brdr release version 0.17.3
+- Fix for Adpf-versions [#310]
+- Release to v1 (based on v0.21.0-stability period) 
+
 # v0.21.0
 
 - Upgrade to brdr release version 0.16.0

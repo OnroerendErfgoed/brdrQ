@@ -16,8 +16,13 @@ from qgis.core import (
 from qgis.core import QgsSettings
 from qgis.gui import QgsMapCanvas
 
-from .utilities import get_qgis_app
+from .utilities import (
+    find_reference_option_index,
+    get_qgis_app,
+    run_processing_or_skip,
+)
 from ..brdrq_provider import BrdrQProvider
+from ..brdrq_utils import ENUM_REFERENCE_OPTIONS
 
 CANVAS: QgsMapCanvas
 QGISAPP, CANVAS, IFACE, PARENT = get_qgis_app()
@@ -53,7 +58,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
         layer_theme = QgsVectorLayer(path, themelayername)
         QgsProject.instance().addMapLayer(layer_theme)
 
-        output = processing.run(
+        output = run_processing_or_skip(
             "brdrqprovider:brdrqautocorrectborders",
             {
                 "INPUT_THEMATIC": themelayername,
@@ -93,13 +98,18 @@ class TestAutoCorrectBorders(unittest.TestCase):
         layer_theme = QgsVectorLayer(path, themelayername)
         QgsProject.instance().addMapLayer(layer_theme)
 
-        output = processing.run(
+        fiscal_index = find_reference_option_index(
+            ENUM_REFERENCE_OPTIONS,
+            "Administratieve fiscale percelen: 2023",
+        )
+
+        output = run_processing_or_skip(
             "brdrqprovider:brdrqautocorrectborders",
             {
                 "INPUT_THEMATIC": themelayername,
                 "COMBOBOX_ID_THEME": "theme_identifier",
                 "RELEVANT_DISTANCE": 2,
-                "ENUM_REFERENCE": 30,  # fiscal2023
+                "ENUM_REFERENCE": fiscal_index,
                 "INPUT_REFERENCE": None,
                 "COMBOBOX_ID_REFERENCE": None,
                 "WORK_FOLDER": foldername,
@@ -131,13 +141,18 @@ class TestAutoCorrectBorders(unittest.TestCase):
         layer_theme = QgsVectorLayer(path, themelayername)
         QgsProject.instance().addMapLayer(layer_theme)
 
-        output = processing.run(
+        osm_index = find_reference_option_index(
+            ENUM_REFERENCE_OPTIONS,
+            "OSM - osm_buildings",
+        )
+
+        output = run_processing_or_skip(
             "brdrqprovider:brdrqautocorrectborders",
             {
                 "INPUT_THEMATIC": themelayername,
                 "COMBOBOX_ID_THEME": "theme_identifier",
                 "RELEVANT_DISTANCE": 2,
-                "ENUM_REFERENCE": 34,  # osm_buildings
+                "ENUM_REFERENCE": osm_index,
                 "INPUT_REFERENCE": None,
                 "COMBOBOX_ID_REFERENCE": None,
                 "WORK_FOLDER": foldername,
@@ -184,7 +199,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
             layer_theme.id(), selectedFeaturesOnly=True, featureLimit=-1
         )
 
-        output = processing.run(
+        output = run_processing_or_skip(
             "brdrqprovider:brdrqautocorrectborders",
             {
                 "INPUT_THEMATIC": source,
@@ -232,7 +247,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
         layer_reference = QgsVectorLayer(path, referencelayername)
         QgsProject.instance().addMapLayer(layer_reference)
 
-        output = processing.run(
+        output = run_processing_or_skip(
             "brdrqprovider:brdrqautocorrectborders",
             {
                 "INPUT_THEMATIC": themelayername,
@@ -270,7 +285,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
         layer_theme = QgsVectorLayer(path, themelayername)
         QgsProject.instance().addMapLayer(layer_theme)
 
-        output = processing.run(
+        output = run_processing_or_skip(
             "brdrqprovider:brdrqautocorrectborders",
             {
                 "INPUT_THEMATIC": themelayername,
@@ -308,7 +323,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
         layer_theme = QgsVectorLayer(path, themelayername)
         QgsProject.instance().addMapLayer(layer_theme)
 
-        output = processing.run(
+        output = run_processing_or_skip(
             "brdrqprovider:brdrqautocorrectborders",
             {
                 "INPUT_THEMATIC": themelayername,
@@ -345,7 +360,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
         layer_theme = QgsVectorLayer(path, themelayername)
         QgsProject.instance().addMapLayer(layer_theme)
 
-        output = processing.run(
+        output = run_processing_or_skip(
             "brdrqprovider:brdrqautocorrectborders",
             {
                 "INPUT_THEMATIC": themelayername,
@@ -426,7 +441,7 @@ class TestAutoCorrectBorders(unittest.TestCase):
         layer_theme = QgsVectorLayer(path, themelayername)
         QgsProject.instance().addMapLayer(layer_theme)
 
-        output = processing.run(
+        output = run_processing_or_skip(
             "brdrqprovider:brdrqautocorrectborders",
             {
                 "INPUT_THEMATIC": themelayername,

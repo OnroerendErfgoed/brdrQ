@@ -21,12 +21,18 @@ from brdr.processor import (
     NetworkGeometryProcessor,
     SnapGeometryProcessor,
     TopologyProcessor,
+    AnchorGeometryProcessor,
+    DirectedNetworkGeometryProcessor,
+    DirectedAnchorGeometryProcessor,
 )
 from brdr.utils import (
     write_featurecollection_to_geopackage,
 )
+from qgis.PyQt.QtCore import QUrl
 from qgis.PyQt.QtGui import QColor, QPainter
+from qgis.PyQt.QtNetwork import QNetworkRequest
 from qgis.core import Qgis
+from qgis.core import QgsBlockingNetworkRequest
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
     QgsRendererCategory,
@@ -36,9 +42,9 @@ from qgis.core import (
     QgsLineSymbol,
     QgsMarkerSymbol,
 )
+from qgis.core import QgsNetworkAccessManager
 from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingFeatureSourceDefinition, QgsProperty
-from qgis.core import QgsProviderRegistry, QgsDataSourceUri
 from qgis.core import QgsRasterLayer
 from qgis.core import QgsRectangle
 from qgis.core import QgsSettings
@@ -105,10 +111,13 @@ class Processor(str, Enum):
     """
 
     AlignerGeometryProcessor = "2024:aligner2024a"
-    # DieussaertGeometryProcessor = "2024:dieussaert2024a"
+    DieussaertGeometryProcessor = "2024:dieussaert2024a"
     SnapGeometryProcessor = "2024:snap2024a"
     NetworkGeometryProcessor = "2024:network2024a"
-    # TOPOLOGY = "2024:topology2024a"
+    TOPOLOGY = "2024:topology2024a"
+    AnchorGeometryProcessor = "2026:anchor2026a"
+    DirectedNetworkGeometryProcessor = "2026:directed_network2026a"
+    DirectedAnchorGeometryProcessor = "2026:directed_codexanchor2026a"
 
 
 class OsmType(dict, Enum):
@@ -143,11 +152,9 @@ for e in GRBType:
 
     except:
         DICT_GRB_TYPES["BE - GRB - " + e.name + SPLITTER + " " + e.value] = e.name
+ADPF_COLLECTIONS_URL = "https://geo.api.vlaanderen.be/Adpf/ogc/features/collections"
+_ADPF_COLLECTION_YEARS_CACHE = None
 DICT_ADPF_VERSIONS = dict()
-for x in [datetime.datetime.today().year - i for i in range(6)]:
-    DICT_ADPF_VERSIONS[
-        "BE - GRB - Administratieve fiscale percelen" + SPLITTER + " " + str(x)
-    ] = x
 
 DICT_OSM_TYPES = dict()
 for x in OsmType:
@@ -173,6 +180,91 @@ BE_TYPES = list(DICT_BE_TYPES.keys())
 NL_TYPES = list(DICT_NL_TYPES.keys())
 ENUM_REFERENCE_OPTIONS = list(DICT_REFERENCE_OPTIONS.keys())
 
+
+def get_available_adpf_years(limit=5, use_remote=True, timeout_ms=3000):
+    global _ADPF_COLLECTION_YEARS_CACHE
+    if _ADPF_COLLECTION_YEARS_CACHE is not None:
+        return _ADPF_COLLECTION_YEARS_CACHE[:limit]
+
+    if use_remote:
+        previous_timeout = None
+        timeout_adjusted = False
+        try:
+            try:
+                previous_timeout = QgsNetworkAccessManager.timeout()
+                QgsNetworkAccessManager.setTimeout(timeout_ms)
+                timeout_adjusted = True
+            except Exception as exc:
+                print(f"QGIS network timeout hook unavailable: {exc}")
+            request = QNetworkRequest(QUrl(ADPF_COLLECTIONS_URL))
+            request.setRawHeader(b"Accept", b"application/json")
+            network_request = QgsBlockingNetworkRequest()
+            error = network_request.get(request)
+            reply = network_request.reply()
+            if error != QgsBlockingNetworkRequest.NoError:
+                raise RuntimeError(network_request.errorMessage() or reply.errorString())
+            data = json.loads(bytes(reply.content()).decode("utf-8"))
+            years = []
+            for collection in data.get("collections", []):
+                collection_id = collection.get("id", "")
+                match = re.fullmatch(r"Adpf(\d{4})", collection_id)
+                if match:
+                    years.append(int(match.group(1)))
+            years = sorted(set(years), reverse=True)
+            if years:
+                _ADPF_COLLECTION_YEARS_CACHE = years
+                return years[:limit]
+        except Exception as exc:
+            print(f"ADPF collections lookup failed: {exc}")
+        finally:
+            if timeout_adjusted:
+                try:
+                    QgsNetworkAccessManager.setTimeout(previous_timeout)
+                except Exception as exc:
+                    print(f"QGIS network timeout restore failed: {exc}")
+
+    current_year = datetime.datetime.today().year
+    return [current_year - i for i in range(limit)]
+
+
+def set_available_adpf_years(years):
+    global _ADPF_COLLECTION_YEARS_CACHE
+    years = sorted({int(year) for year in years}, reverse=True)[:5]
+    _ADPF_COLLECTION_YEARS_CACHE = years
+    adpf_versions = dict()
+
+    for year in years:
+        adpf_versions[
+            "BE - GRB - Administratieve fiscale percelen" + SPLITTER + " " + str(year)
+        ] = year
+
+    DICT_ADPF_VERSIONS.clear()
+    DICT_ADPF_VERSIONS.update(adpf_versions)
+
+    DICT_REFERENCE_OPTIONS.clear()
+    DICT_REFERENCE_OPTIONS[LOCAL_REFERENCE_LAYER] = PREFIX_LOCAL_LAYER
+    DICT_REFERENCE_OPTIONS.update(DICT_GRB_TYPES)
+    DICT_REFERENCE_OPTIONS.update(DICT_ADPF_VERSIONS)
+    DICT_REFERENCE_OPTIONS.update(DICT_OSM_TYPES)
+    DICT_REFERENCE_OPTIONS.update(DICT_BE_TYPES)
+    DICT_REFERENCE_OPTIONS.update(DICT_NL_TYPES)
+
+    ADPF_VERSIONS[:] = list(DICT_ADPF_VERSIONS.keys())
+    GRB_TYPES[:] = list(DICT_GRB_TYPES.keys())
+    OSM_TYPES[:] = list(DICT_OSM_TYPES.keys())
+    BE_TYPES[:] = list(DICT_BE_TYPES.keys())
+    NL_TYPES[:] = list(DICT_NL_TYPES.keys())
+    ENUM_REFERENCE_OPTIONS[:] = list(DICT_REFERENCE_OPTIONS.keys())
+
+
+def refresh_reference_options(use_remote=True):
+    set_available_adpf_years(
+        get_available_adpf_years(limit=5, use_remote=use_remote, timeout_ms=3000)
+    )
+
+
+refresh_reference_options(use_remote=False)
+
 # ENUM for choosing the OD-strategy
 ENUM_OD_STRATEGY_OPTIONS = [e.name for e in OpenDomainStrategy][
     :4
@@ -188,9 +280,15 @@ ENUM_FULL_REFERENCE_STRATEGY_OPTIONS = [e.name for e in FullReferenceStrategy]
 ENUM_PREDICTION_STRATEGY_OPTIONS = [e.name for e in PredictionStrategy]
 
 # ENUM for choosing the Processing-algorithm
+# ENUM_PROCESSOR_OPTIONS = [
+#       e.name for e in Processor
+#   ]  # list with all processing-algorithm-options
+
 ENUM_PROCESSOR_OPTIONS = [
-    e.name for e in Processor
-]  # list with all processing-algorithm-options
+    Processor.AlignerGeometryProcessor.name,
+    Processor.NetworkGeometryProcessor.name,
+    Processor.SnapGeometryProcessor.name,
+]  # list with available processing-algorithm-options
 
 BRDRQ_ORIGINAL_WKT_FIELDNAME = "brdrq_original_wkt"
 BRDRQ_STATE_FIELDNAME = "brdrq_state"
@@ -227,6 +325,12 @@ def get_processor_by_id(processor_id, config):
         return SnapGeometryProcessor(config=config)
     if processor_id == ProcessorID.TOPOLOGY:
         return TopologyProcessor(config=config)
+    if processor_id == ProcessorID.ANCHOR:
+        return AnchorGeometryProcessor(config=config)
+    if processor_id == ProcessorID.DIRECTED_NETWORK:
+        return DirectedNetworkGeometryProcessor(config=config)
+    if processor_id == ProcessorID.DIRECTED_ANCHOR:
+        return DirectedAnchorGeometryProcessor(config=config)
     return processor
 
 
@@ -391,7 +495,6 @@ def _reconstruct_object(data, enum_classes=None):
     return data.get("value", data)
 
 
-
 def serialize_value(value):
     """Helper function to convert complex QGIS objects into JSON-friendly dicts."""
     if isinstance(value, float):
@@ -442,7 +545,6 @@ def get_string_type(val):
             return "float"
         except ValueError:
             return "string"
-
 
 
 def geom_shapely_to_qgis(geom_shapely):
@@ -769,7 +871,6 @@ def gpkg_layer_to_map(name, gpkg_path, layer_name, symbol, visible, group):
         iface.layerTreeView().refreshLayerSymbology(vl.id())
 
     return vl
-
 
 
 def featurecollection_to_layer(
@@ -1685,4 +1786,3 @@ class PolygonSelectTool(QgsMapTool):
     def reset(self):
         self.points = []
         self.rubber_band.reset(QgsWkbTypes.PolygonGeometry)
-

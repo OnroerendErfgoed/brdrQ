@@ -14,6 +14,9 @@ The processing algorithm, named **Autocorrectborders**, is developed to automati
 reference boundaries. It searches for relevant overlap between thematic boundaries and reference boundaries, and creates
 a resulting boundary based on the relevant overlapping areas.
 
+Because **Autocorrectborders** is exposed as a QGIS Processing algorithm, it is also available for use in the QGIS
+Model Designer.
+
 ## Parameter Guide
 Each parameter is documented once with the same structure: **Definition**, **Why use it**, **Choices**, and **Impact**.
 
