@@ -40,7 +40,7 @@ from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QTimer, QSignalBlocker, QEvent
 from qgis.PyQt.QtGui import QColor
 from qgis.core import Qgis
-from qgis.core import QgsFeature, QgsWkbTypes, QgsVectorLayer, QgsProject
+from qgis.core import QgsFeature, QgsWkbTypes, QgsProject
 from qgis.core import QgsFeatureRequest
 from qgis.gui import QgsMapToolPan
 from qgis.gui import QgsRubberBand
@@ -136,6 +136,7 @@ class brdrQDockWidgetFeatureAligner(
             self.pushButton_visualisatie: "/mActionShowAllLayers.svg",
             self.pushButton_settings: "/mActionOptions.svg",
             self.pushButton_select: "/mActionSelect.svg",
+            self.pushButton_select_partial: "/mActionSelectPolygon.svg",
         }
 
         for button, icon_name in icon_map.items():
@@ -143,6 +144,9 @@ class brdrQDockWidgetFeatureAligner(
             # button.setIconSize(QtCore.QSize(18, 18))
 
         self.max_listed_features = 1000
+        self.processing_area_qgis = None
+        self.processing_area_shapely = None
+        self._processing_area_rubber_band = None
         self._features_by_id = {}
         self._frozenFeaturesView = None
         self._use_frozen_feature_columns = False
@@ -252,6 +256,34 @@ class brdrQDockWidgetFeatureAligner(
             remove_group_layer(self.GROUP_LAYER)
         self.feature = None
 
+    def _clear_processing_area(self):
+        self.processing_area_qgis = None
+        self.processing_area_shapely = None
+        if self._processing_area_rubber_band is not None:
+            try:
+                self._processing_area_rubber_band.reset(QgsWkbTypes.PolygonGeometry)
+            except Exception:
+                pass
+            self._processing_area_rubber_band = None
+        self._update_partial_button_state()
+
+    def _update_partial_button_state(self):
+        if not hasattr(self, "pushButton_select_partial"):
+            return
+        has_processing_area = self.processing_area_qgis is not None
+        if has_processing_area:
+            self.pushButton_select_partial.setText("Reset partial area")
+            self.pushButton_select_partial.setToolTip("Reset the active partial processing area")
+            return
+        compact = self.width() < 360
+        if compact:
+            self.pushButton_select_partial.setText("Partial area")
+        else:
+            self.pushButton_select_partial.setText("Select partial area on map")
+        self.pushButton_select_partial.setToolTip(
+            "Select a polygon processing area on the map (double-click or Enter to finish)"
+        )
+
     def _install_scrollable_contents(self):
         """
         Wrap dock contents in a scroll area so narrow/short dock states don't
@@ -277,6 +309,7 @@ class brdrQDockWidgetFeatureAligner(
             self.pushButton_settings,
             self.pushButton_help,
             self.pushButton_select,
+            self.pushButton_select_partial,
             self.pushButton_grafiek,
             self.pushButton_visualisatie,
             self.pushButton_save,
@@ -291,6 +324,7 @@ class brdrQDockWidgetFeatureAligner(
             self.pushButton_settings: "Choose settings",
             self.pushButton_help: "Docs",
             self.pushButton_select: "Select feature(s) on map",
+            self.pushButton_select_partial: "Select partial area on map",
             self.pushButton_grafiek: "Plot",
             self.pushButton_visualisatie: "Visualize",
             self.pushButton_save: " Save Geometry*",
@@ -300,6 +334,7 @@ class brdrQDockWidgetFeatureAligner(
             self.pushButton_settings: "Settings",
             self.pushButton_help: "Docs",
             self.pushButton_select: "Select on map",
+            self.pushButton_select_partial: "Partial area",
             self.pushButton_grafiek: "Plot",
             self.pushButton_visualisatie: "Visualize",
             self.pushButton_save: "Save*",
@@ -457,6 +492,7 @@ class brdrQDockWidgetFeatureAligner(
         target = self._button_texts_compact if compact else self._button_texts_full
         for button, text in target.items():
             button.setText(text)
+        self._update_partial_button_state()
 
     def _onFeatureFilterTextChanged(self, text):
         if self._is_closing:
@@ -694,7 +730,7 @@ class brdrQDockWidgetFeatureAligner(
         self.pushButton_save.clicked.connect(self.change_geometry)
         self.pushButton_reset.clicked.connect(self.reset_geometry)
         self.pushButton_select.clicked.connect(self.activate_selectTool)
-        # self.pushButton_select_partial.clicked.connect(self.activate_partialSelectTool)
+        self.pushButton_select_partial.clicked.connect(self.activate_partialSelectTool)
 
         self.mMapLayerComboBox.layerChanged.connect(self.themeLayerChanged)
         # Primary activation trigger: selection change (works reliably with frozen columns).
@@ -793,6 +829,16 @@ class brdrQDockWidgetFeatureAligner(
             return
         self._shutdown_prepared = True
         self._is_closing = True
+        try:
+            # Ensure temporary partial-selection visuals/tooling are removed
+            # when the dock closes.
+            self.deactivateSelectTool()
+        except Exception:
+            pass
+        try:
+            self._clear_processing_area()
+        except Exception:
+            pass
         try:
             # Prevent any late UI-triggered callbacks during app/project teardown.
             self.setUpdatesEnabled(False)
@@ -912,6 +958,13 @@ class brdrQDockWidgetFeatureAligner(
 
     def activate_partialSelectTool(self):
         # print ("currentlayer:" + str (self.mMapLayerComboBox.currentLayer()))
+        if self.layer is None:
+            self._set_user_feedback("Please select a layer to align in the upper combobox")
+            return
+        if self.processing_area_qgis is not None:
+            self._clear_processing_area()
+            self._set_user_feedback("Partial processing area reset.")
+            return
         canvas = self.iface.mapCanvas()
         self.formerMapTool = canvas.mapTool()
         self.partialSelectTool = PolygonSelectTool(
@@ -931,31 +984,35 @@ class brdrQDockWidgetFeatureAligner(
         self.listFeatures(features=identified_features, auto_activate_single=True)
 
     def handlePartialSelection(self, polygon_geom, layer, canvas):
+        if polygon_geom is None or polygon_geom.isEmpty():
+            self._set_user_feedback("No partial processing area selected")
+            return
+
+        self.processing_area_qgis = polygon_geom
+        self.processing_area_shapely = geom_qgis_to_shapely(polygon_geom)
+        self._update_partial_button_state()
+
+        if self._processing_area_rubber_band is not None:
+            self._processing_area_rubber_band.reset(QgsWkbTypes.PolygonGeometry)
+        self._processing_area_rubber_band = QgsRubberBand(
+            canvas, QgsWkbTypes.PolygonGeometry
+        )
+        self._processing_area_rubber_band.setToGeometry(polygon_geom, None)
+        self._processing_area_rubber_band.setColor(QColor(0, 255, 0, 100))
+        self._processing_area_rubber_band.setWidth(2)
 
         partial_features = []
         for feat in layer.getFeatures():
-            if feat.geometry().intersects(polygon_geom):
-                clipped = feat.geometry().intersection(polygon_geom)
-
-                if not clipped.isEmpty():
-                    feat.setGeometry(clipped)
-                    partial_features.append(feat)
-
-        for feat in partial_features:
             geom = feat.geometry()
-            rb = QgsRubberBand(canvas, QgsWkbTypes.PolygonGeometry)
-            rb.setToGeometry(geom, None)
-            rb.setColor(QColor(0, 255, 0, 100))
-            rb.setWidth(2)
+            if geom is None or geom.isEmpty():
+                continue
+            if geom.intersects(polygon_geom):
+                partial_features.append(feat)
 
-        temp_layer = QgsVectorLayer(
-            "Polygon?crs=" + layer.crs().authid(), "cut features", "memory"
+        print(f"{len(partial_features)} -> #features intersecting partial area.")
+        self._set_user_feedback(
+            f"Partial processing area set. {len(partial_features)} intersecting feature(s) listed."
         )
-        prov = temp_layer.dataProvider()
-        prov.addFeatures(partial_features)
-
-        QgsProject.instance().addMapLayer(temp_layer)
-        print(f"{len(partial_features)} -> #partial features.")
         self.listFeatures(features=partial_features, auto_activate_single=True)
 
     def themeLayerChanged(self):
@@ -963,6 +1020,7 @@ class brdrQDockWidgetFeatureAligner(
             return
         print("themelayer changed")
         self._suppress_feature_activation = True
+        self._clear_processing_area()
         # reset interface by clearing list, progress_bar
         try:
             self.clearUserInterface()
@@ -1693,10 +1751,20 @@ class brdrQDockWidgetFeatureAligner(
             return None
 
         try:
+            processing_area = None
+            if self.processing_area_qgis is not None:
+                scoped_qgis = original_geometry.intersection(self.processing_area_qgis)
+                if scoped_qgis is None or scoped_qgis.isEmpty():
+                    self._set_user_feedback(
+                        "Selected feature does not intersect the partial processing area."
+                    )
+                    return None
+                processing_area = geom_qgis_to_shapely(scoped_qgis)
             self.aligner_result = self.aligner.evaluate(
                 max_predictions=4,
                 relevant_distances=self.relevant_distances,
                 full_reference_strategy=self.full_strategy,
+                processing_area=processing_area,
             )
         except Exception as e:
             self._show_warning("Alignment failed", str(e))

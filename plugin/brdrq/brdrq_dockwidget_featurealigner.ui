@@ -116,14 +116,14 @@ p, li { white-space: pre-wrap; }
       </property>
      </widget>
     </item>
-    <item row="20" column="0">
+    <item row="21" column="0">
      <widget class="QProgressBar" name="progressBar">
       <property name="value">
        <number>0</number>
       </property>
      </widget>
     </item>
-    <item row="19" column="0">
+    <item row="20" column="0">
      <widget class="QTableWidget" name="tableFeatures">
       <property name="maximumSize">
        <size>
@@ -227,7 +227,7 @@ p, li { white-space: pre-wrap; }
       </item>
      </layout>
     </item>
-    <item row="18" column="0">
+    <item row="19" column="0">
      <layout class="QHBoxLayout" name="horizontalLayoutFeaturesHeader">
       <item alignment="Qt::AlignLeft">
        <widget class="QLabel" name="labelFeatures">
@@ -274,26 +274,52 @@ p, li { white-space: pre-wrap; }
      </widget>
     </item>
     <item row="17" column="0">
-     <widget class="QPushButton" name="pushButton_select">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="font">
-       <font>
-        <weight>50</weight>
-        <bold>false</bold>
-       </font>
-      </property>
-      <property name="toolTip">
-       <string>Select feature(s ) from layer by clicking on the map</string>
-      </property>
-      <property name="text">
-       <string>Select feature(s) on map</string>
-      </property>
-     </widget>
+     <layout class="QHBoxLayout" name="horizontalLayoutSelectButtons">
+      <item>
+       <widget class="QPushButton" name="pushButton_select">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="font">
+         <font>
+          <weight>50</weight>
+          <bold>false</bold>
+         </font>
+        </property>
+        <property name="toolTip">
+         <string>Select feature(s ) from layer by clicking on the map</string>
+        </property>
+        <property name="text">
+         <string>Select feature(s) on map</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pushButton_select_partial">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="font">
+         <font>
+          <weight>50</weight>
+          <bold>false</bold>
+         </font>
+        </property>
+        <property name="toolTip">
+         <string>Select a polygon processing area on the map (double-click or Enter to finish)</string>
+        </property>
+        <property name="text">
+         <string>Select partial area on map</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </item>
     <item row="28" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout">
