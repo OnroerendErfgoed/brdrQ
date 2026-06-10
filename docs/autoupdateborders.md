@@ -9,6 +9,9 @@ to a newer GRB-referencelayer. It makes predictions to find the resulting aligne
 found the user can choose to return ALL predictions, the BEST prediction, or the ORIGINAL geometry (for further
 analysis).
 
+Because **AutoUpdateBorders** is exposed as a QGIS Processing algorithm, it is also available for use in the QGIS
+Model Designer.
+
 ## Parameter Guide
 
 ### Thematic Layer

@@ -11,6 +11,9 @@ lang: nl
 
 `AutoUpdateBorders` is een QGIS-processing script om geometrieen die uitgelijnd zijn op een oude GRB-referentielaag (Vlaanderen) automatisch te updaten naar een nieuwere GRB-referentielaag. Het gebruikt voorspellingen om de resulterende uitgelijnde geometrie te bepalen. Wanneer meerdere voorspellingen gevonden worden, kan je kiezen tussen ALLE voorspellingen, de BESTE voorspelling, of de ORIGINELE geometrie (voor verdere analyse).
 
+Omdat **AutoUpdateBorders** beschikbaar is als QGIS Processing-algoritme, kan het ook gebruikt worden in de QGIS
+Model Designer.
+
 ## Parametergids
 
 ### Thematic Layer

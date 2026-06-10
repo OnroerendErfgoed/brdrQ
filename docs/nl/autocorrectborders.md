@@ -15,6 +15,9 @@ lang: nl
 
 Het processing-algoritme **Autocorrectborders** is ontwikkeld om thematische grenzen automatisch aan te passen aan referentiegrenzen. Het zoekt relevante overlap tussen thematische grenzen en referentiegrenzen en maakt op basis daarvan een resulterende grens.
 
+Omdat **Autocorrectborders** beschikbaar is als QGIS Processing-algoritme, kan het ook gebruikt worden in de QGIS
+Model Designer.
+
 ## Parametergids
 Elke parameter wordt eenduidig uitgelegd met: **Definitie**, **Waarom gebruiken**, **Mogelijke keuzes**, en **Gevolg**.
 
