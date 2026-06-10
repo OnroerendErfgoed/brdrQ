@@ -20,7 +20,7 @@ from qgis.core import (
 )
 from qgis.gui import QgsMapCanvas
 
-from .utilities import get_qgis_app
+from .utilities import clear_settings_prefix, get_qgis_app
 from ..brdrq_dockwidget_featurealigner import brdrQDockWidgetFeatureAligner
 from ..brdrq_plugin import BrdrQPlugin
 from ..brdrq_utils import get_layer_by_name
@@ -83,6 +83,14 @@ def open_wkt_dialog_and_auto_close(widget, delay_ms=2000):
     return widget.get_wkt()
 
 
+def configure_local_reference(settings_dialog, reference_layer):
+    settings_dialog.comboBox_referencelayer.setCurrentIndex(0)
+    settings_dialog.mMapLayerComboBox_reference.setLayer(reference_layer)
+    settings_dialog.updateFields_reference()
+    settings_dialog.mFieldComboBox_reference.setField("CAPAKEY")
+    settings_dialog.push_settings_ok()
+
+
 class TestFlow(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -98,6 +106,7 @@ class TestFlow(unittest.TestCase):
     def test_full_success(self):
         """Test the full workflow from opening the dialog to align features"""
         project = QgsProject.instance()
+        clear_settings_prefix("brdrqfeaturealigner")
         CRS = QgsCoordinateReferenceSystem.fromEpsgId(31370)
         # CANVAS.setExtent(QgsRectangle(1469703, 6870031, 1506178, 6907693))
         CANVAS.setDestinationCrs(CRS)
@@ -105,6 +114,9 @@ class TestFlow(unittest.TestCase):
         themelayername = "themelayer_e2e"
         layer_theme = QgsVectorLayer(path, themelayername)
         project.addMapLayer(layer_theme)
+        ref_path = os.path.join(os.path.dirname(__file__), "referencelayer_test.geojson")
+        layer_reference = QgsVectorLayer(ref_path, "referencelayer_test")
+        project.addMapLayer(layer_reference)
 
         # Create and open the dialog
         brdrqplugin = BrdrQPlugin(IFACE)
@@ -115,13 +127,14 @@ class TestFlow(unittest.TestCase):
             layer_theme = get_layer_by_name(themelayername)
             assert layer_theme.name() == themelayername
             layers = project.mapLayers(validOnly=True)
-            self.assertEqual(len(layers), 1)
+            initial_layer_count = len(layers)
+            self.assertEqual(initial_layer_count, 2)
             # need to import here so that there's already an initialized QGIS app
 
             settingsDialog = widget.settingsDialog
             assert settingsDialog is not None
             self.assertFalse(settingsDialog.isVisible())
-            open_settings_dialog_and_auto_accept(widget, delay_ms=2000)
+            configure_local_reference(settingsDialog, layer_reference)
             self.assertFalse(settingsDialog.isVisible())
 
             # kies themelayer in widget
@@ -133,7 +146,7 @@ class TestFlow(unittest.TestCase):
             for x in range(feature_table.rowCount()):
                 widget.onFeatureActivated(x)
             layers = project.mapLayers(validOnly=True)
-            self.assertEqual(len(layers), 5)
+            self.assertEqual(len(layers), initial_layer_count + 4)
             wkt = open_wkt_dialog_and_auto_close(widget, delay_ms=2000)
             print(wkt)
             widget.get_graphic()
@@ -149,6 +162,7 @@ class TestFlow(unittest.TestCase):
     def test_full_success_brdrq_params(self):
         """Test the full workflow from opening the dialog to align features"""
         project = QgsProject.instance()
+        clear_settings_prefix("brdrqfeaturealigner")
         CRS = QgsCoordinateReferenceSystem.fromEpsgId(31370)
         # CANVAS.setExtent(QgsRectangle(1469703, 6870031, 1506178, 6907693))
         CANVAS.setDestinationCrs(CRS)
@@ -156,6 +170,9 @@ class TestFlow(unittest.TestCase):
         themelayername = "themelayer_e2e"
         layer_theme = QgsVectorLayer(path, themelayername)
         project.addMapLayer(layer_theme)
+        ref_path = os.path.join(os.path.dirname(__file__), "referencelayer_test.geojson")
+        layer_reference = QgsVectorLayer(ref_path, "referencelayer_test")
+        project.addMapLayer(layer_reference)
 
         # Create and open the dialog
         brdrqplugin = BrdrQPlugin(IFACE)
@@ -166,13 +183,14 @@ class TestFlow(unittest.TestCase):
             layer_theme = get_layer_by_name(themelayername)
             assert layer_theme.name() == themelayername
             layers = project.mapLayers(validOnly=True)
-            self.assertEqual(len(layers), 1)
+            initial_layer_count = len(layers)
+            self.assertEqual(initial_layer_count, 2)
             # need to import here so that there's already an initialized QGIS app
 
             settingsDialog = widget.settingsDialog
             assert settingsDialog is not None
             self.assertFalse(settingsDialog.isVisible())
-            open_settings_dialog_and_auto_accept(widget, delay_ms=2000)
+            configure_local_reference(settingsDialog, layer_reference)
             self.assertFalse(settingsDialog.isVisible())
 
             # kies themelayer in widget
@@ -184,7 +202,7 @@ class TestFlow(unittest.TestCase):
             for x in range(feature_table.rowCount()):
                 widget.onFeatureActivated(x)
             layers = project.mapLayers(validOnly=True)
-            self.assertEqual(len(layers), 5)
+            self.assertEqual(len(layers), initial_layer_count + 4)
         finally:
             project.removeAllMapLayers()
             widget.close()

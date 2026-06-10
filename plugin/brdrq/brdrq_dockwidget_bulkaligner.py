@@ -50,6 +50,7 @@ from .brdrq_utils import (
     geom_qgis_to_shapely,
     GRB_TYPES,
     ADPF_VERSIONS,
+    DICT_REFERENCE_OPTIONS,
     BRDRQ_STATE_FIELDNAME,
     BrdrQState,
 )
@@ -203,10 +204,17 @@ class brdrQDockWidgetBulkAligner(
                 )
             )
         elif self.reference_choice in ADPF_VERSIONS:
-            year = self.reference_choice.removeprefix("Adpf")
-            self.aligner.load_reference_data(
-                GRBFiscalParcelLoader(year=year, aligner=self.aligner, partition=1000)
-            )
+            year = DICT_REFERENCE_OPTIONS[self.reference_choice]
+            try:
+                self.aligner.load_reference_data(
+                    GRBFiscalParcelLoader(
+                        year=str(year), aligner=self.aligner, partition=1000
+                    )
+                )
+            except Exception as e:
+                raise ValueError(
+                    f"Administratieve fiscale percelen {year} zijn niet beschikbaar of konden niet geladen worden: {str(e)}"
+                )
         else:
             # Load reference into a shapely_dict:
             dict_reference = {}

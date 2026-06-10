@@ -13,7 +13,7 @@ from qgis.core import (
 )
 from qgis.gui import QgsMapCanvas
 
-from .utilities import get_qgis_app
+from .utilities import get_qgis_app, run_processing_or_skip
 from ..brdrq_provider import BrdrQProvider
 
 CANVAS: QgsMapCanvas
@@ -49,7 +49,7 @@ class TestAutoUpdateBorders(unittest.TestCase):
         themelayername = "themelayer_test"
         layer_theme = QgsVectorLayer(path, themelayername)
         QgsProject.instance().addMapLayer(layer_theme)
-        output = processing.run(
+        output = run_processing_or_skip(
             "brdrqprovider:brdrqautoupdateborders",
             {
                 "INPUT_THEMATIC": themelayername,
@@ -95,7 +95,7 @@ class TestAutoUpdateBorders(unittest.TestCase):
             layer_theme.id(), selectedFeaturesOnly=True, featureLimit=-1
         )
 
-        output = processing.run(
+        output = run_processing_or_skip(
             "brdrqprovider:brdrqautoupdateborders",
             {
                 "INPUT_THEMATIC": source,
@@ -129,7 +129,7 @@ class TestAutoUpdateBorders(unittest.TestCase):
         themelayername = "themelayer_test_metadata"
         layer_theme = QgsVectorLayer(path, themelayername)
         QgsProject.instance().addMapLayer(layer_theme)
-        output = processing.run(
+        output = run_processing_or_skip(
             "brdrqprovider:brdrqautoupdateborders",
             {
                 "INPUT_THEMATIC": themelayername,

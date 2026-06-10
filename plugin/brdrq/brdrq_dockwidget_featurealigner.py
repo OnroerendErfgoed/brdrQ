@@ -37,7 +37,7 @@ from brdr.nl.enums import BRKType
 from brdr.nl.loader import BRKLoader
 from brdr.osm.loader import OSMLoader
 from qgis.PyQt import QtWidgets, uic
-from qgis.PyQt.QtCore import pyqtSignal, Qt, QTimer, QSignalBlocker, QEvent
+from qgis.PyQt.QtCore import pyqtSignal, QTimer, QSignalBlocker, QEvent
 from qgis.PyQt.QtGui import QColor
 from qgis.core import Qgis
 from qgis.core import QgsFeature, QgsWkbTypes, QgsProject
@@ -79,7 +79,6 @@ from .qt_compat import (
     map_layer_filter_line,
     map_layer_filter_point,
     map_layer_filter_polygon,
-    qt_align_left,
     qt_frame_no_frame,
     qt_header_fixed,
     qt_header_interactive,
@@ -1641,8 +1640,8 @@ class brdrQDockWidgetFeatureAligner(
                 )
             except Exception as e:
                 self._show_warning(
-                    "CRS",
-                    f"Reference layer 'BE - GRB' does not support CRS of current thematic layer: {str(e)}",
+                    "ADPF",
+                    f"Administratieve fiscale percelen {reference_choice_id} zijn niet beschikbaar (owv onbeschikbare data, CRS-conflict of tijdelijke onbeschikbaarheid): {str(e)}",
                 )
                 return None
         elif self.reference_choice in OSM_TYPES:
@@ -1796,6 +1795,8 @@ class brdrQDockWidgetFeatureAligner(
         if self.layer is None:
             self._set_user_feedback("Please select a layer to align in the upper combobox")
             return
+        if not self._prepare_current_feature_for_geometry_action():
+            return
         self._change_geometry(self.layer)
         self._refresh_feature_table_without_realign()
         remove_group_layer(self.GROUP_LAYER)
@@ -1804,9 +1805,57 @@ class brdrQDockWidgetFeatureAligner(
         if self.layer is None:
             self._set_user_feedback("Please select a layer to align in the upper combobox")
             return
+        if not self._prepare_current_feature_for_geometry_action():
+            return
         self._reset_geometry(self.layer)
         self._refresh_feature_table_without_realign()
         remove_group_layer(self.GROUP_LAYER)
+
+    def _prepare_current_feature_for_geometry_action(self):
+        """
+        Ensure the currently selected feature row has finished activation and
+        that save/reset operates on synchronized prediction results.
+        """
+        current_row = self.tableFeatures.currentRow()
+        if current_row is None or current_row < 0:
+            self._set_user_feedback("Please select a feature first.")
+            return False
+
+        if self._featureActivationTimer.isActive():
+            self._featureActivationTimer.stop()
+            self._process_pending_feature_activation()
+
+        if self._feature_activation_in_progress:
+            self._set_user_feedback(
+                "Feature activation is still running. Please try again in a moment."
+            )
+            return False
+
+        id_item = self.tableFeatures.item(current_row, 0)
+        expected_feature_id = None if id_item is None else id_item.data(qt_user_role())
+        expected_feature_id = (
+            None if expected_feature_id is None else int(expected_feature_id)
+        )
+        current_feature_id = None if self.feature is None else int(self.feature.id())
+
+        if expected_feature_id is None:
+            self._set_user_feedback("Could not determine the selected feature.")
+            return False
+
+        if (
+            current_feature_id != expected_feature_id or
+            self.dict_processresults is None or
+            expected_feature_id not in self.dict_processresults
+        ):
+            self.onFeatureActivated(current_row, source="save")
+
+        if self.feature is None or self.dict_processresults is None:
+            self._set_user_feedback(
+                "No active prediction is ready yet for the selected feature."
+            )
+            return False
+
+        return True
 
     def _refresh_feature_table_without_realign(self):
         """

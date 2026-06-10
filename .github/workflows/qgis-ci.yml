@@ -51,7 +51,7 @@ jobs:
                 (apt-get update && apt-get install -y python3-venv && "$PYBIN" -m venv --system-site-packages /tmp/qgis-ci-venv)
               . /tmp/qgis-ci-venv/bin/activate
               python -m pip install --upgrade pip
-              python -m pip install --upgrade pytest brdr==0.15.6
+              python -m pip install --upgrade pytest brdr==0.17.3
               export QGIS_PREFIX_PATH=/usr
               export PYTHONPATH="/usr/share/qgis/python:/usr/share/qgis/python/plugins:${PYTHONPATH:-}"
               TESTS="plugin/brdrq/test/test_init.py \

@@ -35,12 +35,12 @@ from brdr.enums import OpenDomainStrategy, FullReferenceStrategy, SnapStrategy
 from brdr.loader import DictLoader
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QDate, QDateTime
+from qgis.core import Qgis
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
 from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingMultiStepFeedback
 from qgis.core import QgsProcessingParameterFile
-from qgis.core import Qgis
 from qgis.core import (
     QgsProcessingParameterNumber,
 )
