@@ -17,7 +17,7 @@ from .qt_compat import (
 # https://github.com/qgis/QGIS/issues/45646
 
 
-brdr_version = "0.17.0"
+brdr_version = "0.17.3"
 
 
 def find_python():
@@ -82,9 +82,9 @@ def install_brdr(python_exe):
     print(f"reloaded version of brdr: {brdr.__version__}")
     show_new_brdr_dialog()
 
-def install_shapely(python_exe):
-    print("Module shapely not found. Installing from PyPi.")
-    pipinstall_by_subprocess(python_exe,"shapely")
+def install_package(python_exe, package):
+    print(f"Module {package} not found. Installing from PyPi.")
+    pipinstall_by_subprocess(python_exe, package)
 
 
 def import_modules():
@@ -95,7 +95,22 @@ def import_modules():
         from shapely import Polygon, from_wkt, to_wkt, unary_union, make_valid
         from shapely.geometry import shape
     except ModuleNotFoundError:
-        install_shapely(python_exe)
+        install_package(python_exe, "shapely")
+
+    try:
+        import pyogrio
+    except ModuleNotFoundError:
+        install_package(python_exe, "pyogrio")
+
+    try:
+        import geopandas
+    except ModuleNotFoundError:
+        install_package(python_exe, "geopandas")
+
+    try:
+        import matplotlib
+    except ModuleNotFoundError:
+        install_package(python_exe, "matplotlib")
 
     try:
         import brdr
