@@ -37,7 +37,7 @@ from brdr.nl.enums import BRKType
 from brdr.nl.loader import BRKLoader
 from brdr.osm.loader import OSMLoader
 from qgis.PyQt import QtWidgets, uic
-from qgis.PyQt.QtCore import pyqtSignal, Qt, QTimer, QSignalBlocker, QEvent
+from qgis.PyQt.QtCore import pyqtSignal, QTimer, QSignalBlocker, QEvent
 from qgis.PyQt.QtGui import QColor
 from qgis.core import Qgis
 from qgis.core import QgsFeature, QgsWkbTypes, QgsVectorLayer, QgsProject
@@ -79,7 +79,6 @@ from .qt_compat import (
     map_layer_filter_line,
     map_layer_filter_point,
     map_layer_filter_polygon,
-    qt_align_left,
     qt_frame_no_frame,
     qt_header_fixed,
     qt_header_interactive,
@@ -1583,8 +1582,8 @@ class brdrQDockWidgetFeatureAligner(
                 )
             except Exception as e:
                 self._show_warning(
-                    "CRS",
-                    f"Reference layer 'BE - GRB' does not support CRS of current thematic layer: {str(e)}",
+                    "ADPF",
+                    f"Administratieve fiscale percelen {reference_choice_id} zijn niet beschikbaar (owv onbeschikbare data, CRS-conflict of tijdelijke onbeschikbaarheid): {str(e)}",
                 )
                 return None
         elif self.reference_choice in OSM_TYPES:

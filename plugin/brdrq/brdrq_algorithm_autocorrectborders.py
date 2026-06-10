@@ -32,6 +32,7 @@ import os
 import sys
 from datetime import datetime
 
+import numpy as np
 from brdr.be.be import BeCadastralParcelLoader
 from brdr.be.grb.enums import GRBType
 from brdr.be.grb.loader import GRBFiscalParcelLoader, GRBActualLoader
@@ -47,21 +48,38 @@ from brdr.loader import DictLoader
 from brdr.nl.enums import BRKType
 from brdr.nl.loader import BRKLoader
 from brdr.osm.loader import OSMLoader
-import numpy as np
 from qgis import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QDate, QDateTime
-from qgis.core import QgsFeatureRequest
 from qgis.core import Qgis
+from qgis.core import QgsFeatureRequest
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
+from qgis.core import QgsProcessingException
 from qgis.core import QgsProcessingMultiStepFeedback
 from qgis.core import QgsProcessingParameterFile
 from qgis.core import QgsProcessingParameterNumber
-from qgis.core import QgsProcessingException
 from qgis.core import QgsProject
 from qgis.core import QgsStyle
 
+from .brdrq_algorithm_common import (
+    add_boolean_parameter,
+    add_enum_parameter,
+    add_feature_source_parameter,
+    add_field_parameter,
+    add_file_parameter,
+    add_number_parameter,
+    add_standard_result_outputs,
+    apply_saved_settings,
+    assign_parameter_values,
+    build_aligner,
+    build_processor,
+    get_log_feedback,
+    get_prediction_strategy_options,
+    initialize_default_attributes,
+    resolve_thematic_layer_and_crs,
+    write_saved_settings,
+)
 from .brdrq_utils import (
     ENUM_REFERENCE_OPTIONS,
     ENUM_OD_STRATEGY_OPTIONS,
@@ -82,6 +100,7 @@ from .brdrq_utils import (
     get_processor_by_id,
     Processor,
     ENUM_PROCESSOR_OPTIONS,
+    refresh_reference_options,
     read_setting,
     write_setting,
     get_valid_layer,
@@ -91,24 +110,6 @@ from .brdrq_utils import (
     NL_TYPES,
     DICT_NL_TYPES,
     BE_TYPES,
-)
-from .brdrq_algorithm_common import (
-    add_boolean_parameter,
-    add_enum_parameter,
-    add_feature_source_parameter,
-    add_field_parameter,
-    add_file_parameter,
-    add_number_parameter,
-    add_standard_result_outputs,
-    apply_saved_settings,
-    assign_parameter_values,
-    build_aligner,
-    build_processor,
-    get_log_feedback,
-    get_prediction_strategy_options,
-    initialize_default_attributes,
-    resolve_thematic_layer_and_crs,
-    write_saved_settings,
 )
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
@@ -296,8 +297,11 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         Here we define the inputs and output of the algorithm, along
         with some other properties.
         """
+        refresh_reference_options(use_remote=True)
         # Read settings saved to project/profile
         self.read_default_settings()
+        if self.default_reference >= len(ENUM_REFERENCE_OPTIONS):
+            self.default_reference = 0
 
         # standard parameters
         add_feature_source_parameter(
@@ -593,9 +597,14 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 }
             elif self.SELECTED_REFERENCE in ADPF_VERSIONS:
                 year = DICT_ADPF_VERSIONS[self.SELECTED_REFERENCE]
-                aligner.load_reference_data(
-                    GRBFiscalParcelLoader(year=str(year), aligner=aligner, partition=1000)
-                )
+                try:
+                    aligner.load_reference_data(
+                        GRBFiscalParcelLoader(year=str(year), aligner=aligner, partition=1000)
+                    )
+                except Exception as e:
+                    raise QgsProcessingException(
+                        f"Administratieve fiscale percelen {year} zijn niet beschikbaar of konden niet geladen worden: {str(e)}"
+                    )
             elif self.SELECTED_REFERENCE in OSM_TYPES:
                 tags = DICT_OSM_TYPES[self.SELECTED_REFERENCE]
                 aligner.load_reference_data(OSMLoader(osm_tags=tags, aligner=aligner))

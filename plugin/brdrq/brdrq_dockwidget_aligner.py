@@ -30,12 +30,6 @@ from qgis.core import edit
 
 from .brdrq_help import brdrQHelp
 from .brdrq_settings import brdrQSettings
-from .qt_compat import (
-    dialog_exec,
-    qt_application_modal,
-    qt_widget_attribute,
-    qt_window_flag,
-)
 from .brdrq_utils import (
     plot_series,
     show_map,
@@ -47,6 +41,12 @@ from .brdrq_utils import (
     BrdrQState,
     get_original_geometry,
     setFilterOnLayer,
+)
+from .qt_compat import (
+    dialog_exec,
+    qt_application_modal,
+    qt_widget_attribute,
+    qt_window_flag,
 )
 
 

@@ -115,7 +115,9 @@ class BrdrQPlugin(object):
         # FEATUREALIGNER
         icon = os.path.join(os.path.join(cmd_folder, "icon_featurealigner.svg"))
         action_featurepredictor = QAction(
-            QIcon(icon), "Feature Aligner (individual predictions)", self.iface.mainWindow()
+            QIcon(icon),
+            "Feature Aligner (individual predictions)",
+            self.iface.mainWindow(),
         )
         action_featurepredictor.setObjectName("brdrq_featurealigner")
         action_featurepredictor.triggered.connect(self.openDockFeatureAligner)
@@ -252,8 +254,8 @@ class BrdrQPlugin(object):
         if not recreate:
             try:
                 recreate = bool(
-                    getattr(self.dockwidget_featurealigner, "_shutdown_prepared", False) or
-                    getattr(self.dockwidget_featurealigner, "_is_closing", False)
+                    getattr(self.dockwidget_featurealigner, "_shutdown_prepared", False)
+                    or getattr(self.dockwidget_featurealigner, "_is_closing", False)
                 )
             except Exception:
                 recreate = True
@@ -282,4 +284,3 @@ class BrdrQPlugin(object):
                 "email": "N/A",
             }
         return metadata
-

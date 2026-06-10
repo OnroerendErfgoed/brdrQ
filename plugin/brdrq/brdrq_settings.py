@@ -36,6 +36,7 @@ from .brdrq_utils import (
     ENUM_SNAP_STRATEGY_OPTIONS,
     Processor,
     ENUM_PROCESSOR_OPTIONS,
+    refresh_reference_options,
     read_setting,
     write_setting,
 )
@@ -93,8 +94,8 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
 
     def load_settings(self):
         print("load settings")
-        for r in ENUM_REFERENCE_OPTIONS:
-            self.comboBox_referencelayer.addItem(r)
+        refresh_reference_options(use_remote=True)
+        self._reload_reference_options()
         for od in ENUM_OD_STRATEGY_OPTIONS:
             self.comboBox_odstrategy.addItem(od)
         for s in ENUM_SNAP_STRATEGY_OPTIONS:
@@ -114,6 +115,18 @@ class brdrQSettings(QtWidgets.QDialog, FORM_CLASS):
         # Load initial settings into tool (similar to pushing OK in settings Dialog)
         self.update_settings(initial=True)
         return
+
+    def _reload_reference_options(self, selected_reference=None):
+        if selected_reference is None:
+            selected_reference = self.comboBox_referencelayer.currentText()
+        self.comboBox_referencelayer.blockSignals(True)
+        self.comboBox_referencelayer.clear()
+        for r in ENUM_REFERENCE_OPTIONS:
+            self.comboBox_referencelayer.addItem(r)
+        if selected_reference in ENUM_REFERENCE_OPTIONS:
+            index = self.comboBox_referencelayer.findText(selected_reference)
+            self.comboBox_referencelayer.setCurrentIndex(index)
+        self.comboBox_referencelayer.blockSignals(False)
 
     def update_reference_choice(self, index):
         if index == 0:
