@@ -1,5 +1,13 @@
-﻿
+---
+title: "FeatureAligner"
+lang: en
+---
+
 # Documentation of QGIS Python plugin brdrQ: FeatureAligner
+
+## Video
+
+{{< video src="./figures/brdrQ_featurealigner.mp4" muted width="600" height="400" title="BrdrQ FeatureAligner Demo" >}}
 
 ## Instructions
 
@@ -73,6 +81,3 @@ Additionally, you can:
 - **Balanced Daily Use**: medium distance + default processor + PREFER_VERTICES.
 - **Strong Recovery for Rough Data**: higher distance + permissive full-reference mode.
 - **Strict Network Snapping**: ONLY_VERTICES + low distance.
-
-
-
