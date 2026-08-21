@@ -26,6 +26,11 @@ Daarnaast kan je:
 * Save Geometry: de originele geometrie aanpassen naar de gekozen voorspelling.
 * Reset Geometry: de originele geometrie resetten (alleen binnen een feature-sessie, dus zolang je geen andere feature selecteert).
 
+Wanneer je FeatureAligner gebruikt op een `CORRECTION_`-laag van Autocorrectborders, werkt FeatureAligner ook de brdrQ-workflowstatus bij:
+
+* `Save Geometry` zet `brdrq_state` op `manual_updated`, omdat een gebruiker bewust een voorspelde geometrie heeft gekozen en opgeslagen.
+* `Reset Geometry` zet `brdrq_state` opnieuw op `to_update`, omdat de feature daarna opnieuw manueel behandeld of gecontroleerd moet worden.
+
 ## Parametergids
 
 Elke parameter wordt eenduidig uitgelegd met: **Definitie**, **Waarom gebruiken**, **Mogelijke keuzes**, en **Gevolg**.

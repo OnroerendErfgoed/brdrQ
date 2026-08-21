@@ -33,6 +33,26 @@ Hoe maak je een ruimtelijke index in QGIS:
 * Zoek de sectie `Geometry`.
 * Klik op `Create Spatial Index` (als de knop grijs is, bestaat de index al).
 
+## **V: Wat betekenen de waarden in `brdrq_state`?**
+A: `brdrq_state` is een workflowstatus van brdrQ in de `CORRECTION_`-laag. Het is geen inhoudelijke brdr-evaluatiescore.
+
+* `not_changed`: de feature wordt als ongewijzigd beschouwd.
+* `auto_updated`: brdrQ heeft een bruikbaar resultaat gevonden en de geometrie automatisch in de correctielaag geplaatst.
+* `to_review`: er is een resultaat of voorstel, maar de feature moet nagekeken worden.
+* `to_update`: er kon geen automatisch toepasbaar resultaat worden bepaald; de originele geometrie blijft zichtbaar en de gebruiker moet verder behandelen.
+* `manual_updated`: een gebruiker heeft in FeatureAligner een voorspelde geometrie gekozen en opgeslagen met `Save Geometry`.
+* `none`: technische beginwaarde; hoort normaal niet als eindstatus in output te blijven staan.
+
+## **V: Waarom is `brdr_evaluation` overal `not_evaluated`?**
+A: `brdr_evaluation` komt uit de evaluatiefase van de onderliggende `brdr`-bibliotheek. Bij `PREDICTIONS=NO_PREDICTIONS` voert Autocorrectborders een snelle berekening uit voor de opgegeven relevante afstand, zonder volledige evaluatie en selectie van alle kandidaatvoorspellingen. In die workflow is `not_evaluated` dus normaal.
+
+Kies `PREDICTIONS=PREDICTIONS` als je evaluaties zoals `prediction_unique`, `to_check_prediction_multi` of `no_change` wil zien. Hou er rekening mee dat die full scan trager is.
+
+## **V: Kan ik brdr of Autocorrectborders vanuit FME gebruiken?**
+A: Voor FME of andere ETL-software is het aanbevolen om de Python-bibliotheek `brdr` rechtstreeks aan te roepen, bijvoorbeeld via een FME PythonCaller of een custom transformer. Autocorrectborders is de QGIS Processing-verpakking rond `brdr`; die is handig binnen QGIS, maar maakt een FME-integratie afhankelijk van QGIS.
+
+De bulkfunctionaliteit kan inhoudelijk gereproduceerd worden met rechtstreekse `brdr`-calls en dezelfde conceptuele parameters, zoals thematische geometrie, referentiegeometrie, relevante afstand en prediction-/evaluatiestrategie. Er is geen aparte brdrQ-API die je vanuit FME moet aanspreken.
+
 # Waarschuwingen/Fouten
 
 ## Installatiefout

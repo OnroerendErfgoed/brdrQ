@@ -26,6 +26,11 @@ Additionally, you can:
 * Save Geometry: Adjust the original geometry to the chosen prediction.
 * Reset Geometry: Reset the original geometry (only within a feature session, so if no other feature is selected).
 
+When FeatureAligner is used on a `CORRECTION_` layer from Autocorrectborders, it also updates the brdrQ workflow status:
+
+* `Save Geometry` sets `brdrq_state` to `manual_updated`, because a user explicitly selected and saved a predicted geometry.
+* `Reset Geometry` sets `brdrq_state` back to `to_update`, because the feature needs manual handling or review again.
+
 ## Parameter Guide
 
 ### Reference layer

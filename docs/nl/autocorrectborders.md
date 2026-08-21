@@ -46,10 +46,10 @@ Elke parameter wordt eenduidig uitgelegd met: **Definitie**, **Waarom gebruiken*
 - **Gevolg**: Lage waarden zijn voorzichtiger/sneller; hoge waarden zijn krachtiger/trager en verhogen vaak review.
 
 ### Use predictions
-- **Definitie**: Enables full-scan candidate search over distance steps.
-- **Waarom gebruiken**: Vindt stabiele kandidaten in ambigue situaties.
-- **Mogelijke keuzes**: False (quick scan) or True (full scan).
-- **Gevolg**: `True` verhoogt kandidaatkwaliteit maar kost meer rekentijd.
+- **Definitie**: Bepaalt of brdrQ een snelle berekening op een afstand uitvoert, of meerdere kandidaatvoorspellingen over een afstandsbereik laat evalueren.
+- **Waarom gebruiken**: `PREDICTIONS` helpt om in ambigue situaties stabielere kandidaten te vinden en te evalueren.
+- **Mogelijke keuzes**: `NO_PREDICTIONS` voor een snelle berekening op de opgegeven `RELEVANT_DISTANCE`; `PREDICTIONS` voor een full scan over meerdere afstandsstappen.
+- **Gevolg**: `PREDICTIONS` geeft rijkere evaluatie-informatie en vaak betere kandidaten, maar verhoogt de rekentijd. Bij `NO_PREDICTIONS` blijft `brdr_evaluation` meestal `not_evaluated`.
 
 ### Prediction Strategy
 - **Definitie**: Output policy when multiple predictions exist.
@@ -112,10 +112,10 @@ Elke parameter wordt eenduidig uitgelegd met: **Definitie**, **Waarom gebruiken*
 - **Gevolg**: Meer diagnose-inzicht, met grotere logbestanden.
 
 ## Aanbevolen presets
-- **Snelle scan**: PREDICTIONS=False, Relevant Distance=2-4, REVIEW_PERCENTAGE=10.
-- **Gebalanceerde productie**: PREDICTIONS=True, Prediction Strategy=BEST, Full Reference Strategy=PREFER_FULL_REFERENCE, Relevant Distance=3-5.
+- **Snelle scan**: `PREDICTIONS=NO_PREDICTIONS`, `Relevant Distance=2-4`, `REVIEW_PERCENTAGE=10`.
+- **Gebalanceerde productie**: `PREDICTIONS=PREDICTIONS`, `Prediction Strategy=BEST`, `Full Reference Strategy=PREFER_FULL_REFERENCE`, `Relevant Distance=3-5`.
 - **Strikte QA**: lower REVIEW_PERCENTAGE (5-8), conservative Relevant Distance, stricter full-reference mode.
-- **Verkenning**: PREDICTIONS=True, Prediction Strategy=ALL, SHOW_INTERMEDIATE_LAYERS=True, LOG_INFO=True.
+- **Verkenning**: `PREDICTIONS=PREDICTIONS`, `Prediction Strategy=ALL`, `SHOW_INTERMEDIATE_LAYERS=True`, `LOG_INFO=True`.
 
 ## Uitvoerparameters
 
@@ -131,7 +131,47 @@ Het script genereert een GROUP-laag met meerdere outputlagen in de TOC:
 
 De naam bevat welke `RELEVANT_DISTANCE (X)` en `REFERENCE (Y)` gebruikt zijn.
 
+Let op: wanneer je `PREDICTIONS=PREDICTIONS` combineert met `Prediction Strategy=ALL`, wordt er geen `CORRECTION_`-laag aangemaakt. Die instelling is bedoeld om alle voorspellingen te analyseren. Gebruik `BEST` of `ORIGINAL` wanneer je ook een correctielaag voor review of verdere verwerking nodig hebt.
+
 <img src="../figures/output.png" width="100%" />
+
+## CORRECTION-laag interpreteren
+
+De `CORRECTION_X_Y`-laag is de belangrijkste werklaag na Autocorrectborders. Ze bevat een kopie van de thematische laag, aangevuld met brdr/brdrQ-velden. De originele inputlaag wordt niet aangepast.
+
+`brdrq_state` is een workflowstatus van brdrQ. Het is dus geen kwaliteits- of evaluatiescore van het onderliggende brdr-algoritme. Gebruik deze status om te bepalen welke features automatisch verwerkt zijn en welke nog manueel aandacht vragen.
+
+| `brdrq_state` | Betekenis | Typische actie |
+| :--- | :--- | :--- |
+| `not_changed` | De feature wordt als ongewijzigd beschouwd. Dit gebeurt bijvoorbeeld wanneer brdr `no_change` teruggeeft of wanneer het symmetrisch verschil zeer klein is. | Geen actie nodig, tenzij je steekproefsgewijs controleert. |
+| `auto_updated` | Autocorrectborders heeft een bruikbaar resultaat gevonden en de berekende geometrie automatisch in de `CORRECTION_`-laag geplaatst. | Controleer eventueel steekproefsgewijs of volgens je QA-procedure. |
+| `to_review` | Er is een resultaat of voorstel, maar brdrQ markeert de feature voor controle. Dat kan bijvoorbeeld door meerdere kandidaten voor dezelfde ID, een wijzigingspercentage boven `REVIEW_PERCENTAGE`, of een stabiel maar niet automatisch af te handelen resultaat. | Open de feature in FeatureAligner en beslis of de voorgestelde geometrie inhoudelijk klopt. |
+| `to_update` | Er kon geen automatisch toepasbaar resultaat worden bepaald. In de `CORRECTION_`-laag blijft de originele geometrie zichtbaar en worden verschilwaarden op `-1` gezet. | Behandel de feature manueel in FeatureAligner of in QGIS. Bekijk eventuele predicties als startpunt. |
+| `manual_updated` | Een gebruiker heeft in FeatureAligner zelf een voorgestelde geometrie gekozen en opgeslagen met `Save Geometry`. Deze status wordt dus niet door Autocorrectborders zelf gezet. | Beschouw als manueel nagekeken en aangepast. |
+| `none` | Technische beginwaarde voordat brdrQ een workflowstatus toekent. | Hoort normaal niet als eindstatus voor te komen. Controleer verwerking/logs als dit toch in output staat. |
+
+`brdr_evaluation` is iets anders dan `brdrq_state`. Dit veld komt uit de evaluatiefase van brdr en beschrijft hoe brdr een voorspelling inhoudelijk categoriseert. brdrQ vertaalt die evaluatie daarna naar een praktische workflowstatus in `brdrq_state`.
+
+Mogelijke waarden zijn onder meer:
+
+| `brdr_evaluation` | Interpretatie |
+| :--- | :--- |
+| `no_change` | brdr beoordeelt dat de geometrie niet hoeft te wijzigen. |
+| `prediction_unique`, `prediction_unique_full` | Er is een unieke kandidaatvoorspelling gevonden; `full` wijst op volledige referentie-overlap. |
+| `equality_by_id`, `equality_by_full_reference`, `equality_by_id_and_full_reference` | brdr vindt gelijkheid op basis van ID, volledige referentie-overlap, of beide. |
+| `to_check_prediction_full`, `to_check_prediction_multi`, `to_check_prediction_multi_full` | Er zijn kandidaten, maar menselijke controle is nodig. |
+| `to_check_original`, `to_check_no_prediction` | De originele geometrie of het ontbreken van een voorspelling vraagt controle. |
+| `not_evaluated` | Er is geen volledige evaluatiefase uitgevoerd of geen bruikbare evaluatiewaarde beschikbaar. |
+
+Als je alleen `not_evaluated` ziet, is dat meestal verwacht bij `PREDICTIONS=NO_PREDICTIONS`. Autocorrectborders voert dan een snelle berekening uit voor de opgegeven `RELEVANT_DISTANCE` en doorloopt niet de volledige evaluatie en selectie van alle voorspellingen. Kies `PREDICTIONS=PREDICTIONS` als je de brdr-evaluaties van kandidaatvoorspellingen wil gebruiken.
+
+## Gebruik buiten QGIS, bijvoorbeeld FME
+
+Autocorrectborders is een QGIS Processing-algoritme rond de Python-bibliotheek `brdr`. Voor FME, ETL-pijplijnen of andere software is de aanbevolen integratie daarom om `brdr` rechtstreeks aan te roepen, bijvoorbeeld via een FME PythonCaller of een custom transformer.
+
+Dat vermijdt een onnodige afhankelijkheid van QGIS en brdrQ in een geautomatiseerde datastroom. De bulklogica van Autocorrectborders kan inhoudelijk gereproduceerd worden door `brdr` met dezelfde conceptuele parameters aan te roepen: thematische geometrie, referentiegeometrie, relevante afstand, prediction-instellingen, open-domainstrategie, snapstrategie en evaluatiestrategie. brdrQ blijft vooral de kant-en-klare QGIS-interface en QGIS-workflow voor die functionaliteit.
+
+Er is geen aparte brdrQ-API die je vanuit FME moet aanspreken. Als je een API-gebaseerde integratie nodig hebt, bouw je die best als een lichte service rond `brdr` zelf.
 
 ## Voorbeeldgebruik
 
@@ -197,6 +237,8 @@ Deze sectie geeft veldnamen van de outputlaag en hun betekenis.
 | **brdr_prediction_score** | Double | Betrouwbaarheidsscore (%) van de uitlijningsvoorspelling. |
 | **brdr_prediction_count** | Integer | Aantal kandidaatmatches gevonden voor de uitlijning. |
 | **brdr_evaluation** | String | Categorie van het resultaat (bv. `prediction_unique`, `to_check_prediction_multi`). |
+| **brdrq_state** | String | brdrQ-workflowstatus in de `CORRECTION_`-laag: `not_changed`, `auto_updated`, `to_review`, `to_update`, `manual_updated` of `none`. |
+| **brdrq_original_wkt** | String | WKT van de originele geometrie voordat de correctielaag werd aangepast. Wordt gebruikt voor review en reset-workflows. |
 | **brdr_relevant_distance** | Double | Gebruikte buffer/zoekafstand tijdens uitlijning ($m$). |
 | **brdr_sym_diff_area_index** | Double | Absolute oppervlakte van het symmetrisch verschil tussen basis en target ($m^2$). |
 | **brdr_sym_diff_area_index_perc** | Double | Symmetrisch verschil uitgedrukt als percentage van totale oppervlakte. |

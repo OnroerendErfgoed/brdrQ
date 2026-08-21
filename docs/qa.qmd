@@ -33,6 +33,26 @@ How to add a Spatial Index in QGIS: Creating an index is a quick process that ca
 * Look for the Geometry section.
 * Click the Create Spatial Index button. (If the button is greyed out, an index is already present).
 
+## **Q: What do the values in `brdrq_state` mean?**
+A: `brdrq_state` is a brdrQ workflow status in the `CORRECTION_` layer. It is not a brdr evaluation score.
+
+* `not_changed`: the feature is considered unchanged.
+* `auto_updated`: brdrQ found a usable result and automatically wrote the geometry into the correction layer.
+* `to_review`: a result or proposal exists, but the feature needs review.
+* `to_update`: no automatically applicable result could be determined; the original geometry remains visible and the user must handle it further.
+* `manual_updated`: a user selected and saved a predicted geometry in FeatureAligner with `Save Geometry`.
+* `none`: technical initial value; it should normally not remain as final output.
+
+## **Q: Why is `brdr_evaluation` always `not_evaluated`?**
+A: `brdr_evaluation` comes from the evaluation phase of the underlying `brdr` library. With `PREDICTIONS=NO_PREDICTIONS`, Autocorrectborders performs a quick calculation for the configured relevant distance without fully evaluating and selecting all candidate predictions. In that workflow, `not_evaluated` is normal.
+
+Choose `PREDICTIONS=PREDICTIONS` if you need evaluations such as `prediction_unique`, `to_check_prediction_multi`, or `no_change`. That full scan is slower.
+
+## **Q: Can I use brdr or Autocorrectborders from FME?**
+A: For FME or other ETL software, the recommended approach is to call the Python library `brdr` directly, for example through an FME PythonCaller or a custom transformer. Autocorrectborders is the QGIS Processing wrapper around `brdr`; it is useful inside QGIS, but it makes an FME integration depend on QGIS.
+
+The bulk functionality can be reproduced with direct `brdr` calls and the same conceptual parameters, such as thematic geometry, reference geometry, relevant distance, and prediction/evaluation strategy. There is no separate brdrQ API that FME needs to call.
+
 
 # Warnings/Errors
 

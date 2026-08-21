@@ -45,10 +45,10 @@ Each parameter is documented once with the same structure: **Definition**, **Why
 - **Impact**: Lower values are conservative/faster; higher values are stronger/slower and may increase review cases.
 
 ### Use predictions
-- **Definition**: Enables full-scan candidate search over distance steps.
-- **Why use it**: Finds stable candidates in ambiguous situations.
-- **Choices**: False (quick scan) or True (full scan).
-- **Impact**: True improves candidate quality but increases processing time.
+- **Definition**: Controls whether brdrQ performs one quick calculation at the requested distance, or evaluates multiple candidate predictions across a distance range.
+- **Why use it**: `PREDICTIONS` helps find and evaluate more stable candidates in ambiguous situations.
+- **Choices**: `NO_PREDICTIONS` for a quick calculation at the configured `RELEVANT_DISTANCE`; `PREDICTIONS` for a full scan over multiple distance steps.
+- **Impact**: `PREDICTIONS` gives richer evaluation information and often better candidates, but increases processing time. With `NO_PREDICTIONS`, `brdr_evaluation` will usually remain `not_evaluated`.
 
 ### Prediction Strategy
 - **Definition**: Output policy when multiple predictions exist.
@@ -87,7 +87,7 @@ Each parameter is documented once with the same structure: **Definition**, **Why
 - **Impact**: Higher values are stricter; lower values are more permissive.
 
 ### REVIEW_PERCENTAGE
-- **Definition**: Threshold to classify results as 	o_review.
+- **Definition**: Threshold to classify results as `to_review`.
 - **Why use it**: Controls QA workload.
 - **Choices**: Lower for strict QA, higher for more automation.
 - **Impact**: Lower threshold increases manual review volume.
@@ -111,10 +111,10 @@ Each parameter is documented once with the same structure: **Definition**, **Why
 - **Impact**: Enables root-cause analysis at cost of larger logs.
 
 ## Recommended Presets
-- **Fast Scan**: PREDICTIONS=False, Relevant Distance=2-4, REVIEW_PERCENTAGE=10.
-- **Balanced Production**: PREDICTIONS=True, Prediction Strategy=BEST, Full Reference Strategy=PREFER_FULL_REFERENCE, Relevant Distance=3-5.
+- **Fast Scan**: `PREDICTIONS=NO_PREDICTIONS`, `Relevant Distance=2-4`, `REVIEW_PERCENTAGE=10`.
+- **Balanced Production**: `PREDICTIONS=PREDICTIONS`, `Prediction Strategy=BEST`, `Full Reference Strategy=PREFER_FULL_REFERENCE`, `Relevant Distance=3-5`.
 - **Strict QA**: lower REVIEW_PERCENTAGE (5-8), conservative Relevant Distance, stricter full-reference mode.
-- **Exploration**: PREDICTIONS=True, Prediction Strategy=ALL, SHOW_INTERMEDIATE_LAYERS=True, LOG_INFO=True.
+- **Exploration**: `PREDICTIONS=PREDICTIONS`, `Prediction Strategy=ALL`, `SHOW_INTERMEDIATE_LAYERS=True`, `LOG_INFO=True`.
 
 ## Output Parameters
 
@@ -130,7 +130,48 @@ The script generates a GROUP layer with several output layers in the TOC:
   geometry
 
 The name includes which 'RELEVANT_DISTANCE (X)' and 'REFERENCE (Y)' is used
+
+Note: when `PREDICTIONS=PREDICTIONS` is combined with `Prediction Strategy=ALL`, no `CORRECTION_` layer is generated. That setting is meant to analyze all predictions. Use `BEST` or `ORIGINAL` when you also need a correction layer for review or downstream processing.
+
 <img src="./figures/output.png" width="100%" />
+
+## Interpreting the CORRECTION Layer
+
+The `CORRECTION_X_Y` layer is the main working layer after Autocorrectborders. It contains a copy of the thematic layer, enriched with brdr/brdrQ fields. The original input layer is not modified.
+
+`brdrq_state` is a brdrQ workflow status. It is not a quality score or evaluation score from the underlying brdr algorithm. Use this status to decide which features were handled automatically and which still need human attention.
+
+| `brdrq_state` | Meaning | Typical action |
+| :--- | :--- | :--- |
+| `not_changed` | The feature is considered unchanged. This happens, for example, when brdr returns `no_change` or when the symmetrical difference is very small. | No action needed, except for optional sampling QA. |
+| `auto_updated` | Autocorrectborders found a usable result and automatically wrote the calculated geometry into the `CORRECTION_` layer. | Review by sample or according to your QA procedure. |
+| `to_review` | A result or proposal exists, but brdrQ marks the feature for review. This can happen because of multiple candidates for the same ID, a change percentage above `REVIEW_PERCENTAGE`, or a stable result that should not be accepted without review. | Open the feature in FeatureAligner and decide whether the proposed geometry is correct. |
+| `to_update` | No automatically applicable result could be determined. The original geometry remains visible in the `CORRECTION_` layer and difference values are set to `-1`. | Handle the feature manually in FeatureAligner or QGIS. Use predictions as a starting point where available. |
+| `manual_updated` | A user selected and saved a proposed geometry in FeatureAligner with `Save Geometry`. This status is not assigned by Autocorrectborders itself. | Treat as manually reviewed and updated. |
+| `none` | Technical initial value before brdrQ assigns a workflow status. | Should normally not remain as final output. Check processing logs if it does. |
+
+`brdr_evaluation` is different from `brdrq_state`. It comes from the brdr evaluation phase and describes how brdr categorizes a prediction. brdrQ then translates that evaluation into a practical workflow status in `brdrq_state`.
+
+Possible values include:
+
+| `brdr_evaluation` | Interpretation |
+| :--- | :--- |
+| `no_change` | brdr evaluates that the geometry does not need to change. |
+| `prediction_unique`, `prediction_unique_full` | A unique candidate prediction was found; `full` indicates full reference overlap. |
+| `equality_by_id`, `equality_by_full_reference`, `equality_by_id_and_full_reference` | brdr finds equality by ID, full reference overlap, or both. |
+| `to_check_prediction_full`, `to_check_prediction_multi`, `to_check_prediction_multi_full` | Candidate predictions exist, but human review is needed. |
+| `to_check_original`, `to_check_no_prediction` | The original geometry or the absence of a prediction needs review. |
+| `not_evaluated` | No full evaluation phase was run, or no usable evaluation value is available. |
+
+If you only see `not_evaluated`, that is usually expected when `PREDICTIONS=NO_PREDICTIONS`. Autocorrectborders then performs one quick calculation for the configured `RELEVANT_DISTANCE` and does not run the full evaluation and selection of all candidate predictions. Choose `PREDICTIONS=PREDICTIONS` if you need the brdr evaluations of candidate predictions.
+
+## Use Outside QGIS, For Example FME
+
+Autocorrectborders is a QGIS Processing algorithm around the Python library `brdr`. For FME, ETL pipelines, or other software, the recommended integration is to call `brdr` directly, for example from an FME PythonCaller or a custom transformer.
+
+This avoids an unnecessary dependency on QGIS and brdrQ in automated data flows. The bulk logic of Autocorrectborders can be reproduced by calling `brdr` with the same conceptual parameters: thematic geometry, reference geometry, relevant distance, prediction settings, open-domain strategy, snap strategy, and evaluation strategy. brdrQ remains the ready-to-use QGIS interface and QGIS workflow for that functionality.
+
+There is no separate brdrQ API that FME needs to call. If an API-based integration is required, it is best implemented as a lightweight service around `brdr` itself.
 
 ## Example of Usage
 
@@ -210,6 +251,8 @@ This sections lists fieldnames that can be found in the output layer and explain
 | **brdr_prediction_score** | Double | Confidence score (%) of the alignment prediction. |
 | **brdr_prediction_count** | Integer | Number of candidate matches found for the alignment. |
 | **brdr_evaluation** | String | Categorization of the result (e.g., `prediction_unique`, `to_check_prediction_multi`). |
+| **brdrq_state** | String | brdrQ workflow status in the `CORRECTION_` layer: `not_changed`, `auto_updated`, `to_review`, `to_update`, `manual_updated`, or `none`. |
+| **brdrq_original_wkt** | String | WKT of the original geometry before the correction layer was updated. Used for review and reset workflows. |
 | **brdr_relevant_distance** | Double | The buffer or search distance used during the alignment procedure ($m$). |
 | **brdr_sym_diff_area_index** | Double | The absolute area of the symmetrical difference between base and target ($m^2$). |
 | **brdr_sym_diff_area_index_perc** | Double | The symmetrical difference expressed as a percentage of the total area. |
