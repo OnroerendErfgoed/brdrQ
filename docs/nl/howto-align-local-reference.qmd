@@ -1,0 +1,149 @@
+---
+title: "How-to: thematische laag uitlijnen op een lokale referentielaag"
+format: html
+lang: nl
+---
+
+# How-to: thematische laag uitlijnen op een lokale referentielaag
+
+Deze how-to toont hoe je brdrQ gebruikt wanneer je een eigen referentielaag hebt en een thematische laag daarop wil uitlijnen.
+
+Gebruik deze pagina wanneer je een praktisch stappenplan zoekt. Voor de volledige parameteruitleg kan je terecht bij [Autocorrectborders](autocorrectborders.md).
+
+## Doel
+
+Je hebt een thematische laag, bijvoorbeeld projectzones, beheerzones, inventarisobjecten of administratieve grenzen. Die geometrieen moeten beter aansluiten op een betrouwbaardere lokale referentielaag.
+
+Het doel is om deze output te maken:
+
+* een `RESULT_DIST_...`-laag met de uitgelijnde geometrieen;
+* `DIFF_DIST_...`, `DIFF_PLUS_DIST_...` en `DIFF_MIN_DIST_...`-lagen om te begrijpen wat gewijzigd is;
+* optioneel een `CORRECTION_DIST_...`-laag wanneer je twijfelgevallen in QGIS wil reviewen.
+
+## Gebruik Dit Wanneer
+
+Gebruik deze workflow wanneer:
+
+* je referentiedata al als QGIS-vectorlaag beschikbaar is;
+* de thematische laag en referentielaag in dezelfde geprojecteerde CRS staan, met meter als eenheid;
+* elke thematische feature een stabiel uniek ID heeft;
+* je de uitlijning wil controleren tegenover je eigen data in plaats van een on-the-fly webreferentie.
+
+Gebruik deze workflow niet om een oude GRB-gebaseerde dataset naar een nieuwere GRB-versie te actualiseren. Start daarvoor bij [GRB Updater](autoupdateborders.md).
+
+## Input Die Je Nodig Hebt
+
+Zet twee lagen klaar in QGIS:
+
+| Laag | Vereist | Opmerkingen |
+| :--- | :--- | :--- |
+| Thematische laag | Ja | De laag die je wil uitlijnen. Polygonen zijn de hoofdtoepassing, maar lijn- en puntworkflows zijn ook mogelijk. |
+| Thematisch ID-veld | Ja | Moet uniek en stabiel zijn. Dit maakt output traceerbaar. |
+| Lokale referentielaag | Ja | De laag die de geometrie bevat waarop je wil uitlijnen. |
+| Referentie-ID-veld | Ja | Moet referentiefeatures identificeren. Gebruik een stabiel veld, geen tijdelijke displaynaam. |
+
+Controleer vooraf:
+
+* beide lagen hebben dezelfde geprojecteerde CRS;
+* de lokale referentielaag heeft een ruimtelijke index, zeker bij grotere datasets;
+* het thematisch ID bevat geen dubbels;
+* de referentielaag staat bij voorkeur lokaal, niet op een traag netwerkpad of cloudgesynchroniseerde map.
+
+## Aanbevolen Instellingen
+
+Start voorzichtig en maak de instellingen alleen agressiever wanneer het resultaat te beperkt is.
+
+| Parameter | Aanbevolen start | Waarom |
+| :--- | :--- | :--- |
+| `Reference` | `LOCREF` | Gebruikt je lokale referentielaag. |
+| `Local reference layer` | je referentielaag | De geometrische doeldata voor de uitlijning. |
+| `Reference ID` | uniek referentieveld | Houdt referentiefeatures traceerbaar. |
+| `RELEVANT_DISTANCE` | `2` tot `5` meter | Beperkt hoe ver geometrie mag verschuiven. |
+| `PREDICTIONS` | `NO_PREDICTIONS` voor eerste scan | Snel eerste resultaat. |
+| `Prediction Strategy` | `BEST` wanneer predictions aan staan | Geeft een praktisch resultaat per feature. |
+| `Full Reference Strategy` | `PREFER_FULL_REFERENCE` | Verkiest kandidaten die volledig binnen de referentiedekking passen. |
+| `REVIEW_PERCENTAGE` | `10` | Stuurt grotere wijzigingen naar review wanneer je een reviewlaag gebruikt. |
+| `GENERATE_CORRECTION_LAYER` | `False` voor directe output, `True` voor review | Stemt de output af op je workflow. |
+
+## Stappen In QGIS
+
+1. Laad de thematische laag en de lokale referentielaag in QGIS.
+2. Open `Processing Toolbox` -> `brdrQ` -> `Autocorrectborders (BULK)`.
+3. Zet `Thematic Layer` op je thematische laag.
+4. Zet `Thematic ID` op het unieke ID-veld van de thematische laag.
+5. Zet `Reference` op `LOCREF`.
+6. Kies `Local reference layer` en `Reference ID`.
+7. Start met `RELEVANT_DISTANCE=2` of `5`, afhankelijk van de verwachte afwijking.
+8. Kies je outputworkflow:
+   * directe output: zet `GENERATE_CORRECTION_LAYER=False`;
+   * review in QGIS: zet `GENERATE_CORRECTION_LAYER=True`.
+9. Run het algoritme.
+
+## Verwachte Output
+
+De primaire output is:
+
+* `RESULT_DIST_...`: de uitgelijnde geometrieen;
+* `DIFF_DIST_...`: alle verschillen tussen origineel en resultaat;
+* `DIFF_PLUS_DIST_...`: geometrie die door de uitlijning toegevoegd is;
+* `DIFF_MIN_DIST_...`: geometrie die door de uitlijning verwijderd is.
+
+Als je dit aanzet, maakt brdrQ ook:
+
+* `CORRECTION_DIST_...`: een optionele review-/workflowlaag met `brdrq_state`.
+
+Je kan `RESULT_DIST_...` en de `DIFF_`-lagen rechtstreeks gebruiken. Je hebt de `CORRECTION_`-laag niet nodig tenzij je workflow manuele review in QGIS of FeatureAligner bevat.
+
+## Hoe Controleer Je Het Resultaat?
+
+Start met de verschil-lagen:
+
+* grote `DIFF_PLUS_`- of `DIFF_MIN_`-zones kunnen wijzen op een te hoge `RELEVANT_DISTANCE`;
+* veel kleine verschillen zijn vaak normaal wanneer de brondata op een minder precieze referentie werd getekend;
+* onverwachte wijzigingen ver van de referentie kunnen wijzen op een fout CRS, verkeerde referentielaag of ongeschikte afstand.
+
+Controleer daarna de resultaatlaag:
+
+* kijk of het resultaat de bedoelde referentiegrenzen volgt;
+* vergelijk enkele typische features en enkele randgevallen;
+* controleer of feature-IDs traceerbaar blijven.
+
+Gebruik je de reviewworkflow, bekijk dan `brdrq_state` in de `CORRECTION_DIST_...`-laag:
+
+| `brdrq_state` | Wat doe je ermee? |
+| :--- | :--- |
+| `not_changed` | Meestal geen actie nodig. |
+| `auto_updated` | Controleer steekproefsgewijs of volgens je QA-regels. |
+| `to_review` | Bekijk in QGIS of FeatureAligner voor je accepteert. |
+| `to_update` | Behandel manueel of gebruik FeatureAligner als startpunt. |
+
+## Wanneer Gebruik Je Predictions?
+
+Gebruik `PREDICTIONS=NO_PREDICTIONS` voor een eerste snelle scan. Je krijgt dan een snel resultaat op de ingestelde `RELEVANT_DISTANCE`.
+
+Schakel over naar `PREDICTIONS=PREDICTIONS` wanneer:
+
+* het resultaat instabiel of ambigu is;
+* je brdr-evaluaties zoals `prediction_unique` of `to_check_prediction_multi` wil zien;
+* je kandidaat-afstanden wil vergelijken voor je een uitlijning accepteert.
+
+Gebruik `Prediction Strategy=ALL` alleen voor analyse. In die modus maakt brdrQ geen `CORRECTION_`-reviewlaag, omdat de output alle kandidaatvoorspellingen bevat in plaats van een gekozen resultaat per feature.
+
+## Veelgemaakte Fouten
+
+| Probleem | Waarschijnlijke oorzaak | Wat doe je? |
+| :--- | :--- | :--- |
+| Output is leeg of fout | CRS mismatch of geen geprojecteerde CRS | Gebruik dezelfde geprojecteerde CRS in meter voor beide lagen. |
+| Verwerking is traag | Grote referentielaag zonder ruimtelijke index | Maak een ruimtelijke index of zet de laag lokaal. |
+| Te veel grote wijzigingen | `RELEVANT_DISTANCE` is te hoog | Verlaag de afstand en run opnieuw. |
+| Te weinig uitlijning | `RELEVANT_DISTANCE` is te laag | Verhoog geleidelijk, bijvoorbeeld van `2` naar `5`. |
+| Reviewlaag wordt niet aangemaakt | `GENERATE_CORRECTION_LAYER=False` of `Prediction Strategy=ALL` | Gebruik directe output, of zet de reviewlaag aan met een strategie zoals `BEST`. |
+| Resultaten zijn moeilijk traceerbaar | Niet-uniek thematisch ID | Herstel het ID-veld voor je de tool runt. |
+
+## Volgende Stappen
+
+Na deze workflow:
+
+* gebruik [Autocorrectborders](autocorrectborders.md) voor gedetailleerde parameteruitleg;
+* gebruik [FeatureAligner](featurealigner.md) wanneer je individuele features wil reviewen;
+* gebruik [Vragen & Antwoorden](qa.qmd) wanneer je statussen, waarschuwingen of outputvelden wil interpreteren.

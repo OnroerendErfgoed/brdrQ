@@ -14,6 +14,10 @@ website:
         href: autocorrectborders.md
       - text: GRB Updater (BULK - Flanders specific)
         href: autoupdateborders.md
+      - text: How-to
+        menu:
+          - text: Align to local reference
+            href: howto-align-local-reference.qmd
       - text: Q & A
         href: qa.qmd
 

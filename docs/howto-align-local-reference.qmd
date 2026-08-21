@@ -1,0 +1,149 @@
+---
+title: "How to align a thematic layer to a local reference layer"
+format: html
+lang: en
+---
+
+# How to align a thematic layer to a local reference layer
+
+This how-to explains how to use brdrQ when you have your own reference layer and want to align a thematic layer to it.
+
+Use this page when you want a practical workflow. For the full parameter reference, see [Autocorrectborders](autocorrectborders.md).
+
+## Goal
+
+You have a thematic layer, for example project zones, management areas, inventories, or administrative boundaries. These geometries should follow a more authoritative local reference layer.
+
+The goal is to create:
+
+* a `RESULT_DIST_...` layer with the aligned geometries;
+* `DIFF_DIST_...`, `DIFF_PLUS_DIST_...`, and `DIFF_MIN_DIST_...` layers to understand what changed;
+* optionally a `CORRECTION_DIST_...` layer when you want to review uncertain features in QGIS.
+
+## Use This When
+
+Use this workflow when:
+
+* your reference data is already available as a QGIS vector layer;
+* both thematic and reference data are in the same projected CRS, with meters as unit;
+* every thematic feature has a stable unique ID;
+* you want to control the alignment against your own data instead of an on-the-fly web reference.
+
+Do not use this workflow for updating an old GRB-based dataset to a newer GRB version. For that use case, start from [GRB Updater](autoupdateborders.md).
+
+## Input You Need
+
+Prepare two layers in QGIS:
+
+| Layer | Required | Notes |
+| :--- | :--- | :--- |
+| Thematic layer | Yes | The layer you want to align. Polygon input is the main use case, but line and point workflows are also possible. |
+| Thematic ID field | Yes | Must be unique and stable. This makes output traceable. |
+| Local reference layer | Yes | The layer that represents the geometry you want to align to. |
+| Reference ID field | Yes | Must identify reference features. Use a stable field, not a temporary display label. |
+
+Before running the tool, check:
+
+* both layers have the same projected CRS;
+* the local reference layer has a spatial index, especially for larger datasets;
+* the thematic ID has no duplicates;
+* the reference layer is stored locally when possible, not on a slow network or cloud-synced path.
+
+## Recommended Settings
+
+Start with a conservative setup and only make it more aggressive when the result is too limited.
+
+| Parameter | Recommended start | Why |
+| :--- | :--- | :--- |
+| `Reference` | `LOCREF` | Uses your local reference layer. |
+| `Local reference layer` | your reference layer | The geometric target for the alignment. |
+| `Reference ID` | unique reference field | Keeps reference features traceable. |
+| `RELEVANT_DISTANCE` | `2` to `5` meters | Limits how far geometries may move. |
+| `PREDICTIONS` | `NO_PREDICTIONS` for first scan | Fast first result. |
+| `Prediction Strategy` | `BEST` when predictions are enabled | Gives one practical result per feature. |
+| `Full Reference Strategy` | `PREFER_FULL_REFERENCE` | Prefers candidates that fully match reference coverage. |
+| `REVIEW_PERCENTAGE` | `10` | Sends larger changes to review when a review layer is used. |
+| `GENERATE_CORRECTION_LAYER` | `False` for direct output, `True` for review | Keeps the output aligned with your workflow. |
+
+## Steps In QGIS
+
+1. Load the thematic layer and the local reference layer in QGIS.
+2. Open `Processing Toolbox` -> `brdrQ` -> `Autocorrectborders (BULK)`.
+3. Set `Thematic Layer` to your thematic layer.
+4. Set `Thematic ID` to the unique ID field of the thematic layer.
+5. Set `Reference` to `LOCREF`.
+6. Set `Local reference layer` and `Reference ID`.
+7. Start with `RELEVANT_DISTANCE=2` or `5`, depending on the expected deviation.
+8. Choose your output workflow:
+   * direct output: set `GENERATE_CORRECTION_LAYER=False`;
+   * review in QGIS: set `GENERATE_CORRECTION_LAYER=True`.
+9. Run the algorithm.
+
+## Expected Output
+
+The primary output is:
+
+* `RESULT_DIST_...`: the aligned geometries;
+* `DIFF_DIST_...`: all differences between original and result;
+* `DIFF_PLUS_DIST_...`: geometry added by the alignment;
+* `DIFF_MIN_DIST_...`: geometry removed by the alignment.
+
+If enabled, brdrQ also creates:
+
+* `CORRECTION_DIST_...`: an optional review/workflow layer with `brdrq_state`.
+
+You can use `RESULT_DIST_...` and the `DIFF_` layers directly. You do not need the `CORRECTION_` layer unless your workflow includes manual review in QGIS or FeatureAligner.
+
+## How To Check The Result
+
+Start with the difference layers:
+
+* large `DIFF_PLUS_` or `DIFF_MIN_` areas can indicate too high a `RELEVANT_DISTANCE`;
+* many tiny differences can be normal when the source data was drawn against a less precise reference;
+* unexpected changes far from the reference may indicate a wrong CRS, wrong reference layer, or unsuitable distance.
+
+Then inspect the result layer:
+
+* check whether the result follows the intended reference boundaries;
+* compare a few typical features and a few edge cases;
+* verify that feature IDs are still traceable.
+
+If you used the review workflow, inspect `brdrq_state` in the `CORRECTION_DIST_...` layer:
+
+| `brdrq_state` | What to do |
+| :--- | :--- |
+| `not_changed` | Usually no action needed. |
+| `auto_updated` | Check by sample or according to your QA rules. |
+| `to_review` | Inspect in QGIS or FeatureAligner before accepting. |
+| `to_update` | Handle manually or use FeatureAligner as a starting point. |
+
+## When To Use Predictions
+
+Use `PREDICTIONS=NO_PREDICTIONS` for a first fast scan. This gives a quick result at the configured `RELEVANT_DISTANCE`.
+
+Switch to `PREDICTIONS=PREDICTIONS` when:
+
+* the result is unstable or ambiguous;
+* you want brdr evaluations such as `prediction_unique` or `to_check_prediction_multi`;
+* you want to compare candidate distances before accepting an alignment.
+
+Use `Prediction Strategy=ALL` only for analysis. In that mode, brdrQ does not create a `CORRECTION_` review layer because the output contains all candidate predictions instead of one selected result per feature.
+
+## Common Pitfalls
+
+| Problem | Likely cause | What to do |
+| :--- | :--- | :--- |
+| Output is empty or wrong | CRS mismatch or non-projected CRS | Use the same projected CRS in meters for both layers. |
+| Processing is slow | Large reference layer without spatial index | Create a spatial index or store the layer locally. |
+| Too many large changes | `RELEVANT_DISTANCE` is too high | Lower the distance and rerun. |
+| Too little alignment | `RELEVANT_DISTANCE` is too low | Increase gradually, for example from `2` to `5`. |
+| Review layer not created | `GENERATE_CORRECTION_LAYER=False` or `Prediction Strategy=ALL` | Use direct output, or enable the review layer with a one-result strategy such as `BEST`. |
+| Results are hard to trace | Non-unique thematic ID | Fix the ID field before running the tool. |
+
+## Next Steps
+
+After this workflow:
+
+* use [Autocorrectborders](autocorrectborders.md) for detailed parameter explanations;
+* use [FeatureAligner](featurealigner.md) when you want to review individual features;
+* use [Q & A](qa.qmd) when you need help interpreting statuses, warnings, or output fields.

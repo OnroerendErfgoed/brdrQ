@@ -75,6 +75,48 @@ class TestAutoUpdateBorders(unittest.TestCase):
             assert isinstance(o,QgsVectorLayer)
             assert o.featureCount()==featurecount
 
+    def test_autoupdateborders_without_correctionlayer(self):
+
+        foldername = QgsProcessingParameterFolderDestination(name="brdrQ").generateTemporaryDestination()
+
+        path = os.path.join(os.path.dirname(__file__), "themelayer_test.geojson")
+        themelayername = "themelayer_test"
+        layer_theme = QgsVectorLayer(path, themelayername)
+        QgsProject.instance().addMapLayer(layer_theme)
+        output = run_processing_or_skip(
+            "brdrqprovider:brdrqautoupdateborders",
+            {
+                "INPUT_THEMATIC": themelayername,
+                "COMBOBOX_ID_THEME": "theme_identifier",
+                "ENUM_REFERENCE": 0,
+                "METADATA_FIELD": "",
+                "RELEVANT_DISTANCE": 5,
+                "THRESHOLD_OVERLAP_PERCENTAGE": 50,
+                "ENUM_OD_STRATEGY": 2,
+                "ENUM_SNAP_STRATEGY": 1,
+                "ENUM_PROCESSOR": 0,
+                "WORK_FOLDER": foldername,
+                "REVIEW_PERCENTAGE": 10,
+                "GENERATE_CORRECTION_LAYER": False,
+                "PREDICTION_STRATEGY": 1,
+                "FULL_REFERENCE_STRATEGY": 2,
+                "LOG_INFO": True,
+            },
+        )
+
+        featurecount = layer_theme.featureCount()
+        assert len(output)==5
+        assert output["OUTPUT_CORRECTION"] is None
+        for output_name in [
+            "OUTPUT_RESULT",
+            "OUTPUT_RESULT_DIFF",
+            "OUTPUT_RESULT_DIFF_PLUS",
+            "OUTPUT_RESULT_DIFF_MIN",
+        ]:
+            layer = output[output_name]
+            assert isinstance(layer,QgsVectorLayer)
+            assert layer.featureCount()==featurecount
+
     def test_autoupdateborders_selection(self):
 
         foldername = QgsProcessingParameterFolderDestination(name="brdrQ").generateTemporaryDestination()

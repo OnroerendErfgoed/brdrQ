@@ -8,7 +8,12 @@ Deze pagina bevat antwoorden op FAQ's en brdrQ-fouten/waarschuwingen.
 # FAQ
 
 ## **V: Wijzigt brdrQ de originele data?**
-A: Bij gebruik van Autocorrectborders of Autoupdateborders blijft de originele data ongewijzigd en wordt een nieuwe laag teruggegeven. Bij gebruik van FeatureAligner kan de data in de geselecteerde laag wel wijzigen wanneer je de voorspelde geometrie opslaat.
+A: Bij gebruik van Autocorrectborders of Autoupdateborders blijft de originele data ongewijzigd en worden een of meer nieuwe outputlagen teruggegeven. Bij gebruik van FeatureAligner kan de data in de geselecteerde laag wel wijzigen wanneer je de voorspelde geometrie opslaat.
+
+## **V: Moet ik de `CORRECTION_`-laag gebruiken?**
+A: Nee. De bulktools berekenen `RESULT_`- en `DIFF_`-lagen als primaire output. Gebruik die rechtstreeks wanneer je eigen workflow of naverwerking alleen de uitgelijnde geometrie en de verschillen nodig heeft.
+
+De `CORRECTION_`-laag is een optionele review-/workflowlaag. Zet ze aan wanneer je wil dat brdrQ `brdrq_state` toevoegt en features klaarzet voor manuele opvolging in QGIS of FeatureAligner. Zet `GENERATE_CORRECTION_LAYER` uit wanneer die extra laag niet nuttig is.
 
 ## **V: Welke types geometrieen worden ondersteund?**
 A: De brdr-bibliotheek is in eerste instantie ontwikkeld voor uitlijning van (Multi-)Polygonen op (Multi-)Polygonen. De plugin kan echter ook gebruikt worden met andere input-/referentietypes (punten en lijngeometrieen).
@@ -34,7 +39,7 @@ Hoe maak je een ruimtelijke index in QGIS:
 * Klik op `Create Spatial Index` (als de knop grijs is, bestaat de index al).
 
 ## **V: Wat betekenen de waarden in `brdrq_state`?**
-A: `brdrq_state` is een workflowstatus van brdrQ in de `CORRECTION_`-laag. Het is geen inhoudelijke brdr-evaluatiescore.
+A: `brdrq_state` is een workflowstatus van brdrQ in de optionele `CORRECTION_`-laag. Het is geen inhoudelijke brdr-evaluatiescore.
 
 * `not_changed`: de feature wordt als ongewijzigd beschouwd.
 * `auto_updated`: brdrQ heeft een bruikbaar resultaat gevonden en de geometrie automatisch in de correctielaag geplaatst.

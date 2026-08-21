@@ -17,6 +17,14 @@ a resulting boundary based on the relevant overlapping areas.
 Because **Autocorrectborders** is exposed as a QGIS Processing algorithm, it is also available for use in the QGIS
 Model Designer.
 
+## Quick Start
+
+1. Choose the thematic layer and a unique thematic ID.
+2. Choose a reference source: `LOCREF` for a local reference layer, or an on-the-fly reference source.
+3. Start conservatively with a limited `RELEVANT_DISTANCE`, for example `2-5` meters.
+4. Decide how you want to use the output: use `RESULT_` and `DIFF_` directly, or enable the optional `CORRECTION_` review layer.
+5. When you use the `CORRECTION_` workflow, open uncertain features in FeatureAligner and save a selected prediction where needed.
+
 ## Parameter Guide
 Each parameter is documented once with the same structure: **Definition**, **Why use it**, **Choices**, and **Impact**.
 
@@ -59,13 +67,13 @@ Each parameter is documented once with the same structure: **Definition**, **Why
 ### Full Reference Strategy
 - **Definition**: Preference for predictions with full overlap to reference.
 - **Why use it**: Enforces stricter geometric consistency when needed.
-- **Choices**: prefer/strict/no preference modes.
+- **Choices**: `ONLY_FULL_REFERENCE`, `PREFER_FULL_REFERENCE`, `NO_FULL_REFERENCE`.
 - **Impact**: Stricter modes reduce risky candidates but may omit usable alternatives.
 
 ### Processor
 - **Definition**: Geometry processing engine selector.
 - **Why use it**: Optimizes runtime and robustness per geometry type.
-- **Choices**: Prefer AlignerGeometryProcessor.
+- **Choices**: `AlignerGeometryProcessor`, `NetworkGeometryProcessor`, `SnapGeometryProcessor`.
 - **Impact**: Correct processor choice improves speed and stability.
 
 ### Open Domain Strategy
@@ -77,7 +85,7 @@ Each parameter is documented once with the same structure: **Definition**, **Why
 ### Snap Strategy
 - **Definition**: Vertex snapping policy (mainly line/point workflows).
 - **Why use it**: Controls strictness of snapping to real reference vertices.
-- **Choices**: NO_PREFERENCE, PREFER_VERTICES, ONLY_VERTICES.
+- **Choices**: `NO_PREFERENCE`, `PREFER_VERTICES`, `PREFER_ENDS_AND_ANGLES`, `ONLY_VERTICES`.
 - **Impact**: Stricter snapping yields cleaner topology but fewer candidates.
 
 ### Threshold overlap percentage (%)
@@ -91,6 +99,12 @@ Each parameter is documented once with the same structure: **Definition**, **Why
 - **Why use it**: Controls QA workload.
 - **Choices**: Lower for strict QA, higher for more automation.
 - **Impact**: Lower threshold increases manual review volume.
+
+### Generate CORRECTION Review/Workflow Layer
+- **Definition**: Controls whether brdrQ creates an additional `CORRECTION_` layer with `brdrq_state`.
+- **Why use it**: The layer supports a review workflow in QGIS and FeatureAligner.
+- **Choices**: True when you want a review/work layer; False when `RESULT_` and `DIFF_` are sufficient.
+- **Impact**: Disabling this keeps the output simpler. It does not change the calculated `RESULT_` or `DIFF_` layers.
 
 ### Work Folder
 - **Definition**: Output/log storage location.
@@ -113,31 +127,46 @@ Each parameter is documented once with the same structure: **Definition**, **Why
 ## Recommended Presets
 - **Fast Scan**: `PREDICTIONS=NO_PREDICTIONS`, `Relevant Distance=2-4`, `REVIEW_PERCENTAGE=10`.
 - **Balanced Production**: `PREDICTIONS=PREDICTIONS`, `Prediction Strategy=BEST`, `Full Reference Strategy=PREFER_FULL_REFERENCE`, `Relevant Distance=3-5`.
-- **Strict QA**: lower REVIEW_PERCENTAGE (5-8), conservative Relevant Distance, stricter full-reference mode.
+- **Strict QA**: lower `REVIEW_PERCENTAGE` (`5-8`), conservative `Relevant Distance`, stricter full-reference mode.
 - **Exploration**: `PREDICTIONS=PREDICTIONS`, `Prediction Strategy=ALL`, `SHOW_INTERMEDIATE_LAYERS=True`, `LOG_INFO=True`.
+- **Direct Output Only**: `GENERATE_CORRECTION_LAYER=False` when your process consumes only `RESULT_` and `DIFF_` layers.
 
 ## Output Parameters
 
-The script generates a GROUP layer with several output layers in the TOC:
+The script generates a group in the QGIS layer tree. Layer names get a suffix with this pattern: `_DIST_<relevant_distance>_<reference>_<timestamp>`. With `PREDICTIONS=PREDICTIONS`, `_PREDICTIONS` is appended.
 
-* CORRECTION_X_Y: a copy of the thematic layer with updated geometries, divided into categories (brdrq_state)
-* brdrQ_RESULT_X_Y: resulting geometries after alignment
-* brdrQ_DIFF_X_Y: differences (+ and -) between original and resulting geometry
-* brdrQ_DIFF_MIN_X_Y:differences (-) between original and resulting geometry
-* brdrQ_DIFF_PLUS_X_Y:differences (+) between original and resulting geometry
-* (optional) brdrQ_RLVNT_DIFF_X_Y: relevant differences (parts to exclude), used when processing the resulting geometry
-* (optional) brdrQ_RLVNT_ISECT_X_Y: relevant intersection (parts to include), used when processing the resulting
-  geometry
+The main output layers are:
 
-The name includes which 'RELEVANT_DISTANCE (X)' and 'REFERENCE (Y)' is used
+* `RESULT_DIST_...`: resulting geometries after alignment.
+* `DIFF_DIST_...`: differences (+ and -) between original and resulting geometry.
+* `DIFF_MIN_DIST_...`: differences (-) between original and resulting geometry.
+* `DIFF_PLUS_DIST_...`: differences (+) between original and resulting geometry.
+* optional `RLVNT_DIFF_DIST_...`: relevant differences (parts to exclude), used when processing the resulting geometry.
+* optional `RLVNT_ISECT_DIST_...`: relevant intersection (parts to include), used when processing the resulting geometry.
+* optional `CORRECTION_DIST_...`: workflow layer copied from the thematic layer, with updated geometries and `brdrq_state` for review.
 
-Note: when `PREDICTIONS=PREDICTIONS` is combined with `Prediction Strategy=ALL`, no `CORRECTION_` layer is generated. That setting is meant to analyze all predictions. Use `BEST` or `ORIGINAL` when you also need a correction layer for review or downstream processing.
+The `RESULT_` and `DIFF_` layers are the primary tool output. You can use them directly in your own workflow without doing anything with the `CORRECTION_` layer.
+
+The `CORRECTION_` layer is only generated when `GENERATE_CORRECTION_LAYER=True` and the output represents one selected result per feature. When `PREDICTIONS=PREDICTIONS` is combined with `Prediction Strategy=ALL`, no `CORRECTION_` layer is generated because that setting is meant to analyze all candidate predictions.
 
 <img src="./figures/output.png" width="100%" />
 
-## Interpreting the CORRECTION Layer
+## Workflow: Direct RESULT/DIFF Usage
 
-The `CORRECTION_X_Y` layer is the main working layer after Autocorrectborders. It contains a copy of the thematic layer, enriched with brdr/brdrQ fields. The original input layer is not modified.
+Use this workflow when your process only needs the calculated geometry and the differences from the original input:
+
+1. Run Autocorrectborders.
+2. Use `RESULT_DIST_...` as the aligned geometry output.
+3. Use `DIFF_DIST_...`, `DIFF_PLUS_DIST_...`, and `DIFF_MIN_DIST_...` for QA, reporting, or filtering.
+4. Disable `GENERATE_CORRECTION_LAYER` when the extra review layer would only create noise in your project.
+
+This is often the cleanest option for ETL, model builder, batch processing, or users who already have their own QA process.
+
+## Workflow: Review With the CORRECTION Layer
+
+Use this workflow when you want brdrQ to prepare a QGIS work layer for human review.
+
+The `CORRECTION_DIST_...` layer contains a copy of the thematic layer, enriched with brdr/brdrQ fields. The original input layer is not modified.
 
 `brdrq_state` is a brdrQ workflow status. It is not a quality score or evaluation score from the underlying brdr algorithm. Use this status to decide which features were handled automatically and which still need human attention.
 
@@ -179,7 +208,7 @@ Here is an example of how to use the script in Python:
 
 ```python
 
-{
+params = {
                 "INPUT_THEMATIC": themelayername,
                 "COMBOBOX_ID_THEME": "theme_identifier",
                 "RELEVANT_DISTANCE": 2,
@@ -195,6 +224,7 @@ Here is an example of how to use the script in Python:
                 "FULL_REFERENCE_STRATEGY": 2,
                 "PREDICTION_STRATEGY": 0,
                 "REVIEW_PERCENTAGE": 10,
+                "GENERATE_CORRECTION_LAYER": True,
                 "ADD_METADATA": True,
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,
@@ -217,7 +247,7 @@ processing.run('brdrqprovider:brdrqautocorrectborders', params)
     - when was it created,
     - on what reference limits was it drawn at the time,
     - Which drawing rules have been applied (e.g. accuracy of 0.5m)
-    - â€¦
+    - ...
 
 This allows you to gain insight into the 'deviation' and which RELEVANT_DISTANCE value can best be applied.
 
@@ -231,7 +261,7 @@ This allows you to gain insight into the 'deviation' and which RELEVANT_DISTANCE
   are drawn 'roughly', it is best to use a high RELEVANT_DISTANCE (e.g. >10 meters) and:
     - OD-strategy EXCLUDE: if you want to completely exclude all public domain
     - OD-strategy AS_IS: if you want to include all the covered public domain AS IS in the result
-    - OD strategy SNAP_SINGLE_SIDE: if you want to keep the public domain within the demarcation, but move the edges to
+    - OD strategy SNAP_INNER_SIDE: if you want to keep the public domain within the demarcation, but move the edges to
       the inner side of the thematic polygon
     - OD strategy SNAP_ALL_SIDE: if you want to keep the public domain within the demarcation, but move the edges to
       the inner & outer side of the thematic polygon
@@ -251,8 +281,8 @@ This sections lists fieldnames that can be found in the output layer and explain
 | **brdr_prediction_score** | Double | Confidence score (%) of the alignment prediction. |
 | **brdr_prediction_count** | Integer | Number of candidate matches found for the alignment. |
 | **brdr_evaluation** | String | Categorization of the result (e.g., `prediction_unique`, `to_check_prediction_multi`). |
-| **brdrq_state** | String | brdrQ workflow status in the `CORRECTION_` layer: `not_changed`, `auto_updated`, `to_review`, `to_update`, `manual_updated`, or `none`. |
-| **brdrq_original_wkt** | String | WKT of the original geometry before the correction layer was updated. Used for review and reset workflows. |
+| **brdrq_state** | String | brdrQ workflow status in the optional `CORRECTION_` layer: `not_changed`, `auto_updated`, `to_review`, `to_update`, `manual_updated`, or `none`. |
+| **brdrq_original_wkt** | String | WKT of the original geometry before the optional correction layer was updated. Used for review and reset workflows. |
 | **brdr_relevant_distance** | Double | The buffer or search distance used during the alignment procedure ($m$). |
 | **brdr_sym_diff_area_index** | Double | The absolute area of the symmetrical difference between base and target ($m^2$). |
 | **brdr_sym_diff_area_index_perc** | Double | The symmetrical difference expressed as a percentage of the total area. |

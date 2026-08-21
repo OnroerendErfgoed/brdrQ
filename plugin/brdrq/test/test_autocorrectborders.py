@@ -89,6 +89,59 @@ class TestAutoCorrectBorders(unittest.TestCase):
             assert isinstance(o,QgsVectorLayer)
             assert o.featureCount()==featurecount
 
+    def test_autocorrectborders_without_correctionlayer(self):
+        foldername = QgsProcessingParameterFolderDestination(name="brdrQ").generateTemporaryDestination()
+
+        path = os.path.join(os.path.dirname(__file__), "themelayer_test.geojson")
+        themelayername = "themelayer_test"
+        layer_theme = QgsVectorLayer(path, themelayername)
+        QgsProject.instance().addMapLayer(layer_theme)
+
+        path = os.path.join(os.path.dirname(__file__), "referencelayer_test.geojson")
+        referencelayername = "referencelayer_test"
+        layer_reference = QgsVectorLayer(path, referencelayername)
+        QgsProject.instance().addMapLayer(layer_reference)
+
+        output = run_processing_or_skip(
+            "brdrqprovider:brdrqautocorrectborders",
+            {
+                "INPUT_THEMATIC": themelayername,
+                "COMBOBOX_ID_THEME": "theme_identifier",
+                "RELEVANT_DISTANCE": 2,
+                "ENUM_REFERENCE": 0,
+                "INPUT_REFERENCE": referencelayername,
+                "COMBOBOX_ID_REFERENCE": "CAPAKEY",
+                "WORK_FOLDER": foldername,
+                "ENUM_OD_STRATEGY": 1,
+                "ENUM_SNAP_STRATEGY": 1,
+                "ENUM_PROCESSOR": 0,
+                "THRESHOLD_OVERLAP_PERCENTAGE": 50,
+                "FULL_REFERENCE_STRATEGY": 2,
+                "PREDICTION_STRATEGY": 0,
+                "REVIEW_PERCENTAGE": 10,
+                "GENERATE_CORRECTION_LAYER": False,
+                "ADD_METADATA": True,
+                "STABILITY": True,
+                "ADD_ATTRIBUTES": True,
+                "SHOW_INTERMEDIATE_LAYERS": True,
+                "PREDICTIONS": 0,
+                "LOG_INFO": False,
+            },
+        )
+
+        featurecount = layer_theme.featureCount()
+        assert len(output)==5
+        assert output["OUTPUT_CORRECTION"] is None
+        for output_name in [
+            "OUTPUT_RESULT",
+            "OUTPUT_RESULT_DIFF",
+            "OUTPUT_RESULT_DIFF_PLUS",
+            "OUTPUT_RESULT_DIFF_MIN",
+        ]:
+            layer = output[output_name]
+            assert isinstance(layer,QgsVectorLayer)
+            assert layer.featureCount()==featurecount
+
     def test_autocorrectborders_fiscal(self):
         # See https://gis.stackexchange.com/a/276979/4972 for a list of algorithms
         foldername = QgsProcessingParameterFolderDestination(name="brdrQ").generateTemporaryDestination()

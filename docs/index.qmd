@@ -22,6 +22,10 @@ lang: en
 
 This plugin provides tools to align geometries to reference data.
 
+## How to Read This Documentation
+
+Start with the workflow choices below if you are new to brdrQ. Each tool page then starts with a short quick-start section for normal use, followed by a parameter guide and deeper notes for advanced workflows. Use [Q & A](qa.qmd) when you mainly want to interpret output fields, states, warnings, or integration choices.
+
 ## QGIS compatibility
 
 `brdrQ` is currently maintained to run on both:
@@ -37,12 +41,18 @@ here you can find links to the different tools that are currently provided:
 * [Autocorrectborders (BULK)](autocorrectborders.md) - Bulk alignment of your data to a reference layer
 * [GRB Updater (BULK)](autoupdateborders.md) - Bulk alignment to latest GRB (Flanders - Belgium) based on predictions and provenance
 
+## How-To Guides
 
-## Possible workflow
+Use how-to guides when you want to start from a concrete use case instead of a tool page.
 
-The tools can be used separately or in combination with each other:
+* [Align a thematic layer to a local reference layer](howto-align-local-reference.qmd) - practical workflow for local reference data, direct output, and optional review.
 
-1. Use [Autocorrectborders (BULK)](autocorrectborders.md) to align your thematic data to a reference layer. A CORRECTION_ layer is returned that indicates the brdrq_state of the alignment.
-2. Use [Feature aligner](featurealigner.md) on the CORRECTION_ layer to review/update features that are not automatically updated, according the 'brdrq_state' (to_review, to_update).
+
+## Workflow Choices
+
+The tools can be used separately or in combination with each other. `RESULT_` and `DIFF_` layers are the primary output of the bulk tools; `CORRECTION_` is an optional review/workflow layer.
+
+1. Direct output workflow: use [Autocorrectborders (BULK)](autocorrectborders.md) or [GRB Updater (BULK)](autoupdateborders.md), then consume the `RESULT_`/`brdrQ_RESULT_` layer and inspect the `DIFF_`/`brdrQ_DIFF_` layers in your own QA process.
+2. Review workflow: enable the optional `CORRECTION_` layer, then use [Feature aligner](featurealigner.md) to review or update features with `brdrq_state` values such as `to_review` or `to_update`.
 
 

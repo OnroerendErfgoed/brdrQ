@@ -113,6 +113,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     WORKFOLDER = None
     PREDICTION_STRATEGY = None
     FULL_REFERENCE_STRATEGY = None
+    GENERATE_CORRECTION_LAYER = None
     LOG_INFO = None
     METADATA_FIELDNAME = None
 
@@ -335,6 +336,13 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         add_boolean_parameter(
             algorithm=self,
+            name="GENERATE_CORRECTION_LAYER",
+            description='<br>Generate CORRECTION review/workflow layer<br><i style="color: gray;">Creates an optional copy of the thematic layer with brdrq_state for review workflows. Disable this when you only need RESULT and DIFF layers.</i>',
+            default_value=self.default_generate_correction_layer,
+            advanced=True,
+        )
+        add_boolean_parameter(
+            algorithm=self,
             name="LOG_INFO",
             description="Write extra logging (from brdr-log)",
             default_value=self.default_extra_logging,
@@ -524,7 +532,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         result_diff_min = self._get_output_layer(self.LAYER_RESULT_DIFF_MIN)
 
         correction_layer = None
-        if self.PREDICTION_STRATEGY != PredictionStrategy.ALL:
+        if (
+            self.GENERATE_CORRECTION_LAYER and
+            self.PREDICTION_STRATEGY != PredictionStrategy.ALL
+        ):
             feedback.pushInfo("Generating correction layer")
             try:
                 correction_layer = generate_correction_layer(thematic, result,id_theme_brdrq_fieldname=self.ID_THEME_BRDRQ_FIELDNAME,workfolder=self.WORKFOLDER, correction_layer_name = "CORRECTION" + self.SUFFIX,review_percentage=self.REVIEW_PERCENTAGE, add_metadata=True)
@@ -533,6 +544,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 move_to_group(correction_layer, self.GROUP_LAYER)
             except Exception as e:
                 feedback.pushWarning(f"problem generating correction layer: {str(e)}")
+        elif not self.GENERATE_CORRECTION_LAYER:
+            feedback.pushInfo(
+                "No correction layer generated because GENERATE_CORRECTION_LAYER is disabled"
+            )
         else:
             feedback.pushInfo(
                 "No correction layer generated when predictions with predictionStrategy ALL is activated"
@@ -580,6 +595,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "ENUM_SNAP_STRATEGY": 1,
             "THRESHOLD_OVERLAP_PERCENTAGE": 50,
             "REVIEW_PERCENTAGE": 10,
+            "GENERATE_CORRECTION_LAYER": True,
             "WORK_FOLDER": "brdrQ",
             "METADATA_FIELD": BASE_METADATA_FIELD_NAME,
             "LOG_INFO": False,
@@ -600,6 +616,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ("default_threshold_overlap_percentage", "THRESHOLD_OVERLAP_PERCENTAGE"),
                 ("default_workfolder", "WORK_FOLDER"),
                 ("default_review_percentage", "REVIEW_PERCENTAGE"),
+                ("default_generate_correction_layer", "GENERATE_CORRECTION_LAYER"),
                 ("default_metadata_field", "METADATA_FIELD"),
                 ("default_extra_logging", "LOG_INFO"),
             ],
@@ -621,6 +638,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ("default_threshold_overlap_percentage", "default_threshold_overlap_percentage"),
                 ("default_workfolder", "default_workfolder", None, "global"),
                 ("default_review_percentage", "default_review_percentage"),
+                ("default_generate_correction_layer", "default_generate_correction_layer"),
                 ("default_metadata_field", "default_metadata_field"),
                 ("default_extra_logging", "default_extra_logging"),
             ],
@@ -651,6 +669,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ("default_threshold_overlap_percentage", "default_threshold_overlap_percentage"),
                 ("default_workfolder", "default_workfolder", "global"),
                 ("default_review_percentage", "default_review_percentage"),
+                ("default_generate_correction_layer", "default_generate_correction_layer"),
                 ("default_metadata_field", "default_metadata_field"),
                 ("default_extra_logging", "default_extra_logging"),
             ],
@@ -660,6 +679,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     def prepare_parameters(self, parameters, context):
         if "LOG_INFO" not in parameters and "SHOW_LOG_INFO" in parameters:
             parameters["LOG_INFO"] = parameters["SHOW_LOG_INFO"]
+        if "GENERATE_CORRECTION_LAYER" not in parameters:
+            parameters["GENERATE_CORRECTION_LAYER"] = (
+                self.default_generate_correction_layer
+            )
 
         # PARAMETER PREPARATION
         assign_parameter_values(
@@ -679,6 +702,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ("default_threshold_overlap_percentage", "THRESHOLD_OVERLAP_PERCENTAGE"),
                 ("default_workfolder", "WORK_FOLDER"),
                 ("default_metadata_field", "METADATA_FIELD"),
+                ("default_generate_correction_layer", "GENERATE_CORRECTION_LAYER"),
                 ("default_extra_logging", "LOG_INFO"),
             ],
         )
@@ -724,6 +748,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.PREDICTION_STRATEGY = PredictionStrategy[
             ENUM_PREDICTION_STRATEGY_OPTIONS[self.default_prediction_strategy]
         ]
+        self.GENERATE_CORRECTION_LAYER = self.default_generate_correction_layer
 
         ref = GRB_TYPES[parameters["ENUM_REFERENCE"]]
         self.GRB_TYPE, layer_reference_name, ref_suffix = get_reference_params(

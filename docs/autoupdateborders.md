@@ -12,6 +12,13 @@ analysis).
 Because **AutoUpdateBorders** is exposed as a QGIS Processing algorithm, it is also available for use in the QGIS
 Model Designer.
 
+## Quick Start
+
+1. Use a thematic layer that was already aligned to an older GRB reference situation.
+2. Choose the correct GRB reference type for the update.
+3. Use `PREDICTION_STRATEGY=BEST` for a production-oriented update, or `ALL` when you first want to inspect all candidates.
+4. Decide whether your workflow uses the direct `brdrQ_RESULT_`/`brdrQ_DIFF_` output, or the optional `CORRECTION_` review layer.
+
 ## Parameter Guide
 
 ### Thematic Layer
@@ -47,25 +54,25 @@ Model Designer.
 ### Full Reference Strategy
 - **Definition**: Preference strength for full-reference-overlap candidates.
 - **Why use it**: Enforces stricter topological confidence.
-- **Choices**: ONLY_FULL, PREFER_FULL, NO_FULL.
+- **Choices**: `ONLY_FULL_REFERENCE`, `PREFER_FULL_REFERENCE`, `NO_FULL_REFERENCE`.
 - **Impact**: Stricter settings reduce risky updates but may hide alternatives.
 
 ### Open Domain Strategy
 - **Definition**: Open Domain behavior outside reference coverage.
 - **Why use it**: Aligns result with policy on non-covered areas.
-- **Choices**: Strategy enum options.
+- **Choices**: `EXCLUDE`, `ASIS`, `SNAP_INNER_SIDE`, `SNAP_ALL_SIDE`.
 - **Impact**: Changes boundary inclusion/exclusion semantics.
 
 ### Snap Strategy
 - **Definition**: Snap strictness to reference vertices.
 - **Why use it**: Controls structural fit in line/point situations.
-- **Choices**: NO_PREFERENCE, PREFER_VERTICES, ONLY_VERTICES.
+- **Choices**: `NO_PREFERENCE`, `PREFER_VERTICES`, `PREFER_ENDS_AND_ANGLES`, `ONLY_VERTICES`.
 - **Impact**: Stricter settings improve vertex correctness but reduce flexibility.
 
 ### Processor
 - **Definition**: Processing backend selector.
 - **Why use it**: Runtime/performance optimization.
-- **Choices**: Prefer AlignerGeometryProcessor.
+- **Choices**: `AlignerGeometryProcessor`, `NetworkGeometryProcessor`, `SnapGeometryProcessor`.
 - **Impact**: Better defaults reduce runtime variance.
 
 ### Threshold overlap percentage (%)
@@ -79,6 +86,12 @@ Model Designer.
 - **Why use it**: Tunes QA load.
 - **Choices**: Lower for strict control, higher for throughput.
 - **Impact**: Directly changes number of records to review.
+
+### Generate CORRECTION Review/Workflow Layer
+- **Definition**: Controls whether brdrQ creates an additional `CORRECTION_` layer with `brdrq_state`.
+- **Why use it**: The layer supports manual follow-up after an update run.
+- **Choices**: True when you want a review/work layer; False when `brdrQ_RESULT_` and `brdrQ_DIFF_` are sufficient.
+- **Impact**: Disabling this keeps update runs cleaner. It does not change the calculated result or difference layers.
 
 ### Work Folder
 - **Definition**: Output folder for generated artifacts.
@@ -99,20 +112,34 @@ Model Designer.
 - **Impact**: Better debugging, more log volume.
 
 ## Recommended Presets
-- **Stable Production Update**: PREDICTION_STRATEGY=BEST, FULL_REFERENCE_STRATEGY=PREFER_FULL, Relevant Distance=3-5.
-- **Strict Legal/Boundary QA**: FULL_REFERENCE_STRATEGY=ONLY_FULL, lower REVIEW_PERCENTAGE, conservative distance.
-- **Ambiguity Analysis**: PREDICTION_STRATEGY=ALL, higher distance, LOG_INFO=True.
-- **Safe Fallback**: PREDICTION_STRATEGY=ORIGINAL when preserving source geometry is preferred over uncertain shifts.
+- **Stable Production Update**: `PREDICTION_STRATEGY=BEST`, `FULL_REFERENCE_STRATEGY=PREFER_FULL_REFERENCE`, `Relevant Distance=3-5`.
+- **Strict Legal/Boundary QA**: `FULL_REFERENCE_STRATEGY=ONLY_FULL_REFERENCE`, lower `REVIEW_PERCENTAGE`, conservative distance.
+- **Ambiguity Analysis**: `PREDICTION_STRATEGY=ALL`, higher distance, `LOG_INFO=True`.
+- **Safe Fallback**: `PREDICTION_STRATEGY=ORIGINAL` when preserving source geometry is preferred over uncertain shifts.
+- **Direct Output Only**: `GENERATE_CORRECTION_LAYER=False` when downstream processing consumes only `brdrQ_RESULT_` and `brdrQ_DIFF_`.
 
 
 ### Output Parameters
 
-The script generates several output layers in the layer overview, combined into a group layer:
+The script generates a group in the QGIS layer tree. Layer names get a suffix with this pattern: `_<reference>_<timestamp>`.
 
-* brdrQ_RESULT: resulting geometries after alignment
-* brdrQ_DIFF: differences (+ and -) between original and resulting geometry
-* brdrQ_DIFF_PLUS: differences (+) between original and resulting geometry
-* brdrQ_DIFF_MIN: differences (-) between original and resulting geometry
+The main output layers are:
+
+* `brdrQ_RESULT_...`: resulting geometries after update.
+* `brdrQ_DIFF_...`: differences (+ and -) between original and resulting geometry.
+* `brdrQ_DIFF_PLUS_...`: differences (+) between original and resulting geometry.
+* `brdrQ_DIFF_MIN_...`: differences (-) between original and resulting geometry.
+* optional `CORRECTION_...`: workflow layer copied from the thematic layer, with updated geometries and `brdrq_state` for review.
+
+The `brdrQ_RESULT_` and `brdrQ_DIFF_` layers are the primary tool output. You can use them directly without using the `CORRECTION_` layer.
+
+The `CORRECTION_` layer is only generated when `GENERATE_CORRECTION_LAYER=True` and the output represents one selected result per feature. Use `PREDICTION_STRATEGY=ALL` for ambiguity analysis. In that mode no `CORRECTION_` layer is generated because the output contains all candidate predictions rather than one reviewable update proposal per feature.
+
+## Workflow Choices
+
+For direct processing, use `brdrQ_RESULT_...` as the updated geometry layer and the `brdrQ_DIFF_...` layers for QA, reporting, or filtering. Disable `GENERATE_CORRECTION_LAYER` when the extra review layer would not be used.
+
+For review in QGIS, enable the `CORRECTION_` layer and use `brdrq_state` to decide what needs human attention. The values have the same workflow meaning as in Autocorrectborders: `auto_updated` was applied automatically, `to_review` needs review, `to_update` still needs manual handling, and `manual_updated` is set by FeatureAligner after saving a selected prediction.
 
 ## Example of Usage
 
@@ -134,6 +161,7 @@ output = processing.run(
         "ENUM_PROCESSOR": 0,
         "THRESHOLD_OVERLAP_PERCENTAGE": 50,
         "REVIEW_PERCENTAGE": 10,
+        "GENERATE_CORRECTION_LAYER": True,
         "PREDICTION_STRATEGY": 2,
         "FULL_REFERENCE_STRATEGY": 2,
         "LOG_INFO": True,

@@ -18,6 +18,14 @@ Het processing-algoritme **Autocorrectborders** is ontwikkeld om thematische gre
 Omdat **Autocorrectborders** beschikbaar is als QGIS Processing-algoritme, kan het ook gebruikt worden in de QGIS
 Model Designer.
 
+## Snel starten
+
+1. Kies je thematische laag en een uniek thematisch ID.
+2. Kies een referentiebron: `LOCREF` voor een lokale referentielaag, of een on-the-fly referentiebron.
+3. Start voorzichtig met een beperkte `RELEVANT_DISTANCE`, bijvoorbeeld `2-5` meter.
+4. Kies hoe je de output wil gebruiken: rechtstreeks met `RESULT_` en `DIFF_`, of met de optionele `CORRECTION_`-reviewlaag.
+5. Gebruik je de `CORRECTION_`-workflow, open dan twijfelgevallen in FeatureAligner en sla een gekozen voorspelling op indien nodig.
+
 ## Parametergids
 Elke parameter wordt eenduidig uitgelegd met: **Definitie**, **Waarom gebruiken**, **Mogelijke keuzes**, en **Gevolg**.
 
@@ -40,7 +48,7 @@ Elke parameter wordt eenduidig uitgelegd met: **Definitie**, **Waarom gebruiken*
 - **Gevolg**: Betere referentie = betere outputkwaliteit.
 
 ### Relevant Distance (meters)
-- **Definitie**: Maximum allowed geometry shift.
+- **Definitie**: Maximale toegelaten geometrische verschuiving.
 - **Waarom gebruiken**: Stuurt hoe ver features mogen verschuiven richting referentie.
 - **Mogelijke keuzes**: Laag (`1-2`), midden (`3-5`), hoog (`>10`) afhankelijk van bronkwaliteit.
 - **Gevolg**: Lage waarden zijn voorzichtiger/sneller; hoge waarden zijn krachtiger/trager en verhogen vaak review.
@@ -52,33 +60,33 @@ Elke parameter wordt eenduidig uitgelegd met: **Definitie**, **Waarom gebruiken*
 - **Gevolg**: `PREDICTIONS` geeft rijkere evaluatie-informatie en vaak betere kandidaten, maar verhoogt de rekentijd. Bij `NO_PREDICTIONS` blijft `brdr_evaluation` meestal `not_evaluated`.
 
 ### Prediction Strategy
-- **Definitie**: Output policy when multiple predictions exist.
+- **Definitie**: Uitvoerbeleid wanneer meerdere kandidaatvoorspellingen bestaan.
 - **Waarom gebruiken**: Bepaalt of output deterministisch of analysegericht is.
-- **Mogelijke keuzes**: BEST, ALL, ORIGINAL.
+- **Mogelijke keuzes**: `BEST`, `ALL`, `ORIGINAL`.
 - **Gevolg**: `BEST` is productiegericht, `ALL` is analysegericht, `ORIGINAL` is de veiligste fallback.
 
 ### Full Reference Strategy
-- **Definitie**: Preference for predictions with full overlap to reference.
+- **Definitie**: Voorkeur voor voorspellingen met volledige overlap met de referentie.
 - **Waarom gebruiken**: Verhoogt geometrische zekerheid indien gewenst.
 - **Mogelijke keuzes**: `ONLY_FULL_REFERENCE`, `PREFER_FULL_REFERENCE`, `NO_FULL_REFERENCE`.
 - **Gevolg**: Strikter verlaagt risico, maar kan bruikbare alternatieven uitsluiten.
 
 ### Processor
-- **Definitie**: Geometry processing engine selector.
+- **Definitie**: Keuze van de geometrische verwerkingsengine.
 - **Waarom gebruiken**: Optimaliseert runtime en robuustheid per geometrietype.
-- **Mogelijke keuzes**: Prefer AlignerGeometryProcessor.
+- **Mogelijke keuzes**: `AlignerGeometryProcessor`, `NetworkGeometryProcessor`, `SnapGeometryProcessor`.
 - **Gevolg**: Juiste processor geeft betere snelheid en stabiliteit.
 
 ### Open Domain Strategy
-- **Definitie**: Behavior for geometry parts not covered by reference (Open Domain).
+- **Definitie**: Gedrag voor geometrische delen die niet door referentiefeatures gedekt worden.
 - **Waarom gebruiken**: Stemt output af op inhoudelijk/operationeel grensbeleid.
-- **Mogelijke keuzes**: EXCLUDE, ASIS, SNAP_INNER_SIDE, SNAP_ALL_SIDE.
+- **Mogelijke keuzes**: `EXCLUDE`, `ASIS`, `SNAP_INNER_SIDE`, `SNAP_ALL_SIDE`.
 - **Gevolg**: Bepaalt of en hoe niet-gedekte zones behouden of aangepast worden.
 
 ### Snap Strategy
-- **Definitie**: Vertex snapping policy (mainly line/point workflows).
+- **Definitie**: Snapbeleid naar referentievertices, vooral relevant bij lijn- en puntworkflows.
 - **Waarom gebruiken**: Stuurt de strengheid van snapping naar echte referentievertices.
-- **Mogelijke keuzes**: NO_PREFERENCE, PREFER_VERTICES, ONLY_VERTICES.
+- **Mogelijke keuzes**: `NO_PREFERENCE`, `PREFER_VERTICES`, `PREFER_ENDS_AND_ANGLES`, `ONLY_VERTICES`.
 - **Gevolg**: Strikter geeft nettere topologie, maar vaak minder kandidaten.
 
 ### Threshold overlap percentage (%)
@@ -93,6 +101,12 @@ Elke parameter wordt eenduidig uitgelegd met: **Definitie**, **Waarom gebruiken*
 - **Mogelijke keuzes**: Lager voor strikte QA, hoger voor meer automatisatie.
 - **Gevolg**: Lagere drempel geeft meer manuele review.
 
+### Generate CORRECTION review/workflow layer
+- **Definitie**: Bepaalt of brdrQ een extra `CORRECTION_`-laag met `brdrq_state` aanmaakt.
+- **Waarom gebruiken**: De laag ondersteunt een reviewworkflow in QGIS en FeatureAligner.
+- **Mogelijke keuzes**: True wanneer je een review-/werklaag wil; False wanneer `RESULT_` en `DIFF_` volstaan.
+- **Gevolg**: Uitzetten maakt de output eenvoudiger. De berekende `RESULT_`- en `DIFF_`-lagen veranderen hierdoor niet.
+
 ### Work Folder
 - **Definitie**: Locatie voor output en logbestanden.
 - **Waarom gebruiken**: Zorgt voor reproduceerbare outputorganisatie.
@@ -100,44 +114,60 @@ Elke parameter wordt eenduidig uitgelegd met: **Definitie**, **Waarom gebruiken*
 - **Gevolg**: Expliciet pad vereenvoudigt batch-audit en traceerbaarheid.
 
 ### Show Intermediate processing results
-- **Definitie**: Adds intermediate layers for diagnostics.
+- **Definitie**: Voegt tussenlagen toe voor diagnose.
 - **Waarom gebruiken**: Maakt duidelijk waarom uitlijning wel/niet slaagde.
 - **Mogelijke keuzes**: False/True.
 - **Gevolg**: Beter inzicht, met iets zwaardere output.
 
 ### Write extra logging (from brdr-log)
-- **Definitie**: Writes extended processing logs.
-- **Waarom gebruiken**: Troubleshooting en audit.
+- **Definitie**: Schrijft uitgebreidere verwerkingslogs weg.
+- **Waarom gebruiken**: Probleemoplossing en audit.
 - **Mogelijke keuzes**: False/True.
 - **Gevolg**: Meer diagnose-inzicht, met grotere logbestanden.
 
 ## Aanbevolen presets
 - **Snelle scan**: `PREDICTIONS=NO_PREDICTIONS`, `Relevant Distance=2-4`, `REVIEW_PERCENTAGE=10`.
 - **Gebalanceerde productie**: `PREDICTIONS=PREDICTIONS`, `Prediction Strategy=BEST`, `Full Reference Strategy=PREFER_FULL_REFERENCE`, `Relevant Distance=3-5`.
-- **Strikte QA**: lower REVIEW_PERCENTAGE (5-8), conservative Relevant Distance, stricter full-reference mode.
+- **Strikte QA**: lagere `REVIEW_PERCENTAGE` (`5-8`), voorzichtige `Relevant Distance`, striktere full-reference-instelling.
 - **Verkenning**: `PREDICTIONS=PREDICTIONS`, `Prediction Strategy=ALL`, `SHOW_INTERMEDIATE_LAYERS=True`, `LOG_INFO=True`.
+- **Enkel directe output**: `GENERATE_CORRECTION_LAYER=False` wanneer je proces alleen `RESULT_`- en `DIFF_`-lagen gebruikt.
 
 ## Uitvoerparameters
 
-Het script genereert een GROUP-laag met meerdere outputlagen in de TOC:
+Het script genereert een groep in de QGIS-lagenlijst. De laagnamen krijgen een suffix volgens dit patroon: `_DIST_<relevant_distance>_<reference>_<timestamp>`. Bij `PREDICTIONS=PREDICTIONS` komt daar `_PREDICTIONS` bij.
 
-* `CORRECTION_X_Y`: kopie van thematische laag met aangepaste geometrieen, opgesplitst per categorie (`brdrq_state`)
-* `brdrQ_RESULT_X_Y`: resulterende geometrieen na uitlijning
-* `brdrQ_DIFF_X_Y`: verschillen (+ en -) tussen origineel en resultaat
-* `brdrQ_DIFF_MIN_X_Y`: verschillen (-) tussen origineel en resultaat
-* `brdrQ_DIFF_PLUS_X_Y`: verschillen (+) tussen origineel en resultaat
-* (optioneel) `brdrQ_RLVNT_DIFF_X_Y`: relevante verschillen (te verwijderen delen), gebruikt bij verwerken van resultaat
-* (optioneel) `brdrQ_RLVNT_ISECT_X_Y`: relevante intersectie (op te nemen delen), gebruikt bij verwerken van resultaat
+De belangrijkste outputlagen zijn:
 
-De naam bevat welke `RELEVANT_DISTANCE (X)` en `REFERENCE (Y)` gebruikt zijn.
+* `RESULT_DIST_...`: resulterende geometrieen na uitlijning.
+* `DIFF_DIST_...`: verschillen (+ en -) tussen origineel en resultaat.
+* `DIFF_MIN_DIST_...`: verschillen (-) tussen origineel en resultaat.
+* `DIFF_PLUS_DIST_...`: verschillen (+) tussen origineel en resultaat.
+* optioneel `RLVNT_DIFF_DIST_...`: relevante verschillen (te verwijderen delen), gebruikt bij verwerken van resultaat.
+* optioneel `RLVNT_ISECT_DIST_...`: relevante intersectie (op te nemen delen), gebruikt bij verwerken van resultaat.
+* optioneel `CORRECTION_DIST_...`: workflowlaag op basis van de thematische laag, met aangepaste geometrieen en `brdrq_state` voor review.
 
-Let op: wanneer je `PREDICTIONS=PREDICTIONS` combineert met `Prediction Strategy=ALL`, wordt er geen `CORRECTION_`-laag aangemaakt. Die instelling is bedoeld om alle voorspellingen te analyseren. Gebruik `BEST` of `ORIGINAL` wanneer je ook een correctielaag voor review of verdere verwerking nodig hebt.
+De `RESULT_`- en `DIFF_`-lagen zijn de primaire tooloutput. Je kan die rechtstreeks gebruiken in je eigen workflow zonder iets met de `CORRECTION_`-laag te doen.
+
+De `CORRECTION_`-laag wordt alleen aangemaakt wanneer `GENERATE_CORRECTION_LAYER=True` en de output een gekozen resultaat per feature bevat. Wanneer je `PREDICTIONS=PREDICTIONS` combineert met `Prediction Strategy=ALL`, wordt er geen `CORRECTION_`-laag aangemaakt omdat die instelling bedoeld is om alle kandidaatvoorspellingen te analyseren.
 
 <img src="../figures/output.png" width="100%" />
 
-## CORRECTION-laag interpreteren
+## Workflow: rechtstreeks RESULT/DIFF gebruiken
 
-De `CORRECTION_X_Y`-laag is de belangrijkste werklaag na Autocorrectborders. Ze bevat een kopie van de thematische laag, aangevuld met brdr/brdrQ-velden. De originele inputlaag wordt niet aangepast.
+Gebruik deze workflow wanneer je proces alleen de berekende geometrie en de verschillen met de originele input nodig heeft:
+
+1. Run Autocorrectborders.
+2. Gebruik `RESULT_DIST_...` als uitgelijnde geometrie-output.
+3. Gebruik `DIFF_DIST_...`, `DIFF_PLUS_DIST_...` en `DIFF_MIN_DIST_...` voor QA, rapportering of filtering.
+4. Zet `GENERATE_CORRECTION_LAYER` uit wanneer de extra reviewlaag alleen ruis in je project zou geven.
+
+Dit is vaak de duidelijkste keuze voor ETL, model builder, batchverwerking of gebruikers die al een eigen QA-proces hebben.
+
+## Workflow: review met de CORRECTION-laag
+
+Gebruik deze workflow wanneer je wil dat brdrQ een QGIS-werklaag klaarzet voor menselijke review.
+
+De `CORRECTION_DIST_...`-laag bevat een kopie van de thematische laag, aangevuld met brdr/brdrQ-velden. De originele inputlaag wordt niet aangepast.
 
 `brdrq_state` is een workflowstatus van brdrQ. Het is dus geen kwaliteits- of evaluatiescore van het onderliggende brdr-algoritme. Gebruik deze status om te bepalen welke features automatisch verwerkt zijn en welke nog manueel aandacht vragen.
 
@@ -178,7 +208,7 @@ Er is geen aparte brdrQ-API die je vanuit FME moet aanspreken. Als je een API-ge
 Voorbeeld van gebruik in Python:
 
 ```python
-{
+params = {
     "INPUT_THEMATIC": themelayername,
     "COMBOBOX_ID_THEME": "theme_identifier",
     "RELEVANT_DISTANCE": 2,
@@ -194,6 +224,7 @@ Voorbeeld van gebruik in Python:
     "FULL_REFERENCE_STRATEGY": 2,
     "PREDICTION_STRATEGY": 0,
     "REVIEW_PERCENTAGE": 10,
+    "GENERATE_CORRECTION_LAYER": True,
     "ADD_METADATA": True,
     "ADD_ATTRIBUTES": True,
     "SHOW_INTERMEDIATE_LAYERS": True,
@@ -220,7 +251,7 @@ Dit helpt om een passende `RELEVANT_DISTANCE` te kiezen.
 - In de praktijk zijn grote afbakeningen soms ruwer getekend, waardoor een hogere `RELEVANT_DISTANCE` nodig is (bv. >10 m):
   - `OD-strategy EXCLUDE`: volledig open domein uitsluiten
   - `OD-strategy AS_IS`: bedekt open domein ongewijzigd meenemen
-  - `OD-strategy SNAP_SINGLE_SIDE`: open domein behouden, randen naar binnenzijde verplaatsen
+  - `OD-strategy SNAP_INNER_SIDE`: open domein behouden, randen naar binnenzijde verplaatsen
   - `OD-strategy SNAP_ALL_SIDE`: open domein behouden, randen naar binnen- en buitenzijde verplaatsen
 
 ## OUTPUT - VELDEN
@@ -237,8 +268,8 @@ Deze sectie geeft veldnamen van de outputlaag en hun betekenis.
 | **brdr_prediction_score** | Double | Betrouwbaarheidsscore (%) van de uitlijningsvoorspelling. |
 | **brdr_prediction_count** | Integer | Aantal kandidaatmatches gevonden voor de uitlijning. |
 | **brdr_evaluation** | String | Categorie van het resultaat (bv. `prediction_unique`, `to_check_prediction_multi`). |
-| **brdrq_state** | String | brdrQ-workflowstatus in de `CORRECTION_`-laag: `not_changed`, `auto_updated`, `to_review`, `to_update`, `manual_updated` of `none`. |
-| **brdrq_original_wkt** | String | WKT van de originele geometrie voordat de correctielaag werd aangepast. Wordt gebruikt voor review en reset-workflows. |
+| **brdrq_state** | String | brdrQ-workflowstatus in de optionele `CORRECTION_`-laag: `not_changed`, `auto_updated`, `to_review`, `to_update`, `manual_updated` of `none`. |
+| **brdrq_original_wkt** | String | WKT van de originele geometrie voordat de optionele correctielaag werd aangepast. Wordt gebruikt voor review en reset-workflows. |
 | **brdr_relevant_distance** | Double | Gebruikte buffer/zoekafstand tijdens uitlijning ($m$). |
 | **brdr_sym_diff_area_index** | Double | Absolute oppervlakte van het symmetrisch verschil tussen basis en target ($m^2$). |
 | **brdr_sym_diff_area_index_perc** | Double | Symmetrisch verschil uitgedrukt als percentage van totale oppervlakte. |

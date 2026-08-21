@@ -20,6 +20,10 @@ lang: nl
 4. Klik op `Install Plugin`.
 5. Na installatie verschijnt de plugin in de plugin-toolbar.
 
+## Hoe lees je deze documentatie?
+
+Start met de workflowkeuzes hieronder als je brdrQ nog niet goed kent. Elke toolpagina begint met een korte snel-start voor normaal gebruik, gevolgd door een parametergids en diepgaandere uitleg voor geavanceerde workflows. Gebruik [Vragen & Antwoorden](qa.qmd) wanneer je vooral outputvelden, statussen, waarschuwingen of integratiekeuzes wil interpreteren.
+
 ## QGIS-compatibiliteit
 
 `brdrQ` wordt onderhouden voor:
@@ -33,7 +37,15 @@ Hier vind je links naar de beschikbare tools:
 * [Autocorrectborders (BULK)](autocorrectborders.md) - Bulkuitlijning van je data naar een referentielaag
 * [GRB Updater (BULK)](autoupdateborders.md) - Bulkuitlijning naar de nieuwste GRB (Vlaanderen, Belgie)
 
-## Mogelijke workflow
+## How-to gidsen
 
-1. Gebruik [Autocorrectborders (BULK)](autocorrectborders.md) om thematische data uit te lijnen met een referentielaag. Je krijgt een `CORRECTION_`-laag met `brdrq_state`.
-2. Gebruik [Feature aligner](featurealigner.md) op die `CORRECTION_`-laag om features met status `to_review` of `to_update` te herbekijken en bij te sturen.
+Gebruik how-to gidsen wanneer je wil vertrekken vanuit een concrete use case in plaats van vanuit een toolpagina.
+
+* [Thematische laag uitlijnen op een lokale referentielaag](howto-align-local-reference.qmd) - praktisch stappenplan voor lokale referentiedata, directe output en optionele review.
+
+## Workflowkeuzes
+
+De tools kunnen apart of gecombineerd gebruikt worden. `RESULT_`- en `DIFF_`-lagen zijn de primaire output van de bulktools; `CORRECTION_` is een optionele review-/workflowlaag.
+
+1. Directe outputworkflow: gebruik [Autocorrectborders (BULK)](autocorrectborders.md) of [GRB Updater (BULK)](autoupdateborders.md), verwerk daarna de `RESULT_`/`brdrQ_RESULT_`-laag en controleer de `DIFF_`/`brdrQ_DIFF_`-lagen in je eigen QA-proces.
+2. Reviewworkflow: zet de optionele `CORRECTION_`-laag aan en gebruik [Feature aligner](featurealigner.md) om features met `brdrq_state` zoals `to_review` of `to_update` te herbekijken of bij te sturen.

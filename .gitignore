@@ -180,6 +180,12 @@ plugin/brdrq/zip_build/brdrq/
 
 /workshop/
 /docs
+!/docs/
+/docs/*
+!/docs/howto-align-local-reference.qmd
+!/docs/nl/
+/docs/nl/*
+!/docs/nl/howto-align-local-reference.qmd
 /plugin/brdrq/test/brdrQ/
 /brdrQ/autocorrectborders
 /autocorrectborders

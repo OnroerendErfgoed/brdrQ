@@ -187,6 +187,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     ADD_METADATA = None
     ATTRIBUTES = None
     PREDICTIONS = None
+    GENERATE_CORRECTION_LAYER = None
     LOG_INFO = None
     WORKFOLDER = None
 
@@ -434,6 +435,13 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             default_value=self.default_review_percentage,
             min_value=0,
             max_value=100,
+            advanced=True,
+        )
+        add_boolean_parameter(
+            algorithm=self,
+            name="GENERATE_CORRECTION_LAYER",
+            description='<br>Generate CORRECTION review/workflow layer<br><i style="color: gray;">Creates an optional copy of the thematic layer with brdrq_state for review workflows. Disable this when you only need RESULT and DIFF layers.</i>',
+            default_value=self.default_generate_correction_layer,
             advanced=True,
         )
         add_boolean_parameter(
@@ -771,7 +779,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         result_diff_min = self._get_output_layer(self.LAYER_RESULT_DIFF_MIN)
 
         correction_layer = None
-        if not self.PREDICTIONS or self.PREDICTION_STRATEGY != PredictionStrategy.ALL:
+        if (
+            self.GENERATE_CORRECTION_LAYER and
+            (not self.PREDICTIONS or self.PREDICTION_STRATEGY != PredictionStrategy.ALL)
+        ):
             feedback.pushInfo("Generating correction layer")
             try:
                 correction_layer = generate_correction_layer(thematic, result,id_theme_brdrq_fieldname=self.ID_THEME_BRDRQ_FIELDNAME,workfolder=self.WORKFOLDER, correction_layer_name = "CORRECTION" + self.SUFFIX,review_percentage=self.REVIEW_PERCENTAGE, add_metadata=self.ADD_METADATA)
@@ -780,6 +791,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 move_to_group(correction_layer, self.GROUP_LAYER)
             except Exception as e:
                 feedback.pushWarning(f"problem generating correction layer: {str(e)}")
+        elif not self.GENERATE_CORRECTION_LAYER:
+            feedback.pushInfo(
+                "No correction layer generated because GENERATE_CORRECTION_LAYER is disabled"
+            )
         else:
             feedback.pushInfo(
                 "No correction layer generated when predictions with predictionStrategy ALL is activated"
@@ -885,6 +900,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "THRESHOLD_OVERLAP_PERCENTAGE": 50,
             "WORK_FOLDER": "brdrQ",
             "REVIEW_PERCENTAGE": 10,
+            "GENERATE_CORRECTION_LAYER": True,
             "ADD_METADATA": False,
             "ADD_ATTRIBUTES": False,
             "SHOW_INTERMEDIATE_LAYERS": False,
@@ -908,6 +924,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ("default_threshold_overlap_percentage", "THRESHOLD_OVERLAP_PERCENTAGE"),
                 ("default_workfolder", "WORK_FOLDER"),
                 ("default_review_percentage", "REVIEW_PERCENTAGE"),
+                ("default_generate_correction_layer", "GENERATE_CORRECTION_LAYER"),
                 ("default_add_metadata", "ADD_METADATA"),
                 ("default_add_attributes", "ADD_ATTRIBUTES"),
                 ("default_intermediate_layers", "SHOW_INTERMEDIATE_LAYERS"),
@@ -934,6 +951,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ("default_threshold_overlap_percentage", "default_threshold_overlap_percentage"),
                 ("default_workfolder", "default_workfolder", None, "global"),
                 ("default_review_percentage", "default_review_percentage"),
+                ("default_generate_correction_layer", "default_generate_correction_layer"),
                 ("default_add_metadata", "default_add_metadata"),
                 ("default_add_attributes", "default_add_attributes"),
                 ("default_intermediate_layers", "default_intermediate_layers"),
@@ -973,6 +991,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ("default_threshold_overlap_percentage", "default_threshold_overlap_percentage"),
                 ("default_workfolder", "default_workfolder", "global"),
                 ("default_review_percentage", "default_review_percentage"),
+                ("default_generate_correction_layer", "default_generate_correction_layer"),
                 ("default_add_metadata", "default_add_metadata"),
                 ("default_add_attributes", "default_add_attributes"),
                 ("default_intermediate_layers", "default_intermediate_layers"),
@@ -984,6 +1003,10 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     def prepare_parameters(self, parameters, context):
         if "LOG_INFO" not in parameters and "SHOW_LOG_INFO" in parameters:
             parameters["LOG_INFO"] = parameters["SHOW_LOG_INFO"]
+        if "GENERATE_CORRECTION_LAYER" not in parameters:
+            parameters["GENERATE_CORRECTION_LAYER"] = (
+                self.default_generate_correction_layer
+            )
 
         # PARAMETER PREPARATION
         assign_parameter_values(
@@ -1005,6 +1028,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ("default_threshold_overlap_percentage", "THRESHOLD_OVERLAP_PERCENTAGE"),
                 ("default_workfolder", "WORK_FOLDER"),
                 ("default_review_percentage", "REVIEW_PERCENTAGE"),
+                ("default_generate_correction_layer", "GENERATE_CORRECTION_LAYER"),
                 ("default_add_metadata", "ADD_METADATA"),
                 ("default_add_attributes", "ADD_ATTRIBUTES"),
                 ("default_intermediate_layers", "SHOW_INTERMEDIATE_LAYERS"),
@@ -1061,6 +1085,7 @@ class AutocorrectBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         self.ADD_METADATA = self.default_add_metadata
         self.ATTRIBUTES = self.default_add_attributes
         self.SHOW_INTERMEDIATE_LAYERS = self.default_intermediate_layers
+        self.GENERATE_CORRECTION_LAYER = self.default_generate_correction_layer
         if self.default_predictions:
             self.PREDICTIONS = True  # 1 means PREDICTION
         else:

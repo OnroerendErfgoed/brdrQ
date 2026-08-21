@@ -13,10 +13,14 @@ lang: nl
 
 <img src="../figures/featurealigner.png" width="50%" />
 
+## Snel starten
+
 0. Kies de instellingen voor de uitlijning (referentielaag, ...).
 1. Selecteer de thematische laag die je wil uitlijnen.
 2. Selecteer een feature in de lijst of via `Select feature(s) on map`.
 3. Bekijk de voorspelling(en) voor deze feature.
+4. Kies de voorspelling die inhoudelijk het best past.
+5. Gebruik `Save Geometry` alleen wanneer je de gekozen voorspelling naar de geselecteerde laag wil schrijven.
 
 Daarnaast kan je:
 
@@ -26,7 +30,7 @@ Daarnaast kan je:
 * Save Geometry: de originele geometrie aanpassen naar de gekozen voorspelling.
 * Reset Geometry: de originele geometrie resetten (alleen binnen een feature-sessie, dus zolang je geen andere feature selecteert).
 
-Wanneer je FeatureAligner gebruikt op een `CORRECTION_`-laag van Autocorrectborders, werkt FeatureAligner ook de brdrQ-workflowstatus bij:
+FeatureAligner kan gebruikt worden op elke bewerkbare thematische laag wanneer je voorspellingen feature per feature wil bekijken. Wanneer je FeatureAligner gebruikt op een `CORRECTION_`-laag van Autocorrectborders, werkt FeatureAligner ook de brdrQ-workflowstatus bij:
 
 * `Save Geometry` zet `brdrq_state` op `manual_updated`, omdat een gebruiker bewust een voorspelde geometrie heeft gekozen en opgeslagen.
 * `Reset Geometry` zet `brdrq_state` opnieuw op `to_update`, omdat de feature daarna opnieuw manueel behandeld of gecontroleerd moet worden.
@@ -50,7 +54,7 @@ Elke parameter wordt eenduidig uitgelegd met: **Definitie**, **Waarom gebruiken*
 ### Processor
 - **Definitie**: Keuze van de verwerkingsengine.
 - **Waarom gebruiken**: Optimaliseert performantie en robuustheid volgens geometrietype.
-- **Mogelijke keuzes**: `AlignerGeometryProcessor` (aanbevolen), of alternatieven indien nodig.
+- **Mogelijke keuzes**: `AlignerGeometryProcessor`, `NetworkGeometryProcessor`, `SnapGeometryProcessor`.
 - **Gevolg**: Een juiste processor verhoogt stabiliteit en snelheid.
 
 ### Threshold overlap percentage (%)
@@ -65,7 +69,7 @@ Elke parameter wordt eenduidig uitgelegd met: **Definitie**, **Waarom gebruiken*
 - **Mogelijke keuzes**: laag (`1-2`), midden (`3-5`), hoog (`>10`) volgens datakwaliteit.
 - **Gevolg**: Hogere waarden vergroten zowel de zoekruimte als ambiguiteit.
 
-### Add brdr_metadata?
+### brdr_metadata toevoegen?
 - **Definitie**: Voegt `brdr_metadata` toe aan de outputfeature.
 - **Waarom gebruiken**: Bewaart herkomstinformatie voor audit en latere updates.
 - **Mogelijke keuzes**: aan/uit.
@@ -84,9 +88,9 @@ Elke parameter wordt eenduidig uitgelegd met: **Definitie**, **Waarom gebruiken*
 - **Gevolg**: Striktere snapping verbetert topologie, maar kan minder matches opleveren.
 
 ## Aanbevolen presets
-- **Voorzichtige bewerking**: low distance + PREFER_FULL_REFERENCE.
-- **Gebalanceerd dagelijks gebruik**: medium distance + default processor + PREFER_VERTICES.
-- **Sterke correctie voor ruwe data**: higher distance + permissive full-reference mode.
-- **Strikte netwerk-snapping**: ONLY_VERTICES + low distance.
+- **Voorzichtige bewerking**: lage afstand + `PREFER_FULL_REFERENCE`.
+- **Gebalanceerd dagelijks gebruik**: gemiddelde afstand + `AlignerGeometryProcessor` + `PREFER_VERTICES`.
+- **Sterke correctie voor ruwe data**: hogere afstand + permissieve full-reference-instelling.
+- **Strikte netwerk-snapping**: `ONLY_VERTICES` + lage afstand.
 
 

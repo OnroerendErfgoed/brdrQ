@@ -8,7 +8,12 @@ This page lists the answers on FAQ's & brdrQ - errors/warnings.
 # FAQ
 
 ## **Q: Does brdrQ modify the original data?**
-A: When using Autocorrectborders or Autoupdateborders, the original data is not affected and an new layer is returned. When using the FeatureAligner, the data in the selected layer can be changed by saving the predicted geometry
+A: When using Autocorrectborders or Autoupdateborders, the original data is not affected and one or more new output layers are returned. When using FeatureAligner, the data in the selected layer can be changed by saving the predicted geometry.
+
+## **Q: Do I have to use the `CORRECTION_` layer?**
+A: No. The bulk tools calculate `RESULT_` and `DIFF_` layers as primary output. Use those directly when your own workflow or downstream process only needs the aligned geometry and the differences.
+
+The `CORRECTION_` layer is an optional review/workflow layer. Enable it when you want brdrQ to add `brdrq_state` and prepare features for manual follow-up in QGIS or FeatureAligner. Disable `GENERATE_CORRECTION_LAYER` when that extra layer is not useful.
 
 ## **Q: What types of geometries are supported?**
 A: The brdr-library is initially developed to align (Multi-)Polygons to (Multi-)Polygons. However the plugin can also be used for other types of input/reference (Points & Linestrings).
@@ -34,7 +39,7 @@ How to add a Spatial Index in QGIS: Creating an index is a quick process that ca
 * Click the Create Spatial Index button. (If the button is greyed out, an index is already present).
 
 ## **Q: What do the values in `brdrq_state` mean?**
-A: `brdrq_state` is a brdrQ workflow status in the `CORRECTION_` layer. It is not a brdr evaluation score.
+A: `brdrq_state` is a brdrQ workflow status in the optional `CORRECTION_` layer. It is not a brdr evaluation score.
 
 * `not_changed`: the feature is considered unchanged.
 * `auto_updated`: brdrQ found a usable result and automatically wrote the geometry into the correction layer.
