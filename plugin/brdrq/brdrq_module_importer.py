@@ -71,7 +71,7 @@ def pipinstall_by_subprocess(python_exe, package):
                 pipinstall_in_libs(python_exe, package)
 
 
-def install_brdr(python_exe):
+def install_brdr(python_exe, installed_version=None):
     if "brdr" in sys.modules:
         del sys.modules["brdr"]
         print("brdr removed from sys_module")
@@ -82,7 +82,7 @@ def install_brdr(python_exe):
     import brdr
 
     print(f"reloaded version of brdr: {brdr.__version__}")
-    show_new_brdr_dialog()
+    show_new_brdr_dialog(installed_version=installed_version)
 
 
 def install_package(python_exe, package):
@@ -93,6 +93,7 @@ def install_package(python_exe, package):
 def import_modules():
     sys.path.insert(0, site.getusersitepackages())
     python_exe = find_python()
+    installed_version = None
 
     try:
         from shapely import Polygon, from_wkt, to_wkt, unary_union, make_valid
@@ -122,21 +123,39 @@ def import_modules():
         import brdr
 
         if brdr.__version__ != brdr_version:
-            raise ValueError("Version mismatch")
+            installed_version = brdr.__version__
+            raise ValueError(
+                f"brdr version mismatch: installed {installed_version}, "
+                f"expected {brdr_version}"
+            )
 
-    except (ModuleNotFoundError, ValueError):
+    except ModuleNotFoundError:
         install_brdr(python_exe)
+    except ValueError:
+        install_brdr(python_exe, installed_version=installed_version)
 
 
-def show_new_brdr_dialog():
+def show_new_brdr_dialog(installed_version=None):
     from qgis.PyQt.QtWidgets import QMessageBox
 
     msg = QMessageBox()
     msg.setIcon(qmessagebox_warning_icon())
-    msg.setWindowTitle("New installation of 'brdr'")
+    msg.setWindowTitle("brdrQ dependency updated")
+    version_text = f"Required brdr version: <b>{brdr_version}</b>."
+    if installed_version:
+        version_text = (
+            f"Previous brdr version: <b>{installed_version}</b><br>"
+            f"Required brdr version: <b>{brdr_version}</b>."
+        )
     msg.setText(
-        f"A new version of 'brdr'({brdr_version}) is installed for the calculations in the brdrQ-plugin: . A restart of QGIS is required to ensure correct functioning of brdrQ"
+        "<b>brdrQ has updated the required brdr library.</b>"
     )
-    msg.setInformativeText("Please restart QGIS before using brdrQ.")
+    msg.setInformativeText(
+        f"{version_text}<br><br>"
+        "QGIS may still have the previous Python library loaded in memory. "
+        "Please close and reopen QGIS before using brdrQ, so the plugin starts "
+        "with the correct brdr version.<br><br>"
+        "Your QGIS project and data were not changed by this dependency update."
+    )
     msg.setStandardButtons(qmessagebox_ok_button())
     dialog_exec(msg)

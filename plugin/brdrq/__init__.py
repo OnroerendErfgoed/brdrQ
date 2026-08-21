@@ -122,10 +122,21 @@ def show_error_dialog(e):
 
     msg = QMessageBox()
     msg.setIcon(qmessagebox_critical_icon())
-    msg.setWindowTitle("Problem while initializing the brdrQ-plugin")
-    msg.setText("The brdrQ-plugin could not be loaded correctly.")
+    msg.setWindowTitle("brdrQ could not start")
+    msg.setText("<b>brdrQ could not be loaded in this QGIS session.</b>")
     msg.setInformativeText(
-        f"Please restart QGIS and retry.<br>If the problem persists, try to upgrade the plugin or the QGIS-version.<br>If it still persists you can log the issue at: <a href='https://github.com/OnroerendErfgoed/brdrQ/issues'>https://github.com/OnroerendErfgoed/brdrQ/issues</a>.<br>Error-message: {e} "
+        "This usually happens when QGIS is still using an old Python library "
+        "or when a dependency was just installed or updated.<br><br>"
+        "<b>What you can do:</b><br>"
+        "1. Close QGIS completely.<br>"
+        "2. Open QGIS again and enable brdrQ.<br>"
+        "3. If this message appears again, update or reinstall brdrQ and check "
+        "that your QGIS version is supported.<br><br>"
+        "Your QGIS project and data were not changed by this startup error.<br><br>"
+        "If the problem persists, please report it at "
+        "<a href='https://github.com/OnroerendErfgoed/brdrQ/issues'>"
+        "https://github.com/OnroerendErfgoed/brdrQ/issues</a>."
     )
+    msg.setDetailedText(f"{type(e).__name__}: {e}")
     msg.setStandardButtons(qmessagebox_ok_button())
     dialog_exec(msg)
