@@ -15,6 +15,11 @@ A: No. The bulk tools calculate `RESULT_` and `DIFF_` layers as primary output. 
 
 The `CORRECTION_` layer is an optional review/workflow layer. Enable it when you want brdrQ to add `brdrq_state` and prepare features for manual follow-up in QGIS or FeatureAligner. Disable `GENERATE_CORRECTION_LAYER` when that extra layer is not useful.
 
+## **Q: Can I use Autocorrectborders or AutoUpdateBorders in Model Designer without loading all intermediate layers in QGIS?**
+A: Yes. Set `LOAD_OUTPUT_LAYERS=False` when the algorithm is used as an intermediate step in a QGIS model. The `RESULT_`, `DIFF_`, and optional `CORRECTION_` outputs are still created and returned to Processing, so the next model step can consume them. They are just not automatically added to the QGIS project/layer tree.
+
+This is different from `SHOW_INTERMEDIATE_LAYERS`, which controls extra diagnostic processor layers, and from `GENERATE_CORRECTION_LAYER`, which controls whether the optional `CORRECTION_` review/workflow layer is created.
+
 ## **Q: What types of geometries are supported?**
 A: The brdr-library is initially developed to align (Multi-)Polygons to (Multi-)Polygons. However the plugin can also be used for other types of input/reference (Points & Linestrings).
 

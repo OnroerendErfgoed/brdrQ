@@ -15,6 +15,11 @@ A: Nee. De bulktools berekenen `RESULT_`- en `DIFF_`-lagen als primaire output. 
 
 De `CORRECTION_`-laag is een optionele review-/workflowlaag. Zet ze aan wanneer je wil dat brdrQ `brdrq_state` toevoegt en features klaarzet voor manuele opvolging in QGIS of FeatureAligner. Zet `GENERATE_CORRECTION_LAYER` uit wanneer die extra laag niet nuttig is.
 
+## **V: Kan ik Autocorrectborders of AutoUpdateBorders in Model Designer gebruiken zonder alle tussenlagen in QGIS te laden?**
+A: Ja. Zet `LOAD_OUTPUT_LAYERS=False` wanneer het algoritme als tussenstap in een QGIS-model gebruikt wordt. De `RESULT_`-, `DIFF_`- en optionele `CORRECTION_`-outputs worden nog altijd gemaakt en aan Processing teruggegeven, zodat de volgende modelstap ze kan gebruiken. Ze worden alleen niet automatisch toegevoegd aan het QGIS-project/de lagenlijst.
+
+Dit is iets anders dan `SHOW_INTERMEDIATE_LAYERS`, dat extra diagnostische processorlagen toont, en ook iets anders dan `GENERATE_CORRECTION_LAYER`, dat bepaalt of de optionele `CORRECTION_` review-/workflowlaag wordt aangemaakt.
+
 ## **V: Welke types geometrieen worden ondersteund?**
 A: De brdr-bibliotheek is in eerste instantie ontwikkeld voor uitlijning van (Multi-)Polygonen op (Multi-)Polygonen. De plugin kan echter ook gebruikt worden met andere input-/referentietypes (punten en lijngeometrieen).
 

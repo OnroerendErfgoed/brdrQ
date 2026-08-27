@@ -23,7 +23,8 @@ Model Designer.
 2. Choose a reference source: `LOCREF` for a local reference layer, or an on-the-fly reference source.
 3. Start conservatively with a limited `RELEVANT_DISTANCE`, for example `2-5` meters.
 4. Decide how you want to use the output: use `RESULT_` and `DIFF_` directly, or enable the optional `CORRECTION_` review layer.
-5. When you use the `CORRECTION_` workflow, open uncertain features in FeatureAligner and save a selected prediction where needed.
+5. In Model Designer, set `LOAD_OUTPUT_LAYERS=False` when the algorithm is an intermediate step and you do not want the created layers loaded into the QGIS layer tree.
+6. When you use the `CORRECTION_` workflow, open uncertain features in FeatureAligner and save a selected prediction where needed.
 
 ## Parameter Guide
 Each parameter is documented once with the same structure: **Definition**, **Why use it**, **Choices**, and **Impact**.
@@ -106,6 +107,12 @@ Each parameter is documented once with the same structure: **Definition**, **Why
 - **Choices**: True when you want a review/work layer; False when `RESULT_` and `DIFF_` are sufficient.
 - **Impact**: Disabling this keeps the output simpler. It does not change the calculated `RESULT_` or `DIFF_` layers.
 
+### Load created layers in QGIS project
+- **Definition**: Controls whether brdrQ adds the created `RESULT_`, `DIFF_`, optional `CORRECTION_`, and helper layers to the QGIS project/layer tree.
+- **Why use it**: Keeps interactive use convenient, while allowing clean Processing Model Designer workflows.
+- **Choices**: True for normal QGIS use; False when another model step consumes the outputs and you do not want intermediate layers in the layer panel.
+- **Impact**: Disabling this does not prevent the outputs from being created or returned to Processing. It only skips automatic loading into the QGIS project.
+
 ### Work Folder
 - **Definition**: Output/log storage location.
 - **Why use it**: Ensures reproducible output organization.
@@ -130,10 +137,13 @@ Each parameter is documented once with the same structure: **Definition**, **Why
 - **Strict QA**: lower `REVIEW_PERCENTAGE` (`5-8`), conservative `Relevant Distance`, stricter full-reference mode.
 - **Exploration**: `PREDICTIONS=PREDICTIONS`, `Prediction Strategy=ALL`, `SHOW_INTERMEDIATE_LAYERS=True`, `LOG_INFO=True`.
 - **Direct Output Only**: `GENERATE_CORRECTION_LAYER=False` when your process consumes only `RESULT_` and `DIFF_` layers.
+- **Model Designer intermediate step**: `LOAD_OUTPUT_LAYERS=False` so downstream model steps can use the outputs without filling the QGIS layer tree with intermediate layers.
 
 ## Output Parameters
 
-The script generates a group in the QGIS layer tree. Layer names get a suffix with this pattern: `_DIST_<relevant_distance>_<reference>_<timestamp>`. With `PREDICTIONS=PREDICTIONS`, `_PREDICTIONS` is appended.
+With `LOAD_OUTPUT_LAYERS=True`, the script generates a group in the QGIS layer tree. Layer names get a suffix with this pattern: `_DIST_<relevant_distance>_<reference>_<timestamp>`. With `PREDICTIONS=PREDICTIONS`, `_PREDICTIONS` is appended.
+
+With `LOAD_OUTPUT_LAYERS=False`, the same outputs are created and returned to QGIS Processing, but they are not automatically loaded into the project. This is useful when Autocorrectborders is an intermediate step in Model Designer.
 
 The main output layers are:
 
@@ -159,6 +169,7 @@ Use this workflow when your process only needs the calculated geometry and the d
 2. Use `RESULT_DIST_...` as the aligned geometry output.
 3. Use `DIFF_DIST_...`, `DIFF_PLUS_DIST_...`, and `DIFF_MIN_DIST_...` for QA, reporting, or filtering.
 4. Disable `GENERATE_CORRECTION_LAYER` when the extra review layer would only create noise in your project.
+5. In Model Designer, also set `LOAD_OUTPUT_LAYERS=False` when the next model step consumes the output and the layers should not appear in the project.
 
 This is often the cleanest option for ETL, model builder, batch processing, or users who already have their own QA process.
 
@@ -225,6 +236,7 @@ params = {
                 "PREDICTION_STRATEGY": 0,
                 "REVIEW_PERCENTAGE": 10,
                 "GENERATE_CORRECTION_LAYER": True,
+                "LOAD_OUTPUT_LAYERS": True,
                 "ADD_METADATA": True,
                 "ADD_ATTRIBUTES": True,
                 "SHOW_INTERMEDIATE_LAYERS": True,

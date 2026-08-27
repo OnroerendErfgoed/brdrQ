@@ -421,6 +421,12 @@ def deserialize_setting(raw_value, default=None, enum_classes=None):
     # 2. If it's not our special JSON format, it's a standard type (str, int, bool)
     if not isinstance(raw_value, str):
         return raw_value
+    if isinstance(default, bool):
+        normalized_value = raw_value.strip().lower()
+        if normalized_value in ("true", "1", "yes", "on"):
+            return True
+        if normalized_value in ("false", "0", "no", "off"):
+            return False
     try:
         data = json.loads(raw_value)
         return _reconstruct_object(data, enum_classes)
@@ -874,7 +880,7 @@ def gpkg_layer_to_map(name, gpkg_path, layer_name, symbol, visible, group):
 
 
 def featurecollection_to_layer(
-    name, featurecollection, symbol, visible, group, tempfolder
+    name, featurecollection, symbol, visible, group, tempfolder, add_to_project=True
 ):
     """
     Add a featurecollection to a QGIS-layer to add it to the TOC. If featurecollection has multiple types (point,line, polygon) these types are added seperately.
@@ -886,7 +892,13 @@ def featurecollection_to_layer(
             name_x = name + "_" + str(x)
             geojson_x = filter_geojson_by_geometry_type(featurecollection, x)
             featurecollection_to_layer(
-                name_x, geojson_x, symbol, visible, group, tempfolder
+                name_x,
+                geojson_x,
+                symbol,
+                visible,
+                group,
+                tempfolder,
+                add_to_project=add_to_project,
             )
         return
 
@@ -922,20 +934,21 @@ def featurecollection_to_layer(
         vl.renderer().setSymbol(symbol)
     # vl.setOpacity(0.5)
 
-    # adding layer to TOC
-    qinst.addMapLayer(
-        vl, False
-    )  # False so that it doesn't get inserted at default position
+    if add_to_project:
+        # adding layer to TOC
+        qinst.addMapLayer(
+            vl, False
+        )  # False so that it doesn't get inserted at default position
 
-    root.insertLayer(0, vl)
+        root.insertLayer(0, vl)
 
-    moved_node, _ = move_to_group(vl, group)
-    if moved_node is not None and hasattr(moved_node, "setItemVisibilityChecked"):
-        moved_node.setItemVisibilityChecked(bool(visible))
+        moved_node, _ = move_to_group(vl, group)
+        if moved_node is not None and hasattr(moved_node, "setItemVisibilityChecked"):
+            moved_node.setItemVisibilityChecked(bool(visible))
 
-    vl.triggerRepaint()
-    if iface is not None:
-        iface.layerTreeView().refreshLayerSymbology(vl.id())
+        vl.triggerRepaint()
+        if iface is not None:
+            iface.layerTreeView().refreshLayerSymbology(vl.id())
     return vl
 
 
@@ -1605,7 +1618,9 @@ def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_
 
 
 def setFilterOnLayer(layername, filter):
-    layer = get_layer_by_name(layername)
+    layer = layername
+    if isinstance(layername, str):
+        layer = get_layer_by_name(layername)
     if not layer is None:
         layer.setSubsetString(filter)
     return
@@ -1619,13 +1634,18 @@ def remove_empty_features_from_diff_layers(layers_to_filter):
     for lyr in layers_to_filter:
         if not lyr:
             continue
+        layer = lyr
+        if isinstance(lyr, str):
+            layer = get_layer_by_name(lyr)
+        if layer is None:
+            continue
         try:
-            g_type = get_layer_by_name(lyr).geometryType()
+            g_type = layer.geometryType()
         except:
             g_type = Qgis.GeometryType.Unknown
 
         if g_type in supported_geom_types:
-            setFilterOnLayer(lyr, filter)
+            setFilterOnLayer(layer, filter)
 
 
 def thematic_preparation(input_thematic_layer, relevant_distance, context, feedback):

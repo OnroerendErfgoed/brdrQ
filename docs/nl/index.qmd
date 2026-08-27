@@ -49,3 +49,4 @@ De tools kunnen apart of gecombineerd gebruikt worden. `RESULT_`- en `DIFF_`-lag
 
 1. Directe outputworkflow: gebruik [Autocorrectborders (BULK)](autocorrectborders.md) of [GRB Updater (BULK)](autoupdateborders.md), verwerk daarna de `RESULT_`/`brdrQ_RESULT_`-laag en controleer de `DIFF_`/`brdrQ_DIFF_`-lagen in je eigen QA-proces.
 2. Reviewworkflow: zet de optionele `CORRECTION_`-laag aan en gebruik [Feature aligner](featurealigner.md) om features met `brdrq_state` zoals `to_review` of `to_update` te herbekijken of bij te sturen.
+3. Model Designer-workflow: zet `LOAD_OUTPUT_LAYERS=False` op bulkstappen die alleen tussenstap zijn, zodat de volgende modelstap de outputs kan gebruiken zonder die lagen in het QGIS-project te laden.

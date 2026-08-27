@@ -367,3 +367,11 @@ def add_standard_result_outputs(
             QgsProcessing.TypeVectorAnyGeometry,
         )
     )
+
+
+def processing_output_value(layer, load_output_layers):
+    if layer is None or load_output_layers:
+        return layer
+    if hasattr(layer, "source"):
+        return layer.source()
+    return layer

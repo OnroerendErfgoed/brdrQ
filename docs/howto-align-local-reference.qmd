@@ -64,6 +64,7 @@ Start with a conservative setup and only make it more aggressive when the result
 | `Full Reference Strategy` | `PREFER_FULL_REFERENCE` | Prefers candidates that fully match reference coverage. |
 | `REVIEW_PERCENTAGE` | `10` | Sends larger changes to review when a review layer is used. |
 | `GENERATE_CORRECTION_LAYER` | `False` for direct output, `True` for review | Keeps the output aligned with your workflow. |
+| `LOAD_OUTPUT_LAYERS` | `True` for interactive use, `False` in Model Designer | Keeps model chains clean when the outputs are only intermediate layers. |
 
 ## Steps In QGIS
 
@@ -77,7 +78,8 @@ Start with a conservative setup and only make it more aggressive when the result
 8. Choose your output workflow:
    * direct output: set `GENERATE_CORRECTION_LAYER=False`;
    * review in QGIS: set `GENERATE_CORRECTION_LAYER=True`.
-9. Run the algorithm.
+9. If you use the algorithm as an intermediate Model Designer step, set `LOAD_OUTPUT_LAYERS=False`.
+10. Run the algorithm.
 
 ## Expected Output
 
@@ -93,6 +95,8 @@ If enabled, brdrQ also creates:
 * `CORRECTION_DIST_...`: an optional review/workflow layer with `brdrq_state`.
 
 You can use `RESULT_DIST_...` and the `DIFF_` layers directly. You do not need the `CORRECTION_` layer unless your workflow includes manual review in QGIS or FeatureAligner.
+
+When `LOAD_OUTPUT_LAYERS=False`, these outputs are still returned to QGIS Processing and can be connected to the next Model Designer step. They are just not automatically added to the project layer tree.
 
 ## How To Check The Result
 
@@ -138,6 +142,7 @@ Use `Prediction Strategy=ALL` only for analysis. In that mode, brdrQ does not cr
 | Too many large changes | `RELEVANT_DISTANCE` is too high | Lower the distance and rerun. |
 | Too little alignment | `RELEVANT_DISTANCE` is too low | Increase gradually, for example from `2` to `5`. |
 | Review layer not created | `GENERATE_CORRECTION_LAYER=False` or `Prediction Strategy=ALL` | Use direct output, or enable the review layer with a one-result strategy such as `BEST`. |
+| Model run creates too many layers in QGIS | `LOAD_OUTPUT_LAYERS=True` | Set `LOAD_OUTPUT_LAYERS=False` for intermediate model steps. |
 | Results are hard to trace | Non-unique thematic ID | Fix the ID field before running the tool. |
 
 ## Next Steps

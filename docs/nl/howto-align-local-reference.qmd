@@ -64,6 +64,7 @@ Start voorzichtig en maak de instellingen alleen agressiever wanneer het resulta
 | `Full Reference Strategy` | `PREFER_FULL_REFERENCE` | Verkiest kandidaten die volledig binnen de referentiedekking passen. |
 | `REVIEW_PERCENTAGE` | `10` | Stuurt grotere wijzigingen naar review wanneer je een reviewlaag gebruikt. |
 | `GENERATE_CORRECTION_LAYER` | `False` voor directe output, `True` voor review | Stemt de output af op je workflow. |
+| `LOAD_OUTPUT_LAYERS` | `True` voor interactief gebruik, `False` in Model Designer | Houdt modelketens proper wanneer de outputs alleen tussenlagen zijn. |
 
 ## Stappen In QGIS
 
@@ -77,7 +78,8 @@ Start voorzichtig en maak de instellingen alleen agressiever wanneer het resulta
 8. Kies je outputworkflow:
    * directe output: zet `GENERATE_CORRECTION_LAYER=False`;
    * review in QGIS: zet `GENERATE_CORRECTION_LAYER=True`.
-9. Run het algoritme.
+9. Gebruik je het algoritme als tussenstap in Model Designer, zet dan `LOAD_OUTPUT_LAYERS=False`.
+10. Run het algoritme.
 
 ## Verwachte Output
 
@@ -93,6 +95,8 @@ Als je dit aanzet, maakt brdrQ ook:
 * `CORRECTION_DIST_...`: een optionele review-/workflowlaag met `brdrq_state`.
 
 Je kan `RESULT_DIST_...` en de `DIFF_`-lagen rechtstreeks gebruiken. Je hebt de `CORRECTION_`-laag niet nodig tenzij je workflow manuele review in QGIS of FeatureAligner bevat.
+
+Met `LOAD_OUTPUT_LAYERS=False` worden deze outputs nog altijd aan QGIS Processing teruggegeven en kan je ze verbinden met de volgende stap in Model Designer. Ze worden alleen niet automatisch aan de QGIS-lagenlijst toegevoegd.
 
 ## Hoe Controleer Je Het Resultaat?
 
@@ -138,6 +142,7 @@ Gebruik `Prediction Strategy=ALL` alleen voor analyse. In die modus maakt brdrQ 
 | Te veel grote wijzigingen | `RELEVANT_DISTANCE` is te hoog | Verlaag de afstand en run opnieuw. |
 | Te weinig uitlijning | `RELEVANT_DISTANCE` is te laag | Verhoog geleidelijk, bijvoorbeeld van `2` naar `5`. |
 | Reviewlaag wordt niet aangemaakt | `GENERATE_CORRECTION_LAYER=False` of `Prediction Strategy=ALL` | Gebruik directe output, of zet de reviewlaag aan met een strategie zoals `BEST`. |
+| Modelrun maakt te veel lagen in QGIS | `LOAD_OUTPUT_LAYERS=True` | Zet `LOAD_OUTPUT_LAYERS=False` voor tussenstappen in het model. |
 | Resultaten zijn moeilijk traceerbaar | Niet-uniek thematisch ID | Herstel het ID-veld voor je de tool runt. |
 
 ## Volgende Stappen

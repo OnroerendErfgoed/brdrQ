@@ -54,5 +54,6 @@ The tools can be used separately or in combination with each other. `RESULT_` an
 
 1. Direct output workflow: use [Autocorrectborders (BULK)](autocorrectborders.md) or [GRB Updater (BULK)](autoupdateborders.md), then consume the `RESULT_`/`brdrQ_RESULT_` layer and inspect the `DIFF_`/`brdrQ_DIFF_` layers in your own QA process.
 2. Review workflow: enable the optional `CORRECTION_` layer, then use [Feature aligner](featurealigner.md) to review or update features with `brdrq_state` values such as `to_review` or `to_update`.
+3. Model Designer workflow: set `LOAD_OUTPUT_LAYERS=False` on intermediate bulk steps when the next model step consumes the outputs and you do not want those layers loaded into the QGIS project.
 
 

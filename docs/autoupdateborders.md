@@ -18,6 +18,7 @@ Model Designer.
 2. Choose the correct GRB reference type for the update.
 3. Use `PREDICTION_STRATEGY=BEST` for a production-oriented update, or `ALL` when you first want to inspect all candidates.
 4. Decide whether your workflow uses the direct `brdrQ_RESULT_`/`brdrQ_DIFF_` output, or the optional `CORRECTION_` review layer.
+5. In Model Designer, set `LOAD_OUTPUT_LAYERS=False` when this algorithm is only an intermediate step.
 
 ## Parameter Guide
 
@@ -93,6 +94,12 @@ Model Designer.
 - **Choices**: True when you want a review/work layer; False when `brdrQ_RESULT_` and `brdrQ_DIFF_` are sufficient.
 - **Impact**: Disabling this keeps update runs cleaner. It does not change the calculated result or difference layers.
 
+### Load created layers in QGIS project
+- **Definition**: Controls whether brdrQ adds the created `brdrQ_RESULT_`, `brdrQ_DIFF_`, and optional `CORRECTION_` layers to the QGIS project/layer tree.
+- **Why use it**: Keeps interactive update runs convenient, while allowing clean Processing Model Designer workflows.
+- **Choices**: True for normal QGIS use; False when another model step consumes the outputs and you do not want intermediate layers in the layer panel.
+- **Impact**: Disabling this does not prevent the outputs from being created or returned to Processing. It only skips automatic loading into the QGIS project.
+
 ### Work Folder
 - **Definition**: Output folder for generated artifacts.
 - **Why use it**: Centralized run outputs/logs.
@@ -117,11 +124,14 @@ Model Designer.
 - **Ambiguity Analysis**: `PREDICTION_STRATEGY=ALL`, higher distance, `LOG_INFO=True`.
 - **Safe Fallback**: `PREDICTION_STRATEGY=ORIGINAL` when preserving source geometry is preferred over uncertain shifts.
 - **Direct Output Only**: `GENERATE_CORRECTION_LAYER=False` when downstream processing consumes only `brdrQ_RESULT_` and `brdrQ_DIFF_`.
+- **Model Designer intermediate step**: `LOAD_OUTPUT_LAYERS=False` so downstream model steps can use the outputs without filling the QGIS layer tree with intermediate layers.
 
 
 ### Output Parameters
 
-The script generates a group in the QGIS layer tree. Layer names get a suffix with this pattern: `_<reference>_<timestamp>`.
+With `LOAD_OUTPUT_LAYERS=True`, the script generates a group in the QGIS layer tree. Layer names get a suffix with this pattern: `_<reference>_<timestamp>`.
+
+With `LOAD_OUTPUT_LAYERS=False`, the same outputs are created and returned to QGIS Processing, but they are not automatically loaded into the project. This is useful when AutoUpdateBorders is an intermediate step in Model Designer.
 
 The main output layers are:
 
@@ -137,7 +147,7 @@ The `CORRECTION_` layer is only generated when `GENERATE_CORRECTION_LAYER=True` 
 
 ## Workflow Choices
 
-For direct processing, use `brdrQ_RESULT_...` as the updated geometry layer and the `brdrQ_DIFF_...` layers for QA, reporting, or filtering. Disable `GENERATE_CORRECTION_LAYER` when the extra review layer would not be used.
+For direct processing, use `brdrQ_RESULT_...` as the updated geometry layer and the `brdrQ_DIFF_...` layers for QA, reporting, or filtering. Disable `GENERATE_CORRECTION_LAYER` when the extra review layer would not be used. In Model Designer, also set `LOAD_OUTPUT_LAYERS=False` when the next model step consumes the output and the layers should not appear in the project.
 
 For review in QGIS, enable the `CORRECTION_` layer and use `brdrq_state` to decide what needs human attention. The values have the same workflow meaning as in Autocorrectborders: `auto_updated` was applied automatically, `to_review` needs review, `to_update` still needs manual handling, and `manual_updated` is set by FeatureAligner after saving a selected prediction.
 
@@ -162,6 +172,7 @@ output = processing.run(
         "THRESHOLD_OVERLAP_PERCENTAGE": 50,
         "REVIEW_PERCENTAGE": 10,
         "GENERATE_CORRECTION_LAYER": True,
+        "LOAD_OUTPUT_LAYERS": True,
         "PREDICTION_STRATEGY": 2,
         "FULL_REFERENCE_STRATEGY": 2,
         "LOG_INFO": True,

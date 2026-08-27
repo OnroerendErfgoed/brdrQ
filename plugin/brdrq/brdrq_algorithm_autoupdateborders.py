@@ -61,6 +61,7 @@ from .brdrq_algorithm_common import (
     get_log_feedback,
     get_prediction_strategy_options,
     initialize_default_attributes,
+    processing_output_value,
     resolve_thematic_layer_and_crs,
     write_saved_settings,
 )
@@ -114,6 +115,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
     PREDICTION_STRATEGY = None
     FULL_REFERENCE_STRATEGY = None
     GENERATE_CORRECTION_LAYER = None
+    LOAD_OUTPUT_LAYERS = None
     LOG_INFO = None
     METADATA_FIELDNAME = None
 
@@ -343,6 +345,13 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         )
         add_boolean_parameter(
             algorithm=self,
+            name="LOAD_OUTPUT_LAYERS",
+            description='<br>Load created layers in QGIS project<br><i style="color: gray;">Adds RESULT, DIFF and optional CORRECTION layers to the QGIS layer tree. Disable this when the algorithm is used as an intermediate step in Model Designer; outputs are still returned to the model.</i>',
+            default_value=self.default_load_output_layers,
+            advanced=True,
+        )
+        add_boolean_parameter(
+            algorithm=self,
             name="LOG_INFO",
             description="Write extra logging (from brdr-log)",
             default_value=self.default_extra_logging,
@@ -370,6 +379,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo("START")
 
         self.prepare_parameters(parameters, context)
+        if not self.LOAD_OUTPUT_LAYERS:
+            feedback.pushInfo(
+                "Output layers are returned to the Processing model but not loaded in the QGIS project."
+            )
 
         thematic, thematic_buffered, self.CRS = thematic_preparation(
             self.LAYER_THEMATIC,
@@ -471,65 +484,68 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             return {}
 
         # Add RESULT TO TOC
+        result_diff_min = None
+        result_diff_plus = None
+        result_diff = None
         if "result_diff_min" in fcs_actualisation:
-            result_diff_min = "result_diff_min"
-            geojson_result_diff_min = fcs_actualisation[result_diff_min]
-            featurecollection_to_layer(
+            result_diff_min_type = "result_diff_min"
+            geojson_result_diff_min = fcs_actualisation[result_diff_min_type]
+            result_diff_min = featurecollection_to_layer(
                 self.LAYER_RESULT_DIFF_MIN,
                 geojson_result_diff_min,
-                result_diff_min,
+                result_diff_min_type,
                 True,
                 self.GROUP_LAYER,
                 self.WORKFOLDER,
+                add_to_project=self.LOAD_OUTPUT_LAYERS,
             )
         if "result_diff_plus" in fcs_actualisation:
-            result_diff_plus = "result_diff_plus"
-            geojson_result_diff_plus = fcs_actualisation[result_diff_plus]
-            featurecollection_to_layer(
+            result_diff_plus_type = "result_diff_plus"
+            geojson_result_diff_plus = fcs_actualisation[result_diff_plus_type]
+            result_diff_plus = featurecollection_to_layer(
                 self.LAYER_RESULT_DIFF_PLUS,
                 geojson_result_diff_plus,
-                result_diff_plus,
+                result_diff_plus_type,
                 True,
                 self.GROUP_LAYER,
                 self.WORKFOLDER,
+                add_to_project=self.LOAD_OUTPUT_LAYERS,
             )
         if "result_diff" in fcs_actualisation:
-            result_diff = "result_diff"
-            geojson_result_diff = fcs_actualisation[result_diff]
-            featurecollection_to_layer(
+            result_diff_type = "result_diff"
+            geojson_result_diff = fcs_actualisation[result_diff_type]
+            result_diff = featurecollection_to_layer(
                 self.LAYER_RESULT_DIFF,
                 geojson_result_diff,
-                result_diff,
+                result_diff_type,
                 False,
                 self.GROUP_LAYER,
                 self.WORKFOLDER,
+                add_to_project=self.LOAD_OUTPUT_LAYERS,
             )
 
         # FILTER empty geometries out of diff layers
         # This does not work for points so we do not add filter for point-layers
         remove_empty_features_from_diff_layers([
-            self.LAYER_RESULT_DIFF_MIN,
-            self.LAYER_RESULT_DIFF_PLUS,
-            self.LAYER_RESULT_DIFF,
+            result_diff_min,
+            result_diff_plus,
+            result_diff,
         ])
 
-        result = "result"
-        geojson_result = fcs_actualisation[result]
-        featurecollection_to_layer(
+        result_type = "result"
+        geojson_result = fcs_actualisation[result_type]
+        result = featurecollection_to_layer(
             self.LAYER_RESULT,
             geojson_result,
-            result,
+            result_type,
             True,
             self.GROUP_LAYER,
             self.WORKFOLDER,
+            add_to_project=self.LOAD_OUTPUT_LAYERS,
         )
 
         feedback.pushInfo("Resulting geometry calculated")
         feedback.pushInfo("END ACTUALISATION")
-        result = self._get_output_layer(self.LAYER_RESULT)
-        result_diff = self._get_output_layer(self.LAYER_RESULT_DIFF)
-        result_diff_plus = self._get_output_layer(self.LAYER_RESULT_DIFF_PLUS)
-        result_diff_min = self._get_output_layer(self.LAYER_RESULT_DIFF_MIN)
 
         correction_layer = None
         if (
@@ -539,9 +555,10 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             feedback.pushInfo("Generating correction layer")
             try:
                 correction_layer = generate_correction_layer(thematic, result,id_theme_brdrq_fieldname=self.ID_THEME_BRDRQ_FIELDNAME,workfolder=self.WORKFOLDER, correction_layer_name = "CORRECTION" + self.SUFFIX,review_percentage=self.REVIEW_PERCENTAGE, add_metadata=True)
-                QgsProject.instance().addMapLayer(correction_layer)
-                set_layer_visibility(correction_layer, True)
-                move_to_group(correction_layer, self.GROUP_LAYER)
+                if self.LOAD_OUTPUT_LAYERS:
+                    QgsProject.instance().addMapLayer(correction_layer)
+                    set_layer_visibility(correction_layer, True)
+                    move_to_group(correction_layer, self.GROUP_LAYER)
             except Exception as e:
                 feedback.pushWarning(f"problem generating correction layer: {str(e)}")
         elif not self.GENERATE_CORRECTION_LAYER:
@@ -564,11 +581,21 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
         feedback.pushInfo("END PROCESSING - Results calculated")
         return {
-            "OUTPUT_RESULT": result,
-            "OUTPUT_RESULT_DIFF": result_diff,
-            "OUTPUT_RESULT_DIFF_PLUS": result_diff_plus,
-            "OUTPUT_RESULT_DIFF_MIN": result_diff_min,
-            "OUTPUT_CORRECTION": correction_layer,
+            "OUTPUT_RESULT": processing_output_value(
+                result, self.LOAD_OUTPUT_LAYERS
+            ),
+            "OUTPUT_RESULT_DIFF": processing_output_value(
+                result_diff, self.LOAD_OUTPUT_LAYERS
+            ),
+            "OUTPUT_RESULT_DIFF_PLUS": processing_output_value(
+                result_diff_plus, self.LOAD_OUTPUT_LAYERS
+            ),
+            "OUTPUT_RESULT_DIFF_MIN": processing_output_value(
+                result_diff_min, self.LOAD_OUTPUT_LAYERS
+            ),
+            "OUTPUT_CORRECTION": processing_output_value(
+                correction_layer, self.LOAD_OUTPUT_LAYERS
+            ),
         }
 
     def _get_output_layer(self, layer_name):
@@ -596,6 +623,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             "THRESHOLD_OVERLAP_PERCENTAGE": 50,
             "REVIEW_PERCENTAGE": 10,
             "GENERATE_CORRECTION_LAYER": True,
+            "LOAD_OUTPUT_LAYERS": True,
             "WORK_FOLDER": "brdrQ",
             "METADATA_FIELD": BASE_METADATA_FIELD_NAME,
             "LOG_INFO": False,
@@ -617,6 +645,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ("default_workfolder", "WORK_FOLDER"),
                 ("default_review_percentage", "REVIEW_PERCENTAGE"),
                 ("default_generate_correction_layer", "GENERATE_CORRECTION_LAYER"),
+                ("default_load_output_layers", "LOAD_OUTPUT_LAYERS"),
                 ("default_metadata_field", "METADATA_FIELD"),
                 ("default_extra_logging", "LOG_INFO"),
             ],
@@ -639,6 +668,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ("default_workfolder", "default_workfolder", None, "global"),
                 ("default_review_percentage", "default_review_percentage"),
                 ("default_generate_correction_layer", "default_generate_correction_layer"),
+                ("default_load_output_layers", "default_load_output_layers"),
                 ("default_metadata_field", "default_metadata_field"),
                 ("default_extra_logging", "default_extra_logging"),
             ],
@@ -670,6 +700,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ("default_workfolder", "default_workfolder", "global"),
                 ("default_review_percentage", "default_review_percentage"),
                 ("default_generate_correction_layer", "default_generate_correction_layer"),
+                ("default_load_output_layers", "default_load_output_layers"),
                 ("default_metadata_field", "default_metadata_field"),
                 ("default_extra_logging", "default_extra_logging"),
             ],
@@ -683,6 +714,8 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             parameters["GENERATE_CORRECTION_LAYER"] = (
                 self.default_generate_correction_layer
             )
+        if "LOAD_OUTPUT_LAYERS" not in parameters:
+            parameters["LOAD_OUTPUT_LAYERS"] = self.default_load_output_layers
 
         # PARAMETER PREPARATION
         assign_parameter_values(
@@ -703,6 +736,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
                 ("default_workfolder", "WORK_FOLDER"),
                 ("default_metadata_field", "METADATA_FIELD"),
                 ("default_generate_correction_layer", "GENERATE_CORRECTION_LAYER"),
+                ("default_load_output_layers", "LOAD_OUTPUT_LAYERS"),
                 ("default_extra_logging", "LOG_INFO"),
             ],
         )
@@ -749,6 +783,7 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
             ENUM_PREDICTION_STRATEGY_OPTIONS[self.default_prediction_strategy]
         ]
         self.GENERATE_CORRECTION_LAYER = self.default_generate_correction_layer
+        self.LOAD_OUTPUT_LAYERS = self.default_load_output_layers
 
         ref = GRB_TYPES[parameters["ENUM_REFERENCE"]]
         self.GRB_TYPE, layer_reference_name, ref_suffix = get_reference_params(

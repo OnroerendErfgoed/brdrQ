@@ -20,6 +20,7 @@ Model Designer.
 2. Kies het juiste GRB-referentietype voor de update.
 3. Gebruik `PREDICTION_STRATEGY=BEST` voor een productiegerichte update, of `ALL` wanneer je eerst alle kandidaten wil inspecteren.
 4. Kies of je workflow de directe `brdrQ_RESULT_`/`brdrQ_DIFF_`-output gebruikt, of de optionele `CORRECTION_`-reviewlaag.
+5. Zet in Model Designer `LOAD_OUTPUT_LAYERS=False` wanneer dit algoritme alleen een tussenstap is.
 
 ## Parametergids
 
@@ -95,6 +96,12 @@ Model Designer.
 - **Mogelijke keuzes**: True wanneer je een review-/werklaag wil; False wanneer `brdrQ_RESULT_` en `brdrQ_DIFF_` volstaan.
 - **Gevolg**: Uitzetten houdt updateruns eenvoudiger. De berekende resultaat- en verschil-lagen veranderen hierdoor niet.
 
+### Load created layers in QGIS project
+- **Definitie**: Bepaalt of brdrQ de gemaakte `brdrQ_RESULT_`-, `brdrQ_DIFF_`- en optionele `CORRECTION_`-lagen toevoegt aan het QGIS-project/de lagenlijst.
+- **Waarom gebruiken**: Houdt interactieve updateruns handig, maar laat propere Processing Model Designer-workflows toe.
+- **Mogelijke keuzes**: True voor normaal QGIS-gebruik; False wanneer een volgende modelstap de outputs gebruikt en je geen tussenlagen in het lagenpaneel wil.
+- **Gevolg**: Uitzetten verhindert niet dat outputs gemaakt of aan Processing teruggegeven worden. Het slaat alleen het automatisch laden in het QGIS-project over.
+
 ### Work Folder
 - **Definitie**: Uitvoermap voor gegenereerde resultaten en logs.
 - **Waarom gebruiken**: Centraliseert output per run.
@@ -119,11 +126,14 @@ Model Designer.
 - **Analyse van ambiguiteit**: `PREDICTION_STRATEGY=ALL`, hogere afstand, `LOG_INFO=True`.
 - **Veilige fallback**: `PREDICTION_STRATEGY=ORIGINAL` wanneer het behouden van de brongeometrie beter is dan een onzekere verschuiving.
 - **Enkel directe output**: `GENERATE_CORRECTION_LAYER=False` wanneer verdere verwerking alleen `brdrQ_RESULT_` en `brdrQ_DIFF_` gebruikt.
+- **Tussenstap in Model Designer**: `LOAD_OUTPUT_LAYERS=False` zodat volgende modelstappen de outputs kunnen gebruiken zonder de QGIS-lagenlijst te vullen met tussenlagen.
 
 
 ### Uitvoerparameters
 
-Het script genereert een groep in de QGIS-lagenlijst. De laagnamen krijgen een suffix volgens dit patroon: `_<reference>_<timestamp>`.
+Met `LOAD_OUTPUT_LAYERS=True` genereert het script een groep in de QGIS-lagenlijst. De laagnamen krijgen een suffix volgens dit patroon: `_<reference>_<timestamp>`.
+
+Met `LOAD_OUTPUT_LAYERS=False` worden dezelfde outputs gemaakt en aan QGIS Processing teruggegeven, maar niet automatisch in het project geladen. Dit is nuttig wanneer AutoUpdateBorders een tussenstap is in Model Designer.
 
 De belangrijkste outputlagen zijn:
 
@@ -139,7 +149,7 @@ De `CORRECTION_`-laag wordt alleen aangemaakt wanneer `GENERATE_CORRECTION_LAYER
 
 ## Workflowkeuzes
 
-Voor directe verwerking gebruik je `brdrQ_RESULT_...` als geactualiseerde geometrielaag en de `brdrQ_DIFF_...`-lagen voor QA, rapportering of filtering. Zet `GENERATE_CORRECTION_LAYER` uit wanneer de extra reviewlaag niet gebruikt wordt.
+Voor directe verwerking gebruik je `brdrQ_RESULT_...` als geactualiseerde geometrielaag en de `brdrQ_DIFF_...`-lagen voor QA, rapportering of filtering. Zet `GENERATE_CORRECTION_LAYER` uit wanneer de extra reviewlaag niet gebruikt wordt. Zet in Model Designer ook `LOAD_OUTPUT_LAYERS=False` wanneer de volgende modelstap de output gebruikt en de lagen niet in het project moeten verschijnen.
 
 Voor review in QGIS zet je de `CORRECTION_`-laag aan en gebruik je `brdrq_state` om te bepalen welke features menselijke aandacht vragen. De waarden hebben dezelfde workflowbetekenis als bij Autocorrectborders: `auto_updated` is automatisch toegepast, `to_review` vraagt controle, `to_update` moet nog manueel behandeld worden, en `manual_updated` wordt door FeatureAligner gezet na het opslaan van een gekozen voorspelling.
 
@@ -163,6 +173,7 @@ output = processing.run(
         "THRESHOLD_OVERLAP_PERCENTAGE": 50,
         "REVIEW_PERCENTAGE": 10,
         "GENERATE_CORRECTION_LAYER": True,
+        "LOAD_OUTPUT_LAYERS": True,
         "PREDICTION_STRATEGY": 2,
         "FULL_REFERENCE_STRATEGY": 2,
         "LOG_INFO": True,

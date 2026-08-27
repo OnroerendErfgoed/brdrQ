@@ -24,7 +24,8 @@ Model Designer.
 2. Kies een referentiebron: `LOCREF` voor een lokale referentielaag, of een on-the-fly referentiebron.
 3. Start voorzichtig met een beperkte `RELEVANT_DISTANCE`, bijvoorbeeld `2-5` meter.
 4. Kies hoe je de output wil gebruiken: rechtstreeks met `RESULT_` en `DIFF_`, of met de optionele `CORRECTION_`-reviewlaag.
-5. Gebruik je de `CORRECTION_`-workflow, open dan twijfelgevallen in FeatureAligner en sla een gekozen voorspelling op indien nodig.
+5. Zet in Model Designer `LOAD_OUTPUT_LAYERS=False` wanneer het algoritme alleen een tussenstap is en je de gemaakte lagen niet in de QGIS-lagenlijst wil laden.
+6. Gebruik je de `CORRECTION_`-workflow, open dan twijfelgevallen in FeatureAligner en sla een gekozen voorspelling op indien nodig.
 
 ## Parametergids
 Elke parameter wordt eenduidig uitgelegd met: **Definitie**, **Waarom gebruiken**, **Mogelijke keuzes**, en **Gevolg**.
@@ -107,6 +108,12 @@ Elke parameter wordt eenduidig uitgelegd met: **Definitie**, **Waarom gebruiken*
 - **Mogelijke keuzes**: True wanneer je een review-/werklaag wil; False wanneer `RESULT_` en `DIFF_` volstaan.
 - **Gevolg**: Uitzetten maakt de output eenvoudiger. De berekende `RESULT_`- en `DIFF_`-lagen veranderen hierdoor niet.
 
+### Load created layers in QGIS project
+- **Definitie**: Bepaalt of brdrQ de gemaakte `RESULT_`-, `DIFF_`-, optionele `CORRECTION_`- en hulplagen toevoegt aan het QGIS-project/de lagenlijst.
+- **Waarom gebruiken**: Houdt interactief gebruik handig, maar laat propere Processing Model Designer-workflows toe.
+- **Mogelijke keuzes**: True voor normaal QGIS-gebruik; False wanneer een volgende modelstap de outputs gebruikt en je geen tussenlagen in het lagenpaneel wil.
+- **Gevolg**: Uitzetten verhindert niet dat outputs gemaakt of aan Processing teruggegeven worden. Het slaat alleen het automatisch laden in het QGIS-project over.
+
 ### Work Folder
 - **Definitie**: Locatie voor output en logbestanden.
 - **Waarom gebruiken**: Zorgt voor reproduceerbare outputorganisatie.
@@ -131,10 +138,13 @@ Elke parameter wordt eenduidig uitgelegd met: **Definitie**, **Waarom gebruiken*
 - **Strikte QA**: lagere `REVIEW_PERCENTAGE` (`5-8`), voorzichtige `Relevant Distance`, striktere full-reference-instelling.
 - **Verkenning**: `PREDICTIONS=PREDICTIONS`, `Prediction Strategy=ALL`, `SHOW_INTERMEDIATE_LAYERS=True`, `LOG_INFO=True`.
 - **Enkel directe output**: `GENERATE_CORRECTION_LAYER=False` wanneer je proces alleen `RESULT_`- en `DIFF_`-lagen gebruikt.
+- **Tussenstap in Model Designer**: `LOAD_OUTPUT_LAYERS=False` zodat volgende modelstappen de outputs kunnen gebruiken zonder de QGIS-lagenlijst te vullen met tussenlagen.
 
 ## Uitvoerparameters
 
-Het script genereert een groep in de QGIS-lagenlijst. De laagnamen krijgen een suffix volgens dit patroon: `_DIST_<relevant_distance>_<reference>_<timestamp>`. Bij `PREDICTIONS=PREDICTIONS` komt daar `_PREDICTIONS` bij.
+Met `LOAD_OUTPUT_LAYERS=True` genereert het script een groep in de QGIS-lagenlijst. De laagnamen krijgen een suffix volgens dit patroon: `_DIST_<relevant_distance>_<reference>_<timestamp>`. Bij `PREDICTIONS=PREDICTIONS` komt daar `_PREDICTIONS` bij.
+
+Met `LOAD_OUTPUT_LAYERS=False` worden dezelfde outputs gemaakt en aan QGIS Processing teruggegeven, maar niet automatisch in het project geladen. Dit is nuttig wanneer Autocorrectborders een tussenstap is in Model Designer.
 
 De belangrijkste outputlagen zijn:
 
@@ -160,6 +170,7 @@ Gebruik deze workflow wanneer je proces alleen de berekende geometrie en de vers
 2. Gebruik `RESULT_DIST_...` als uitgelijnde geometrie-output.
 3. Gebruik `DIFF_DIST_...`, `DIFF_PLUS_DIST_...` en `DIFF_MIN_DIST_...` voor QA, rapportering of filtering.
 4. Zet `GENERATE_CORRECTION_LAYER` uit wanneer de extra reviewlaag alleen ruis in je project zou geven.
+5. Zet in Model Designer ook `LOAD_OUTPUT_LAYERS=False` wanneer de volgende modelstap de output gebruikt en de lagen niet in het project moeten verschijnen.
 
 Dit is vaak de duidelijkste keuze voor ETL, model builder, batchverwerking of gebruikers die al een eigen QA-proces hebben.
 
@@ -225,6 +236,7 @@ params = {
     "PREDICTION_STRATEGY": 0,
     "REVIEW_PERCENTAGE": 10,
     "GENERATE_CORRECTION_LAYER": True,
+    "LOAD_OUTPUT_LAYERS": True,
     "ADD_METADATA": True,
     "ADD_ATTRIBUTES": True,
     "SHOW_INTERMEDIATE_LAYERS": True,
