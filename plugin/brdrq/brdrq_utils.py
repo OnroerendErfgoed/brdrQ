@@ -1,5 +1,6 @@
 import copy
 import json
+import logging
 import os
 import re
 from enum import Enum
@@ -28,10 +29,10 @@ from brdr.processor import (
 from brdr.utils import (
     write_featurecollection_to_geopackage,
 )
-from qgis.PyQt.QtCore import QUrl
+from qgis.PyQt.QtCore import QByteArray, QUrl
 from qgis.PyQt.QtGui import QColor, QPainter
 from qgis.PyQt.QtNetwork import QNetworkRequest
-from qgis.core import Qgis
+from qgis.core import Qgis, QgsMessageLog
 from qgis.core import QgsBlockingNetworkRequest
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
@@ -93,7 +94,7 @@ from qgis.core import (
 )
 from qgis.core import QgsStyle
 from qgis.utils import iface
-from shapely import to_wkt, from_wkt, make_valid
+from shapely import from_wkb, to_wkb
 from .qt_compat import (
     is_return_or_enter_key,
     map_mouse_event_pos,
@@ -103,6 +104,45 @@ from .qt_compat import (
 )
 
 GPKG_FILENAME = "brdrq.gpkg"
+
+
+class _QgisBrdrLogHandler(logging.Handler):
+    """Forward brdr warnings to QGIS instead of a possibly closed console stream."""
+
+    def emit(self, record):
+        try:
+            level = (
+                Qgis.MessageLevel.Critical
+                if record.levelno >= logging.ERROR
+                else Qgis.MessageLevel.Warning
+            )
+            QgsMessageLog.logMessage(self.format(record), "brdr", level)
+        except Exception:
+            self.handleError(record)
+
+
+def _configure_brdr_logging():
+    brdr_logger = logging.getLogger("BRDR")
+    if any(getattr(handler, "_brdrq_qgis_handler", False) for handler in brdr_logger.handlers):
+        return
+
+    # brdr installs a StreamHandler(sys.stdout) at import time. In QGIS that
+    # stream can be closed, producing logging errors from worker threads.
+    for handler in list(brdr_logger.handlers):
+        if isinstance(handler, logging.StreamHandler):
+            brdr_logger.removeHandler(handler)
+            handler.close()
+
+    qgis_handler = _QgisBrdrLogHandler()
+    qgis_handler._brdrq_qgis_handler = True
+    qgis_handler.setLevel(logging.WARNING)
+    qgis_handler.setFormatter(logging.Formatter("%(message)s"))
+    brdr_logger.addHandler(qgis_handler)
+    brdr_logger.setLevel(logging.WARNING)
+    brdr_logger.propagate = False
+
+
+_configure_brdr_logging()
 
 
 class Processor(str, Enum):
@@ -547,13 +587,60 @@ def get_string_type(val):
             return "string"
 
 
+def _log_brdrq_warning(message, *args):
+    """Write diagnostics to the QGIS log without relying on stdout/stderr."""
+    if args:
+        message = message % args
+    try:
+        QgsMessageLog.logMessage(str(message), "brdrQ", Qgis.MessageLevel.Warning)
+    except Exception:
+        # Avoid allowing diagnostic output to interrupt plugin workflows.
+        pass
+
+
 def geom_shapely_to_qgis(geom_shapely):
     """
     Method to convert a Shapely-geometry to a QGIS geometry
     """
-    wkt = to_wkt(make_valid(geom_shapely), rounding_precision=-1, output_dimension=2)
-    geom_qgis = QgsGeometry.fromWkt(wkt)
-    return geom_qgis
+    if geom_shapely is None:
+        return QgsGeometry()
+
+    if geom_shapely.geom_type == "GeometryCollection":
+        component_types = {}
+        for component in geom_shapely.geoms:
+            component_types[component.geom_type] = (
+                component_types.get(component.geom_type, 0) + 1
+            )
+        _log_brdrq_warning(
+            "Converting Shapely GeometryCollection to QGIS: "
+            "components=%s, is_empty=%s, is_valid=%s",
+            component_types,
+            geom_shapely.is_empty,
+            geom_shapely.is_valid,
+        )
+
+    geom_qgis = QgsGeometry()
+    wkb = QByteArray(to_wkb(geom_shapely, output_dimension=2))
+    if geom_qgis.fromWkb(wkb):
+        return geom_qgis
+
+    # Some Shapely WKB variants are rejected by the QGIS/GDAL combination
+    # bundled with older QGIS releases. WKT provides a compatible fallback.
+    _log_brdrq_warning(
+        "QGIS rejected Shapely WKB (geometry_type=%s, is_empty=%s); "
+        "retrying conversion with WKT.",
+        geom_shapely.geom_type,
+        geom_shapely.is_empty,
+    )
+    geom_qgis = QgsGeometry.fromWkt(geom_shapely.wkt)
+    if not geom_qgis.isNull():
+        return geom_qgis
+
+    raise ValueError(
+        "Could not convert Shapely geometry to QGIS geometry "
+        f"(geometry_type={geom_shapely.geom_type}, "
+        f"is_empty={geom_shapely.is_empty}, is_valid={geom_shapely.is_valid})"
+    )
 
 
 def remove_group_layer(group_layer_name):
@@ -576,9 +663,8 @@ def geom_qgis_to_shapely(geom_qgis):
     """
     if geom_qgis.isNull() or geom_qgis.isEmpty():
         return None
-    wkt = geom_qgis.asWkt()
-    geom_shapely = from_wkt(wkt)
-    return make_valid(geom_shapely)
+    geom_shapely = from_wkb(bytes(geom_qgis.asWkb()))
+    return geom_shapely
 
 
 def add_field_to_layer(layer, fieldname, fieldtype, default_value):
@@ -602,6 +688,31 @@ def get_layer_by_name(layer_name):
     else:
         print(f"Layer not found for layername {str(layer_name)}")
         return None
+
+
+def get_layer_by_name_or_geometry_splits(layer_name):
+    """Return a layer and its type-split children, if present."""
+    exact_layers = QgsProject.instance().mapLayersByName(layer_name)
+    if exact_layers:
+        return exact_layers
+
+    geometry_types = (
+        "Point",
+        "MultiPoint",
+        "LineString",
+        "MultiLineString",
+        "Polygon",
+        "MultiPolygon",
+        "GeometryCollection",
+    )
+    layers = []
+    for geometry_type in geometry_types:
+        layers.extend(
+            QgsProject.instance().mapLayersByName(
+                f"{layer_name}_{geometry_type}"
+            )
+        )
+    return layers
 
 
 def zoom_to_features(features, iface, marge_factor=0.1, features_crs=None):
@@ -753,7 +864,13 @@ def get_symbol(geojson, resulttype):
 
     feature_types = get_geojson_type(geojson)
     if len(feature_types) > 1:
-        raise TypeError("Geojson multiple types detected. Not supported")
+        _log_brdrq_warning(
+            "Cannot apply brdrQ result styling: multiple geometry types %s "
+            "were found for result type %s. Using the layer's default renderer.",
+            feature_types,
+            resulttype,
+        )
+        return None
     if len(feature_types) == 1:
         geometrytype = feature_types[0]
     else:
@@ -808,7 +925,13 @@ def get_symbol(geojson, resulttype):
         else:
             return QgsStyle.defaultStyle().symbol("dot blue")
     else:
-        raise TypeError("Unknown GeometryType")
+        _log_brdrq_warning(
+            "Cannot apply brdrQ result styling: unsupported geometry type %r "
+            "was found for result type %s. Using the layer's default renderer.",
+            geometrytype,
+            resulttype,
+        )
+        return None
 
 
 def get_geojson_type(geojson):
@@ -873,12 +996,67 @@ def gpkg_layer_to_map(name, gpkg_path, layer_name, symbol, visible, group):
     return vl
 
 
+def _iter_geojson_geometry_components(geometry):
+    """Yield non-collection geometries recursively from a GeoJSON geometry."""
+    if not isinstance(geometry, dict):
+        return
+    if geometry.get("type") == "GeometryCollection":
+        for component in geometry.get("geometries", []) or []:
+            yield from _iter_geojson_geometry_components(component)
+        return
+    if not geometry.get("coordinates"):
+        return
+    yield geometry
+
+
+def _expand_geometry_collections(featurecollection):
+    """Flatten non-empty collections and represent empty ones as null geometry."""
+    if not isinstance(featurecollection, dict):
+        return featurecollection
+    features = featurecollection.get("features")
+    if not isinstance(features, list):
+        return featurecollection
+
+    expanded_features = []
+    changed = False
+    for feature in features:
+        geometry = feature.get("geometry")
+        if not isinstance(geometry, dict) or geometry.get("type") != "GeometryCollection":
+            expanded_features.append(feature)
+            continue
+
+        components = list(_iter_geojson_geometry_components(geometry))
+        if not components:
+            # An empty GeometryCollection is an empty feature, not a geometry
+            # type of its own. Keeping it as a null geometry lets it remain in
+            # the same typed layer as the non-empty features in the collection.
+            empty_feature = copy.deepcopy(feature)
+            empty_feature["geometry"] = None
+            expanded_features.append(empty_feature)
+            changed = True
+            continue
+
+        changed = True
+        for component in components:
+            component_feature = copy.deepcopy(feature)
+            component_feature["geometry"] = copy.deepcopy(component)
+            expanded_features.append(component_feature)
+
+    if not changed:
+        return featurecollection
+
+    expanded = copy.deepcopy(featurecollection)
+    expanded["features"] = expanded_features
+    return expanded
+
+
 def featurecollection_to_layer(
     name, featurecollection, symbol, visible, group, tempfolder
 ):
     """
     Add a featurecollection to a QGIS-layer to add it to the TOC. If featurecollection has multiple types (point,line, polygon) these types are added seperately.
     """
+    featurecollection = _expand_geometry_collections(featurecollection)
     featurecollection = featurecollection_to_multi(featurecollection)
     feature_types = get_geojson_type(featurecollection)
     if len(feature_types) > 1:
@@ -1605,10 +1783,12 @@ def get_reference_params(ref, layer_reference, id_reference_fieldname, thematic_
 
 
 def setFilterOnLayer(layername, filter):
-    layer = get_layer_by_name(layername)
-    if not layer is None:
-        layer.setSubsetString(filter)
-    return
+    layers = get_layer_by_name_or_geometry_splits(layername)
+    if not layers:
+        print(f"Layer not found for layername {str(layername)}")
+        return False
+    results = [layer.setSubsetString(filter) for layer in layers]
+    return all(results)
 
 
 def remove_empty_features_from_diff_layers(layers_to_filter):
@@ -1619,13 +1799,12 @@ def remove_empty_features_from_diff_layers(layers_to_filter):
     for lyr in layers_to_filter:
         if not lyr:
             continue
-        try:
-            g_type = get_layer_by_name(lyr).geometryType()
-        except:
-            g_type = Qgis.GeometryType.Unknown
-
-        if g_type in supported_geom_types:
-            setFilterOnLayer(lyr, filter)
+        layers = get_layer_by_name_or_geometry_splits(lyr)
+        for layer in layers:
+            g_type = layer.geometryType()
+            if g_type not in supported_geom_types:
+                continue
+            layer.setSubsetString(filter)
 
 
 def thematic_preparation(input_thematic_layer, relevant_distance, context, feedback):

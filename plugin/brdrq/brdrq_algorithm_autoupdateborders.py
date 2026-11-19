@@ -558,11 +558,37 @@ class AutoUpdateBordersProcessingAlgorithm(QgsProcessingAlgorithm):
 
     def _get_output_layer(self, layer_name):
         layers = QgsProject.instance().mapLayersByName(layer_name)
-        if not layers:
+        if layers:
+            return layers[0]
+
+        # featurecollection_to_layer splits mixed-geometry collections into
+        # separately named layers (for example, ``brdrQ_DIFF_MultiPolygon``).
+        # Processing still needs a layer object for its declared output. If
+        # there is exactly one split layer, it is the complete output.
+        root = QgsProject.instance().layerTreeRoot()
+        split_names = {
+            child.name()
+            for child in root.findLayers()
+            if child.name().startswith(layer_name + "_")
+        }
+        split_layers = [
+            layer
+            for split_name in sorted(split_names)
+            for layer in QgsProject.instance().mapLayersByName(split_name)
+        ]
+        if len(split_layers) == 1:
+            return split_layers[0]
+        if split_layers:
+            found_names = ", ".join(layer.name() for layer in split_layers)
             raise QgsProcessingException(
-                f"Expected output layer '{layer_name}' was not created."
+                f"Output layer '{layer_name}' was split by geometry type into "
+                f"multiple layers ({found_names}); no single processing output "
+                "can represent all of them."
             )
-        return layers[0]
+        raise QgsProcessingException(
+            f"Expected output layer '{layer_name}' was not created and no "
+            "geometry-split layer was found."
+        )
 
     def read_default_settings(self):
         # print ('read_settings')

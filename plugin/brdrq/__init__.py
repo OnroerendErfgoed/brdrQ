@@ -26,7 +26,11 @@ __author__ = "Karel Dieussaert / Onroerend Erfgoed"
 __date__ = "2024-10-11"
 __copyright__ = "(C) 2024 by Karel Dieussaert / Onroerend Erfgoed"
 
-from .qt_compat import dialog_exec, qmessagebox_critical_icon, qmessagebox_ok_button
+from .qt_compat import (
+    dialog_exec,
+    qmessagebox_ok_button,
+    qmessagebox_warning_icon,
+)
 
 
 # noinspection PyPep8Naming
@@ -42,20 +46,88 @@ def classFactory(iface):  # pylint: disable=invalid-name
     try:
         if not python_version_compatibility(iface):
             print("failed python version check")
-            return None
+            return _PluginLoadFailure()
         if not qgis_version_compatibility(iface):
             print("failed qgis version check")
-            return None
+            return _PluginLoadFailure()
 
-        import_modules()
+        restart_required = import_modules()
+        if restart_required:
+            print("brdrQ tools disabled until QGIS is restarted")
+            return _RestartRequiredPlugin(iface)
         print("modules succesfully loaded")
         from .brdrq_plugin import BrdrQPlugin
 
         return BrdrQPlugin(iface)
     except Exception as e:
         show_error_dialog(e)
-        return None
+        # QGIS calls initGui() on the object returned by classFactory().
+        # Returning None makes QGIS raise a second, confusing
+        # "NoneType has no attribute initGui" error after the useful message.
+        return _PluginLoadFailure()
         # raise RuntimeError("Error initializing brdrQ-plugin") #better to raise Error or to return None?
+
+
+class _PluginLoadFailure:
+    """Placeholder preventing QGIS from calling initGui() on None."""
+
+    def initGui(self):
+        """QGIS requires this method even when plugin loading failed."""
+
+    def unload(self):
+        """Allow QGIS to unload the placeholder cleanly."""
+
+
+class _RestartRequiredPlugin:
+    """Expose a status button after brdr is installed."""
+
+    def __init__(self, iface):
+        self.iface = iface
+        self.toolbar = None
+        self.action = None
+
+    def initGui(self):
+        import os
+
+        from qgis.PyQt.QtGui import QIcon
+        from qgis.PyQt.QtWidgets import QAction
+
+        self.toolbar = self.iface.addToolBar("brdrQ")
+        self.toolbar.setObjectName("brdrQ")
+        icon_path = os.path.join(os.path.dirname(__file__), "icon_base.svg")
+        self.action = QAction(
+            QIcon(icon_path),
+            "brdrQ (restart required)",
+            self.iface.mainWindow(),
+        )
+        self.action.setToolTip(
+            "brdr was installed. Restart QGIS to enable the brdrQ tools."
+        )
+        self.action.triggered.connect(self.show_restart_message)
+        self.toolbar.addAction(self.action)
+
+    def show_restart_message(self):
+        from qgis.PyQt.QtWidgets import QMessageBox
+
+        msg = QMessageBox(self.iface.mainWindow())
+        msg.setIcon(qmessagebox_warning_icon())
+        msg.setWindowTitle("Restart QGIS to enable brdrQ")
+        msg.setText("The required brdr version has been installed successfully.")
+        msg.setInformativeText(
+            "Restart QGIS to load the full brdrQ toolbar and processing tools."
+        )
+        msg.setStandardButtons(qmessagebox_ok_button())
+        dialog_exec(msg)
+
+    def unload(self):
+        if self.toolbar is not None:
+            self.toolbar.clear()
+            self.iface.mainWindow().removeToolBar(self.toolbar)
+            self.toolbar.deleteLater()
+            self.toolbar = None
+        if self.action is not None:
+            self.action.deleteLater()
+            self.action = None
 
 
 def qgis_version_compatibility(iface):
@@ -121,11 +193,13 @@ def show_error_dialog(e):
     from qgis.PyQt.QtWidgets import QMessageBox
 
     msg = QMessageBox()
-    msg.setIcon(qmessagebox_critical_icon())
-    msg.setWindowTitle("Problem while initializing the brdrQ-plugin")
-    msg.setText("The brdrQ-plugin could not be loaded correctly.")
+    msg.setIcon(qmessagebox_warning_icon())
+    msg.setWindowTitle("Problem while installing or loading brdrQ")
+    msg.setText("brdrQ could not be installed or loaded correctly.")
     msg.setInformativeText(
-        f"Please restart QGIS and retry.<br>If the problem persists, try to upgrade the plugin or the QGIS-version.<br>If it still persists you can log the issue at: <a href='https://github.com/OnroerendErfgoed/brdrQ/issues'>https://github.com/OnroerendErfgoed/brdrQ/issues</a>.<br>Error-message: {e} "
+        f"Please restart QGIS and try again. If installation still fails, report the problem at "
+        f"<a href='https://github.com/OnroerendErfgoed/brdrQ/issues'>the brdrQ issue tracker</a>."
     )
+    msg.setDetailedText(str(e))
     msg.setStandardButtons(qmessagebox_ok_button())
     dialog_exec(msg)

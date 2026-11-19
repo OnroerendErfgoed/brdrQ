@@ -155,3 +155,47 @@ class TestAutoUpdateBorders(unittest.TestCase):
             assert isinstance(o,QgsVectorLayer)
             assert 0<o.featureCount()<=featurecount
 
+    def test_autoupdateborders_dossier_test_geometrycollection_regression(self):
+        """Run GRB Updater with the dataset from the GeometryCollection bug report."""
+
+        foldername = QgsProcessingParameterFolderDestination(
+            name="brdrQ"
+        ).generateTemporaryDestination()
+
+        path = os.path.join(os.path.dirname(__file__), "dossier_test.geojson")
+        themelayername = "dossier_test"
+        layer_theme = QgsVectorLayer(path, themelayername)
+        self.assertTrue(layer_theme.isValid())
+        # The checked-in regression fixture is a five-feature sample of the
+        # original 2272-feature dossier dataset.
+        self.assertEqual(layer_theme.featureCount(), 5)
+        QgsProject.instance().addMapLayer(layer_theme)
+
+        # The test is intentionally expected to complete without the
+        # "GeometryCollection cannot be used" error reported for GRBUpdater.
+        output = run_processing_or_skip(
+            "brdrqprovider:brdrqautoupdateborders",
+            {
+                "INPUT_THEMATIC": themelayername,
+                "COMBOBOX_ID_THEME": "gid",
+                "ENUM_REFERENCE": 0,
+                "METADATA_FIELD": "",
+                "RELEVANT_DISTANCE": 5,
+                "THRESHOLD_OVERLAP_PERCENTAGE": 50,
+                "ENUM_OD_STRATEGY": 2,
+                "ENUM_SNAP_STRATEGY": 1,
+                "ENUM_PROCESSOR": 0,
+                "WORK_FOLDER": foldername,
+                "REVIEW_PERCENTAGE": 10,
+                "PREDICTION_STRATEGY": 1,
+                "FULL_REFERENCE_STRATEGY": 2,
+                "LOG_INFO": True,
+            },
+        )
+        featurecount = layer_theme.featureCount()
+
+        assert len(output)==5
+        for o in output.values():
+            assert isinstance(o,QgsVectorLayer)
+            assert 0<=o.featureCount()<=featurecount
+

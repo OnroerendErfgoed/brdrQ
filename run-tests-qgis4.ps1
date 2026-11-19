@@ -100,10 +100,23 @@ function Invoke-InQgisWindowsEnv {
     $tempBat = [System.IO.Path]::GetTempFileName() + ".bat"
     @(
         "@echo off",
+        "set `"OSGEO4W_ROOT=$QgisRoot`"",
+        "set `"PYTHONHOME=`"",
+        "set `"PYTHONPATH=`"",
+        "set `"QGIS_PREFIX_PATH=`"",
+        "set `"QGIS_PLUGIN_PATH=`"",
+        "set `"QGIS_PLUGINPATH=`"",
+        "set `"QGISPATH=`"",
+        "set `"QT_PLUGIN_PATH=`"",
+        "set `"QT_QPA_PLATFORM_PLUGIN_PATH=`"",
         "call `"$o4wEnv`"",
         "if exist `"$qtEnv`" call `"$qtEnv`"",
-        "set `"QGIS_PREFIX_PATH=$QgisRoot`"",
-        "set `"PYTHONHOME=`"",
+        "set `"OSGEO4W_ROOT=$QgisRoot`"",
+        "set `"QGIS_PREFIX_PATH=$QgisRoot\apps\qgis`"",
+        "set `"PYTHONHOME=$QgisRoot\apps\Python312`"",
+        "set `"PYTHONPATH=$QgisRoot\apps\qgis\python;$QgisRoot\apps\qgis\python\plugins;$QgisRoot\apps\Python312\Lib\site-packages`"",
+        "set `"QT_PLUGIN_PATH=`"",
+        "set `"QT_QPA_PLATFORM_PLUGIN_PATH=$QgisRoot\apps\Qt6\plugins\platforms`"",
         "set `"PYTHONUTF8=1`"",
         $CommandLine,
         "exit /b %errorlevel%"
@@ -147,6 +160,8 @@ $qgisPythonSitePackages = Get-ChildItem -Path (Join-Path $qgisRoot "apps") -Dire
     Select-Object -First 1
 $qt6Plugins = Join-Path $qgisRoot "apps\Qt6\plugins"
 $qt5Plugins = Join-Path $qgisRoot "apps\Qt5\plugins"
+$effectiveQtPluginPath = "$qgisRoot\apps\qgis\qtplugins;$qt6Plugins"
+$effectiveQtPlatformPluginPath = Join-Path $qt6Plugins "platforms"
 
 # Ensure QGIS binaries are first on PATH to avoid mixed DLL loading.
 $pathParts = @()
@@ -237,7 +252,9 @@ Write-Host "Qt bin:" $(if (Test-Path $qt6Bin) { $qt6Bin } elseif (Test-Path $qt5
 Write-Host "Python runtime root:" $(if ($pythonRuntimeRoot) { $pythonRuntimeRoot } else { "<not found>" })
 Write-Host "PYTHONPATH:" $(if ($env:PYTHONPATH) { $env:PYTHONPATH } else { "<unset>" })
 Write-Host "QT_QPA_PLATFORM:" $(if ($env:QT_QPA_PLATFORM) { $env:QT_QPA_PLATFORM } else { "<unset>" })
-Write-Host "QT_PLUGIN_PATH:" $(if ($env:QT_PLUGIN_PATH) { $env:QT_PLUGIN_PATH } else { "<unset>" })
+Write-Host "Inherited QT_PLUGIN_PATH (ignored by QGIS 4 subprocesses):" $(if ($env:QT_PLUGIN_PATH) { $env:QT_PLUGIN_PATH } else { "<unset>" })
+Write-Host "QT_PLUGIN_PATH used by QGIS 4 subprocesses:" $effectiveQtPluginPath
+Write-Host "QT_QPA_PLATFORM_PLUGIN_PATH used by QGIS 4 subprocesses:" $effectiveQtPlatformPluginPath
 Write-Host "Suite:" $Suite
 Write-Host "Mode:" $Mode
 Write-Host "Running tests:" ($Tests -join ", ")
